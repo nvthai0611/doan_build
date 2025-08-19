@@ -13,7 +13,7 @@ import { Response } from 'express';
 import { AuthService } from './auth.service';
 import Hash from 'src/utils/hasing';
 import JWT from 'src/utils/jwt';
-import { redis } from 'src/utils/redis';
+// import { redis } from 'src/utils/redis';
 
 @Controller('auth')
 export class AuthController {
@@ -52,14 +52,14 @@ export class AuthController {
 
     const refreshToken = JWT.createRefreshToken();
 
-    const redisStore = await redis;
-    await redisStore.set(
-      `refreshToken_${user.id}`,
-      JSON.stringify({
-        refreshToken,
-        email,
-      }),
-    );
+    // const redisStore = await redis;
+    // await redisStore.set(
+    //   `refreshToken_${user.id}`,
+    //   JSON.stringify({
+    //     refreshToken,
+    //     email,
+    //   }),
+    // );
 
     return res.json({
       success: true,
@@ -82,10 +82,11 @@ export class AuthController {
   }
 
   @Post('logout')
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async logout(@Req() req: any) {
-    const token = req.token;
-    const redisStore = await redis;
-    await redisStore.set(`blacklist_${token}`, 1);
+    // const token = req.token;
+    // const redisStore = await redis;
+    // await redisStore.set(`blacklist_${token}`, 1);
     return { success: true, message: 'Logout success' };
   }
 
@@ -94,52 +95,7 @@ export class AuthController {
     @Headers('refresh-token') refreshToken: string,
     @Res() res: Response,
   ) {
-    console.log('Received refresh token from header:', refreshToken);
-
-    if (!refreshToken) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        success: false,
-        message: 'Vui lòng cung cấp refresh token',
-      });
-    }
-    const redisStore = await redis;
-    const storedTokenData = await redisStore.get(`refreshToken_10`);
-    console.log(storedTokenData);
-
-    if (!storedTokenData) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({
-        success: false,
-        message: 'Refresh token không hợp lệ hoặc đã hết hạn',
-      });
-    }
-
-    const { email, refreshToken: storedRefreshToken } =
-      JSON.parse(storedTokenData);
-    if (refreshToken !== storedRefreshToken) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({
-        success: false,
-        message: 'Refresh token không khớp',
-      });
-    }
-
-    const user = await this.authService.getUserByFiel('email', email);
-    if (!user) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({
-        success: false,
-        message: 'Người dùng không tồn tại',
-      });
-    }
-    const newAccessToken = JWT.createAccessToken({
-      userId: user.id,
-      email: user.email,
-    });
-
-    return res.json({
-      success: true,
-      message: 'Tạo access token thành công',
-      data: {
-        accessToken: newAccessToken,
-      },
-    });
+    console.log('Received refresh token:', refreshToken);
+    return res.json('check');
   }
 }
