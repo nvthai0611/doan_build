@@ -13,7 +13,7 @@ const Home = () => {
   // }, []);
   return (
     <div>
-      <h1>Home</h1>
+      <h1>Home check</h1>
       <Carousel />
       <BestSeller />
     </div>
