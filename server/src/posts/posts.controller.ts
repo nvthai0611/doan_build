@@ -1,13 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { ApiBody } from '@nestjs/swagger';
 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
+  // @ApiBody({ type: CreatePostDto }) // Swagger sẽ lấy schema từ DTO
   create(@Body() createPostDto: CreatePostDto) {
     return this.postsService.create(createPostDto);
   }
