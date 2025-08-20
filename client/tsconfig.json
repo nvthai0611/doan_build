@@ -12,9 +12,14 @@
     "jsx": "react-jsx",
     "strict": true,
     "allowJs": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/assets/shadcn-ui/*"]
+    }
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts"]
 }
+
 
 
