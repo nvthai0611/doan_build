@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import Hash from 'src/utils/hasing';
+import Hash from 'src/utils/hasing.util';
 import { PrismaService } from 'src/db/prisma.service';
 const prisma = new PrismaClient({
   log: ['query'],

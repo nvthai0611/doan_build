@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Response } from 'express';
 import { AuthService } from 'src/modules/auth/auth.service';
-import JWT from 'src/utils/jwt';
+import JWT from 'src/utils/jwt.util';
 // import { redis } from 'src/utils/redis';
 
 @Injectable()

@@ -11,8 +11,8 @@ import {
 import { LoginDto } from './dto/loginDto';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import Hash from 'src/utils/hasing';
-import JWT from 'src/utils/jwt';
+import Hash from 'src/utils/hasing.util';
+import JWT from 'src/utils/jwt.util';
 // import { redis } from 'src/utils/redis';
 
 @Controller('auth')
