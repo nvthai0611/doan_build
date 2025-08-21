@@ -7,6 +7,7 @@ import { ValidationError } from 'class-validator';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
+  // tự động validate khi có req gửi xuống
   app.useGlobalPipes(
     new ValidationPipe({
       exceptionFactory: (ValidationError: ValidationError[]) => {
@@ -18,7 +19,7 @@ async function bootstrap() {
         return new BadRequestException(newError);
       },
     }),
-  ); // validate tự động trong nestjs khi có request
+  );
   app.enableCors({
     origin: 'http://localhost:3000', // Origin cho phép
     methods: 'GET,POST,PUT,DELETE', // Các HTTP method cho phép

@@ -3,12 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import Hash from 'src/utils/hasing';
+import { PrismaService } from 'src/db/prisma.service';
 const prisma = new PrismaClient({
   log: ['query'],
 });
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaService) {}
   // async getUsers() {
   //   return [
   //     {

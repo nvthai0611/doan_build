@@ -9,7 +9,7 @@ export class AppController {
   @Get()
   getHello(): string {
     // return this.appService.getHello();
-    console.log('chec');
+    console.log(process.env.PORT);
 
     return `<h1>Học nestjs check phát 3</h1>`;
   }
