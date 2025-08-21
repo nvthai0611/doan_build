@@ -1,17 +1,31 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiTags } from '@nestjs/swagger';
+import { successResponse } from './utils/response.util';
+
+// demo interface
+interface User {
+  id: number;
+  name: string;
+}
+
 @ApiTags('Main')
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    // return this.appService.getHello();
-    console.log(process.env.PORT);
-
-    return `<h1>Học nestjs check phát 3</h1>`;
+  @Get()
+  getUsers(@Res() res: Response) {
+    // bắt buộc phải ép interface
+    const users: User[] = [{ id: 1, name: 'Hải' }];
+    return successResponse(
+      res,
+      users,
+      { total: users.length },
+      HttpStatus.OK,
+      'Fetched users',
+    );
   }
   @Get('gioi-thieu')
   getAbout(): string {

@@ -6,7 +6,7 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ValidationError } from 'class-validator';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
   // tự động validate khi có req gửi xuống
   app.useGlobalPipes(
     new ValidationPipe({
@@ -21,8 +21,8 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    origin: 'http://localhost:3000', // Origin cho phép
-    methods: 'GET,POST,PUT,DELETE', // Các HTTP method cho phép
+    origin: 'http://localhost:5173', // Origin cho phép
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Các HTTP method cho phép
     credentials: true, // Cho phép gửi cookie hoặc thông tin xác thực
   });
   app.use(cookieParser());
