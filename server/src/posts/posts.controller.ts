@@ -1,3 +1,4 @@
+import { decrypt } from './../utils/crypto.helper.util';
 import {
   Controller,
   Get,
@@ -6,20 +7,30 @@ import {
   Patch,
   Param,
   Delete,
+  Req,
+  BadRequestException,
+  HttpStatus,
+  Res,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { ApiBody } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
-  // @ApiBody({ type: CreatePostDto }) // Swagger sẽ lấy schema từ DTO
-  create(@Body() createPostDto: CreatePostDto) {
-    return this.postsService.create(createPostDto);
+  async create(@Body() CreatePostDto: CreatePostDto) {
+    // Chỉ return data thô
+    const data = await this.postsService.create(CreatePostDto);
+    return {
+      data: data,
+      message: 'thành công',
+    };
   }
 
   @Get()

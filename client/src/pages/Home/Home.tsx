@@ -1,35 +1,48 @@
 import './Home.scss';
 import Carousel from './Carousel';
 import BestSeller from './BestSeller';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { apiClient } from '../../utils/clientAxios';
 
-// Bắt buộc phải có interface mặc dù nó ko validation
 interface User {
   id: number;
   name: string;
 }
 
-
 const Home = () => {
-
-  // Call api như sau
-  const { data, isLoading, error } = useQuery<User[]>({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const res = await apiClient.get<User[]>('/');
-      console.log(res.data);
-      return res.data;
-    },
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ['users'],
+        queryFn: async () => {
+          const res = await apiClient.get<User[]>('/');
+          return res.data;
+        },
+      },
+      {
+        queryKey: ['posts'],
+        queryFn: async () => {
+          const res = await apiClient.post('/posts', {
+            name: 'Hải',
+            price: 20,
+          });
+          return res.data;
+        },
+      },
+    ],
   });
 
-  if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Something went wrong</p>;
+  const usersQuery = results[0];
+  const postsQuery = results[1];
+
+  if (usersQuery.isLoading || postsQuery.isLoading) return <p>Loading...</p>;
+  if (usersQuery.error || postsQuery.error) return <p>Something went wrong</p>;
 
   return (
     <div>
       <h1>Home check 132</h1>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
+      <pre>{JSON.stringify(usersQuery.data, null, 2)}</pre>
+      <pre>{JSON.stringify(postsQuery.data, null, 2)}</pre>
       <Carousel />
       <BestSeller />
     </div>

@@ -1,3 +1,4 @@
+import { encrypt } from './../utils/crypto.helper.util';
 import { Injectable } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -5,11 +6,12 @@ import { UpdatePostDto } from './dto/update-post.dto';
 @Injectable()
 export class PostsService {
   create(createPostDto: CreatePostDto) {
-    return 'This action adds a new post';
+    const encryptt = encrypt(createPostDto);
+    return encryptt;
   }
 
   findAll() {
-    console.log("check");
+    console.log('check');
     return `This action returns all posts`;
   }
 

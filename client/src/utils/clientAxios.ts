@@ -12,13 +12,15 @@ import CryptoJS from 'crypto-js';
    Token Helper
    ======================= */
 const AUTH_TOKEN = 'accessToken';
-const SECRET_KEY = 'your-secret-key';
 
 const encrypt = (data: string): string =>
-  CryptoJS.AES.encrypt(data, SECRET_KEY).toString();
+  CryptoJS.AES.encrypt(data, import.meta.env.VITE_SECRET_KEY_RES).toString();
 const decrypt = (cipher: string): string | undefined => {
   try {
-    const bytes = CryptoJS.AES.decrypt(cipher, SECRET_KEY);
+    const bytes = CryptoJS.AES.decrypt(
+      cipher,
+      import.meta.env.VITE_SECRET_KEY_RES,
+    );
     return bytes.toString(CryptoJS.enc.Utf8) || undefined;
   } catch {
     return undefined;
@@ -57,6 +59,7 @@ export interface ApiResponse<T = any> {
 
 export interface ApiRequestConfig extends AxiosRequestConfig {
   contentType?: string;
+  encryptData?: boolean;
 }
 
 /* =======================
@@ -141,15 +144,20 @@ const send = async <T>(
 
   // nếu server trả về data mã hóa thì tự động giải mã
   let responseData = res.data;
-  if (typeof res.data === 'string') {
+  if (typeof responseData.data === 'string') {
     try {
-      responseData = JSON.parse(decrypt(res.data) || res.data);
+      const encrypt = JSON.parse(
+        decrypt(responseData.data) || responseData.data,
+      );
+      responseData = {
+        ...responseData,
+        data: encrypt,
+      };
     } catch {
       responseData = res.data;
     }
   }
-
-  return { data: responseData as T, status: res.status };
+  return responseData;
 };
 
 export const apiClient = {
