@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +5,30 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(255)
+  content   String   @db.VarChar
+  authorId  Int?
+  create_at DateTime
+  update_at DateTime
+  author    User?    @relation(fields: [authorId], references: [id])
+
+  @@map("orders")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(255)
+  content   String   @db.VarChar
+  create_at DateTime
+  update_at DateTime
+  authorId  Int?
+  author    User?    @relation(fields: [authorId], references: [id])
+
+  @@map("posts")
 }
 
 model User {
@@ -21,16 +39,8 @@ model User {
   status    Boolean  @default(true)
   create_at DateTime
   update_at DateTime
+  Order     Order[]
+  Post      Post[]
 
-  @@map("users") // chỉ định tạo ra 1 bảng tên giống thế này
-}
-
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String   @db.VarChar(255)
-  content   String   @db.VarChar()
-  create_at DateTime
-  update_at DateTime
-
-  @@map("posts") // chỉ định tên bảng là posts 
+  @@map("users")
 }

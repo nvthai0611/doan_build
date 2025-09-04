@@ -18,6 +18,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { ApiBody } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import { DecryptOrValidatePipe } from 'src/transform/DecryptOrValidatePipe.transform';
 
 @Controller('posts')
 export class PostsController {

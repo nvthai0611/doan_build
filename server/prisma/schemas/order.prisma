@@ -1,0 +1,13 @@
+// post.prisma
+
+model Order {
+    id        Int      @id @default(autoincrement())
+    title     String   @db.VarChar(255)
+    content   String   @db.VarChar()
+    author    User?    @relation(fields: [authorId], references: [id])
+    authorId  Int?
+    create_at DateTime
+    update_at DateTime
+
+    @@map("orders") // chỉ định tạo ra bảng "posts"
+}

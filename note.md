@@ -9,6 +9,9 @@
 
 # database
 
+- tạo model trong folder schema
+  => npm run prisma:generate
+
 ### Người tạo thêm db + thay đổi db
 
 - b1: phải tạo model trong schema.prisma (làm theo form mẫu)
