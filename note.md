@@ -21,3 +21,5 @@
 
 => nó sẽ tạo ra 1 folder migrations - bên trong đó sẽ có câu lệnh sql tạo bảng đó
 -> vào pgadmin refresh sẽ thấy có bảng các kiểu
+
+## development
