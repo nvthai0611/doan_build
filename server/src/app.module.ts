@@ -16,12 +16,7 @@ import { AuthMiddleware } from './common/middleware/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthService } from './modules/auth/auth.service';
 import { PrismaService } from './db/prisma.service';
-import { TeachersModule } from './modules/teachers/teachers/teachers.module';
-import { StudentsModule } from './modules/students/students/students.module';
-import { ParentsModule } from './modules/parents/parents/parents.module';
-import { StudentParentLinksModule } from './modules/student-parent-links/student-parent-links/student-parent-links.module';
-import { CentersModule } from './modules/centers/centers/centers.module';
-import { CenterUsersModule } from './modules/center-users/center-users/center-users.module';
+
 
 @Module({
   imports: [
@@ -29,12 +24,7 @@ import { CenterUsersModule } from './modules/center-users/center-users/center-us
     ProductsModule,
     PostsModule,
     AuthModule,
-    TeachersModule,
-    StudentsModule,
-    ParentsModule,
-    StudentParentLinksModule,
-    CentersModule,
-    CenterUsersModule,
+
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService],

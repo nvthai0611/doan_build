@@ -14,7 +14,6 @@ export class AppController {
   constructor(private readonly prismaService: PrismaService) {}
 
   @Get()
-  @Get()
   async getUsers() {
     // bắt buộc phải ép interface
     // const users: User[] = [{ id: 1, name: 'Hải' }];
