@@ -1,4 +1,4 @@
-import { decrypt } from './../utils/crypto.helper.util';
+import { decrypt } from '../../utils/crypto.helper.util';
 import {
   Controller,
   Get,
@@ -26,6 +26,8 @@ export class PostsController {
 
   @Post()
   async create(@Body() CreatePostDto: CreatePostDto) {
+    console.log(CreatePostDto);
+    
     // Chỉ return data thô
     const data = await this.postsService.create(CreatePostDto);
     return {

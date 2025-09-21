@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import { UsersService } from './users.service';
-import { ProductsService } from 'src/products/products.service';
+import { ProductsService } from 'src/modules/products/products.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
