@@ -16,6 +16,8 @@ import { AuthMiddleware } from './common/middleware/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthService } from './modules/auth/auth.service';
 import { PrismaService } from './db/prisma.service';
+import { TeachersModule } from './modules/teachers/teachers.module';
+import { TeachersService } from './modules/teachers/teachers.service';
 
 
 @Module({
@@ -24,10 +26,10 @@ import { PrismaService } from './db/prisma.service';
     ProductsModule,
     PostsModule,
     AuthModule,
-
+    TeachersModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AuthService, PrismaService],
+  providers: [AppService, AuthService, PrismaService, TeachersService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
