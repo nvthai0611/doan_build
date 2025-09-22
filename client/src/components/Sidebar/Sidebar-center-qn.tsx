@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../../lib/auth"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -38,13 +38,14 @@ import { useNavigate } from "react-router-dom"
 
 interface SidebarProps {
     className?: string
+    onToggleCollapse?: (collapsed: boolean) => void
 }
 
 const centerOwnerMenuItems = [
     {
         title: "Tổng quan",
         icon: Home,
-        href: "/dashboard",
+        href: "/center-qn",
     },
     {
         title: "Quản lý học sinh",
@@ -141,7 +142,7 @@ const teacherMenuItems = [
     {
         title: "Tổng quan",
         icon: Home,
-        href: "/teacher/dashboard",
+        href: "/center-qn",
     },
     {
         title: "Quản lý lớp học",
@@ -193,7 +194,7 @@ const teacherMenuItems = [
     },
 ]
 
-export function SidebarCenterQn({ className }: SidebarProps) {
+export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
     const [expandedItems, setExpandedItems] = useState<string[]>([])
     const [isCollapsed, setIsCollapsed] = useState(false)
@@ -201,23 +202,21 @@ export function SidebarCenterQn({ className }: SidebarProps) {
     const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : teacherMenuItems
 
     const toggleExpanded = (title: string) => {
-        console.log(title);
-
         setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
-        navigate(menuItems.find((item) => item.title === title)?.href || "")
     }
 
     const toggleCollapse = () => {
-        setIsCollapsed(!isCollapsed)
-        if (!isCollapsed) {
+        const newCollapsedState = !isCollapsed
+        setIsCollapsed(newCollapsedState)
+        onToggleCollapse?.(newCollapsedState)
+        if (newCollapsedState) {
             setExpandedItems([])
         }
     }
 
-    const handleNavigate = (href: string) => {
-        console.log(href)
-        navigate(href)
-    }
+    useEffect(() => {
+        onToggleCollapse?.(isCollapsed)
+    }, [])
 
     return (
         <div
@@ -269,7 +268,7 @@ export function SidebarCenterQn({ className }: SidebarProps) {
                                     if (item.children) {
                                         if (!isCollapsed) toggleExpanded(item.title)
                                     } else {
-                                        handleNavigate(item.href)
+                                        navigate(item.href)
                                     }
                                 }}
                             >
@@ -289,6 +288,7 @@ export function SidebarCenterQn({ className }: SidebarProps) {
                                 )}
                             </Button>
 
+
                             {!isCollapsed && item.children && expandedItems.includes(item.title) && (
                                 <div className="ml-7 space-y-1 mt-1">
                                     {item.children.map((child) => (
@@ -296,7 +296,7 @@ export function SidebarCenterQn({ className }: SidebarProps) {
                                             key={child.title}
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleNavigate(child.href)}
+                                            onClick={() => navigate(child.href)}
                                             className="w-full justify-start text-muted-foreground hover:text-foreground"
                                         >
                                             {child.title}
