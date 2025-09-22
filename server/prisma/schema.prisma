@@ -19,7 +19,6 @@ model User {
   username             String         @unique
   id                   String         @id @default(uuid()) @db.Uuid
   recordedAttendances  Attendance[]   @relation("RecordedBy")
-  centerUsers          CenterUser[]
   gradedAssessments    Grade[]        @relation("GradedBy")
   uploadedMaterials    Material[]     @relation("UploadedBy")
   createdNotifications Notification[] @relation("CreatedBy")
@@ -33,7 +32,6 @@ model User {
 model Teacher {
   id          String            @id @default(uuid()) @db.Uuid
   userId      String            @unique @map("user_id") @db.Uuid
-  centerId    String            @map("center_id") @db.Uuid
   hireDate    DateTime?         @map("hire_date") @db.Date
   contractEnd DateTime?         @map("contract_end") @db.Date
   subjects    String[]
@@ -44,7 +42,6 @@ model Teacher {
   contracts   Contract[]
   payrolls    Payroll[]
   documents   TeacherDocument[]
-  center      Center            @relation(fields: [centerId], references: [id])
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
@@ -53,18 +50,20 @@ model Teacher {
 model Student {
   id          String              @id @default(uuid()) @db.Uuid
   userId      String              @unique @map("user_id") @db.Uuid
-  centerId    String              @map("center_id") @db.Uuid
+  schoolId    String?             @map("school_id") @db.Uuid
   studentCode String?             @unique @map("student_code")
   dateOfBirth DateTime?           @map("date_of_birth") @db.Date
   gender      String?
   address     String?
+  grade       String? // Khối lớp (lớp 10, 11, 12, etc.)
+  className   String?             @map("class_name") // Tên lớp (10A1, 11B2, etc.)
   createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   attendances Attendance[]
   enrollments Enrollment[]
   grades      Grade[]
   parentLinks StudentParentLink[]
-  center      Center              @relation(fields: [centerId], references: [id])
+  school      School?             @relation(fields: [schoolId], references: [id])
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("students")
@@ -84,7 +83,7 @@ model StudentParentLink {
   id             BigInt  @id @default(autoincrement())
   studentId      String  @map("student_id") @db.Uuid
   parentId       String  @map("parent_id") @db.Uuid
-  relation       String?
+  relation       String? // Quan hệ: "father", "mother", "guardian", etc.
   primaryContact Boolean @default(false) @map("primary_contact")
   parent         Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student        Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -92,36 +91,15 @@ model StudentParentLink {
   @@map("student_parent_links")
 }
 
-model Center {
-  id            String         @id @default(uuid()) @db.Uuid
-  name          String?
-  address       String?
-  contactEmail  String?        @map("contact_email")
-  contactPhone  String?        @map("contact_phone")
-  timezone      String?
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  alerts        Alert[]
-  centerUsers   CenterUser[]
-  courses       Course[]
-  notifications Notification[]
-  rooms         Room[]
-  students      Student[]
-  teachers      Teacher[]
+model School {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  address    String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  students   Student[]
 
-  @@map("centers")
-}
-
-model CenterUser {
-  id        BigInt   @id @default(autoincrement())
-  centerId  String   @map("center_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  role      String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("center_users")
+  @@map("schools")
 }
 
 model Subject {
@@ -136,7 +114,6 @@ model Subject {
 
 model Course {
   id          String   @id @default(uuid()) @db.Uuid
-  centerId    String   @map("center_id") @db.Uuid
   name        String?
   subjectId   String   @map("subject_id") @db.Uuid
   maxStudents Int?     @map("max_students")
@@ -144,7 +121,6 @@ model Course {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   classes     Class[]
-  center      Center   @relation(fields: [centerId], references: [id])
   subject     Subject  @relation(fields: [subjectId], references: [id])
 
   @@map("courses")
@@ -201,13 +177,12 @@ model Enrollment {
 
 model Room {
   id        String         @id @default(uuid()) @db.Uuid
-  centerId  String         @map("center_id") @db.Uuid
   name      String?
   capacity  Int?
+  location  String? // Vị trí phòng học
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   sessions  ClassSession[]
   classes   Class[]
-  center    Center         @relation(fields: [centerId], references: [id])
 
   @@map("rooms")
 }
@@ -271,14 +246,12 @@ model Material {
 
 model Notification {
   id            BigInt    @id @default(autoincrement())
-  centerId      String    @map("center_id") @db.Uuid
   title         String?
   body          String?
-  audience      Json?
+  audience      Json? // Có thể target theo role, class, student, etc.
   sentAt        DateTime? @map("sent_at") @db.Timestamptz(6)
   createdBy     String    @map("created_by") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  center        Center    @relation(fields: [centerId], references: [id])
   createdByUser User      @relation("CreatedBy", fields: [createdBy], references: [id])
 
   @@map("notifications")
@@ -286,12 +259,10 @@ model Notification {
 
 model Alert {
   id          BigInt   @id @default(autoincrement())
-  centerId    String   @map("center_id") @db.Uuid
   alertType   String   @map("alert_type")
   payload     Json?
   triggeredAt DateTime @default(now()) @map("triggered_at") @db.Timestamptz(6)
   processed   Boolean  @default(false)
-  center      Center   @relation(fields: [centerId], references: [id])
 
   @@map("alerts")
 }
