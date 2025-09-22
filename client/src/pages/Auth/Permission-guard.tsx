@@ -38,14 +38,13 @@ export function PermissionGuard({
       return <>{fallback}</>
     }
 
-    return null
+    return (
+      <Alert variant="destructive" className="m-4">
+        <ShieldX className="h-4 w-4" />
+        <AlertDescription>Bạn không có quyền truy cập vào tính năng này.</AlertDescription>
+      </Alert>
+    )
   }
 
   return <>{children}</>
 }
-// (
-//     <Alert variant="destructive" className="m-4">
-//       <ShieldX className="h-4 w-4" />
-//       {/* <AlertDescription>Bạn không có quyền truy cập vào tính năng này.</AlertDescription> */}
-//     </Alert>
-//   )

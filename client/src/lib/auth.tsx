@@ -63,7 +63,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
         {
           id: "2",
-          email: "teacher@centerup.com",
+          email: "teacher@qne.edu.vn",
           name: "Nguyễn Văn Giáo",
           role: "teacher",
           centerId: "center-1",
