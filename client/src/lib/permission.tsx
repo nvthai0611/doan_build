@@ -92,6 +92,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   teacher: [
     // Limited access for teachers
+    // "students.create",
     "students.view",
     "students.attendance",
     "courses.view",

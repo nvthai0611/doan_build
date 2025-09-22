@@ -32,7 +32,7 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Đăng nhập CenterUp</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Đăng nhập QN Edu System</CardTitle>
           <CardDescription className="text-center">
             Nhập thông tin để truy cập hệ thống quản lý trung tâm
           </CardDescription>
@@ -78,10 +78,10 @@ export function LoginForm() {
             <p className="text-sm text-muted-foreground mb-2">Tài khoản demo:</p>
             <div className="space-y-1 text-xs">
               <p>
-                <strong>Chủ trung tâm:</strong> owner@centerup.com / 123456
+                <strong>Chủ trung tâm:</strong> owner@qne.edu.vn / 123456
               </p>
               <p>
-                <strong>Giáo viên:</strong> teacher@centerup.com / 123456
+                <strong>Giáo viên:</strong> teacher@qne.edu.vn / 123456
               </p>
             </div>
           </div>
