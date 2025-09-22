@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "../../../lib/auth"
-import { cn } from "../../../lib/class"
+import { useAuth } from "../../lib/auth"
+import { cn } from "../../lib/class"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -191,7 +191,7 @@ const teacherMenuItems = [
   },
 ]
 
-export function Sidebar({ className }: SidebarProps) {
+export function SidebarCenterQn({ className }: SidebarProps) {
   const { user, logout } = useAuth()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const navigate = useNavigate()

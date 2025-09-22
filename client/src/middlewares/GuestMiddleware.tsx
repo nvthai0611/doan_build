@@ -1,8 +1,10 @@
 import { Outlet, Navigate } from "react-router-dom";
+import { useAuth } from "../lib/auth";
 
-const isLogin = false;
+
 const GuestMiddleware = () => {
-  return !isLogin ? <Outlet /> : <Navigate to="/" />;
+  const { user } = useAuth();
+  return !user ? <Outlet /> : <Navigate to="/center-qn" />;
 };
 
 export default GuestMiddleware;

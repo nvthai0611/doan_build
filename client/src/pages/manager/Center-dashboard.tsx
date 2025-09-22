@@ -5,16 +5,31 @@ import { PermissionGuard } from "../Auth/Permission-guard"
 import { ProtectedButton } from "@/components/ui/protected-button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Users, GraduationCap, BookOpen, DollarSign, TrendingUp, Calendar, Plus, Eye, BarChart3 } from "lucide-react"
-
+import { Users, GraduationCap, BookOpen, DollarSign, TrendingUp, Calendar, Plus, Eye, BarChart3, Loader2 } from "lucide-react"
+import { LoginForm } from "../Auth/Login"
+import { useAuth } from "../../lib/auth"
 export function CenterOwnerDashboard() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginForm />
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">
-            Chào buổi sáng, <span className="text-primary">Phan Ngọc Ánh</span>
+            Chào buổi sáng, <span className="text-primary">{user.name}</span>
           </h1>
           <p className="text-muted-foreground mt-1">Tổng quan hoạt động trung tâm hôm nay</p>
         </div>

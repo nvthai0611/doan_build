@@ -12,7 +12,7 @@ import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
 export const publicRoutes = (
   <>
     <Route element={<DefaultLayout />}>
-      <Route path="/" element={<DashboardLayout children={<CenterOwnerDashboard />} />} />
+      <Route path="/" element={<Home />} />
       <Route path="/gioi-thieu" element={<About />} />
       <Route path="/san-pham">
         <Route path="" element={<Products />} />
@@ -21,7 +21,7 @@ export const publicRoutes = (
     </Route>
     <Route element={<AuthLayout />}>
       <Route element={<GuestMiddleware />}>
-        <Route path="/dang-nhap" element={<LoginForm />} />
+        <Route path="/auth/login" element={<LoginForm />} />
       </Route>
     </Route>
   </>
