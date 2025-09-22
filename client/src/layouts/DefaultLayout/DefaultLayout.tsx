@@ -5,11 +5,11 @@ import { Outlet } from "react-router-dom";
 const DefaultLayout = () => {
   return (
     <div>
-      <Header />
+      {/* <Header /> */}
       <main>
         <Outlet />
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 };
