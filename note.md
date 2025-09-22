@@ -23,3 +23,13 @@
 -> vào pgadmin refresh sẽ thấy có bảng các kiểu
 
 ## development
+
+
+## Người update db
+npx prisma migrate dev --name "change_database_to_new"
+npx prisma migrate deploy
+
+## người lấy db về 
+npx prisma migrate dev
+
+

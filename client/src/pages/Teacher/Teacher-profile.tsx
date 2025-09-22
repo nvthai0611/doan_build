@@ -22,6 +22,7 @@ import {
 import { Camera } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { apiClient } from "../../utils/clientAxios"
+import { TeacherDto } from "../../types/dtos/teacher.dto"
 
 export default function TeacherProfilePage() {
   const { user } = useAuth()
@@ -56,7 +57,7 @@ export default function TeacherProfilePage() {
   const {data, isLoading, isError} = useQuery({
     queryKey: ['teacher-profile'],
     queryFn: async () => {
-      const res = await apiClient.get(`/teachers/5a6c31a5-c55d-4086-ba84-79523d151f4e`);
+      const res = await apiClient.get<TeacherDto>(`/teachers/5a6c31a5-c55d-4086-ba84-79523d151f4e`);
       console.log(res);
       return res.data
     },
