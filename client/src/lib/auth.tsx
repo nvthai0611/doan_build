@@ -55,7 +55,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const mockUsers: User[] = [
         {
           id: "1",
-          email: "owner@centerup.com",
+          email: "owner@qne.edu.vn",
           name: "Phan Ngọc Ánh",
           role: "center_owner",
           centerId: "center-1",
