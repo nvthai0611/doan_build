@@ -55,7 +55,7 @@ model Student {
   dateOfBirth DateTime?           @map("date_of_birth") @db.Date
   gender      String?
   address     String?
-  grade       String? // Khối lớp (lớp 10, 11, 12, etc.)
+  grade       String?             // Khối lớp (lớp 10, 11, 12, etc.)
   className   String?             @map("class_name") // Tên lớp (10A1, 11B2, etc.)
   createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -92,12 +92,13 @@ model StudentParentLink {
 }
 
 model School {
-  id         String    @id @default(uuid()) @db.Uuid
-  name       String
-  address    String?
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  students   Student[]
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  address     String?
+  email       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  students    Student[]
 
   @@map("schools")
 }
@@ -179,7 +180,7 @@ model Room {
   id        String         @id @default(uuid()) @db.Uuid
   name      String?
   capacity  Int?
-  location  String? // Vị trí phòng học
+  location  String?        // Vị trí phòng học
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   sessions  ClassSession[]
   classes   Class[]
@@ -248,7 +249,7 @@ model Notification {
   id            BigInt    @id @default(autoincrement())
   title         String?
   body          String?
-  audience      Json? // Có thể target theo role, class, student, etc.
+  audience      Json?     // Có thể target theo role, class, student, etc.
   sentAt        DateTime? @map("sent_at") @db.Timestamptz(6)
   createdBy     String    @map("created_by") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
