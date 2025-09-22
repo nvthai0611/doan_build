@@ -3,7 +3,7 @@ import { Route } from "react-router-dom";
 import Profile from "../pages/Auth/Profile";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
+import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 export const privateRoutes = (
   <>
     <Route element={<DefaultLayout />}>
