@@ -18,6 +18,7 @@ import { AuthService } from './modules/auth/auth.service';
 import { PrismaService } from './db/prisma.service';
 import { TeachersModule } from './modules/teachers/teachers.module';
 import { TeachersService } from './modules/teachers/teachers.service';
+import { StudentModule } from './modules/manager/student/student.module';
 
 
 @Module({
@@ -27,6 +28,7 @@ import { TeachersService } from './modules/teachers/teachers.service';
     PostsModule,
     AuthModule,
     TeachersModule,
+    StudentModule,
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService, TeachersService],
