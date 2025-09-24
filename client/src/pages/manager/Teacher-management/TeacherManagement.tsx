@@ -1,6 +1,5 @@
-"use client"
-
 import { useState, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +17,6 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
-  ChevronRight,
   Search,
   Filter,
   MoreHorizontal,
@@ -110,6 +108,7 @@ const employees: Employee[] = [
 ]
 
 export default function TeacherQnmsManagement() {
+  const navigate = useNavigate()
   const [filterOpen, setFilterOpen] = useState<boolean>(false)
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedRole, setSelectedRole] = useState<string>("Nhóm quyền")
@@ -181,11 +180,7 @@ export default function TeacherQnmsManagement() {
   }
 
   const handleViewEmployee = (employeeId: number): void => {
-    const employee = employeeData.find((emp) => emp.id === employeeId)
-    if (employee) {
-      alert(`Xem thông tin chi tiết của ${employee.name}`)
-    }
-    console.log(`[v0] Viewing employee ${employeeId}`)
+    navigate(`/center-qn/teachers/${employeeId}`)
   }
 
   const handleCopyCode = (code: string): void => {
@@ -346,7 +341,9 @@ export default function TeacherQnmsManagement() {
                       <Input
                         placeholder="Chọn ngày sinh"
                         value={filterState.birthDate || ""}
-                        onChange={(e) => setFilterState((prev: FilterState) => ({ ...prev, birthDate: e.target.value }))}
+                        onChange={(e) =>
+                          setFilterState((prev: FilterState) => ({ ...prev, birthDate: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
@@ -354,7 +351,9 @@ export default function TeacherQnmsManagement() {
                       <Input
                         placeholder="Chọn tháng sinh"
                         value={filterState.birthMonth || ""}
-                        onChange={(e) => setFilterState((prev: FilterState) => ({ ...prev, birthMonth: e.target.value }))}
+                        onChange={(e) =>
+                          setFilterState((prev: FilterState) => ({ ...prev, birthMonth: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
@@ -362,7 +361,9 @@ export default function TeacherQnmsManagement() {
                       <Input
                         placeholder="Chọn năm sinh"
                         value={filterState.birthYear || ""}
-                        onChange={(e) => setFilterState((prev: FilterState) => ({ ...prev, birthYear: e.target.value }))}
+                        onChange={(e) =>
+                          setFilterState((prev: FilterState) => ({ ...prev, birthYear: e.target.value }))
+                        }
                       />
                     </div>
                   </div>
@@ -456,7 +457,12 @@ export default function TeacherQnmsManagement() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="text-sm font-medium text-blue-600">{employee.name}</div>
+                        <div
+                          className="text-sm font-medium text-blue-600 cursor-pointer hover:underline"
+                          onClick={() => handleViewEmployee(employee.id)}
+                        >
+                          {employee.name}
+                        </div>
                         <div className="text-xs text-gray-500">{employee.username}</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
                           <span>{employee.code}</span>
