@@ -23,6 +23,7 @@ import { ParentModule } from './modules/parent/parent.module';
 import { SchoolsModule } from './modules/school/schools/schools.module';
 import { ClassRequestsModule } from './modules/school/class-requests/class-requests.module';
 import { ClassSessionsModule } from './modules/school/class-sessions/class-sessions.module';
+import { TeacherModule } from './modules/teacher/teacher.module';
 // ...existing code...
 
 
@@ -31,6 +32,7 @@ import { ClassSessionsModule } from './modules/school/class-sessions/class-sessi
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
   TeachersModule,
+  TeacherModule,
   StudentsModule,
   ParentModule,
   SchoolsModule,
