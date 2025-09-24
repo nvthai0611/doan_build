@@ -8,150 +8,182 @@ datasource db {
 }
 
 model User {
-  email                String         @unique
-  password             String
-  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  fullName             String?        @map("full_name")
-  isActive             Boolean        @default(true) @map("is_active")
-  phone                String?
-  role                 String         // admin, teacher, parent_student
-  updatedAt            DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  username             String         @unique
-  id                   String         @id @default(uuid()) @db.Uuid
-  
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  fullName  String?  @map("full_name")
+  isActive  Boolean  @default(true) @map("is_active")
+  phone     String?
+  role      String // admin, teacher, parent, student (cập nhật role để bao gồm parent)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  username  String   @unique
+  id        String   @id @default(uuid()) @db.Uuid
+
   // Relations
-  recordedAttendances  Attendance[]   @relation("RecordedBy")
-  gradedAssessments    Grade[]        @relation("GradedBy")
-  uploadedMaterials    Material[]     @relation("UploadedBy")
-  createdNotifications Notification[] @relation("CreatedBy")
-  teacher              Teacher?
-  student              Student?
-  auditLogs            AuditLog[]     @relation("PerformedBy")
-  createdLeaveRequests LeaveRequest[] @relation("CreatedBy")
+  recordedAttendances   Attendance[]   @relation("RecordedBy")
+  gradedAssessments     Grade[]        @relation("GradedBy")
+  uploadedMaterials     Material[]     @relation("UploadedBy")
+  createdNotifications  Notification[] @relation("CreatedBy")
+  teacher               Teacher?
+  student               Student?
+  parent                Parent? // Thêm quan hệ với Parent
+  auditLogs             AuditLog[]     @relation("PerformedBy")
+  createdLeaveRequests  LeaveRequest[] @relation("CreatedBy")
   approvedLeaveRequests LeaveRequest[] @relation("ApprovedBy")
 
   @@map("users")
 }
 
-model Teacher {
-  id          String            @id @default(uuid()) @db.Uuid
-  userId      String            @unique @map("user_id") @db.Uuid
-  hireDate    DateTime?         @map("hire_date") @db.Date
-  contractEnd DateTime?         @map("contract_end") @db.Date
-  subjects    String[]          // ["Toán", "Lý", "Hóa"] - Môn dạy được
-  salary      Decimal?          @db.Decimal(12, 2)
-  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+// Thêm model Parent
+model Parent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   // Relations
-  classes     Class[]
-  contracts   Contract[]
-  payrolls    Payroll[]
-  documents   TeacherDocument[]
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentLinks StudentParentLink[]
+
+  @@map("parents")
+}
+
+// Thêm bảng liên kết StudentParentLink để tạo quan hệ nhiều-nhiều
+model StudentParentLink {
+  id             BigInt   @id @default(autoincrement())
+  studentId      String   @map("student_id") @db.Uuid
+  parentId       String   @map("parent_id") @db.Uuid
+  relation       String? // Quan hệ: "father", "mother", "guardian", etc.
+  primaryContact Boolean  @default(false) @map("primary_contact")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, parentId])
+  @@map("student_parent_links")
+}
+
+model Teacher {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  hireDate    DateTime? @map("hire_date") @db.Date
+  contractEnd DateTime? @map("contract_end") @db.Date
+  subjects    String[] // ["Toán", "Lý", "Hóa"] - Môn dạy được
+  salary      Decimal?  @db.Decimal(12, 2)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  classes       Class[]
+  contracts     Contract[]
+  payrolls      Payroll[]
+  documents     TeacherDocument[]
   leaveRequests LeaveRequest[]
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
 }
 
 model Student {
-  id          String              @id @default(uuid()) @db.Uuid
-  userId      String              @unique @map("user_id") @db.Uuid // Học sinh và phụ huynh dùng chung account
-  studentCode String?             @unique @map("student_code")
-  dateOfBirth DateTime?           @map("date_of_birth") @db.Date
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  studentCode String?   @unique @map("student_code")
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
   gender      String?
   address     String?
-  grade       String?             // "Lớp 10", "Lớp 11", "Lớp 12" - để phân lớp tự động
-  parentName  String?             @map("parent_name") 
-  parentPhone String?             @map("parent_phone") 
-  parentRelation String?          @map("parent_relation") // "Bố", "Mẹ", "Người giám hộ"
-  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  grade       String? // "Lớp 10", "Lớp 11", "Lớp 12" - để phân lớp tự động
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   // Thêm quan hệ với School
-  schoolId String   @map("school_id") @db.Uuid
-  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String @map("school_id") @db.Uuid
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   // Relations
-  attendances Attendance[]
-  enrollments Enrollment[]
-  grades      Grade[]
-  feeRecords  FeeRecord[]
+  attendances    Attendance[]
+  enrollments    Enrollment[]
+  grades         Grade[]
+  feeRecords     FeeRecord[]
   studentReports StudentReport[]
-  leaveRequests LeaveRequest[]
-  classRequests ClassRequest[]    // Đăng ký lớp học trực tiếp
-  payments    Payment[]
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveRequests  LeaveRequest[]
+  classRequests  ClassRequest[] // Đăng ký lớp học trực tiếp
+  payments       Payment[]
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentLinks    StudentParentLink[] // Thêm quan hệ với Parent thông qua bảng liên kết
 
   @@map("students")
 }
 
 model School {
-  id        String     @id @default(uuid()) @db.Uuid
+  id        String   @id @default(uuid()) @db.Uuid
   name      String
   address   String?
   phone     String?
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Quan hệ 1-nhiều: 1 trường có nhiều học sinh
-  students  Student[]
+  students Student[]
 
   @@map("schools")
 }
 
 model Subject {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique // "TOAN", "LY", "HOA"
-  name        String   // "Toán học", "Vật lý", "Hóa học"
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // "TOAN", "LY", "HOA"
+  name        String // "Toán học", "Vật lý", "Hóa học"
   description String?
-  classes     Class[]  // Trực tiếp tạo lớp cho môn học
+  classes     Class[] // Trực tiếp tạo lớp cho môn học
 
   @@map("subjects")
 }
 
 model Class {
-  id                String         @id @default(uuid()) @db.Uuid
-  subjectId         String         @map("subject_id") @db.Uuid
-  teacherId         String         @map("teacher_id") @db.Uuid
-  roomId            String?        @map("room_id") @db.Uuid
-  name              String         // "Lớp Toán 10A", "Lớp Lý 11B" 
-  grade             String?        // "Lớp 10", "Lớp 11" - để filter
-  maxStudents       Int?           @map("max_students")
-  startDate         DateTime?      @map("start_date") @db.Date
-  endDate           DateTime?      @map("end_date") @db.Date
+  id                String    @id @default(uuid()) @db.Uuid
+  subjectId         String    @map("subject_id") @db.Uuid
+  teacherId         String    @map("teacher_id") @db.Uuid
+  roomId            String?   @map("room_id") @db.Uuid
+  name              String // "Lớp Toán 10A", "Lớp Lý 11B" 
+  grade             String? // "Lớp 10", "Lớp 11" - để filter
+  maxStudents       Int?      @map("max_students")
+  startDate         DateTime? @map("start_date") @db.Date
+  endDate           DateTime? @map("end_date") @db.Date
   // Lịch học: {"days": ["monday", "wednesday"], "startTime": "14:00", "endTime": "16:00"}
-  recurringSchedule Json?          @map("recurring_schedule")
-  status            String         @default("draft") // draft, active, completed, cancelled
+  recurringSchedule Json?     @map("recurring_schedule")
+  status            String    @default("draft") // draft, active, completed, cancelled
   description       String?
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   // Relations
-  subject           Subject        @relation(fields: [subjectId], references: [id])
-  teacher           Teacher        @relation(fields: [teacherId], references: [id])
-  room              Room?          @relation(fields: [roomId], references: [id])
-  assessments       Assessment[]
-  sessions          ClassSession[]
-  enrollments       Enrollment[]
-  materials         Material[]
-  scheduleChanges   ScheduleChange[]
-  classRequests     ClassRequest[]
-  feeStructure      FeeStructure?  @relation(fields: [feeStructureId], references: [id])
-  feeStructureId    String?        @map("fee_structure_id") @db.Uuid
+  subject         Subject          @relation(fields: [subjectId], references: [id])
+  teacher         Teacher          @relation(fields: [teacherId], references: [id])
+  room            Room?            @relation(fields: [roomId], references: [id])
+  assessments     Assessment[]
+  sessions        ClassSession[]
+  enrollments     Enrollment[]
+  materials       Material[]
+  scheduleChanges ScheduleChange[]
+  classRequests   ClassRequest[]
+  feeStructure    FeeStructure?    @relation(fields: [feeStructureId], references: [id])
+  feeStructureId  String?          @map("fee_structure_id") @db.Uuid
 
   @@map("classes")
 }
 
 model ClassSession {
-  id          String       @id @default(uuid()) @db.Uuid
-  classId     String       @map("class_id") @db.Uuid
-  sessionDate DateTime     @map("session_date") @db.Date
-  startTime   String       @map("start_time") // "14:00"
-  endTime     String       @map("end_time")   // "16:00"
-  roomId      String?      @map("room_id") @db.Uuid
-  status      String       @default("scheduled") // scheduled, completed, cancelled
-  notes       String?      // Ghi chú buổi học
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  id          String   @id @default(uuid()) @db.Uuid
+  classId     String   @map("class_id") @db.Uuid
+  sessionDate DateTime @map("session_date") @db.Date
+  startTime   String   @map("start_time") // "14:00"
+  endTime     String   @map("end_time") // "16:00"
+  roomId      String?  @map("room_id") @db.Uuid
+  status      String   @default("scheduled") // scheduled, completed, cancelled
+  notes       String? // Ghi chú buổi học
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
   class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   room        Room?        @relation(fields: [roomId], references: [id])
@@ -161,17 +193,18 @@ model ClassSession {
 }
 
 model Room {
-  id        String         @id @default(uuid()) @db.Uuid
-  name      String         // "Phòng 101", "Phòng Lab"
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String // "Phòng 101", "Phòng Lab"
   capacity  Int?
-  equipment Json?          // {"projector": true, "whiteboard": true}
-  isActive  Boolean        @default(true) @map("is_active")
-  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  equipment Json? // {"projector": true, "whiteboard": true}
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
-  sessions  ClassSession[]
-  classes   Class[]
+  sessions        ClassSession[]
+  classes         Class[]
   scheduleChanges ScheduleChange[]
+
   @@map("rooms")
 }
 
@@ -181,13 +214,12 @@ model Enrollment {
   classId    String   @map("class_id") @db.Uuid
   enrolledAt DateTime @default(now()) @map("enrolled_at") @db.Timestamptz(6)
   status     String   @default("active") // active, completed, dropped
-  
+
   // Relations
-  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, classId])
-
   @@map("enrollments")
 }
 
@@ -195,175 +227,173 @@ model Enrollment {
 model ClassRequest {
   id          String    @id @default(uuid()) @db.Uuid
   studentId   String    @map("student_id") @db.Uuid // Phụ huynh đăng ký cho học sinh
-  classId     String    @map("class_id") @db.Uuid   // Đăng ký lớp cụ thể
-  message     String?   // Lời nhắn từ phụ huynh
+  classId     String    @map("class_id") @db.Uuid // Đăng ký lớp cụ thể
+  message     String? // Lời nhắn từ phụ huynh
   status      String    @default("pending") // pending, approved, rejected
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+
   // Relations
-  student     Student   @relation(fields: [studentId], references: [id])
-  class       Class     @relation(fields: [classId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
 
   @@map("class_requests")
 }
 
 model Attendance {
-  id             BigInt       @id @default(autoincrement())
-  sessionId      String       @map("session_id") @db.Uuid
-  studentId      String       @map("student_id") @db.Uuid
-  status         String       // present, absent, late, excused
-  note           String?
-  recordedBy     String       @map("recorded_by") @db.Uuid
-  recordedAt     DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
-  
+  id         BigInt   @id @default(autoincrement())
+  sessionId  String   @map("session_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  status     String // present, absent, late, excused
+  note       String?
+  recordedBy String   @map("recorded_by") @db.Uuid
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
   // Relations
   session        ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   recordedByUser User         @relation("RecordedBy", fields: [recordedBy], references: [id])
 
   @@unique([sessionId, studentId])
-
   @@map("attendances")
 }
 
 model Assessment {
-  id        String    @id @default(uuid()) @db.Uuid
-  classId   String    @map("class_id") @db.Uuid
-  name      String    // "Kiểm tra 15 phút - Chương 1"
-  type      String    // "15_min", "45_min", "homework", "midterm", "final"
-  maxScore  Decimal   @map("max_score") @db.Decimal(5, 2)
-  date      DateTime  @db.Date
+  id          String   @id @default(uuid()) @db.Uuid
+  classId     String   @map("class_id") @db.Uuid
+  name        String // "Kiểm tra 15 phút - Chương 1"
+  type        String // "15_min", "45_min", "homework", "midterm", "final"
+  maxScore    Decimal  @map("max_score") @db.Decimal(5, 2)
+  date        DateTime @db.Date
   description String?
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
-  class     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
-  grades    Grade[]
+  class  Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  grades Grade[]
 
   @@map("assessments")
 }
 
 model Grade {
-  id           BigInt     @id @default(autoincrement())
-  assessmentId String     @map("assessment_id") @db.Uuid
-  studentId    String     @map("student_id") @db.Uuid
-  score        Decimal?   @db.Decimal(5, 2)
-  feedback     String?    // Nhận xét của giáo viên
-  gradedBy     String     @map("graded_by") @db.Uuid
-  gradedAt     DateTime   @default(now()) @map("graded_at") @db.Timestamptz(6)
-  
+  id           BigInt   @id @default(autoincrement())
+  assessmentId String   @map("assessment_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  score        Decimal? @db.Decimal(5, 2)
+  feedback     String? // Nhận xét của giáo viên
+  gradedBy     String   @map("graded_by") @db.Uuid
+  gradedAt     DateTime @default(now()) @map("graded_at") @db.Timestamptz(6)
+
   // Relations
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
   gradedByUser User       @relation("GradedBy", fields: [gradedBy], references: [id])
 
   @@unique([assessmentId, studentId])
-
   @@map("grades")
 }
 
 model Material {
-  id             BigInt   @id @default(autoincrement())
-  classId        String   @map("class_id") @db.Uuid
-  title          String
-  description    String?
-  fileUrl        String?  @map("file_url")
-  fileType       String?  @map("file_type") // "pdf", "doc", "video", "image"
-  fileSize       BigInt?  @map("file_size")
-  uploadedBy     String   @map("uploaded_by") @db.Uuid
-  uploadedAt     DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
-  
+  id          BigInt   @id @default(autoincrement())
+  classId     String   @map("class_id") @db.Uuid
+  title       String
+  description String?
+  fileUrl     String?  @map("file_url")
+  fileType    String?  @map("file_type") // "pdf", "doc", "video", "image"
+  fileSize    BigInt?  @map("file_size")
+  uploadedBy  String   @map("uploaded_by") @db.Uuid
+  uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
   // Relations
-  class          Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  uploadedByUser User     @relation("UploadedBy", fields: [uploadedBy], references: [id])
+  class          Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  uploadedByUser User  @relation("UploadedBy", fields: [uploadedBy], references: [id])
 
   @@map("materials")
 }
 
 // === TÀI CHÍNH ===
 model FeeStructure {
-  id          String      @id @default(uuid()) @db.Uuid
-  name        String      // "Học phí Toán lớp 10", "Học phí Lý lớp 11"
-  amount      Decimal     @db.Decimal(12, 2)
-  period      String      // "monthly", "semester", "full_course"
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String // "Học phí Toán lớp 10", "Học phí Lý lớp 11"
+  amount      Decimal  @db.Decimal(12, 2)
+  period      String // "monthly", "semester", "full_course"
   description String?
-  isActive    Boolean     @default(true) @map("is_active")
-  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
-  classes     Class[]     // Áp dụng cho lớp học
-  feeRecords  FeeRecord[]
+  classes    Class[] // Áp dụng cho lớp học
+  feeRecords FeeRecord[]
 
   @@map("fee_structures")
 }
 
 model FeeRecord {
-  id             String       @id @default(uuid()) @db.Uuid
-  studentId      String       @map("student_id") @db.Uuid
-  feeStructureId String       @map("fee_structure_id") @db.Uuid
-  amount         Decimal      @db.Decimal(12, 2)
-  dueDate        DateTime     @map("due_date") @db.Date
-  paidAmount     Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  status         String       @default("pending") // pending, partial, paid, overdue
-  discount       Decimal?     @default(0) @db.Decimal(12, 2)
+  id             String   @id @default(uuid()) @db.Uuid
+  studentId      String   @map("student_id") @db.Uuid
+  feeStructureId String   @map("fee_structure_id") @db.Uuid
+  amount         Decimal  @db.Decimal(12, 2)
+  dueDate        DateTime @map("due_date") @db.Date
+  paidAmount     Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status         String   @default("pending") // pending, partial, paid, overdue
+  discount       Decimal? @default(0) @db.Decimal(12, 2)
   notes          String?
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
-  student        Student      @relation(fields: [studentId], references: [id])
-  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
-  payments       Payment[]
+  student      Student      @relation(fields: [studentId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  payments     Payment[]
 
   @@map("fee_records")
 }
 
 model Payment {
-  id          String    @id @default(uuid()) @db.Uuid
-  feeRecordId String    @map("fee_record_id") @db.Uuid
-  studentId   String    @map("student_id") @db.Uuid
-  amount      Decimal   @db.Decimal(12, 2)
-  method      String    // "cash", "bank_transfer", "momo", "zalopay"
-  status      String    @default("completed") // completed, pending, failed
-  reference   String?   // Mã giao dịch
-  paidAt      DateTime  @default(now()) @map("paid_at") @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.Uuid
+  feeRecordId String   @map("fee_record_id") @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  amount      Decimal  @db.Decimal(12, 2)
+  method      String // "cash", "bank_transfer", "momo", "zalopay"
+  status      String   @default("completed") // completed, pending, failed
+  reference   String? // Mã giao dịch
+  paidAt      DateTime @default(now()) @map("paid_at") @db.Timestamptz(6)
   notes       String?
-  
+
   // Relations
-  feeRecord   FeeRecord @relation(fields: [feeRecordId], references: [id])
-  student     Student   @relation(fields: [studentId], references: [id])
+  feeRecord FeeRecord @relation(fields: [feeRecordId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
 
   @@map("payments")
 }
 
 // === THÔNG BÁO ===
 model Notification {
-  id            BigInt    @id @default(autoincrement())
-  title         String
-  body          String
-  type          String    @default("general") // general, schedule_change, fee_reminder, attendance_alert
-  audience      Json?     // {"roles": ["parent_student"], "classes": ["class_id"], "students": ["student_id"]}
-  priority      String    @default("normal") // low, normal, high, urgent
-  sentAt        DateTime? @map("sent_at") @db.Timestamptz(6)
-  scheduledFor  DateTime? @map("scheduled_for") @db.Timestamptz(6)
-  createdBy     String    @map("created_by") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+  id           BigInt    @id @default(autoincrement())
+  title        String
+  body         String
+  type         String    @default("general") // general, schedule_change, fee_reminder, attendance_alert
+  audience     Json? // {"roles": ["parent", "student"], "classes": ["class_id"], "students": ["student_id"]}
+  priority     String    @default("normal") // low, normal, high, urgent
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz(6)
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(6)
+  createdBy    String    @map("created_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
   // Relations
-  createdByUser User      @relation("CreatedBy", fields: [createdBy], references: [id])
+  createdByUser User @relation("CreatedBy", fields: [createdBy], references: [id])
 
   @@map("notifications")
 }
 
 model Alert {
-  id          BigInt   @id @default(autoincrement())
-  alertType   String   @map("alert_type") // attendance_low, contract_expiring, fee_overdue, room_conflict
-  severity    String   @default("medium") // low, medium, high, critical
+  id          BigInt    @id @default(autoincrement())
+  alertType   String    @map("alert_type") // attendance_low, contract_expiring, fee_overdue, room_conflict
+  severity    String    @default("medium") // low, medium, high, critical
   title       String
   message     String
   payload     Json?
-  triggeredAt DateTime @default(now()) @map("triggered_at") @db.Timestamptz(6)
-  processed   Boolean  @default(false)
+  triggeredAt DateTime  @default(now()) @map("triggered_at") @db.Timestamptz(6)
+  processed   Boolean   @default(false)
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
 
   @@map("alerts")
@@ -384,12 +414,12 @@ model LeaveRequest {
   approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
   notes       String?
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+
   // Relations
-  teacher     Teacher?  @relation(fields: [teacherId], references: [id])
-  student     Student?  @relation(fields: [studentId], references: [id])
-  createdByUser User    @relation("CreatedBy", fields: [createdBy], references: [id])
-  approvedByUser User?  @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  teacher        Teacher? @relation(fields: [teacherId], references: [id])
+  student        Student? @relation(fields: [studentId], references: [id])
+  createdByUser  User     @relation("CreatedBy", fields: [createdBy], references: [id])
+  approvedByUser User?    @relation("ApprovedBy", fields: [approvedBy], references: [id])
 
   @@map("leave_requests")
 }
@@ -407,10 +437,10 @@ model ScheduleChange {
   requestedBy  String    @map("requested_by") @db.Uuid
   requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
   processedAt  DateTime? @map("processed_at") @db.Timestamptz(6)
-  
+
   // Relations
-  class        Class     @relation(fields: [classId], references: [id])
-  newRoom      Room?     @relation(fields: [newRoomId], references: [id])
+  class   Class @relation(fields: [classId], references: [id])
+  newRoom Room? @relation(fields: [newRoomId], references: [id])
 
   @@map("schedule_changes")
 }
@@ -419,36 +449,36 @@ model ScheduleChange {
 model StudentReport {
   id          String   @id @default(uuid()) @db.Uuid
   studentId   String   @map("student_id") @db.Uuid
-  period      String   // "monthly", "quarterly", "semester"
+  period      String // "monthly", "quarterly", "semester"
   startDate   DateTime @map("start_date") @db.Date
   endDate     DateTime @map("end_date") @db.Date
-  attendance  Json     // Thống kê chuyên cần
-  grades      Json     // Thống kê điểm số
-  feedback    String?  // Nhận xét tổng quan
-  suggestions String?  // Gợi ý cải thiện
+  attendance  Json // Thống kê chuyên cần
+  grades      Json // Thống kê điểm số
+  feedback    String? // Nhận xét tổng quan
+  suggestions String? // Gợi ý cải thiện
   generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
-  
+
   // Relations
-  student     Student  @relation(fields: [studentId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
 
   @@map("student_reports")
 }
 
 // === AUDIT LOG ===
 model AuditLog {
-  id          BigInt   @id @default(autoincrement())
-  userId      String   @map("user_id") @db.Uuid
-  action      String   // CREATE, UPDATE, DELETE, LOGIN
-  tableName   String   @map("table_name")
-  recordId    String?  @map("record_id")
-  oldValues   Json?    @map("old_values")
-  newValues   Json?    @map("new_values")
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  timestamp   DateTime @default(now()) @db.Timestamptz(6)
-  
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @map("user_id") @db.Uuid
+  action    String // CREATE, UPDATE, DELETE, LOGIN
+  tableName String   @map("table_name")
+  recordId  String?  @map("record_id")
+  oldValues Json?    @map("old_values")
+  newValues Json?    @map("new_values")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+
   // Relations
-  performedBy User     @relation("PerformedBy", fields: [userId], references: [id])
+  performedBy User @relation("PerformedBy", fields: [userId], references: [id])
 
   @@map("audit_logs")
 }
@@ -463,9 +493,9 @@ model Contract {
   terms     Json?
   status    String    @default("active") // active, expired, terminated
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+
   // Relations
-  teacher   Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("contracts")
 }
@@ -484,9 +514,9 @@ model Payroll {
   computedDetails Json?     @map("computed_details")
   paidAt          DateTime? @map("paid_at") @db.Timestamptz(6)
   status          String    @default("pending") // pending, paid, cancelled
-  
+
   // Relations
-  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("payrolls")
 }
@@ -497,9 +527,9 @@ model TeacherDocument {
   docType    String?  @map("doc_type") // "contract", "id_card", "diploma", "cv"
   docUrl     String?  @map("doc_url")
   uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
-  
+
   // Relations
-  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("teacher_documents")
 }
