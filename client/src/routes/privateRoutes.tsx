@@ -7,6 +7,7 @@ import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import  TeacherManageClass  from "../pages/Teacher/Teacher-manage-class";
 
+import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 export const privateRoutes = (
   <>
      <Route element={<DefaultLayout />}>
@@ -14,6 +15,7 @@ export const privateRoutes = (
     <Route path="/center-qn" element={<AuthMiddleware/>}>
       <Route path="" element={<CenterOwnerDashboard />} />
       <Route path="students" element={<StudentsManagement />} />
+      <Route path="teachers" element={<TeacherQnmsManagement />} />
       {/* có thể thêm: /finance, /reports, ... */}
     </Route>
 

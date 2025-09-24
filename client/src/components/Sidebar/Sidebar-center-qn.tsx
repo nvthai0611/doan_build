@@ -34,7 +34,7 @@ import {
     Menu,
     ChevronLeft,
 } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 
 interface SidebarProps {
     className?: string
@@ -63,15 +63,15 @@ const centerOwnerMenuItems = [
     {
         title: "Quản lý giáo viên",
         icon: GraduationCap,
-        href: "/teachers",
+        href: "/center-qn/teachers",
         children: [
-            { title: "Danh sách giáo viên", href: "/teachers" },
-            { title: "Thông tin chuyên môn", href: "/teachers/expertise" },
-            { title: "Lịch dạy", href: "/teachers/schedule" },
-            { title: "Hợp đồng & Nhân sự", href: "/teachers/contracts" },
-            { title: "Quản lý lương", href: "/teachers/salary" },
-            { title: "Đánh giá từ PH/HS", href: "/teachers/reviews" },
-            { title: "Đổi lịch dạy", href: "/teachers/schedule-changes" },
+            { title: "Danh sách giáo viên", href: "/center-qn/teachers" },
+            { title: "Thông tin chuyên môn", href: "/center-qn/teachers/expertise" },
+            { title: "Lịch dạy", href: "/center-qn/teachers/schedule" },
+            { title: "Hợp đồng & Nhân sự", href: "/center-qn/teachers/contracts" },
+            { title: "Quản lý lương", href: "/center-qn/teachers/salary" },
+            { title: "Đánh giá từ PH/HS", href: "/center-qn/teachers/reviews" },
+            { title: "Đổi lịch dạy", href: "/center-qn/teachers/schedule-changes" },
         ],
     },
     {
@@ -198,7 +198,8 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
     const [expandedItems, setExpandedItems] = useState<string[]>([])
     const [isCollapsed, setIsCollapsed] = useState(false)
-    const navigate = useNavigate()
+	const navigate = useNavigate()
+	const { pathname } = useLocation()
     const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : teacherMenuItems
 
     const toggleExpanded = (title: string) => {
@@ -258,12 +259,16 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                 <div className="space-y-1 py-4">
                     {menuItems.map((item) => (
                         <div key={item.title}>
-                            <Button
+						{(() => {
+							const isTopActive = pathname === item.href || (item.children?.some((c) => c.href === pathname) ?? false)
+							return (
+								<Button
                                 variant="ghost"
-                                className={cn(
-                                    "w-full h-10 transition-all",
-                                    isCollapsed ? "justify-center px-0" : "justify-start gap-3 pr-2",
-                                )}
+							className={cn(
+								"w-full h-10 transition-all text-[15px]",
+								isCollapsed ? "justify-center px-0" : "justify-start gap-3 pr-2",
+								isTopActive && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+							)}
                                 onClick={() => {
                                     if (item.children) {
                                         if (!isCollapsed) toggleExpanded(item.title)
@@ -286,22 +291,32 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                         )}
                                     </>
                                 )}
-                            </Button>
+						</Button>
+						)
+						})()}
 
 
                             {!isCollapsed && item.children && expandedItems.includes(item.title) && (
                                 <div className="ml-7 space-y-1 mt-1">
-                                    {item.children.map((child) => (
-                                        <Button
-                                            key={child.title}
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => navigate(child.href)}
-                                            className="w-full justify-start text-muted-foreground hover:text-foreground"
-                                        >
-                                            {child.title}
-                                        </Button>
-                                    ))}
+								{item.children.map((child) => {
+									const isActive = pathname === child.href
+									return (
+										<Button
+											key={child.title}
+											variant="ghost"
+											size="sm"
+											onClick={() => navigate(child.href)}
+											className={cn(
+												"w-full justify-start text-[14px]",
+												isActive
+													? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+													: "text-muted-foreground hover:text-foreground",
+											)}
+										>
+											{child.title}
+										</Button>
+									)
+								})}
                                 </div>
                             )}
                         </div>
