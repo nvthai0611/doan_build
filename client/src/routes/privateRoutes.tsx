@@ -5,6 +5,8 @@ import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
 import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
+import  TeacherManageClass  from "../pages/Teacher/Teacher-manage-class";
+
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 export const privateRoutes = (
   <>
@@ -21,6 +23,7 @@ export const privateRoutes = (
     <Route path="/teacher" element={<AuthMiddleware/>}>
       <Route path="profile" element={<TeacherProfilePage />} />
       {/* thêm: /classes, /attendance, ... */}
+      <Route path="classes" element={<TeacherManageClass />} />
     </Route>
   </Route>
   </>
