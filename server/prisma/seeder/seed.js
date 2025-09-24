@@ -30,7 +30,9 @@ async function main() {
     prisma.classSession.deleteMany(),
     prisma.class.deleteMany(),
     prisma.subject.deleteMany(),
+    prisma.studentParentLink.deleteMany(),
     prisma.student.deleteMany(),
+    prisma.parent.deleteMany(),
     prisma.teacher.deleteMany(),
     prisma.school.deleteMany(),
     prisma.user.deleteMany(),
@@ -126,12 +128,42 @@ async function main() {
         address: faker.location.streetAddress(),
         grade: `Lớp ${faker.helpers.arrayElement([10, 11, 12])}`,
         schoolId: faker.helpers.arrayElement(schools).id,
-        parentName: faker.person.fullName(),
-        parentPhone: faker.phone.number(),
-        parentRelation: faker.helpers.arrayElement(['Bố', 'Mẹ']),
       },
     });
     students.push(student);
+  }
+
+  // Create Parents and link with Students
+  const parents = [];
+  for (let i = 0; i < Math.min(students.length, 20); i++) { // Tạo 20 parents
+    const parentUser = await prisma.user.create({
+      data: {
+        username: `parent${i + 1}`,
+        email: `parent${i + 1}@example.com`,
+        password: await bcrypt.hash('parent123', 10),
+        fullName: faker.person.fullName(),
+        role: 'parent_student',
+        phone: faker.phone.number(),
+      },
+    });
+
+    const parent = await prisma.parent.create({
+      data: {
+        userId: parentUser.id,
+      },
+    });
+    parents.push(parent);
+
+    // Link parent with student
+    const student = students[i];
+    await prisma.studentParentLink.create({
+      data: {
+        studentId: student.id,
+        parentId: parent.id,
+        relation: faker.helpers.arrayElement(['father', 'mother', 'guardian']),
+        primaryContact: true,
+      },
+    });
   }
 
   // Create Subjects
@@ -284,17 +316,22 @@ async function main() {
   // Create some payrolls
   for (const teacher of teachers) {
     for (let i = 0; i < 3; i++) {
+      const baseSalary = parseFloat(teacher.salary);
+      const bonuses = parseFloat(faker.finance.amount({ min: 0, max: 500, dec: 2 }));
+      const deductions = parseFloat(faker.finance.amount({ min: 0, max: 200, dec: 2 }));
+      const totalAmount = baseSalary + bonuses - deductions;
+      
       await prisma.payroll.create({
         data: {
           teacherId: teacher.id,
           periodStart: faker.date.past(),
           periodEnd: faker.date.recent(),
-          baseSalary: teacher.salary,
+          baseSalary: baseSalary,
           teachingHours: faker.number.float({ min: 20, max: 40, fractionDigits: 2 }),
-          hourlyRate: teacher.salary / 40,
-          bonuses: parseFloat(faker.finance.amount({ min: 0, max: 500, dec: 2 })),
-          deductions: parseFloat(faker.finance.amount({ min: 0, max: 200, dec: 2 })),
-          totalAmount: teacher.salary + parseFloat(faker.finance.amount({ min: 0, max: 300, dec: 2 })),
+          hourlyRate: baseSalary / 40,
+          bonuses: bonuses,
+          deductions: deductions,
+          totalAmount: totalAmount,
           status: faker.helpers.arrayElement(['pending', 'paid']),
         },
       });
