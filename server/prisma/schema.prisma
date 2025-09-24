@@ -67,7 +67,9 @@ model Student {
   parentRelation String?          @map("parent_relation") // "Bố", "Mẹ", "Người giám hộ"
   createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+  // Thêm quan hệ với School
+  schoolId String   @map("school_id") @db.Uuid
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   // Relations
   attendances Attendance[]
   enrollments Enrollment[]
@@ -80,6 +82,20 @@ model Student {
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("students")
+}
+
+model School {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Quan hệ 1-nhiều: 1 trường có nhiều học sinh
+  students  Student[]
+
+  @@map("schools")
 }
 
 model Subject {
