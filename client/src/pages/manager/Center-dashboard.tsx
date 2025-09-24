@@ -38,10 +38,6 @@ export function CenterOwnerDashboard() {
             <BarChart3 className="w-4 h-4 mr-2" />
             Xem báo cáo
           </ProtectedButton>
-          <ProtectedButton permission="students.create">
-            <Plus className="w-4 h-4 mr-2" />
-            Thêm học viên
-          </ProtectedButton>
         </div>
       </div>
 

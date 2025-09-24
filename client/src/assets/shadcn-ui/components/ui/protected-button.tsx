@@ -40,7 +40,7 @@ export function ProtectedButton({
     <Button
       {...props}
       disabled={!hasAccess || props.disabled}
-      className={cn(!hasAccess && "opacity-50 cursor-not-allowed", className)}
+      className={cn(!hasAccess && "opacity-50 cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white", className)}
     >
       {children}
     </Button>
