@@ -13,6 +13,40 @@ interface SuccessResponse {
   meta?: Record<string, any>;
 }
 
+// Serialize values that JSON.stringify cannot handle (BigInt, Prisma Decimal, Date, etc.)
+function serializeForJson(value: any): any {
+  // BigInt -> string (safe for large ids)
+  if (typeof value === 'bigint') return value.toString();
+
+  // Null or primitive
+  if (value === null || typeof value !== 'object') return value;
+
+  // Dates -> ISO string
+  if (value instanceof Date) return value.toISOString();
+
+  // Prisma Decimal or similar objects that expose toNumber/toString
+  // Convert to number (if possible), otherwise to string
+  const hasToNumber = typeof (value as any).toNumber === 'function';
+  const hasToString = typeof (value as any).toString === 'function';
+  if (hasToNumber || (hasToString && value.constructor?.name === 'Decimal')) {
+    try {
+      return hasToNumber ? (value as any).toNumber() : parseFloat((value as any).toString());
+    } catch {
+      return (value as any).toString();
+    }
+  }
+
+  // Arrays
+  if (Array.isArray(value)) return value.map(serializeForJson);
+
+  // Plain objects
+  const output: Record<string, any> = {};
+  for (const key of Object.keys(value)) {
+    output[key] = serializeForJson((value as any)[key]);
+  }
+  return output;
+}
+
 @Injectable() // cho phép NestJS inject class này
 export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
   // intercept: chạy "xung quanh" handler (controller method)
@@ -27,8 +61,8 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
             success: true,
             // Lấy HTTP status code hiện tại (ví dụ POST mặc định là 201, GET là 200)
             status: context.switchToHttp().getResponse().statusCode,
-            data: result.data, // dữ liệu chính
-            meta: result.meta || {}, // thông tin phụ (phân trang, tổng, v.v.)
+            data: serializeForJson(result.data), // dữ liệu chính
+            meta: serializeForJson(result.meta || {}), // thông tin phụ (phân trang, tổng, v.v.)
             message: result.message || '',
           };
         }
@@ -37,7 +71,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
         return {
           success: true,
           status: context.switchToHttp().getResponse().statusCode,
-          data: result,
+          data: serializeForJson(result),
           meta: {},
           message: '',
         };

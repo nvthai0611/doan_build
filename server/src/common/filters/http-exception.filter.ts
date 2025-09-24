@@ -7,6 +7,25 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 
+function serializeForJson(value: any): any {
+  if (typeof value === 'bigint') return value.toString();
+  if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) return value.toISOString();
+  const hasToNumber = typeof (value as any).toNumber === 'function';
+  const hasToString = typeof (value as any).toString === 'function';
+  if (hasToNumber || (hasToString && value.constructor?.name === 'Decimal')) {
+    try {
+      return hasToNumber ? (value as any).toNumber() : parseFloat((value as any).toString());
+    } catch {
+      return (value as any).toString();
+    }
+  }
+  if (Array.isArray(value)) return value.map(serializeForJson);
+  const output: Record<string, any> = {};
+  for (const key of Object.keys(value)) output[key] = serializeForJson((value as any)[key]);
+  return output;
+}
+
 @Catch() // không truyền gì -> bắt "mọi" exception
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: any, host: ArgumentsHost) {
@@ -34,8 +53,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     res.status(status).json({
       success: false,
       status, // status cũng có trong body cho client đọc dễ
-      error: response, // giữ nguyên payload gốc của lỗi (để debug/hiển thị chi tiết)
-      message: response.message || 'Internal server error', // message ngắn gọn để hiển thị
+      error: serializeForJson(response), // giữ nguyên payload nhưng đã serialize an toàn
+      message: (response && response.message) || 'Internal server error', // message ngắn gọn để hiển thị
     });
   }
 }
