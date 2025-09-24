@@ -16,7 +16,7 @@ const statusTabs = [
   { key: "not-updated", label: "Chưa cập nhật", count: 0 },
 ]
 
-export function TeacherManageClass() {
+export default function TeacherManageClass() {
   const [activeTab, setActiveTab] = useState("completed")
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
