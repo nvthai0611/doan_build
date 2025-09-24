@@ -60,105 +60,101 @@ export function StudentTable({ students, filters }: StudentTableProps) {
   }
 
   return (
-    <div className="border border-border rounded-lg bg-card">
+    <div className="bg-white rounded-lg shadow-sm border">
       <Table>
         <TableHeader>
-          <TableRow className="border-border">
-            <TableHead className="w-12 text-center text-muted-foreground font-medium">STT</TableHead>
-            <TableHead className="text-muted-foreground font-medium">Tài khoản học viên</TableHead>
-            <TableHead className="text-muted-foreground font-medium">Thông tin liên hệ</TableHead>
-            <TableHead className="text-center text-muted-foreground font-medium">Trạng thái</TableHead>
-            <TableHead className="text-center text-muted-foreground font-medium">Khóa học</TableHead>
-            <TableHead className="text-center text-muted-foreground font-medium">Lớp học</TableHead>
-            <TableHead className="text-center text-muted-foreground font-medium">Điểm trung bình</TableHead>
+          <TableRow className="border-border bg-gray-50">
+            <TableHead className="w-12 text-left text-gray-500 uppercase tracking-wider text-xs">STT</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs">Tài khoản học viên</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs">Thông tin</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Trạng thái</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Khóa học</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Lớp học</TableHead>
+            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Điểm trung bình</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {students.map((student, index) => (
-            <TableRow key={student.id} className="border-border hover:bg-muted/50">
-              <TableCell className="text-center text-sm text-muted-foreground">{index + 1}</TableCell>
+            <TableRow key={student.id} className="hover:bg-gray-50">
+              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {index + 1}
+              </TableCell>
 
-              <TableCell>
+              <TableCell className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                      {getInitials(student.user.fullName || student.user.username)}
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-gray-200">
+                      <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
+                        <div className="w-3 h-3 bg-white rounded-full"></div>
+                      </div>
                     </AvatarFallback>
                   </Avatar>
-                  <div className="space-y-1">
-                    <div className="font-medium text-foreground">{student.user.fullName || student.user.username}</div>
-                    <div className="text-xs text-muted-foreground">{student.user.username}</div>
+                  <div>
+                    <div className="text-sm font-medium text-blue-600">{student.user.fullName || student.user.username}</div>
+                    <div className="text-xs text-gray-500">{student.user.username}</div>
                     {student.studentCode && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {student.studentCode}
-                        <Button variant="ghost" size="icon" className="w-4 h-4 p-0">
-                          <Copy className="w-3 h-3" />
-                        </Button>
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <span>{student.studentCode}</span>
+                        <Copy className="w-3 h-3 cursor-pointer hover:text-gray-600" />
                       </div>
                     )}
                   </div>
                 </div>
               </TableCell>
 
-              <TableCell>
+              <TableCell className="px-6 py-4 whitespace-nowrap">
                 <div className="space-y-1">
                   {student.user.email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-foreground">{student.user.email}</span>
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <Mail className="w-3 h-3" />
+                      {student.user.email}
                     </div>
                   )}
                   {student.user.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-foreground">{student.user.phone}</span>
-                    </div>
-                  )}
-                  {student.dateOfBirth && (
-                    <div className="text-xs text-muted-foreground">
-                      {student.dateOfBirth.toLocaleDateString("vi-VN")} - {student.gender || "Khác"}
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <Phone className="w-3 h-3" />
+                      {student.user.phone}
                     </div>
                   )}
                 </div>
               </TableCell>
 
-              <TableCell className="text-center">{getStatusBadge(student.status, student.statusCount)}</TableCell>
-
-              <TableCell className="text-center">
-                <span className="text-foreground font-medium">{student.totalCourses}</span>
+              <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+                {getStatusBadge(student.status, student.statusCount)}
               </TableCell>
 
-              <TableCell className="text-center">
-                <span className="text-foreground font-medium">{student.totalClasses}</span>
+              <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+                <span className="text-gray-900 text-sm">{student.totalCourses}</span>
               </TableCell>
 
-              <TableCell className="text-center">
-                <div className="flex items-center justify-center gap-2">
+              <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+                <span className="text-gray-900 text-sm">{student.totalClasses}</span>
+              </TableCell>
+
+              <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+                <div className="inline-flex items-center gap-2">
                   {student.averageGrade > 0 && (
-                    <div className="w-12 h-6 bg-muted rounded flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground">{formatGrade(student.averageGrade)}</span>
+                    <div className="w-12 h-6 bg-gray-100 rounded flex items-center justify-center">
+                      <span className="text-xs text-gray-600">{formatGrade(student.averageGrade)}</span>
                     </div>
                   )}
-                  <span className="text-foreground font-medium">{formatGrade(student.averageGrade)}</span>
                 </div>
               </TableCell>
 
-              
-
-              <TableCell>
+              <TableCell className="px-6 py-4 whitespace-nowrap text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-8 h-8">
+                    <Button variant="ghost" size="sm">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem className="flex items-center gap-2">
+                    <DropdownMenuItem className="gap-2">
                       <Eye className="w-4 h-4" />
                       Xem
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="flex items-center gap-2">
+                    <DropdownMenuItem className="gap-2">
                       <Download className="w-4 h-4" />
                       Tải xuống
                     </DropdownMenuItem>
@@ -169,21 +165,6 @@ export function StudentTable({ students, filters }: StudentTableProps) {
           ))}
         </TableBody>
       </Table>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-        <div className="text-sm text-muted-foreground">
-          Số bảng mới trong: <span className="font-medium">10</span> trong <span className="font-medium">44</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled>
-            ‹
-          </Button>
-          <Button variant="outline" size="sm">
-            ›
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }

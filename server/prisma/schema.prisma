@@ -135,7 +135,7 @@ model Subject {
   code        String  @unique // "TOAN", "LY", "HOA"
   name        String // "Toán học", "Vật lý", "Hóa học"
   description String?
-  classes     Class[] // Trực tiếp tạo lớp cho môn học
+  classes     Class[] 
 
   @@map("subjects")
 }
