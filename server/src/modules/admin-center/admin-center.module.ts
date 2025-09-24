@@ -1,8 +1,32 @@
 import { Module } from '@nestjs/common';
+import { ApprovalManagementController } from './controllers/approval-management.controller';
+import { ClassManagementController } from './controllers/class-management.controller';
+import { FinancialManagementController } from './controllers/financial-management.controller';
+import { ScheduleManagementController } from './controllers/schedule-management.controller';
+import { UsersController } from './controllers/user-management.controller';
+import { ApprovalManagementService } from './services/approval-management.service';
+import { ClassManagementService } from './services/class-management.service';
+import { FinancialManagementService } from './services/financial-management.service';
+import { ScheduleManagementService } from './services/schedule-management.service';
+import { UsersService } from './services/user-management.service';
+import { PrismaService } from 'src/db/prisma.service';
 
 @Module({
   imports: [],
-  controllers: [],
-  providers: [],
+  controllers: [
+    ApprovalManagementController,
+    ClassManagementController,
+    FinancialManagementController,
+    ScheduleManagementController,
+  UsersController,
+  ],
+  providers: [
+    PrismaService,
+    ApprovalManagementService,
+    ClassManagementService,
+    FinancialManagementService,
+    ScheduleManagementService,
+  UsersService,
+  ],
 })
 export class AdminCenterModule {}
