@@ -16,9 +16,9 @@ import { AuthMiddleware } from './common/middleware/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthService } from './modules/auth/auth.service';
 import { PrismaService } from './db/prisma.service';
-import { TeachersModule } from './modules/teachers/teachers.module';
 import { TeachersService } from './modules/teachers/teachers.service';
-import { StudentModule } from './modules/manager/student/student.module';
+import { TeachersModule } from './modules/manager/teachers/teachers.module';
+import { StudentsModule } from './modules/manager/students/students.module';
 
 
 @Module({
@@ -28,7 +28,7 @@ import { StudentModule } from './modules/manager/student/student.module';
     PostsModule,
     AuthModule,
     TeachersModule,
-    StudentModule,
+    StudentsModule,
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService, TeachersService],
