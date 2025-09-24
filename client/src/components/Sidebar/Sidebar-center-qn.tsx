@@ -50,14 +50,14 @@ const centerOwnerMenuItems = [
     {
         title: "Quản lý học sinh",
         icon: Users,
-        href: "/students",
+        href: "/center-qn/students",
         children: [
-            { title: "Danh sách học sinh", href: "/students" },
-            { title: "Thông tin phụ huynh", href: "/students/parents" },
-            { title: "Phân lớp tự động", href: "/students/auto-assign" },
-            { title: "Học bạ nội bộ", href: "/students/records" },
-            { title: "Kết quả học tập", href: "/students/results" },
-            { title: "Chuyên cần", href: "/students/attendance" },
+            { title: "Danh sách học sinh", href: "/center-qn/students" },
+            { title: "Thông tin phụ huynh", href: "/center-qn/students/parents" },
+            { title: "Phân lớp tự động", href: "/center-qn/students/auto-assign" },
+            { title: "Học bạ nội bộ", href: "/center-qn/students/records" },
+            { title: "Kết quả học tập", href: "/center-qn/students/results" },
+            { title: "Chuyên cần", href: "/center-qn/students/attendance" },
         ],
     },
     {
