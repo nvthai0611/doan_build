@@ -1,0 +1,3 @@
+export class LeaveRequestDto {
+  // ...define DTO properties here...
+}
