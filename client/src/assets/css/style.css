@@ -66,3 +66,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Extra UI modes */
+.compact {
+  --radius: 0.375rem;
+}
+
+.contrast {
+  --border: 0 0% 100%;
+  --ring: 0 0% 100%;
+}

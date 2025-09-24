@@ -4,13 +4,22 @@ import Profile from "../pages/Auth/Profile";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
 import TeacherProfilePage from "../pages/teacher/Teacher-profile";
+import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 export const privateRoutes = (
   <>
-    <Route element={<DefaultLayout />}>
-      <Route element={<AuthMiddleware />}>
-        <Route path="/center-qn" element={<CenterOwnerDashboard />} />
-        <Route path="/teacher/profile" element={<TeacherProfilePage />} />
-      </Route>
+     <Route element={<DefaultLayout />}>
+    {/* Chủ trung tâm */}
+    <Route path="/center-qn" element={<AuthMiddleware/>}>
+      <Route path="" element={<CenterOwnerDashboard />} />
+      <Route path="students" element={<StudentsManagement />} />
+      {/* có thể thêm: /finance, /reports, ... */}
     </Route>
+
+    {/* Giáo viên */}
+    <Route path="/teacher" element={<AuthMiddleware/>}>
+      <Route path="profile" element={<TeacherProfilePage />} />
+      {/* thêm: /classes, /attendance, ... */}
+    </Route>
+  </Route>
   </>
 );
