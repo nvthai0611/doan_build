@@ -8,6 +8,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   ChevronRight,
@@ -83,7 +91,7 @@ const employees: Employee[] = [
     phone: "0913232971",
     username: "mailinh123@centerup",
     code: "***6C591",
-    role: "Giáo vụ",
+    role: "Giáo viên",
     gender: "Nữ",
     birthDate: "05/09/2000",
     status: true,
@@ -262,13 +270,21 @@ export default function TeacherQnmsManagement() {
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Danh sách giáo viên</h1>
-            <div className="flex items-center text-sm text-gray-600">
-              <span>Dashboard</span>
-              <ChevronRight className="w-4 h-4 mx-2" />
-              <span className="text-gray-400">Danh sách giáo viên</span>
-            </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-foreground">Danh sách giáo viên</h1>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-foreground font-medium">Danh sách giáo viên</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="text-gray-600 bg-transparent" onClick={handleInviteEmployee}>
@@ -293,7 +309,6 @@ export default function TeacherQnmsManagement() {
               <SelectContent>
                 <SelectItem value="Nhóm quyền">Nhóm quyền</SelectItem>
                 <SelectItem value="Giáo viên">Giáo viên</SelectItem>
-                <SelectItem value="Giáo vụ">Giáo vụ</SelectItem>
                 <SelectItem value="Chủ trung tâm">Chủ trung tâm</SelectItem>
               </SelectContent>
             </Select>
@@ -411,7 +426,7 @@ export default function TeacherQnmsManagement() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STT</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tài khoản nhân viên
+                  Tài khoản giáo viên
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thông tin
