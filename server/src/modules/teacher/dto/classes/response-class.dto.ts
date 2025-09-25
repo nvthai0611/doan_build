@@ -52,3 +52,20 @@ export class ClassResponseDto {
   @ApiProperty({ description: 'Thông tin lớp học', type: ClassDto })
   data: ClassDto;
 }
+
+export class CountByStatusResponseDto {
+  @ApiProperty({ description: 'Tổng số lớp học' })
+  total: number;
+
+  @ApiProperty({ description: 'Số lớp học hoạt động' })
+  active: number;
+
+  @ApiProperty({ description: 'Số lớp học hoàn thành' })
+  completed: number;
+
+  @ApiProperty({ description: 'Số lớp học theo kế hoạch' })
+  draft: number;
+
+  @ApiProperty({ description: 'Số lớp học hủy' })
+  cancelled: number;
+}
