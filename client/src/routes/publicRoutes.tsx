@@ -7,8 +7,7 @@ import GuestMiddleware from "../middlewares/GuestMiddleware";
 export const publicRoutes = (
   <>
     <Route element={<DefaultLayout />}>
-      <Route path="/" element={<Navigate to="/center-up" replace />} />
-      <Route path="/center-up" element={<Navigate to="/center-qn" replace />} />
+      <Route path="/" element={<Navigate to="/center-qn" replace />} />
       <Route path="/san-pham">
       </Route>
     </Route>
