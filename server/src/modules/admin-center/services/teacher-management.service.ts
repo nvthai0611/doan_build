@@ -65,7 +65,13 @@ export class TeacherManagementService {
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      gender,
+      birthYear,
+      salaryMin,
+      salaryMax,
+      hireDateFrom,
+      hireDateTo
     } = queryDto;
 
     const skip = (page - 1) * limit;
@@ -91,7 +97,45 @@ export class TeacherManagementService {
     if (status && status !== 'all') {
       where.user.isActive = status === 'active';
     }
-    // Get all teachers (no pagination for now)
+
+    // Add gender filter
+    if (gender) {
+      where.gender = gender;
+    }
+
+    // Add birth year filter
+    if (birthYear) {
+      where.birthDate = {
+        startsWith: birthYear
+      };
+    }
+
+    // Add salary range filter
+    if (salaryMin !== undefined || salaryMax !== undefined) {
+      where.salary = {};
+      if (salaryMin !== undefined) {
+        where.salary.gte = salaryMin;
+      }
+      if (salaryMax !== undefined) {
+        where.salary.lte = salaryMax;
+      }
+    }
+
+    // Add hire date range filter
+    if (hireDateFrom || hireDateTo) {
+      where.hireDate = {};
+      if (hireDateFrom) {
+        where.hireDate.gte = new Date(hireDateFrom);
+      }
+      if (hireDateTo) {
+        where.hireDate.lte = new Date(hireDateTo);
+      }
+    }
+    // Get total count for pagination
+    const total = await this.prisma.teacher.count({ where });
+    const totalPages = Math.ceil(total / limit);
+
+    // Get teachers with pagination
     const teachers = await this.prisma.teacher.findMany({
       where,
       include: {
@@ -99,16 +143,18 @@ export class TeacherManagementService {
       },
       orderBy: {
         [sortBy]: sortOrder
-      }
+      },
+      skip,
+      take: limit
     });
 
     return {
       data: teachers.map(teacher => this.formatTeacherResponse(teacher)),
       meta: {
-        page: 1,
-        limit: teachers.length,
-        total: teachers.length,
-        totalPages: 1
+        page,
+        limit,
+        total,
+        totalPages
       },
       message: 'Lấy danh sách giáo viên thành công'
     };
@@ -237,6 +283,140 @@ export class TeacherManagementService {
     });
 
     return this.formatTeacherResponse({ ...teacher, user: updatedUser });
+  }
+
+  async getTeacherSchedule(id: string, year?: number, month?: number) {
+    // Tìm teacher với các lớp học
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id },
+      include: { 
+        user: true,
+        classes: {
+          include: {
+            subject: true,
+            room: true,
+            sessions: {
+              where: year && month ? {
+                sessionDate: {
+                  gte: new Date(year, month - 1, 1),
+                  lt: new Date(year, month, 1)
+                }
+              } : undefined,
+              include: {
+                attendances: {
+                  include: {
+                    student: {
+                      include: {
+                        user: true
+                      }
+                    }
+                  }
+                }
+              },
+              orderBy: {
+                sessionDate: 'asc'
+              }
+            }
+          } 
+        }
+      },
+    });
+
+    if (!teacher) {
+      throw new Error('Teacher not found');
+    }
+
+    // Chuyển đổi dữ liệu thành format phù hợp với frontend
+    const sessions = teacher.classes.flatMap(cls => 
+      cls.sessions.map(session => ({
+        id: session.id,
+        date: session.sessionDate,
+        title: `Buổi ${cls.name}`,
+        time: `${session.startTime}-${session.endTime}`,
+        subject: cls.subject.name,
+        class: cls.name,
+        room: cls.room?.name || 'Chưa xác định',
+        hasAlert: this.checkSessionAlerts(session),
+        status: session.status as "scheduled" | "completed" | "cancelled",
+        teacher: teacher.user.fullName || 'Chưa xác định',
+        students: session.attendances.map(attendance => ({
+          id: attendance.student.id,
+          name: attendance.student.user.fullName || 'Chưa xác định',
+          avatar: undefined,
+          status: this.mapAttendanceStatus(attendance.status)
+        })),
+        attendanceWarnings: this.generateAttendanceWarnings(session),
+        description: session.notes || 'Phương học: Chưa cập nhật',
+        materials: [] // Có thể thêm materials sau
+      }))
+    );
+
+    return {
+      teacher: {
+        id: teacher.id,
+        name: teacher.user.fullName,
+        email: teacher.user.email
+      },
+      sessions: sessions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    };
+  }
+
+  private checkSessionAlerts(session: any): boolean {
+    // Kiểm tra các điều kiện cảnh báo
+    const now = new Date();
+    const sessionDate = new Date(session.sessionDate);
+    const sessionTime = session.startTime.split(':');
+    const sessionDateTime = new Date(sessionDate);
+    sessionDateTime.setHours(parseInt(sessionTime[0]), parseInt(sessionTime[1]));
+
+    // Cảnh báo nếu buổi học đã qua mà chưa hoàn thành
+    if (sessionDateTime < now && session.status === 'scheduled') {
+      return true;
+    }
+
+    // Cảnh báo nếu có học sinh vắng mặt
+    const absentStudents = session.attendances.filter(att => att.status === 'absent').length;
+    if (absentStudents > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private mapAttendanceStatus(status: string): "present" | "absent" | "late" {
+    switch (status) {
+      case 'present':
+        return 'present';
+      case 'absent':
+        return 'absent';
+      case 'late':
+        return 'late';
+      default:
+        return 'absent';
+    }
+  }
+
+  private generateAttendanceWarnings(session: any): string[] {
+    const warnings: string[] = [];
+    
+    const totalStudents = session.attendances.length;
+    const presentStudents = session.attendances.filter(att => att.status === 'present').length;
+    const absentStudents = session.attendances.filter(att => att.status === 'absent').length;
+    const lateStudents = session.attendances.filter(att => att.status === 'late').length;
+
+    if (absentStudents > 0) {
+      warnings.push(`*Có ${absentStudents} học viên vắng mặt*`);
+    }
+
+    if (lateStudents > 0) {
+      warnings.push(`*Có ${lateStudents} học viên đi muộn*`);
+    }
+
+    if (totalStudents === 0) {
+      warnings.push('*Chưa có học viên nào đăng ký buổi học này*');
+    }
+
+    return warnings;
   }
 
   private formatTeacherResponse(teacher: any) {

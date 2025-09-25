@@ -9,9 +9,9 @@ const DefaultLayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background dark:bg-gray-900">
       {/* Sidebar responsive */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 border-r transition-all duration-300`}>
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 border-r border-gray-200 dark:border-gray-700 transition-all duration-300`}>
         <SidebarCenterQn onToggleCollapse={setIsSidebarCollapsed} />
       </div>
 

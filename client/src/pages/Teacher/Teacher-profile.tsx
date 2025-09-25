@@ -84,7 +84,7 @@ export default function TeacherProfilePage() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/teacher/dashboard">Dashboard</BreadcrumbLink>
+            <BreadcrumbLink href="/center-qn">Dashboard</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>

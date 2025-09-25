@@ -36,6 +36,7 @@ import {
 } from "lucide-react"
 import type { Employee, Tab, FilterState } from "./types/teacher"
 import { teacherService } from "../../../services/teacherService"
+import { toast } from "sonner"
 
 
 export default function TeacherQnmsManagement() {
@@ -48,12 +49,12 @@ export default function TeacherQnmsManagement() {
   const [collectData, setCollectData] = useState<boolean>(true)
   const [filterState, setFilterState] = useState<FilterState>({})
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(2)
 
   const roleMap: { [key: string]: string } = {
     "Giáo viên": "teacher",
     "Chủ trung tâm": "center_owner",
-    "Giáo vụ": "admin"
+    // "Giáo vụ": "admin"
   }
 
   const statusMap: { [key: string]: string } = {
@@ -68,7 +69,7 @@ export default function TeacherQnmsManagement() {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['teachers', searchTerm, selectedRole, activeTab, currentPage, itemsPerPage],
+    queryKey: ['teachers', searchTerm, selectedRole, activeTab, currentPage, itemsPerPage, filterState],
     queryFn: async () => {
       console.log("Data query:", {
         search: searchTerm || undefined,
@@ -77,8 +78,16 @@ export default function TeacherQnmsManagement() {
         page: currentPage,
         limit: itemsPerPage,
         sortBy: "createdAt",
-        sortOrder: "desc"
+        sortOrder: "desc",
+        // Add filter parameters
+        gender: filterState.gender && filterState.gender !== "all" ? filterState.gender : undefined,
+        birthYear: filterState.birthYear || undefined,
+        salaryMin: filterState.salaryMin || undefined,
+        salaryMax: filterState.salaryMax || undefined,
+        hireDateFrom: filterState.hireDateFrom || undefined,
+        hireDateTo: filterState.hireDateTo || undefined,
       })
+      console.log("Filter state:", filterState)
       
       const result = await teacherService.getTeachers({
         search: searchTerm || undefined,
@@ -87,12 +96,22 @@ export default function TeacherQnmsManagement() {
         page: currentPage,
         limit: itemsPerPage,
         sortBy: "createdAt",
-        sortOrder: "desc"
+        sortOrder: "desc",
+        // Add filter parameters
+        gender: filterState.gender && filterState.gender !== "all" ? filterState.gender : undefined,
+        birthYear: filterState.birthYear || undefined,
+        salaryMin: filterState.salaryMin || undefined,
+        salaryMax: filterState.salaryMax || undefined,
+        hireDateFrom: filterState.hireDateFrom || undefined,
+        hireDateTo: filterState.hireDateTo || undefined,
       })
       return result
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000, 
+    staleTime: 0, // Không cache data, luôn gọi API mới
+    gcTime: 0, // Không giữ data trong cache
+    refetchOnWindowFocus: true, // Gọi lại API khi focus vào window
+    refetchOnMount: true, // Gọi lại API khi component mount
+    refetchOnReconnect: true, // Gọi lại API khi reconnect
   })
 
   const employeeData = (teachersData as any)?.data || []
@@ -110,6 +129,11 @@ export default function TeacherQnmsManagement() {
     { key: "inactive", label: "Dừng hoạt động", count: finalEmployeeData?.filter((emp: Employee) => !emp.status).length || 0 },
   ]
 
+  // Gọi lại API khi component mount (quay lại trang)
+  useEffect(() => {
+    refetch()
+  }, [])
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm !== undefined) {
@@ -125,8 +149,9 @@ export default function TeacherQnmsManagement() {
   const toggleStatusMutation = useMutation({
     mutationFn: (employeeId: string) => teacherService.toggleTeacherStatus(employeeId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] })
-      console.log("Teacher status toggled successfully")
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      toast.success("Cập nhật trạng thái giáo viên thành công")
+      console.log("Teacher status toggled successfully");
     },
     onError: (error) => {
       console.error("Error toggling teacher status:", error)
@@ -135,7 +160,7 @@ export default function TeacherQnmsManagement() {
   })
 
   const handleEmployeeStatusToggle = (employeeId: string): void => {
-    toggleStatusMutation.mutate(employeeId)
+    toggleStatusMutation.mutate(employeeId);
   }
 
   const handleViewEmployee = (employeeId: string): void => {
@@ -256,7 +281,7 @@ export default function TeacherQnmsManagement() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                  <BreadcrumbLink href="/center-qn" className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </BreadcrumbLink>
                 </BreadcrumbItem>
@@ -323,35 +348,80 @@ export default function TeacherQnmsManagement() {
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-sm text-gray-600 mb-1 block">Ngày sinh</label>
-                      <Input
-                        placeholder="Chọn ngày sinh"
-                        value={filterState.birthDate || ""}
-                        onChange={(e) =>
-                          setFilterState((prev: FilterState) => ({ ...prev, birthDate: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600 mb-1 block">Tháng sinh</label>
-                      <Input
-                        placeholder="Chọn tháng sinh"
-                        value={filterState.birthMonth || ""}
-                        onChange={(e) =>
-                          setFilterState((prev: FilterState) => ({ ...prev, birthMonth: e.target.value }))
-                        }
-                      />
+                      <label className="text-sm text-gray-600 mb-1 block">Giới tính</label>
+                      <Select 
+                        value={filterState.gender || "all"} 
+                        onValueChange={(value) => setFilterState((prev: FilterState) => ({ ...prev, gender: value === "all" ? undefined : value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn giới tính" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả</SelectItem>
+                          <SelectItem value="Nam">Nam</SelectItem>
+                          <SelectItem value="Nữ">Nữ</SelectItem>
+                          <SelectItem value="Khác">Khác</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <label className="text-sm text-gray-600 mb-1 block">Năm sinh</label>
                       <Input
-                        placeholder="Chọn năm sinh"
+                        type="number"
+                        placeholder="Nhập năm sinh"
                         value={filterState.birthYear || ""}
                         onChange={(e) =>
                           setFilterState((prev: FilterState) => ({ ...prev, birthYear: e.target.value }))
                         }
                       />
                     </div>
+                    {/* <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-sm text-gray-600 mb-1 block">Từ ngày</label>
+                        <Input
+                          type="date"
+                          value={filterState.hireDateFrom || ""}
+                          onChange={(e) =>
+                            setFilterState((prev: FilterState) => ({ ...prev, hireDateFrom: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-600 mb-1 block">Đến ngày</label>
+                        <Input
+                          type="date"
+                          value={filterState.hireDateTo || ""}
+                          onChange={(e) =>
+                            setFilterState((prev: FilterState) => ({ ...prev, hireDateTo: e.target.value }))
+                          }
+                        />
+                      </div>
+                     </div> */}
+                     <div className="flex gap-2 pt-2">
+                       <Button 
+                         size="sm" 
+                         className="flex-1"
+                         onClick={() => {
+                           // Apply filters
+                           setCurrentPage(1)
+                           refetch()
+                         }}
+                       >
+                         Áp dụng
+                       </Button>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="flex-1"
+                         onClick={() => {
+                           setFilterState({})
+                           setCurrentPage(1)
+                           refetch()
+                         }}
+                       >
+                         Xóa bộ lọc
+                       </Button>
+                     </div>
                   </div>
                 </div>
               </PopoverContent>
@@ -562,6 +632,7 @@ export default function TeacherQnmsManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="2">2</SelectItem>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
@@ -581,6 +652,9 @@ export default function TeacherQnmsManagement() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
+                <span className="text-sm text-gray-600 px-2">
+                  {currentPage} / {totalPages}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"

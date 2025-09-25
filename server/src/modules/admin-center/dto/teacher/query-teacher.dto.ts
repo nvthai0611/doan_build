@@ -34,4 +34,31 @@ export class QueryTeacherDto {
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  // Filter parameters
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  birthYear?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  salaryMin?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  salaryMax?: number;
+
+  @IsOptional()
+  @IsString()
+  hireDateFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  hireDateTo?: string;
 }

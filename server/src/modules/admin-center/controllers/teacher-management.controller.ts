@@ -15,7 +15,9 @@ import { TeacherManagementService } from '../services/teacher-management.service
 import { CreateTeacherDto } from '../dto/teacher/create-teacher.dto';
 import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Teacher Management')
 @Controller('admin-center/teacher-management')
 export class TeacherManagementController {
   constructor(private readonly teacherManagementService: TeacherManagementService) {}
@@ -50,5 +52,18 @@ export class TeacherManagementController {
   @Patch(':id/toggle-status')
   toggleStatus(@Param('id') id: string) {
     return this.teacherManagementService.toggleTeacherStatus(id);
+  }
+
+  @Get(':id/schedule')
+  getSchedule(
+    @Param('id') id: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string
+  ) {
+    const yearNum = year ? parseInt(year) : undefined;
+    const monthNum = month ? parseInt(month) : undefined;
+    console.log(yearNum, monthNum);
+    
+    return this.teacherManagementService.getTeacherSchedule(id, yearNum, monthNum);
   }
 }

@@ -27,9 +27,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+} from "../../assets/shadcn-ui/components/ui/dropdown-menu";
+import { Switch } from "../../assets/shadcn-ui/components/ui/switch";
+import { Button } from "../../assets/shadcn-ui/components/ui/button";
+import { useTheme } from "../../lib/theme";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
@@ -39,8 +40,10 @@ const Header = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFullscreen, setSettingsFullscreen] = useState(false);
   
-  // Settings states
-  const [darkMode, setDarkMode] = useState(false);
+  // Use theme from ThemeProvider
+  const { mode: darkMode, toggle: toggleDarkMode } = useTheme();
+  
+  // Other settings states
   const [contrast, setContrast] = useState(false);
   const [rightToLeft, setRightToLeft] = useState(false);
   const [compact, setCompact] = useState(false);
@@ -51,7 +54,7 @@ const Header = () => {
 
   // Reset settings to default
   const resetSettings = () => {
-    setDarkMode(false);
+    toggleDarkMode(); // Reset to light mode
     setContrast(false);
     setRightToLeft(false);
     setCompact(false);
@@ -76,12 +79,11 @@ const Header = () => {
     }
   };
 
-  // Load settings from localStorage
+  // Load settings from localStorage (excluding darkMode which is handled by ThemeProvider)
   useEffect(() => {
     const savedSettings = localStorage.getItem('app-settings');
     if (savedSettings) {
       const settings = JSON.parse(savedSettings);
-      setDarkMode(settings.darkMode || false);
       setContrast(settings.contrast || false);
       setRightToLeft(settings.rightToLeft || false);
       setCompact(settings.compact || false);
@@ -92,10 +94,9 @@ const Header = () => {
     }
   }, []);
 
-  // Save settings to localStorage
+  // Save settings to localStorage (excluding darkMode which is handled by ThemeProvider)
   useEffect(() => {
     const settings = {
-      darkMode,
       contrast,
       rightToLeft,
       compact,
@@ -105,16 +106,13 @@ const Header = () => {
       font
     };
     localStorage.setItem('app-settings', JSON.stringify(settings));
-  }, [darkMode, contrast, rightToLeft, compact, navLayout, navColor, preset, font]);
+  }, [contrast, rightToLeft, compact, navLayout, navColor, preset, font]);
 
-  // Apply theme changes
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+  // // Debug: Log theme state
+  // useEffect(() => {
+  //   console.log('Current theme mode:', darkMode);
+  //   console.log('Document classes:', document.documentElement.classList.toString());
+  // }, [darkMode]);
 
   // Apply font changes
   useEffect(() => {
@@ -147,7 +145,7 @@ const Header = () => {
   }, []);
   
   return (
-    <div className="w-full border-b bg-white border-gray-200">
+    <div className="w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center gap-6">
@@ -160,12 +158,12 @@ const Header = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-gray-900">QN Edu System</span>
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">QN Edu System</span>
+              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded">
                 ADVANCED
               </span>
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            {/* <div className="flex items-center gap-2 ml-4">
               <span className="text-sm text-gray-600">Số dư:</span>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
@@ -173,7 +171,7 @@ const Header = () => {
                 </div>
                 <span className="text-sm font-medium text-gray-900">761.113</span>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -182,10 +180,10 @@ const Header = () => {
           <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
             <div className="w-3 h-3 bg-white rounded-full opacity-80"></div>
           </div>
-          <span className="text-lg font-semibold text-gray-900">
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">
             Center <span className="text-pink-500">B</span>rain
           </span>
-          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-medium rounded">
             beta
           </span>
         </div>
@@ -193,22 +191,22 @@ const Header = () => {
         {/* Right Section */}
         <div className="flex items-center gap-4">
           {/* Network Status */}
-          <div className="flex items-center gap-2 text-green-600">
+          {/* <div className="flex items-center gap-2 text-green-600">
             <Wifi className="w-4 h-4" />
             <span className="text-sm font-medium">Mạng tốt</span>
-          </div>
+          </div> */}
 
           {/* Search */}
           {searchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg bg-white shadow-sm">
-              <Search className="w-4 h-4 text-gray-500" />
+            <form onSubmit={handleSearch} className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+              <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Tìm kiếm..."
-                className="flex-1 outline-none text-sm min-w-0"
+                className="flex-1 outline-none text-sm min-w-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 autoFocus
               />
               <button
@@ -217,18 +215,18 @@ const Header = () => {
                   setSearchOpen(false);
                   setSearchQuery("");
                 }}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               >
-                <X className="w-4 h-4 text-gray-500" />
+                <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               </button>
             </form>
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <Search className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-500">⌘K</span>
+              <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">⌘K</span>
             </button>
           )}
 
@@ -239,15 +237,15 @@ const Header = () => {
           </div>
 
           {/* Help */}
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <HelpCircle className="w-5 h-5 text-gray-600" />
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+            <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
 
           {/* Notifications */}
           <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
             <DropdownMenuTrigger asChild>
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-                <Bell className="w-5 h-5 text-gray-600" />
+              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-xs font-bold">92</span>
                 </div>
@@ -286,22 +284,22 @@ const Header = () => {
           {/* Settings */}
           <button 
             onClick={() => setSettingsOpen(true)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
             title="Settings (Ctrl+,)"
           >
-            <Settings className="w-5 h-5 text-gray-600" />
+            <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
 
           {/* Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded-lg">
+              <button className="flex items-center gap-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 via-purple-500 to-blue-500 p-0.5">
-                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-gray-600" />
+                  <div className="w-full h-full bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   </div>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-600" />
+                <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -335,13 +333,13 @@ const Header = () => {
           />
           
           {/* Settings Panel */}
-          <div className={`absolute right-0 top-0 h-full bg-white shadow-xl transition-all duration-300 ${
+          <div className={`absolute right-0 top-0 h-full bg-white dark:bg-gray-900 shadow-xl transition-all duration-300 ${
             settingsFullscreen ? 'w-full' : 'w-96'
           }`}>
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Settings</h2>
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Settings</h2>
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="ghost" 
@@ -376,10 +374,10 @@ const Header = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Moon className="w-5 h-5 text-gray-600" />
-                      <span className="font-medium">Dark mode</span>
+                      <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      <span className="font-medium text-gray-900 dark:text-white">Dark mode</span>
                     </div>
-                    <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+                    <Switch checked={darkMode === "dark"} onCheckedChange={toggleDarkMode} />
                   </div>
 
                   <div className="flex items-center justify-between">
