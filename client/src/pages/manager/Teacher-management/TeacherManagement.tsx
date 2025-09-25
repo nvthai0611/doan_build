@@ -281,7 +281,7 @@ export default function TeacherQnmsManagement() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                  <BreadcrumbLink href="/center-qn" className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </BreadcrumbLink>
                 </BreadcrumbItem>

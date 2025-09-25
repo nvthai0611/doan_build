@@ -219,25 +219,6 @@ export default function TeacherInfo() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                ←
-              </button>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {employee.name}
-                </h1>
-                <p className="text-gray-600">{employee.email}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Tabs */}
         <div className="px-6">
           <nav className="flex space-x-8">
