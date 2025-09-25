@@ -107,8 +107,11 @@ async function main() {
       data: {
         userId: teacherUser.id,
         hireDate: faker.date.past(),
+        contractEnd: faker.date.future({ years: 2 }),
         subjects: faker.helpers.arrayElements(['Toán', 'Lý', 'Hóa', 'Văn', 'Anh'], faker.helpers.arrayElement([1, 2, 3])),
         salary: parseFloat(faker.finance.amount({ min: 1000, max: 5000, dec: 2 })),
+        gender: faker.helpers.arrayElement(['Nam', 'Nữ', 'Khác']),
+        birthDate: faker.date.birthdate({ min: 1980, max: 1995, mode: 'year' }),
       },
     });
     teachers.push(teacher);
@@ -253,14 +256,21 @@ async function main() {
     });
 
     const enrolledStudents = enrollments.filter(e => e.classId === classToSession.id);
+    const validRecorders = users.filter(u => u.role === 'teacher' || u.role === 'admin');
+    
     for (const enrollment of enrolledStudents) {
+      if (validRecorders.length === 0) {
+        console.log('No valid recorders available, skipping attendance record');
+        continue;
+      }
+      
       await prisma.attendance.create({
         data: {
           sessionId: session.id,
           studentId: enrollment.studentId,
           status: faker.helpers.arrayElement(['present', 'absent', 'late', 'excused']),
           note: faker.lorem.sentence(),
-          recordedBy: faker.helpers.arrayElement(users.filter(u => u.role === 'teacher' || u.role === 'admin')).id,
+          recordedBy: faker.helpers.arrayElement(validRecorders).id,
         },
       });
     }
@@ -338,7 +348,88 @@ async function main() {
     }
   }
 
+  // Create Assessments
+  console.log('Creating assessments...');
+  const assessments = [];
+  for (let i = 0; i < 20; i++) {
+    const assessment = await prisma.assessment.create({
+      data: {
+        name: faker.helpers.arrayElement(['Kiểm tra 15 phút', 'Kiểm tra 1 tiết', 'Thi giữa kỳ', 'Thi cuối kỳ']),
+        description: faker.lorem.sentence(),
+        type: faker.helpers.arrayElement(['15_min', '45_min', 'homework', 'midterm', 'final']),
+        maxScore: faker.helpers.arrayElement([10, 15, 20, 100]),
+        date: faker.date.recent({ days: 30 }),
+        classId: faker.helpers.arrayElement(classes).id,
+        createdAt: faker.date.past(),
+      },
+    });
+    assessments.push(assessment);
+  }
+
+  // Create Grades
+  console.log('Creating grades...');
+  for (const assessment of assessments) {
+    // Get students enrolled in this class
+    const enrolledStudents = await prisma.enrollment.findMany({
+      where: { classId: assessment.classId },
+      include: { student: true }
+    });
+    
+    // Randomly select some students to take the assessment (80% chance)
+    const studentsToGrade = enrolledStudents.filter(() => faker.datatype.boolean({ probability: 0.8 }));
+    
+    // Get a valid teacher ID for grading (use the class teacher or any teacher)
+    const classTeacher = await prisma.class.findUnique({
+      where: { id: assessment.classId },
+      select: { teacherId: true }
+    });
+    
+    // Fallback to any teacher if class teacher not found
+    const teacherForGrading = classTeacher?.teacherId || (teachers.length > 0 ? teachers[0].id : null);
+    
+    if (!teacherForGrading) {
+      console.log('No teacher available for grading, skipping grades for this assessment');
+      continue;
+    }
+    
+    for (const enrollment of studentsToGrade) {
+      const score = faker.number.float({ 
+        min: 0, 
+        max: parseFloat(assessment.maxScore), 
+        fractionDigits: 1 
+      });
+      
+      await prisma.grade.create({
+        data: {
+          assessmentId: assessment.id,
+          studentId: enrollment.student.id,
+          score: score,
+          feedback: faker.helpers.arrayElement([
+            'Làm bài tốt!',
+            'Cần cải thiện thêm',
+            'Xuất sắc!',
+            'Cần chú ý hơn',
+            'Tốt, tiếp tục phát huy',
+            'Cần ôn tập lại kiến thức',
+            'Rất tốt!',
+            'Cần cố gắng hơn nữa'
+          ]),
+          gradedBy: teacherForGrading,
+          gradedAt: faker.date.between({ 
+            from: assessment.date, 
+            to: new Date(assessment.date.getTime() + 7 * 24 * 60 * 60 * 1000) // 7 ngày sau assessment.date
+          }),
+        },
+      });
+    }
+  }
+
+  const gradeCount = await prisma.grade.count();
+  const assessmentCount = await prisma.assessment.count();
+  
   console.log('Seeding complete! ✅');
+  console.log(`Created ${assessmentCount} assessments`);
+  console.log(`Created ${gradeCount} grades`);
 
 }
 

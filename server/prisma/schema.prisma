@@ -72,6 +72,8 @@ model Teacher {
   contractEnd DateTime? @map("contract_end") @db.Date
   subjects    String[] // ["Toán", "Lý", "Hóa"] - Môn dạy được
   salary      Decimal?  @db.Decimal(12, 2)
+  gender      String?   // Thêm field gender
+  birthDate   DateTime? @map("birth_date") @db.Date // Thêm field birthDate
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

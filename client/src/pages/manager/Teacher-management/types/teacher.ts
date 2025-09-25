@@ -30,5 +30,10 @@ export interface Employee {
     birthDate?: string
     birthMonth?: string
     birthYear?: string
+    gender?: string
+    salaryMin?: number
+    salaryMax?: number
+    hireDateFrom?: string
+    hireDateTo?: string
   }
   
