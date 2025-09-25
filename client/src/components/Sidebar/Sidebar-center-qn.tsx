@@ -231,7 +231,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                 <Building className="w-5 h-5 text-primary-foreground" />
                             </div>
                             <div>
-                                <h2 className="font-semibold text-lg">CenterUp</h2>
+                                <h2 className="font-semibold text-lg">QN Edu System</h2>
                                 <p className="text-xs text-muted-foreground">
                                     {user?.role === "center_owner" ? "Quản lý trung tâm" : "Giáo viên"}
                                 </p>
