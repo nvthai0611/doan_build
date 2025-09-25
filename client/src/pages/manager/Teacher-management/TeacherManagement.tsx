@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -34,152 +35,110 @@ import {
   ChevronRightIcon,
 } from "lucide-react"
 import type { Employee, Tab, FilterState } from "./types/teacher"
+import { teacherService } from "../../../services/teacherService"
 
-// Mock data for employees
-const employees: Employee[] = [
-  {
-    id: 1,
-    name: "Hòa Gấm Bi",
-    email: "mythai06105@gmail.com",
-    phone: "0386828929",
-    username: "haogambi@centerup",
-    code: "***6480A",
-    role: "Giáo viên",
-    gender: "Nam",
-    status: true,
-  },
-  {
-    id: 2,
-    name: "Sơn",
-    email: "ngocson8503@gmail.com",
-    phone: "0333669503",
-    username: "sonsiu@centerup",
-    code: "***3788A",
-    role: "Giáo viên",
-    gender: "Nam",
-    status: true,
-  },
-  {
-    id: 3,
-    name: "Thịnh Nguyễn",
-    email: "thinh.nguyen@amslink.edu.vn",
-    phone: "0943838882",
-    username: "thinh.nguyen@centerup",
-    code: "***6888A",
-    role: "Giáo viên",
-    gender: "Nam",
-    status: true,
-  },
-  {
-    id: 4,
-    name: "Ngô Quốc Tú",
-    email: "ngoquoctu1992@gmail.com",
-    phone: "0913232971",
-    username: "tungot23@centerup",
-    code: "***99CBA",
-    role: "Giáo viên",
-    gender: "Nam",
-    birthDate: "02/09/1992",
-    status: true,
-  },
-  {
-    id: 5,
-    name: "Lê Thị Mai Linh",
-    email: "ngoquoctu1992@gmail.com",
-    phone: "0913232971",
-    username: "mailinh123@centerup",
-    code: "***6C591",
-    role: "Giáo viên",
-    gender: "Nữ",
-    birthDate: "05/09/2000",
-    status: true,
-  },
-  {
-    id: 6,
-    name: "Phạm Dũng",
-    email: "plqd2000@gmail.com",
-    phone: "0913232971",
-    username: "dungplq@centerup",
-    code: "***4C003",
-    role: "Chủ trung tâm",
-    gender: "Nam",
-    status: true,
-  },
-]
 
 export default function TeacherQnmsManagement() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [filterOpen, setFilterOpen] = useState<boolean>(false)
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedRole, setSelectedRole] = useState<string>("Nhóm quyền")
   const [activeTab, setActiveTab] = useState<string>("all")
   const [collectData, setCollectData] = useState<boolean>(true)
   const [filterState, setFilterState] = useState<FilterState>({})
-  const [employeeData, setEmployeeData] = useState<Employee[]>(employees)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
 
-  const tabs: Tab[] = [
-    { key: "all", label: "Tất cả", count: 48 },
-    { key: "active", label: "Đang hoạt động", count: 42 },
-    { key: "inactive", label: "Dừng hoạt động", count: 6 },
-  ]
-
-  const filteredEmployees = useMemo(() => {
-    let filtered = employeeData
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (employee) =>
-          employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.phone.includes(searchTerm) ||
-          employee.username.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    if (selectedRole !== "Nhóm quyền") {
-      filtered = filtered.filter((employee) => employee.role === selectedRole)
-    }
-
-    if (activeTab === "active") {
-      filtered = filtered.filter((employee) => employee.status === true)
-    } else if (activeTab === "inactive") {
-      filtered = filtered.filter((employee) => employee.status === false)
-    }
-
-    if (filterState.birthDate || filterState.birthMonth || filterState.birthYear) {
-      filtered = filtered.filter((employee) => {
-        if (!employee.birthDate) return false
-
-        const [day, month, year] = employee.birthDate.split("/")
-
-        if (filterState.birthDate && day !== filterState.birthDate) return false
-        if (filterState.birthMonth && month !== filterState.birthMonth) return false
-        if (filterState.birthYear && year !== filterState.birthYear) return false
-
-        return true
-      })
-    }
-
-    return filtered
-  }, [employeeData, searchTerm, selectedRole, activeTab, filterState])
-
-  const paginatedEmployees = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredEmployees.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredEmployees, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
-
-  const handleEmployeeStatusToggle = (employeeId: number): void => {
-    setEmployeeData((prev) =>
-      prev.map((employee) => (employee.id === employeeId ? { ...employee, status: !employee.status } : employee)),
-    )
-    console.log(`[v0] Toggled status for employee ${employeeId}`)
+  const roleMap: { [key: string]: string } = {
+    "Giáo viên": "teacher",
+    "Chủ trung tâm": "center_owner",
+    "Giáo vụ": "admin"
   }
 
-  const handleViewEmployee = (employeeId: number): void => {
+  const statusMap: { [key: string]: string } = {
+    "all": "all",
+    "active": "active", 
+    "inactive": "inactive"
+  }
+
+  const { 
+    data: teachersData, 
+    isLoading: loading, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['teachers', searchTerm, selectedRole, activeTab, currentPage, itemsPerPage],
+    queryFn: async () => {
+      console.log("Data query:", {
+        search: searchTerm || undefined,
+        role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
+        status: statusMap[activeTab] as "active" | "inactive" | "all",
+        page: currentPage,
+        limit: itemsPerPage,
+        sortBy: "createdAt",
+        sortOrder: "desc"
+      })
+      
+      const result = await teacherService.getTeachers({
+        search: searchTerm || undefined,
+        role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
+        status: statusMap[activeTab] as "active" | "inactive" | "all",
+        page: currentPage,
+        limit: itemsPerPage,
+        sortBy: "createdAt",
+        sortOrder: "desc"
+      })
+      return result
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000, 
+  })
+
+  const employeeData = (teachersData as any)?.data || []
+  const totalCount = (teachersData as any)?.meta?.total || 0
+  const totalPages = (teachersData as any)?.meta?.totalPages || 1
+  
+  const finalEmployeeData = employeeData
+  const finalTotalCount = totalCount
+
+
+
+  const tabs: Tab[] = [
+    { key: "all", label: "Tất cả", count: finalTotalCount },
+    { key: "active", label: "Đang hoạt động", count: finalEmployeeData?.filter((emp: Employee) => emp.status).length || 0 },
+    { key: "inactive", label: "Dừng hoạt động", count: finalEmployeeData?.filter((emp: Employee) => !emp.status).length || 0 },
+  ]
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== undefined) {
+        setCurrentPage(1)
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  const paginatedEmployees = finalEmployeeData
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (employeeId: string) => teacherService.toggleTeacherStatus(employeeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] })
+      console.log("Teacher status toggled successfully")
+    },
+    onError: (error) => {
+      console.error("Error toggling teacher status:", error)
+      alert("Có lỗi xảy ra khi cập nhật trạng thái giáo viên")
+    }
+  })
+
+  const handleEmployeeStatusToggle = (employeeId: string): void => {
+    toggleStatusMutation.mutate(employeeId)
+  }
+
+  const handleViewEmployee = (employeeId: string): void => {
     navigate(`/center-qn/teachers/${employeeId}`)
   }
 
@@ -189,20 +148,40 @@ export default function TeacherQnmsManagement() {
     console.log(`[v0] Copied code: ${code}`)
   }
 
-  const handleDownloadTemplate = (): void => {
-    alert("Đang tải xuống mẫu nhân viên...")
-    console.log("[v0] Downloading employee template")
+  const handleDownloadTemplate = async (): Promise<void> => {
+    try {
+      const blob = await teacherService.downloadTemplate()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'teacher_template.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      console.log("[v0] Downloaded employee template")
+    } catch (error) {
+      console.error("Error downloading template:", error)
+      alert("Có lỗi xảy ra khi tải xuống mẫu")
+    }
   }
 
   const handleUploadFile = (): void => {
     const input = document.createElement("input")
     input.type = "file"
     input.accept = ".xlsx,.xls,.csv"
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
-        alert(`Đang tải lên file: ${file.name}`)
-        console.log(`[v0] Uploading file: ${file.name}`)
+        try {
+          const result = await teacherService.uploadTeachers(file)
+          alert(`Tải lên thành công: ${result.successCount} giáo viên, ${result.errorCount} lỗi`)
+          queryClient.invalidateQueries({ queryKey: ['teachers'] }) // Reload data
+          console.log(`[v0] Uploaded file: ${file.name}`)
+        } catch (error) {
+          console.error("Error uploading file:", error)
+          alert("Có lỗi xảy ra khi tải lên file")
+        }
       }
     }
     input.click()
@@ -213,13 +192,27 @@ export default function TeacherQnmsManagement() {
     setSelectedRole("Nhóm quyền")
     setFilterState({})
     setCurrentPage(1)
+    refetch()
     alert("Đã làm mới dữ liệu")
     console.log("[v0] Refreshed page data")
   }
 
-  const handleDownloadAll = (): void => {
-    alert("Đang tải xuống tất cả dữ liệu nhân viên...")
-    console.log("[v0] Downloading all employee data")
+  const handleDownloadAll = async (): Promise<void> => {
+    try {
+      const blob = await teacherService.downloadAllTeachers()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'all_teachers.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      console.log("[v0] Downloaded all employee data")
+    } catch (error) {
+      console.error("Error downloading all teachers:", error)
+      alert("Có lỗi xảy ra khi tải xuống dữ liệu")
+    }
   }
 
   const handleInviteEmployee = (): void => {
@@ -239,13 +232,6 @@ export default function TeacherQnmsManagement() {
   const handleItemsPerPageChange = (value: string): void => {
     setItemsPerPage(Number.parseInt(value))
     setCurrentPage(1)
-  }
-
-  const getTabCount = (tabKey: string): number => {
-    if (tabKey === "all") return employeeData.length
-    if (tabKey === "active") return employeeData.filter((emp) => emp.status).length
-    if (tabKey === "inactive") return employeeData.filter((emp) => !emp.status).length
-    return 0
   }
 
   const getRoleBadgeColor = (role: Employee["role"]): string => {
@@ -414,7 +400,7 @@ export default function TeacherQnmsManagement() {
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 }`}
               >
-                {tab.label} <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">{getTabCount(tab.key)}</span>
+                {tab.label} <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">{tab.count}</span>
               </button>
             ))}
           </div>
@@ -442,7 +428,39 @@ export default function TeacherQnmsManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedEmployees.map((employee: Employee, index: number) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center">
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Đang tải dữ liệu...
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-red-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <p>Có lỗi xảy ra khi tải dữ liệu</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => refetch()}
+                        className="mt-2"
+                      >
+                        Thử lại
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    Không có dữ liệu
+                  </td>
+                </tr>
+              ) : (
+                paginatedEmployees.map((employee: Employee, index: number) => (
                 <tr key={employee.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {(currentPage - 1) * itemsPerPage + index + 1}
@@ -499,7 +517,11 @@ export default function TeacherQnmsManagement() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Switch checked={employee.status} onCheckedChange={() => handleEmployeeStatusToggle(employee.id)} />
+                    <Switch 
+                      checked={employee.status} 
+                      onCheckedChange={() => handleEmployeeStatusToggle(employee.id)} 
+                      disabled={loading || toggleStatusMutation.isPending}
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <DropdownMenu>
@@ -517,7 +539,8 @@ export default function TeacherQnmsManagement() {
                     </DropdownMenu>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -546,8 +569,8 @@ export default function TeacherQnmsManagement() {
                 </Select>
               </div>
               <div className="text-sm text-gray-600">
-                {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredEmployees.length)}{" "}
-                trong {filteredEmployees.length}
+                {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, finalTotalCount)}{" "}
+                trong {finalTotalCount}
               </div>
               <div className="flex items-center gap-1">
                 <Button

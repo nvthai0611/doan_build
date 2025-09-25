@@ -1,6 +1,5 @@
 import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
-import Profile from "../pages/Auth/Profile";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
 import TeacherProfilePage from "../pages/teacher/Teacher-profile";
@@ -18,7 +17,6 @@ export const privateRoutes = (
       <Route path="students" element={<StudentsManagement />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
-        <Route path="teachers/schedule" element={<TeacherQnmsInfo />} />
       {/* có thể thêm: /finance, /reports, ... */}
     </Route>
 

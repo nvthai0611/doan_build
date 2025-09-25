@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -8,6 +8,9 @@ import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -34,9 +37,14 @@ import {
   Search,
   CalendarDays,
   Eye,
+  Save,
+  X,
 } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { teacherService } from "../../../../services/teacherService"
+import type { Employee } from "../types/teacher"
+import type { CreateTeacherRequest } from "../../../../services/teacherService"
 // Mock teaching sessions data
 const getTeachingSessions = (employeeId: string, year: number, month: number) => {
   const sessions = [
@@ -53,45 +61,7 @@ const getTeachingSessions = (employeeId: string, year: number, month: number) =>
   return sessions.filter((session) => session.date.getFullYear() === year && session.date.getMonth() === month)
 }
 
-// Mock employee data - in real app this would come from API
-const getEmployeeById = (id: string) => {
-  const employees = [
-    {
-      id: 1,
-      name: "Ngô Quốc Tú",
-      email: "nvthai061105@gmail.com",
-      phone: "0386828929",
-      username: "check@centerup",
-      code: "EMP-6C6A927B7D3D",
-      role: "Giáo viên",
-      gender: "Nam",
-      status: true,
-      verifiedPhone: "0386828929",
-      verifiedEmail: "nvthai061105@gmail.com",
-      loginUsername: "check@centerup",
-      accountStatus: true,
-      notes: "",
-    },
-    {
-      id: 2,
-      name: "Hòa Gấm Bi",
-      email: "mythai06105@gmail.com",
-      phone: "0386828929",
-      username: "haogambi@centerup",
-      code: "***6480A",
-      role: "Giáo viên",
-      gender: "Nam",
-      status: true,
-      verifiedPhone: "0386828929",
-      verifiedEmail: "mythai06105@gmail.com",
-      loginUsername: "haogambi@centerup",
-      accountStatus: true,
-      notes: "",
-    },
-  ]
-
-  return employees.find((emp) => emp.id === Number.parseInt(id))
-}
+// API integration for employee data
 
 // Type for leave requests
 type LeaveRequest = {
@@ -223,15 +193,43 @@ const getClassesData = (employeeId: string) => {
   ]
 }
 
-export default function EmployeeDetailPage() {
+export default function TeacherQnmsInfo() {
   const params = useParams()
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const employeeId = params.id as string
-  const employee = getEmployeeById(employeeId)
+
+  // Fetch employee data
+  const { data: employee, isLoading, error } = useQuery({
+    queryKey: ['teacher', employeeId],
+    queryFn: () => teacherService.getTeacherById(employeeId),
+    enabled: !!employeeId,
+  })
+  console.log(employee);
+
+  // Toggle status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: () => teacherService.toggleTeacherStatus(employeeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher', employeeId] })
+    },
+  })
+
+  // Update teacher mutation
+  const updateTeacherMutation = useMutation({
+    mutationFn: (data: Partial<CreateTeacherRequest>) =>
+      teacherService.updateTeacher(employeeId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher', employeeId] })
+      setIsEditDialogOpen(false)
+    },
+  })
 
   const [activeTab, setActiveTab] = useState("general")
-  const [accountStatus, setAccountStatus] = useState(employee?.accountStatus || false)
+  const [accountStatus, setAccountStatus] = useState(employee?.status || false)
   const [isVerified, setIsVerified] = useState(true)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editFormData, setEditFormData] = useState<Partial<CreateTeacherRequest>>({})
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date(2025, 8, 24))
@@ -254,11 +252,46 @@ export default function EmployeeDetailPage() {
   const [classesActiveTab, setClassesActiveTab] = useState("all")
   const [classesSearch, setClassesSearch] = useState("")
 
+  // Update account status when employee data changes
+  useEffect(() => {
+    if (employee) {
+      setAccountStatus(employee.status || false)
+    }
+  }, [employee])
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải thông tin giáo viên...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Lỗi tải dữ liệu</h1>
+          <p className="text-gray-600 mt-2">Không thể tải thông tin giáo viên</p>
+          <Button onClick={() => navigate(-1)} className="mt-4">
+            Quay lại
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Not found state
   if (!employee) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Không tìm thấy nhân viên</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Không tìm thấy giáo viên</h1>
           <Button onClick={() => navigate(-1)} className="mt-4">
             Quay lại
           </Button>
@@ -270,21 +303,38 @@ export default function EmployeeDetailPage() {
   const tabs = [
     { key: "general", label: "Thông tin chung", icon: User },
     { key: "schedule", label: "Lịch dạy", icon: Clock },
-    { key: "work", label: "Công việc", icon: Briefcase },
+    // { key: "work", label: "Công việc", icon: Briefcase },
     { key: "classes", label: "Lớp học", icon: GraduationCap },
     { key: "timesheet", label: "Bảng công", icon: Calendar },
     { key: "leave", label: "Đơn xin nghỉ", icon: FileText },
-    { key: "calls", label: "Nhật ký cuộc gọi", icon: PhoneCall },
+    // { key: "calls", label: "Nhật ký cuộc gọi", icon: PhoneCall },
   ]
 
   const handleAccountStatusToggle = () => {
     setAccountStatus(!accountStatus)
-    console.log(`[v0] Toggled account status for employee ${employee.name}`)
+    toggleStatusMutation.mutate()
   }
 
-  const handleEditEmployee = () => {
-    console.log(`[v0] Edit employee ${employee.name}`)
-    alert(`Chỉnh sửa thông tin ${employee.name}`)
+  const handleEditEmployee = () => {  
+    setEditFormData({
+      fullName: employee.name,
+      email: employee.email,
+      phone: employee.phone,
+      username: employee.username,
+      role: employee.role === "Giáo viên" ? "teacher" : employee.role === "Giáo vụ" ? "admin" : "center_owner",
+      isActive: employee.status,
+      notes: employee.notes,
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = () => {
+    updateTeacherMutation.mutate(editFormData)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditDialogOpen(false)
+    setEditFormData({})
   }
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -424,11 +474,10 @@ export default function EmployeeDetailPage() {
               <button
                 key={tab.key}
                 onClick={() => setLeaveActiveTab(tab.key)}
-                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${
-                  leaveActiveTab === tab.key
+                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${leaveActiveTab === tab.key
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 {tab.label}
                 <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{tab.count}</span>
@@ -443,7 +492,7 @@ export default function EmployeeDetailPage() {
                 type="date"
                 placeholder="Từ ngày"
                 value={leaveFromDate}
-                onChange={(e) => setLeaveFromDate(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLeaveFromDate(e.target.value)}
                 className="pl-10"
               />
               <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -453,7 +502,7 @@ export default function EmployeeDetailPage() {
                 type="date"
                 placeholder="Đến ngày"
                 value={leaveToDate}
-                onChange={(e) => setLeaveToDate(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLeaveToDate(e.target.value)}
                 className="pl-10"
               />
               <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -462,7 +511,7 @@ export default function EmployeeDetailPage() {
               <Input
                 placeholder="Tìm kiếm"
                 value={leaveSearch}
-                onChange={(e) => setLeaveSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLeaveSearch(e.target.value)}
                 className="pl-10"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -570,11 +619,10 @@ export default function EmployeeDetailPage() {
               <button
                 key={tab.key}
                 onClick={() => setTimesheetActiveTab(tab.key)}
-                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${
-                  timesheetActiveTab === tab.key
+                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${timesheetActiveTab === tab.key
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 {tab.label}
                 <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{tab.count}</span>
@@ -589,7 +637,7 @@ export default function EmployeeDetailPage() {
                 type="date"
                 placeholder="Từ ngày"
                 value={timesheetFromDate}
-                onChange={(e) => setTimesheetFromDate(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTimesheetFromDate(e.target.value)}
                 className="pl-10"
               />
               <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -599,7 +647,7 @@ export default function EmployeeDetailPage() {
                 type="date"
                 placeholder="Đến ngày"
                 value={timesheetToDate}
-                onChange={(e) => setTimesheetToDate(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTimesheetToDate(e.target.value)}
                 className="pl-10"
               />
               <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -608,7 +656,7 @@ export default function EmployeeDetailPage() {
               <Input
                 placeholder="Tìm kiếm theo tên buổi học, tên lớp, mã lớp"
                 value={timesheetSearch}
-                onChange={(e) => setTimesheetSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTimesheetSearch(e.target.value)}
                 className="pl-10"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -699,11 +747,10 @@ export default function EmployeeDetailPage() {
               <button
                 key={tab.key}
                 onClick={() => setClassesActiveTab(tab.key)}
-                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${
-                  classesActiveTab === tab.key
+                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${classesActiveTab === tab.key
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 {tab.label}
                 <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{tab.count}</span>
@@ -717,7 +764,7 @@ export default function EmployeeDetailPage() {
               <Input
                 placeholder="Tìm kiếm theo tên, mã lớp"
                 value={classesSearch}
-                onChange={(e) => setClassesSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClassesSearch(e.target.value)}
                 className="pl-10"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -811,16 +858,288 @@ export default function EmployeeDetailPage() {
     )
   }
 
+  const renderWorkTab = () => {
+    const workTasks = [
+      {
+        id: 1,
+        title: "Chuẩn bị bài giảng tuần tới",
+        description: "Soạn giáo án cho các buổi học tuần 25/09 - 01/10",
+        priority: "high",
+        status: "in_progress",
+        dueDate: "2025-09-25",
+        assignee: employee.name,
+      },
+      {
+        id: 2,
+        title: "Chấm bài kiểm tra giữa kỳ",
+        description: "Chấm và nhập điểm cho 45 bài kiểm tra môn Toán",
+        priority: "medium",
+        status: "pending",
+        dueDate: "2025-09-30",
+        assignee: employee.name,
+      },
+      {
+        id: 3,
+        title: "Họp phụ huynh học sinh",
+        description: "Tham gia buổi họp phụ huynh lớp PA4-3.5-18h00",
+        priority: "high",
+        status: "completed",
+        dueDate: "2025-09-20",
+        assignee: employee.name,
+      },
+    ]
+
+    const workTabs = [
+      { key: "all", label: "Tất cả", count: 3 },
+      { key: "pending", label: "Chờ xử lý", count: 1 },
+      { key: "in_progress", label: "Đang thực hiện", count: 1 },
+      { key: "completed", label: "Hoàn thành", count: 1 },
+    ]
+
+    return (
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-lg font-medium text-foreground">Công việc và nhiệm vụ</h2>
+        </div>
+
+        <div className="p-6">
+          {/* Status Tabs */}
+          <div className="flex space-x-8 mb-6">
+            {workTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setClassesActiveTab(tab.key)}
+                className={`flex items-center gap-2 pb-2 text-sm font-medium border-b-2 transition-colors ${classesActiveTab === tab.key
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+              >
+                {tab.label}
+                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{tab.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Input
+                placeholder="Tìm kiếm công việc"
+                value={classesSearch}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClassesSearch(e.target.value)}
+                className="pl-10"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+          </div>
+
+          {/* Tasks List */}
+          <div className="space-y-4">
+            {workTasks.map((task) => (
+              <div key={task.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-medium text-gray-900">{task.title}</h3>
+                      <Badge
+                        variant={task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {task.priority === "high" ? "Ưu tiên cao" : task.priority === "medium" ? "Ưu tiên trung bình" : "Ưu tiên thấp"}
+                      </Badge>
+                      <Badge
+                        variant={task.status === "completed" ? "default" : task.status === "in_progress" ? "secondary" : "outline"}
+                        className="text-xs"
+                      >
+                        {task.status === "completed" ? "Hoàn thành" : task.status === "in_progress" ? "Đang thực hiện" : "Chờ xử lý"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span>Hạn: {task.dueDate}</span>
+                      <span>Người thực hiện: {task.assignee}</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderCallsTab = () => {
+    const callLogs = [
+      {
+        id: 1,
+        date: "2025-09-24",
+        time: "14:30",
+        duration: "15 phút",
+        type: "incoming",
+        phoneNumber: "0386828929",
+        contactName: "Phụ huynh Nguyễn Văn A",
+        purpose: "Trao đổi về tình hình học tập",
+        notes: "Học sinh tiến bộ tốt, cần chú ý thêm phần bài tập về nhà",
+      },
+      {
+        id: 2,
+        date: "2025-09-23",
+        time: "16:45",
+        duration: "8 phút",
+        type: "outgoing",
+        phoneNumber: "0901234567",
+        contactName: "Phụ huynh Trần Thị B",
+        purpose: "Thông báo lịch kiểm tra",
+        notes: "Đã thông báo lịch kiểm tra giữa kỳ",
+      },
+      {
+        id: 3,
+        date: "2025-09-22",
+        time: "10:15",
+        duration: "12 phút",
+        type: "incoming",
+        phoneNumber: "0987654321",
+        contactName: "Phụ huynh Lê Văn C",
+        purpose: "Xin nghỉ học",
+        notes: "Học sinh bị ốm, xin nghỉ 2 buổi",
+      },
+    ]
+
+    return (
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-lg font-medium text-foreground">Nhật ký cuộc gọi</h2>
+        </div>
+
+        <div className="p-6">
+          {/* Search and Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="relative">
+              <Input
+                type="date"
+                placeholder="Từ ngày"
+                className="pl-10"
+              />
+              <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+            <div className="relative">
+              <Input
+                type="date"
+                placeholder="Đến ngày"
+                className="pl-10"
+              />
+              <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+            <div className="relative">
+              <Input
+                placeholder="Tìm kiếm theo tên, số điện thoại"
+                className="pl-10"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+          </div>
+
+          {/* Call Logs Table */}
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">STT</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Loại cuộc gọi</TableHead>
+                  <TableHead>Liên hệ</TableHead>
+                  <TableHead>Mục đích</TableHead>
+                  <TableHead>Thời lượng</TableHead>
+                  <TableHead>Ghi chú</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {callLogs.map((call, index) => (
+                  <TableRow key={call.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">{call.date}</div>
+                        <div className="text-xs text-gray-500">{call.time}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={call.type === "incoming" ? "default" : "secondary"}
+                        className={call.type === "incoming" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}
+                      >
+                        {call.type === "incoming" ? "Cuộc gọi đến" : "Cuộc gọi đi"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">{call.contactName}</div>
+                        <div className="text-xs text-gray-500">{call.phoneNumber}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{call.purpose}</TableCell>
+                    <TableCell className="text-sm">{call.duration}</TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">{call.notes}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm">
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-2">
+              <Switch />
+              <span className="text-sm text-gray-600">Thu gọn</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Số hàng mỗi trang:</span>
+              <Select defaultValue="10">
+                <SelectTrigger className="w-16">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">1-3 trong 3</span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" disabled>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+            {/* <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               Quay lại
-            </Button>
+            </Button> */}
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold text-foreground">Chi tiết nhân viên {employee.name}</h1>
               <Breadcrumb>
@@ -832,7 +1151,7 @@ export default function EmployeeDetailPage() {
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbLink href="/teachers" className="text-muted-foreground hover:text-foreground">
+                    <BreadcrumbLink hrefLang="/center-qn/teachers" className="text-muted-foreground hover:text-foreground">
                       Danh sách nhân viên
                     </BreadcrumbLink>
                   </BreadcrumbItem>
@@ -857,11 +1176,10 @@ export default function EmployeeDetailPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.key
+                  className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
                       ? "border-blue-600 text-blue-600"
                       : "border-transparent text-gray-600 hover:text-gray-900"
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
@@ -883,10 +1201,110 @@ export default function EmployeeDetailPage() {
                   <h2 className="text-lg font-medium text-foreground">Thông tin chung</h2>
                   <Clock className="w-4 h-4 text-gray-400" />
                 </div>
-                <Button variant="outline" size="sm" onClick={handleEditEmployee} className="gap-2 bg-transparent">
-                  <Edit className="w-4 h-4" />
-                  Chỉnh sửa
-                </Button>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleEditEmployee} className="gap-2 bg-transparent">
+                      <Edit className="w-4 h-4" />
+                      Chỉnh sửa
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Chỉnh sửa thông tin giáo viên</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="fullName">Họ tên</Label>
+                          <Input
+                            id="fullName"
+                            value={editFormData.fullName || ""}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={editFormData.email || ""}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFormData({ ...editFormData, email: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="phone">Số điện thoại</Label>
+                          <Input
+                            id="phone"
+                            value={editFormData.phone || ""}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="username">Tên đăng nhập</Label>
+                          <Input
+                            id="username"
+                            value={editFormData.username || ""}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFormData({ ...editFormData, username: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="role">Vai trò</Label>
+                          <Select
+                            value={editFormData.role || ""}
+                            onValueChange={(value) => setEditFormData({ ...editFormData, role: value as any })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn vai trò" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="teacher">Giáo viên</SelectItem>
+                              <SelectItem value="admin">Giáo vụ</SelectItem>
+                              <SelectItem value="center_owner">Chủ trung tâm</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="isActive"
+                            checked={editFormData.isActive || false}
+                            onCheckedChange={(checked) => setEditFormData({ ...editFormData, isActive: checked })}
+                          />
+                          <Label htmlFor="isActive">Trạng thái hoạt động</Label>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="notes">Ghi chú</Label>
+                        <Textarea
+                          id="notes"
+                          value={editFormData.notes || ""}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={handleCancelEdit}>
+                          <X className="w-4 h-4 mr-2" />
+                          Hủy
+                        </Button>
+                        <Button
+                          onClick={handleSaveEdit}
+                          disabled={updateTeacherMutation.isPending}
+                        >
+                          {updateTeacherMutation.isPending ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          ) : (
+                            <Save className="w-4 h-4 mr-2" />
+                          )}
+                          Lưu
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
@@ -905,11 +1323,6 @@ export default function EmployeeDetailPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Trạng thái tài khoản</span>
                         <Switch checked={accountStatus} onCheckedChange={handleAccountStatusToggle} />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm text-blue-600">Đã xác thực</span>
                       </div>
                     </div>
                   </div>
@@ -1055,25 +1468,8 @@ export default function EmployeeDetailPage() {
         {activeTab === "leave" && renderLeaveRequestsTab()}
         {activeTab === "timesheet" && renderTimesheetTab()}
         {activeTab === "classes" && renderClassesTab()}
-
-        {/* Other tab content placeholders */}
-        {!["general", "schedule", "leave", "timesheet", "classes"].includes(activeTab) && (
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="text-center py-12">
-              <div className="text-gray-400 mb-2">
-                {tabs.find((tab) => tab.key === activeTab)?.icon &&
-                  (() => {
-                    const Icon = tabs.find((tab) => tab.key === activeTab)!.icon
-                    return <Icon className="w-12 h-12 mx-auto" />
-                  })()}
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">
-                {tabs.find((tab) => tab.key === activeTab)?.label}
-              </h3>
-              <p className="text-gray-600">Nội dung sẽ được cập nhật sau</p>
-            </div>
-          </div>
-        )}
+        {activeTab === "work" && renderWorkTab()}
+        {activeTab === "calls" && renderCallsTab()}
       </div>
     </div>
   )

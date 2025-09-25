@@ -16,31 +16,30 @@ import { AuthMiddleware } from './common/middleware/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthService } from './modules/auth/auth.service';
 import { PrismaService } from './db/prisma.service';
-import { TeachersService } from './modules/teachers/teachers.service';
-import { TeachersModule } from './modules/teachers/teachers.module';
+
 import { StudentsModule } from './modules/manager/students/students.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { SchoolsModule } from './modules/school/schools/schools.module';
 import { ClassRequestsModule } from './modules/school/class-requests/class-requests.module';
 import { ClassSessionsModule } from './modules/school/class-sessions/class-sessions.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
+import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 // ...existing code...
-
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
-  TeachersModule,
-  TeacherModule,
-  StudentsModule,
-  ParentModule,
-  SchoolsModule,
-  ClassRequestsModule,
-  ClassSessionsModule,
+    TeacherModule,
+    StudentsModule,
+    ParentModule,
+    SchoolsModule,
+    ClassRequestsModule,
+    ClassSessionsModule,
+    AdminCenterModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AuthService, PrismaService, TeachersService],
+  providers: [AppService, AuthService, PrismaService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
