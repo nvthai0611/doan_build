@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FilterPanel, type FilterOptions } from "./components/filter-panel"
@@ -366,18 +374,26 @@ export default function StudentManagement() {
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Danh sách tài khoản học viên</h1>
-            <div className="flex items-center text-sm text-gray-600">
-              <span>Dashboard</span>
-              <ChevronRight className="w-4 h-4 mx-2" />
-              <span className="text-gray-400">Danh sách tài khoản học viên</span>
-            </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-foreground">Danh sách tài khoản học viên</h1>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-foreground font-medium">Danh sách tài khoản học viên</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="text-blue-600 border-blue-600 bg-white hover:bg-blue-50"
+              className="text-white border-blue-600 bg-blue-600 hover:bg-blue-50"
               onClick={handleAddStudent}
             >
               <Plus className="w-4 h-4 mr-2" />

@@ -215,15 +215,10 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
         }
     }
 
-    useEffect(() => {
-        onToggleCollapse?.(isCollapsed)
-    }, [])
-
     return (
         <div
             className={cn(
-                "flex flex-col h-full bg-card border-r transition-all duration-300",
-                isCollapsed ? "w-16" : "w-64",
+                "flex flex-col h-full bg-card transition-all duration-300",
                 className,
             )}
         >
