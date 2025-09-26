@@ -161,6 +161,7 @@ const teacherMenuItems = [
     href: "/teacher/grades",
     children: [
       { title: "Nhập điểm kiểm tra", href: "/teacher/grades/input" },
+      { title: "Xem điểm học sinh", href: "/teacher/grades/view" },
       { title: "Đánh giá học sinh", href: "/teacher/grades/evaluation" },
       { title: "Nhận xét định kỳ", href: "/teacher/grades/comments" },
     ],
