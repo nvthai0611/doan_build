@@ -3,6 +3,7 @@ import { ClassManagementService } from '../services/class-management.service';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { ClassesListResponseDto, CountByStatusResponseDto } from '../dto/classes/response-class.dto';
 import { ClassQueryDto } from '../dto/classes/query-class.dto';
+import { ClassDetailsQueryDto } from '../dto/classes/class-details-query.dto';
 import { checkId } from 'src/utils/validate.util';
 
 @ApiTags('Classes')
@@ -10,6 +11,28 @@ import { checkId } from 'src/utils/validate.util';
 export class ClassManagementController {
     constructor(private readonly classManagementService: ClassManagementService) {}
 
+    // Đặt route cụ thể TRƯỚC route có param
+    @Get('class/details')
+    @ApiOperation({summary: 'Lấy chi tiết lớp học theo ID lớp và ID giáo viên'})
+    @ApiQuery({ name: 'classId', required: true, description: 'ID của lớp học (UUID)' })
+    async getClassDetails(
+        @Query() query: any
+    ){
+        if (!query.classId) {
+            throw new HttpException('Class ID is required', HttpStatus.BAD_REQUEST);
+        }
+        const teacherId = "601a2029-dc56-4c2a-bc8d-440526cad471";
+        const classDetail = await this.classManagementService.getClassDetail(teacherId, query.classId)
+        return {
+            success: true,
+            status: HttpStatus.OK,
+            data: classDetail,
+            message: 'Lấy chi tiết lớp học thành công',
+            meta: null,
+        }
+    }
+
+    // Route có param đặt sau
     @Get('teacher/:teacherId')
     @ApiOperation({ 
         summary: 'Lấy danh sách lớp học theo ID giáo viên với filter và search',
@@ -58,22 +81,13 @@ export class ClassManagementController {
         const validLimit = limitNum > maxLimit ? maxLimit : limitNum;
         const validPage = pageNum < 1 ? 1 : pageNum;
 
-        // Log các tham số để debug
-        console.log('Controller - Filter params:', {
-            teacherId,
-            status: queryParams.status,
-            search: queryParams.search,
-            page: validPage,
-            limit: validLimit
-        });
-
         // goi den service cua teacher
         const result = await this.classManagementService.getClassByTeacherId(
             teacherId, 
             queryParams.status, 
             validPage, 
             validLimit,
-            queryParams.search
+            queryParams.search,
         );
         
         return {

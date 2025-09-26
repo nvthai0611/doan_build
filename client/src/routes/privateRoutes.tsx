@@ -8,6 +8,7 @@ import  TeacherManageClass  from "../pages/teacher/Teacher-manage-class/Teacher-
 
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
+import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
 export const privateRoutes = (
   <>
     <Route element={<DefaultLayout />}>
@@ -25,6 +26,7 @@ export const privateRoutes = (
         <Route path="profile" element={<TeacherProfilePage />} />
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
+        <Route path="classes/:classId" element={<ClassDetailsPage />} />
       </Route>
     </Route>
   </>
