@@ -21,7 +21,7 @@ export const authService = {
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await ApiService.post<LoginResponse>("/auth/login", credentials)
-    return response.data
+    return response.data as LoginResponse
   },
 
   /**
@@ -29,7 +29,7 @@ export const authService = {
    */
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
     const response = await ApiService.post<RegisterResponse>("/auth/register", userData)
-    return response.data
+    return response.data as RegisterResponse
   },
 
   /**
@@ -44,7 +44,7 @@ export const authService = {
    */
   refreshToken: async (refreshToken: string): Promise<RefreshTokenResponse> => {
     const response = await ApiService.post<RefreshTokenResponse>("/auth/refresh", { refreshToken })
-    return response.data
+    return response.data as RefreshTokenResponse
   },
 
   // ===== Password Management =====
@@ -52,7 +52,7 @@ export const authService = {
   /**
    * Đổi mật khẩu
    */
-  changePassword: async (data: ChangePasswordRequest): Promise<void> => {
+  changePassword: async (data: { oldPassword: string; newPassword: string }): Promise<void> => {
     await ApiService.post("/auth/change-password", data)
   },
 
@@ -77,7 +77,7 @@ export const authService = {
    */
   getProfile: async (): Promise<ProfileResponse> => {
     const response = await ApiService.get<ProfileResponse>("/auth/profile")
-    return response.data
+    return response.data as ProfileResponse
   },
 
   /**
@@ -85,7 +85,7 @@ export const authService = {
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<ProfileResponse> => {
     const response = await ApiService.patch<ProfileResponse>("/auth/profile", data)
-    return response.data
+    return response.data as ProfileResponse
   },
 
   /**
@@ -109,7 +109,7 @@ export const authService = {
    */
   getActiveSessions: async (): Promise<any[]> => {
     const response = await ApiService.get<any[]>("/auth/sessions")
-    return response.data
+    return response.data as any[] 
   },
 
   /**
@@ -124,5 +124,91 @@ export const authService = {
    */
   revokeAllOtherSessions: async (): Promise<void> => {
     await ApiService.post("/auth/revoke-all-sessions")
+  },
+
+  // ===== Permission Management =====
+  
+  /**
+   * Lấy danh sách quyền của user hiện tại
+   */
+  getUserPermissions: async (): Promise<string[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/permissions")
+      console.log("getUserPermissions response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((p: any) => p.name)
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data.map((p: any) => p.name)
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting user permissions:", error)
+      return []
+    }
+  },
+
+  /**
+   * Kiểm tra quyền cụ thể
+   */
+  checkPermission: async (permissionName: string): Promise<boolean> => {
+    try {
+      const response = await ApiService.get<{ data: { hasPermission: boolean } }>(`/auth/permissions/check/${permissionName}`)
+      console.log("checkPermission response:", response)
+      
+      if (response.data && response.data.data) {
+        return response.data.data.hasPermission
+      } else if (response.data && typeof response.data.data.hasPermission === 'boolean') {
+        return response.data.data.hasPermission
+      }
+      
+      return false
+    } catch (error) {
+      console.error("Error checking permission:", error)
+      return false
+    }
+  },
+
+  /**
+   * Lấy tất cả vai trò
+   */
+  getAllRoles: async (): Promise<any[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/roles")
+      console.log("getAllRoles response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting all roles:", error)
+      return []
+    }
+  },
+
+  /**
+   * Lấy tất cả quyền
+   */
+  getAllPermissions: async (): Promise<any[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/all-permissions")
+      console.log("getAllPermissions response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting all permissions:", error)
+      return []
+    }
   }
 }

@@ -142,7 +142,7 @@ const teacherMenuItems = [
     {
         title: "Tổng quan",
         icon: Home,
-        href: "/center-qn",
+        href: "/teacher/profile",
     },
     {
         title: "Quản lý lớp học",
@@ -329,11 +329,11 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             className={cn("w-full h-12 transition-all", isCollapsed ? "justify-center px-0" : "justify-start gap-3")}
                         >
                             <Avatar className="w-8 h-8 flex-shrink-0">
-                                <AvatarImage src={user?.avatar || "/placeholder.svg"} />
+                                <AvatarImage src="/placeholder.svg" />
                                 <AvatarFallback>
-                                    {user?.name
+                                    {user?.fullName
                                         ?.split(" ")
-                                        .map((n) => n[0])
+                                        .map((n: string) => n[0])
                                         .join("")
                                         .toUpperCase()}
                                 </AvatarFallback>
@@ -341,7 +341,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             {!isCollapsed && (
                                 <>
                                     <div className="flex-1 text-left">
-                                        <p className="text-sm font-medium">{user?.name}</p>
+                                        <p className="text-sm font-medium">{user?.fullName}</p>
                                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                                     </div>
                                     <ChevronDown className="w-4 h-4" />

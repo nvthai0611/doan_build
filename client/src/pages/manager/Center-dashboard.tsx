@@ -29,7 +29,7 @@ export function CenterOwnerDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">
-            Chào buổi sáng, <span className="text-primary">{user.name}</span>
+            Chào buổi sáng, <span className="text-primary">{user.fullName}</span>
           </h1>
           <p className="text-muted-foreground mt-1">Tổng quan hoạt động trung tâm hôm nay</p>
         </div>

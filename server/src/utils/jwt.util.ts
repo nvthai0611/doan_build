@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 export default class JWT {
   static createAccessToken(payload: unknown) {
-    return jwt.sign(payload, process.env.JWT_SECRET, {
+    return jwt.sign(payload as object, process.env.JWT_SECRET as string, {
       expiresIn: process.env.JWT_ACCESS_EXPIRE,
     });
   }
