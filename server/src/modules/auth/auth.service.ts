@@ -2,10 +2,14 @@ import { Injectable, UnauthorizedException, BadRequestException, NotFoundExcepti
 import { PrismaService } from 'src/db/prisma.service';
 import Hash from 'src/utils/hasing.util';
 import JWT from 'src/utils/jwt.util';
+import { PermissionService } from './permission.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionService: PermissionService
+  ) {}
 
   async getUserByField(field: string = 'id', value: string) {
     return this.prisma.user.findFirst({
@@ -16,6 +20,15 @@ export class AuthService {
         teacher: true,
         student: true,
         parent: true,
+        roleData: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true
+              }
+            }
+          }
+        }
       },
     });
   }
@@ -175,6 +188,9 @@ export class AuthService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
+    // Get user permissions
+    const permissions = await this.permissionService.getUserPermissions(userId);
+
     return {
       id: user.id,
       email: user.email,
@@ -187,6 +203,8 @@ export class AuthService {
       teacher: user.teacher,
       student: user.student,
       parent: user.parent,
+      permissions: permissions.map(p => p.name), // Return permission names for frontend
+      roleData: user.roleData
     };
   }
 

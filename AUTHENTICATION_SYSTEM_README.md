@@ -480,4 +480,3 @@ MIT License - Xem file LICENSE để biết thêm chi tiết.
 
 Hệ thống authentication này cung cấp một nền tảng vững chắc và bảo mật cho ứng dụng quản lý trung tâm giáo dục. Với kiến trúc modular và dễ mở rộng, bạn có thể dễ dàng thêm các tính năng mới hoặc tùy chỉnh theo nhu cầu cụ thể.
 
-**Happy Coding! 🚀**

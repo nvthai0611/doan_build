@@ -14,11 +14,15 @@ import { LoginDto } from './dto/loginDto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthService } from './auth.service';
+import { PermissionService } from './permission.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly permissionService: PermissionService
+  ) {}
 
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
@@ -112,5 +116,55 @@ export class AuthController {
     const userId = req.user.userId;
     const result = await this.authService.revokeSession(userId, sessionId);
     return result;
+  }
+
+  // Permission endpoints
+  @Get('permissions')
+  @UseGuards(JwtAuthGuard)
+  async getUserPermissions(@Req() req: any) {
+    const userId = req.user.userId;
+    const permissions = await this.permissionService.getUserPermissions(userId);
+    return {
+      success: true,
+      message: 'Lấy danh sách quyền thành công',
+      data: permissions,
+    };
+  }
+
+  @Get('permissions/check/:permissionName')
+  @UseGuards(JwtAuthGuard)
+  async checkPermission(
+    @Param('permissionName') permissionName: string,
+    @Req() req: any,
+  ) {
+    const userId = req.user.userId;
+    const hasPermission = await this.permissionService.hasPermission(userId, permissionName);
+    return {
+      success: true,
+      message: 'Kiểm tra quyền thành công',
+      data: { hasPermission, permissionName },
+    };
+  }
+
+  @Get('roles')
+  @UseGuards(JwtAuthGuard)
+  async getAllRoles() {
+    const roles = await this.permissionService.getAllRoles();
+    return {
+      success: true,
+      message: 'Lấy danh sách vai trò thành công',
+      data: roles,
+    };
+  }
+
+  @Get('all-permissions')
+  @UseGuards(JwtAuthGuard)
+  async getAllPermissions() {
+    const permissions = await this.permissionService.getAllPermissions();
+    return {
+      success: true,
+      message: 'Lấy danh sách tất cả quyền thành công',
+      data: permissions,
+    };
   }
 }

@@ -124,5 +124,91 @@ export const authService = {
    */
   revokeAllOtherSessions: async (): Promise<void> => {
     await ApiService.post("/auth/revoke-all-sessions")
+  },
+
+  // ===== Permission Management =====
+  
+  /**
+   * Lấy danh sách quyền của user hiện tại
+   */
+  getUserPermissions: async (): Promise<string[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/permissions")
+      console.log("getUserPermissions response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((p: any) => p.name)
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data.map((p: any) => p.name)
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting user permissions:", error)
+      return []
+    }
+  },
+
+  /**
+   * Kiểm tra quyền cụ thể
+   */
+  checkPermission: async (permissionName: string): Promise<boolean> => {
+    try {
+      const response = await ApiService.get<{ data: { hasPermission: boolean } }>(`/auth/permissions/check/${permissionName}`)
+      console.log("checkPermission response:", response)
+      
+      if (response.data && response.data.data) {
+        return response.data.data.hasPermission
+      } else if (response.data && typeof response.data.data.hasPermission === 'boolean') {
+        return response.data.data.hasPermission
+      }
+      
+      return false
+    } catch (error) {
+      console.error("Error checking permission:", error)
+      return false
+    }
+  },
+
+  /**
+   * Lấy tất cả vai trò
+   */
+  getAllRoles: async (): Promise<any[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/roles")
+      console.log("getAllRoles response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting all roles:", error)
+      return []
+    }
+  },
+
+  /**
+   * Lấy tất cả quyền
+   */
+  getAllPermissions: async (): Promise<any[]> => {
+    try {
+      const response = await ApiService.get<{ data: any[] }>("/auth/all-permissions")
+      console.log("getAllPermissions response:", response)
+      
+      if (response.data && Array.isArray(response.data)) {
+        return response.data
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data
+      }
+      
+      return []
+    } catch (error) {
+      console.error("Error getting all permissions:", error)
+      return []
+    }
   }
 }

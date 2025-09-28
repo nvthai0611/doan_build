@@ -18,6 +18,8 @@ export interface User {
   parent?: any
   createdAt?: string
   updatedAt?: string
+  permissions?: string[]
+  roleData?: any
 }
 
 interface AuthContextType {
@@ -145,7 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       console.log("Login: Attempting login with email:", email)
       const response = await authService.login({ email, password })
-      console.log("Login: Login response:", response)
+      console.log("Login response:", response)
       
       // Store tokens and user data
       localStorage.setItem("accessToken", response.accessToken)

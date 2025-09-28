@@ -12,13 +12,14 @@ import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQn
 import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
+import PermissionTestPage from "../pages/manager/PermissionTestPage";
 export const privateRoutes = (
   <>
     <Route element={<DefaultLayout />}>
       {/* Profile chung cho tất cả user */}
       <Route path="/profile" element={<AuthMiddleware />}>
         <Route index element={<ProfilePage />} />
-      </Route>
+      </Route>n
 
       {/* Chủ trung tâm */}
       <Route path="/center-qn" element={<AuthMiddleware allowedRoles={['center_owner']}/>}>
