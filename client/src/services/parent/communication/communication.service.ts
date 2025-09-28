@@ -6,17 +6,17 @@ export const parentCommunicationService = {
   
   getMessages: async (params?: MessageQueryParams): Promise<Message[]> => {
     const response = await ApiService.get<Message[]>("/parent/communication/messages", params)
-    return response.data
+    return response.data as Message[]
   },
 
   getMessageById: async (messageId: string): Promise<Message> => {
     const response = await ApiService.get<Message>(`/parent/communication/messages/${messageId}`)
-    return response.data
+    return response.data as Message
   },
 
   sendMessage: async (data: CreateMessageRequest): Promise<Message> => {
     const response = await ApiService.post<Message>("/parent/communication/messages", data)
-    return response.data
+    return response.data as Message
   },
 
   markMessageAsRead: async (messageId: string): Promise<void> => {
@@ -32,7 +32,7 @@ export const parentCommunicationService = {
   getNotifications: async (unreadOnly?: boolean): Promise<Notification[]> => {
     const params = unreadOnly ? { unreadOnly: true } : {}
     const response = await ApiService.get<Notification[]>("/parent/communication/notifications", params)
-    return response.data
+    return response.data as Notification[]
   },
 
   markNotificationAsRead: async (notificationId: string): Promise<void> => {
@@ -47,11 +47,11 @@ export const parentCommunicationService = {
   
   getAnnouncements: async (): Promise<Announcement[]> => {
     const response = await ApiService.get<Announcement[]>("/parent/communication/announcements")
-    return response.data
+    return response.data as Announcement[]
   },
 
   getAnnouncementById: async (announcementId: string): Promise<Announcement> => {
     const response = await ApiService.get<Announcement>(`/parent/communication/announcements/${announcementId}`)
-    return response.data
+    return response.data as Announcement
   }
 }
