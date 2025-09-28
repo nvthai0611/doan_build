@@ -227,7 +227,7 @@ model StudentSessionAttendance {
   id             BigInt       @id @default(autoincrement())
   sessionId      String       @map("session_id") @db.Uuid
   studentId      String       @map("student_id") @db.Uuid
-  status         String
+  status         String       
   note           String?
   recordedBy     String       @map("recorded_by") @db.Uuid
   recordedAt     DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
