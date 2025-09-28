@@ -14,7 +14,7 @@ export const parentChildService = {
 
   getChildEnrollments: async (childId: string): Promise<ChildEnrollment[]> => {
     const response = await ApiService.get<ChildEnrollment[]>(`/parent/children/${childId}/enrollments`)
-    return response.data
+    return response.data as ChildEnrollment[]
   },
 
   getChildAttendance: async (childId: string, classId?: string, startDate?: string, endDate?: string): Promise<ChildAttendance[]> => {
@@ -24,22 +24,22 @@ export const parentChildService = {
     if (endDate) params.endDate = endDate
     
     const response = await ApiService.get<ChildAttendance[]>(`/parent/children/${childId}/attendance`, params)
-    return response.data
+    return response.data as ChildAttendance[]
   },
 
   getChildGrades: async (childId: string, classId?: string): Promise<ChildGrade[]> => {
     const params = classId ? { classId } : {}
     const response = await ApiService.get<ChildGrade[]>(`/parent/children/${childId}/grades`, params)
-    return response.data
+    return response.data as ChildGrade[]
   },
 
   getChildPayments: async (childId: string): Promise<ChildPayment[]> => {
     const response = await ApiService.get<ChildPayment[]>(`/parent/children/${childId}/payments`)
-    return response.data
+    return response.data as ChildPayment[]
   },
 
   getChildReport: async (childId: string, period: string): Promise<any> => {
     const response = await ApiService.get(`/parent/children/${childId}/report`, { period })
-    return response.data
+    return response.data as any
   }
 }
