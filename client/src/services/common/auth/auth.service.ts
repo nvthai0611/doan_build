@@ -21,7 +21,7 @@ export const authService = {
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await ApiService.post<LoginResponse>("/auth/login", credentials)
-    return response.data
+    return response.data as LoginResponse
   },
 
   /**
@@ -29,7 +29,7 @@ export const authService = {
    */
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
     const response = await ApiService.post<RegisterResponse>("/auth/register", userData)
-    return response.data
+    return response.data as RegisterResponse
   },
 
   /**
@@ -44,7 +44,7 @@ export const authService = {
    */
   refreshToken: async (refreshToken: string): Promise<RefreshTokenResponse> => {
     const response = await ApiService.post<RefreshTokenResponse>("/auth/refresh", { refreshToken })
-    return response.data
+    return response.data as RefreshTokenResponse
   },
 
   // ===== Password Management =====
@@ -52,7 +52,7 @@ export const authService = {
   /**
    * Đổi mật khẩu
    */
-  changePassword: async (data: ChangePasswordRequest): Promise<void> => {
+  changePassword: async (data: { oldPassword: string; newPassword: string }): Promise<void> => {
     await ApiService.post("/auth/change-password", data)
   },
 
@@ -77,7 +77,7 @@ export const authService = {
    */
   getProfile: async (): Promise<ProfileResponse> => {
     const response = await ApiService.get<ProfileResponse>("/auth/profile")
-    return response.data
+    return response.data as ProfileResponse
   },
 
   /**
@@ -85,7 +85,7 @@ export const authService = {
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<ProfileResponse> => {
     const response = await ApiService.patch<ProfileResponse>("/auth/profile", data)
-    return response.data
+    return response.data as ProfileResponse
   },
 
   /**
@@ -109,7 +109,7 @@ export const authService = {
    */
   getActiveSessions: async (): Promise<any[]> => {
     const response = await ApiService.get<any[]>("/auth/sessions")
-    return response.data
+    return response.data as any[] 
   },
 
   /**

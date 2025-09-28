@@ -80,15 +80,78 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// Xử lý lỗi trả về
+// Xử lý lỗi trả về và auto-refresh token
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
 client.interceptors.response.use(
   (res: AxiosResponse) => res,
-  (err: any) => {
+  async (err: any) => {
+    const originalRequest = err.config;
     const { response } = err;
-    if (response?.status === 401) {
-      TokenStorage.clear();
-      window.location.reload();
+
+    if (response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return client(originalRequest);
+        }).catch((err) => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const response = await axios.post(
+            `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999'}/auth/refresh`,
+            {},
+            {
+              headers: {
+                'refresh-token': refreshToken,
+              },
+            }
+          );
+
+          const { accessToken } = response.data.data;
+          TokenStorage.set(accessToken);
+          processQueue(null, accessToken);
+          
+          return client(originalRequest);
+        } else {
+          throw new Error('No refresh token available');
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        TokenStorage.clear();
+        localStorage.removeItem('user');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/auth/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject<ApiError>({
       status: response?.status || 0,
       message: response?.data?.message || 'Lỗi không xác định',

@@ -5,6 +5,10 @@ export default class Hash {
     return bcrypt.hashSync(password, saltOfRounds);
   }
 
+  static hash(password: string) {
+    return bcrypt.hashSync(password, saltOfRounds);
+  }
+
   static verify(password: string, hash: string) {
     return bcrypt.compareSync(password, hash);
   }

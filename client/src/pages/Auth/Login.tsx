@@ -23,8 +23,8 @@ export function LoginForm() {
 
     try {
       await login(email, password)
-    } catch (err) {
-      setError("Email hoặc mật khẩu không đúng")
+    } catch (err: any) {
+      setError(err.message || "Email hoặc mật khẩu không đúng")
     }
   }
 
