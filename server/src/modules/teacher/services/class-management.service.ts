@@ -19,13 +19,6 @@ export class ClassManagementService {
             }
 
             // Log để debug
-            console.log('Service - Filter params:', {
-                teacherId,
-                status,
-                search,
-                page,
-                limit
-            });
 
             // Tính offset cho phân trang
             const offset = (page - 1) * limit;
@@ -55,10 +48,6 @@ export class ClassManagementService {
                     // }
                 ];
             }
-
-
-
-            console.log('Service - Final where condition:', JSON.stringify(whereCondition, null, 2));
 
             // Validate page và limit
             if (page < 1) page = 1;
@@ -103,8 +92,6 @@ export class ClassManagementService {
                 ]
             });
 
-            console.log('Service - Classes found:', classes.length);
-            
             // Transform data để trả về format đẹp hơn
             const transformedClasses = classes.map(cls => ({
                 ...cls,
@@ -138,12 +125,6 @@ export class ClassManagementService {
                     status: status || ''
                 }
             };
-
-            console.log('Service - Final result:', {
-                classCount: result.data.length,
-                pagination: result.pagination,
-                filters: result.filters
-            });
 
             return result;
     } catch (error) {
@@ -212,6 +193,52 @@ export class ClassManagementService {
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
+        }
+    }
+
+    async getClassDetail(teacherId: string, classId: string){
+        try {
+            if(!checkId(teacherId) || !checkId(classId)){
+                throw new HttpException({
+                    success: false,
+                    message: "ID không hợp lệ",
+                }, HttpStatus.BAD_REQUEST)
+            }
+            const result = await this.prisma.class.findFirst({
+                where:{teacherId, id: classId},
+                include:{
+                    room: true,
+                    subject: true,
+                    teacher: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    fullName: true,
+                                    email: true,
+                                }   
+                            }
+                        }
+                            }
+                }
+            })
+
+            if(!result){
+                throw new HttpException({
+                    success: false,
+                    message:"Lớp học không tồn tại hoặc bạn không có quyền truy cập",
+                },
+            HttpStatus.NOT_FOUND)
+            }
+            return result
+        } catch (error) {
+            if(error instanceof HttpException) throw error;
+
+            throw new HttpException({
+                success:false,
+                message: 'Có lỗi xảy ra khi lấy chi tiết lớp học',
+            }, HttpStatus.INTERNAL_SERVER_ERROR)
+            
         }
     }
 }

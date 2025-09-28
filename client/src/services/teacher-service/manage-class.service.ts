@@ -1,17 +1,15 @@
 import { ApiResponse } from "../../types/response";
 import { apiClient } from "../../utils/clientAxios";
 
+const  teacherId = "601a2029-dc56-4c2a-bc8d-440526cad471"; // Có thể lấy từ context hoặc props
 
 const getClassByTeacherId = async(
-    teacherId: string,
     status: string, 
     page: number = 1, 
     limit: number = 10,
     searchQuery?: string
 ): Promise<ApiResponse<any>> => {
     try {
-        console.log('Service - Params before sending:', { status, page, limit, searchQuery });
-        
         // Xây dựng query string thủ công để tránh vấn đề serialization
         const queryParams = new URLSearchParams();
         
@@ -30,12 +28,8 @@ const getClassByTeacherId = async(
 
         
         const url = `/class-management/teacher/${teacherId}?${queryParams.toString()}`;
-        console.log('Service - Final URL:', url);
-        
         const response = await apiClient.get(url);
-        
-        console.log('Service - Response status:', response.status);
-        
+
         // Kiểm tra status code thành công (200-299)
         if(response.status >= 200 && response.status < 300){
             return response as ApiResponse<any>;
@@ -50,7 +44,7 @@ const getClassByTeacherId = async(
 }
 
 
-const getCountByStatus = async(teacherId: string): Promise<ApiResponse<any>> => {
+const getCountByStatus = async(): Promise<ApiResponse<any>> => {
     try {
         const response = await apiClient.get(`/class-management/teacher/${teacherId}/count-by-status`);
 
@@ -67,7 +61,22 @@ const getCountByStatus = async(teacherId: string): Promise<ApiResponse<any>> => 
     }
 }
 
+const getClassDetail = async (classId: string): Promise<any> => {
+  try {
+    const response = await apiClient.get(`class-management/class/details?classId=${classId}`);
+    if (response.status >= 200 && response.status < 300) {
+      return response.data; // Trả về data gốc (any)
+    } else {
+        const errorData = response.data as any
+      throw new Error(errorData.message || 'Lỗi khi lấy dữ liệu');
+    }
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    throw error;
+  }
+};
 export {
     getClassByTeacherId,
-    getCountByStatus
+    getCountByStatus,
+    getClassDetail
 }

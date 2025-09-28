@@ -43,6 +43,7 @@ import { getClassByTeacherId, getCountByStatus } from '../../../services/teacher
 import { ApiResponse } from '../../../types/response';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
+import { useNavigate } from 'react-router-dom';
 
 //draft, active, completed, cancelled
 const statusColors = {
@@ -64,7 +65,6 @@ const daysOfWeek = [
 ];
 
 const fetchClassData = async ( 
-  teacherId: string,
   { status, page, limit, searchQuery }: { 
     status: string,
     page: number,
@@ -72,12 +72,12 @@ const fetchClassData = async (
     searchQuery?: string
   }
 ) => {
-  const res = await getClassByTeacherId(teacherId, status, page, limit, searchQuery);
+  const res = await getClassByTeacherId( status, page, limit, searchQuery);
   return res;
 };
 
-const fetchCountData = async (teacherId: string) => {
-  const res = await getCountByStatus(teacherId);
+const fetchCountData = async () => {
+  const res = await getCountByStatus();
   return res.data;
 };
 
@@ -86,6 +86,7 @@ export default function ClassManagement() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const navigate = useNavigate()
 
   const [underlineStyle, setUnderlineStyle] = useState({ width: 0, left: 0 });
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,7 +94,6 @@ export default function ClassManagement() {
   const [goToPage, setGoToPage] = useState('');
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   
-  const teacherId = "1d768285-97e0-4449-81a4-92071db1a531"; // Có thể lấy từ context hoặc props
 
   useEffect(() => {
     const activeTabElement = tabRefs.current[activeTab];
@@ -128,7 +128,7 @@ export default function ClassManagement() {
     isFetching 
   } = useQuery({
     queryKey: ["class", activeTab, currentPage, pageSize, debouncedSearchQuery],
-    queryFn: () => fetchClassData(teacherId, {
+    queryFn: () => fetchClassData( {
       status: activeTab, 
       page: currentPage, 
       limit: pageSize,
@@ -145,8 +145,8 @@ export default function ClassManagement() {
     data: countData,
     isLoading: isCountLoading 
   } = useQuery({
-    queryKey: ["classCount", teacherId],
-    queryFn: () => fetchCountData(teacherId),
+    queryKey: ["classCount"],
+    queryFn: () => fetchCountData(),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -168,15 +168,6 @@ export default function ClassManagement() {
   const appliedFilters = listClassResponse?.meta?.filters || null;
   
   // Debug info
-  console.log('Filter states:', {
-    activeTab,
-    debouncedSearchQuery,
-    currentPage,
-    pageSize
-  });
-  console.log('Pagination data:', pagination);
-  console.log('Applied filters from API:', appliedFilters);
-  console.log('Classes to render:', classesToRender.length);
   
   const formatDayToVietnamese = (dateStr: string)=> {
     const dayFormat = daysOfWeek.find(day => day.value === dateStr);
@@ -204,7 +195,6 @@ export default function ClassManagement() {
 
   // Hàm xử lý chuyển trang với smooth scroll
   const handlePageChange = (newPage: number) => {
-    console.log('Changing to page:', newPage);
     setCurrentPage(newPage);
     // Scroll to top of table
     document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -222,7 +212,7 @@ export default function ClassManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1  className="text-2xl font-semibold text-foreground">
             Danh sách lớp học
           </h1>
 
@@ -232,10 +222,10 @@ export default function ClassManagement() {
               Dashboard
             </span>
             <span>•</span>
-            <span className="hover:text-foreground cursor-pointer transition-colors duration-200">
+            {/* <span className="hover:text-foreground cursor-pointer transition-colors duration-200">
               Tài khoản
             </span>
-            <span>•</span>
+            <span>•</span> */}
             <span className="text-foreground">Danh sách lớp học</span>
           </nav>
         </div>
@@ -385,7 +375,7 @@ export default function ClassManagement() {
                   <TableCell className="font-medium">{index + 1}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200">
+                      <div onClick={() => navigate(`/teacher/classes/${classItem.id}`)} className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200">
                         {classItem.name}
                       </div>
                     </div>

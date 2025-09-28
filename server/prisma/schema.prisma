@@ -471,3 +471,13 @@ model TeacherDocument {
 
   @@map("teacher_documents")
 }
+
+model schema_audit {
+  id              Int       @id @default(autoincrement())
+  event_time      DateTime? @default(now()) @db.Timestamptz(6)
+  command_tag     String?
+  object_type     String?
+  object_identity String?
+  username        String?
+  sql_text        String?
+}
