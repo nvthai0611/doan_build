@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 model User {
   email                 String         @unique
   password              String
@@ -18,9 +24,9 @@ model User {
   updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   username              String         @unique
   id                    String         @id @default(uuid()) @db.Uuid
-  recordedAttendances   Attendance[]   @relation("RecordedBy")
+  recordedAttendances   StudentSessionAttendance[]   @relation("RecordedBy")
   auditLogs             AuditLog[]     @relation("PerformedBy")
-  gradedAssessments     Grade[]        @relation("GradedBy")
+  gradedAssessments     StudentAssessmentGrade[]        @relation("GradedBy")
   approvedLeaveRequests LeaveRequest[] @relation("ApprovedBy")
   createdLeaveRequests  LeaveRequest[] @relation("CreatedBy")
   uploadedMaterials     Material[]     @relation("UploadedBy")
@@ -38,12 +44,12 @@ model Parent {
   createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentLinks StudentParentLink[]
+  studentLinks StudentParentRelationship[]
 
   @@map("parents")
 }
 
-model StudentParentLink {
+model StudentParentRelationship {
   id             BigInt   @id @default(autoincrement())
   studentId      String   @map("student_id") @db.Uuid
   parentId       String   @map("parent_id") @db.Uuid
@@ -54,12 +60,13 @@ model StudentParentLink {
   student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, parentId])
-  @@map("student_parent_links")
+  @@map("student_parent_relationships")
 }
 
 model Teacher {
   id            String            @id @default(uuid()) @db.Uuid
   userId        String            @unique @map("user_id") @db.Uuid
+  schoolId      String?           @map("school_id") @db.Uuid
   hireDate      DateTime?         @map("hire_date") @db.Date
   contractEnd   DateTime?         @map("contract_end") @db.Date
   subjects      String[]
@@ -67,12 +74,13 @@ model Teacher {
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   birthDate     DateTime?         @map("birth_date") @db.Date
-  gender        String?
+  gender        Gender?
   classes       Class[]
   contracts     Contract[]
   leaveRequests LeaveRequest[]
   payrolls      Payroll[]
   documents     TeacherDocument[]
+  school        School?           @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("teachers")
@@ -82,21 +90,21 @@ model Student {
   id             String              @id @default(uuid()) @db.Uuid
   userId         String              @unique @map("user_id") @db.Uuid
   studentCode    String?             @unique @map("student_code")
-  dateOfBirth    DateTime?           @map("date_of_birth") @db.Date
-  gender         String?
+  birthDate      DateTime?           @map("birth_date") @db.Date
+  gender         Gender?
   address        String?
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   grade          String?
   schoolId       String              @map("school_id") @db.Uuid
-  attendances    Attendance[]
-  classRequests  ClassRequest[]
+  attendances    StudentSessionAttendance[]
+  classRequests  StudentClassRequest[]
   enrollments    Enrollment[]
   feeRecords     FeeRecord[]
-  grades         Grade[]
+  grades         StudentAssessmentGrade[]
   leaveRequests  LeaveRequest[]
   payments       Payment[]
-  parentLinks    StudentParentLink[]
+  parentLinks    StudentParentRelationship[]
   studentReports StudentReport[]
   school         School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -112,6 +120,7 @@ model School {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   students  Student[]
+  teachers  Teacher[]
 
   @@map("schools")
 }
@@ -143,7 +152,7 @@ model Class {
   status            String           @default("draft")
   subjectId         String           @map("subject_id") @db.Uuid
   assessments       Assessment[]
-  classRequests     ClassRequest[]
+  classRequests     StudentClassRequest[]
   sessions          ClassSession[]
   feeStructure      FeeStructure?    @relation(fields: [feeStructureId], references: [id])
   room              Room?            @relation(fields: [roomId], references: [id])
@@ -166,7 +175,7 @@ model ClassSession {
   status      String       @default("scheduled")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   notes       String?
-  attendances Attendance[]
+  attendances StudentSessionAttendance[]
   class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   room        Room?        @relation(fields: [roomId], references: [id])
 
@@ -200,7 +209,7 @@ model Enrollment {
   @@map("enrollments")
 }
 
-model ClassRequest {
+model StudentClassRequest {
   id          String    @id @default(uuid()) @db.Uuid
   studentId   String    @map("student_id") @db.Uuid
   classId     String    @map("class_id") @db.Uuid
@@ -211,10 +220,10 @@ model ClassRequest {
   class       Class     @relation(fields: [classId], references: [id])
   student     Student   @relation(fields: [studentId], references: [id])
 
-  @@map("class_requests")
+  @@map("student_class_requests")
 }
 
-model Attendance {
+model StudentSessionAttendance {
   id             BigInt       @id @default(autoincrement())
   sessionId      String       @map("session_id") @db.Uuid
   studentId      String       @map("student_id") @db.Uuid
@@ -227,7 +236,7 @@ model Attendance {
   student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
-  @@map("attendances")
+  @@map("student_session_attendance")
 }
 
 model Assessment {
@@ -240,12 +249,12 @@ model Assessment {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   description String?
   class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  grades      Grade[]
+  grades      StudentAssessmentGrade[]
 
   @@map("assessments")
 }
 
-model Grade {
+model StudentAssessmentGrade {
   id           BigInt     @id @default(autoincrement())
   assessmentId String     @map("assessment_id") @db.Uuid
   studentId    String     @map("student_id") @db.Uuid
@@ -258,7 +267,7 @@ model Grade {
   student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, studentId])
-  @@map("grades")
+  @@map("student_assessment_grades")
 }
 
 model Material {
