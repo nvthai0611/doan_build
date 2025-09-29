@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -44,6 +44,7 @@ export default function TeacherQnmsManagement() {
   const queryClient = useQueryClient()
   const [filterOpen, setFilterOpen] = useState<boolean>(false)
   const [searchTerm, setSearchTerm] = useState<string>("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>("")
   const [selectedRole, setSelectedRole] = useState<string>("Nhóm quyền")
   const [activeTab, setActiveTab] = useState<string>("all")
   const [collectData, setCollectData] = useState<boolean>(true)
@@ -69,24 +70,10 @@ export default function TeacherQnmsManagement() {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['teachers', searchTerm, selectedRole, activeTab, currentPage, itemsPerPage, filterState],
+    queryKey: ['teachers', debouncedSearchTerm, selectedRole, activeTab, currentPage, itemsPerPage, filterState],
     queryFn: async () => {
-      console.log("Data query:", {
-        search: searchTerm || undefined,
-        role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
-        status: statusMap[activeTab] as "active" | "inactive" | "all",
-        page: currentPage,
-        limit: itemsPerPage,
-        sortBy: "createdAt",
-        sortOrder: "desc",
-        // Add filter parameters
-        gender: filterState.gender && filterState.gender !== "all" ? filterState.gender : undefined,
-        birthYear: filterState.birthYear || undefined,
-      })
-      console.log("Filter state:", filterState)
-      
       const result = await teacherService.getTeachers({
-        search: searchTerm || undefined,
+        search: debouncedSearchTerm || undefined,
         role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
         status: statusMap[activeTab] as "active" | "inactive" | "all",
         page: currentPage,
@@ -121,20 +108,23 @@ export default function TeacherQnmsManagement() {
     { key: "inactive", label: "Dừng hoạt động", count: finalEmployeeData?.filter((emp: Employee) => !emp.status).length || 0 },
   ]
 
+  // Debounce search term để giảm số lần gọi API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+      // Reset về trang 1 khi search thay đổi
+      if (searchTerm !== debouncedSearchTerm) {
+        setCurrentPage(1)
+      }
+    }, 500) // Delay 500ms
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, debouncedSearchTerm])
+
   // Gọi lại API khi component mount (quay lại trang)
   useEffect(() => {
     refetch()
   }, [])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm !== undefined) {
-        setCurrentPage(1)
-      }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [searchTerm])
 
   const paginatedEmployees = finalEmployeeData
 
@@ -206,6 +196,7 @@ export default function TeacherQnmsManagement() {
 
   const handleRefreshPage = (): void => {
     setSearchTerm("")
+    setDebouncedSearchTerm("")
     setSelectedRole("Nhóm quyền")
     setFilterState({})
     setCurrentPage(1)
@@ -317,6 +308,12 @@ export default function TeacherQnmsManagement() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+              {/* Loading indicator khi đang debounce */}
+              {searchTerm !== debouncedSearchTerm && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -348,9 +345,9 @@ export default function TeacherQnmsManagement() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tất cả</SelectItem>
-                          <SelectItem value="Nam">Nam</SelectItem>
-                          <SelectItem value="Nữ">Nữ</SelectItem>
-                          <SelectItem value="Khác">Khác</SelectItem>
+                          <SelectItem value="MALE">Nam</SelectItem>
+                          <SelectItem value="FEMALE">Nữ</SelectItem>
+                          <SelectItem value="OTHER">Khác</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

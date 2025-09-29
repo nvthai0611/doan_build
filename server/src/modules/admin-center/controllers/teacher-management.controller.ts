@@ -30,7 +30,6 @@ export class TeacherManagementController {
 
   @Get()
   findAll(@Query() queryDto: QueryTeacherDto) {
-    console.log("📡 API Query:", queryDto);
     return this.teacherManagementService.findAllTeachers(queryDto);
   }
 

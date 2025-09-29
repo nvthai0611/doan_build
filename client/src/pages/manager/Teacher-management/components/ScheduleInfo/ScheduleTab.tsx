@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -21,276 +21,33 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { teacherService } from "../../../../../services/teacherService"
 import Loading from "../../../../../components/Loading/LoadingPage"
 
-interface ScheduleTabProps {
-  employeeId: string
-  currentDate: Date
-  selectedMonth: string
-  selectedYear: string
-  setCurrentDate: (date: Date) => void
-  setSelectedMonth: (month: string) => void
-  setSelectedYear: (year: string) => void
-}
+// Import từ các file đã tách
+import { ScheduleTabProps, TeachingSession } from "./types"
+import { ViewType, MONTH_NAMES, DAY_NAMES } from "./enums"
+import { 
+  getDaysInMonth, 
+  getFirstDayOfMonth, 
+  isToday, 
+  getSessionsForDay, 
+  getSubjectColor, 
+  getStatusColor, 
+  getStudentStatusText,
+  navigateMonth,
+  navigateWeek,
+  navigateDay,
+  goToToday,
+  getWeekDates,
+  getSessionsForWeek,
+  getSessionsForTimeSlot,
+  formatWeekRange,
+  getWeekContainingToday
+} from "./utils"
+import { useTeachingSessions } from "./hooks"
 
-interface TeachingSession {
-  id: number
-  date: Date
-  title: string
-  time: string
-  subject: string
-  class: string
-  room: string
-  hasAlert: boolean
-  status: "scheduled" | "completed" | "cancelled"
-  teacher: string
-  students: Array<{
-    id: string
-    name: string
-    avatar?: string
-    status: "present" | "absent" | "late"
-  }>
-  attendanceWarnings: string[]
-  description?: string
-  materials?: string[]
-}
 
-// Hook để gọi API lịch dạy
-const useTeachingSessions = (employeeId: string, year: number, month: number) => {
-  console.log(year, month);
-  
-  const [sessions, setSessions] = useState<TeachingSession[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!employeeId) return
-      
-      setLoading(true)
-      setError(null)
-      
-      try {
-        const response = await teacherService.getTeacherSchedule(employeeId, year, month)
-        console.log('Schedule API Response:', response)
-        
-        if (response.data && (response.data as any).sessions) {
-          const formattedSessions: TeachingSession[] = (response.data as any).sessions.map((session: any) => ({
-            id: parseInt(session.id.replace(/-/g, '').substring(0, 8), 16),
-            date: new Date(session.date),
-            title: session.title,
-            time: session.time,
-            subject: session.subject,
-            class: session.class,
-            room: session.room,
-            hasAlert: session.hasAlert,
-            status: session.status,
-            teacher: session.teacher,
-            students: session.students || [],
-            attendanceWarnings: session.attendanceWarnings || [],
-            description: session.description,
-            materials: session.materials || []
-          }))
-          setSessions(formattedSessions)
-        } else {
-          // Fallback to mock data nếu API không trả về dữ liệu
-          setSessions(getMockSessions(year, month))
-        }
-      } catch (err) {
-        console.error('Error fetching schedule:', err)
-        // Fallback to mock data khi có lỗi
-        setSessions(getMockSessions(year, month))
-        setError('Không thể tải dữ liệu từ server, hiển thị dữ liệu mẫu')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchSessions()
-  }, [employeeId, year, month])
-
-  return { sessions, loading, error }
-}
-
-// Mock data fallback
-const getMockSessions = (year: number, month: number): TeachingSession[] => {
-  const sessions: TeachingSession[] = [
-    // Tháng 9/2025 (month = 8)
-    {
-      id: 1,
-      date: new Date(2025, 8, 2),
-      title: "Buổi 1",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10A",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "1", name: "Nguyễn Văn A", status: "present" },
-        { id: "2", name: "Trần Thị B", status: "absent" },
-        { id: "3", name: "Lê Văn C", status: "present" },
-      ],
-      attendanceWarnings: [
-        "*Có 2 học viên chưa điểm danh*",
-        "*Có 2 học viên chưa được chấm điểm tiểu chí buổi học*",
-        "*Có 1 giáo viên chưa điểm danh*",
-      ],
-      description: "Phương học: Chưa cập nhật",
-      materials: ["Sách giáo khoa Toán 10", "Bài tập thực hành"],
-    },
-    {
-      id: 2,
-      date: new Date(2025, 8, 2),
-      title: "Buổi 2",
-      time: "14:00-16:00",
-      subject: "Vật lý",
-      class: "11B",
-      room: "P102",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "4", name: "Phạm Văn D", status: "present" },
-        { id: "5", name: "Hoàng Thị E", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Thí nghiệm vật lý",
-    },
-    {
-      id: 3,
-      date: new Date(2025, 8, 3),
-      title: "Buổi 3",
-      time: "10:00-12:00",
-      subject: "Hóa học",
-      class: "12A",
-      room: "P103",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "6", name: "Vũ Văn F", status: "late" },
-        { id: "7", name: "Đỗ Thị G", status: "present" },
-        { id: "8", name: "Bùi Văn H", status: "absent" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên đi muộn*", "*Có 1 học viên vắng mặt*"],
-      description: "Phương học: Thí nghiệm hóa học",
-    },
-    {
-      id: 4,
-      date: new Date(2025, 8, 4),
-      title: "Buổi 2",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10B",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "9", name: "Cao Văn I", status: "present" },
-        { id: "10", name: "Lý Thị K", status: "present" },
-      ],
-      attendanceWarnings: ["*Có 1 giáo viên chưa điểm danh*"],
-      description: "Phương học: Chưa cập nhật",
-    },
-    {
-      id: 5,
-      date: new Date(2025, 8, 11),
-      title: "Buổi 4",
-      time: "10:00-12:00",
-      subject: "Vật lý",
-      class: "11A",
-      room: "P102",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "11", name: "Mai Văn L", status: "present" },
-        { id: "12", name: "Tô Thị M", status: "present" },
-        { id: "13", name: "Hồ Văn N", status: "absent" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên vắng mặt*"],
-      description: "Phương học: Lý thuyết và thực hành",
-    },
-    {
-      id: 6,
-      date: new Date(2025, 8, 18),
-      title: "Buổi 5",
-      time: "14:00-16:00",
-      subject: "Tiếng Anh",
-      class: "12B",
-      room: "P104",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "14", name: "Đinh Văn O", status: "present" },
-        { id: "15", name: "Võ Thị P", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Giao tiếp tiếng Anh",
-    },
-    {
-      id: 7,
-      date: new Date(2025, 8, 23),
-      title: "Buổi 6",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10B",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "16", name: "Phan Văn Q", status: "present" },
-        { id: "17", name: "Dương Thị R", status: "late" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên đi muộn*"],
-      description: "Phương học: Giải bài tập nâng cao",
-    },
-    {
-      id: 8,
-      date: new Date(2025, 8, 25),
-      title: "Buổi 7",
-      time: "10:00-12:00",
-      subject: "Vật lý",
-      class: "11A",
-      room: "P102",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "18", name: "Lương Văn S", status: "present" },
-        { id: "19", name: "Chu Thị T", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Ôn tập kiểm tra",
-    },
-    {
-      id: 9,
-      date: new Date(2025, 8, 30),
-      title: "Buổi 8",
-      time: "14:00-16:00",
-      subject: "Hóa học",
-      class: "12A",
-      room: "P103",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "20", name: "Trịnh Văn U", status: "present" },
-        { id: "21", name: "Đặng Thị V", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Thí nghiệm tổng hợp",
-    },
-  ]
-
-  return sessions.filter((session) => session.date.getFullYear() === year && session.date.getMonth() === month)
-}
 
 export default function ScheduleTab({
   employeeId,
@@ -303,6 +60,18 @@ export default function ScheduleTab({
 }: ScheduleTabProps) {
   const [selectedSession, setSelectedSession] = useState<TeachingSession | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [viewType, setViewType] = useState<ViewType>("month")
+  const [currentWeekDate, setCurrentWeekDate] = useState<Date>(new Date())
+
+  // Handle view type change
+  const handleViewTypeChange = (newViewType: ViewType) => {
+    setViewType(newViewType)
+    
+    // Khi chuyển sang chế độ tuần, hiển thị tuần có ngày hôm nay
+    if (newViewType === "week") {
+      setCurrentWeekDate(new Date())
+    }
+  }
   
   const { sessions, loading, error } = useTeachingSessions(
     employeeId, 
@@ -310,86 +79,10 @@ export default function ScheduleTab({
     Number.parseInt(selectedMonth) 
   )
 
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate()
-  }
-
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month, 1).getDay()
-  }
-
   const daysInMonth = getDaysInMonth(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
   const firstDay = getFirstDayOfMonth(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const emptyDays = Array.from({ length: firstDay }, (_, i) => i)
-
-  const getSessionsForDay = (day: number) => {
-    const dayDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, day)
-    return sessions.filter(
-      (session) =>
-        session.date.getDate() === day &&
-        session.date.getMonth() === dayDate.getMonth() &&
-        session.date.getFullYear() === dayDate.getFullYear(),
-    )
-  }
-
-  const isToday = (day: number) => {
-    const today = new Date()
-    const dayDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, day)
-    return today.toDateString() === dayDate.toDateString()
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "cancelled":
-        return "bg-red-100 text-red-800 border-red-200"
-      case "scheduled":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  const getSubjectColor = (subject: string) => {
-    const colors: { [key: string]: string } = {
-      "Toán học": "bg-purple-500 text-white",
-      "Vật lý": "bg-blue-500 text-white",
-      "Hóa học": "bg-green-500 text-white",
-      "Tiếng Anh": "bg-yellow-500 text-white",
-      "Ngữ văn": "bg-pink-500 text-white",
-    }
-    return colors[subject] || "bg-gray-500 text-white"
-  }
-
-  const navigateMonth = (direction: "prev" | "next") => {
-    const currentMonth = Number.parseInt(selectedMonth)
-    const currentYear = Number.parseInt(selectedYear)
-
-    if (direction === "prev") {
-      if (currentMonth === 1) {
-        setSelectedMonth("12")
-        setSelectedYear((currentYear - 1).toString())
-      } else {
-        setSelectedMonth((currentMonth - 1).toString())
-      }
-    } else {
-      if (currentMonth === 12) {
-        setSelectedMonth("1")
-        setSelectedYear((currentYear + 1).toString())
-      } else {
-        setSelectedMonth((currentMonth + 1).toString())
-      }
-    }
-  }
-
-  const goToToday = () => {
-    const today = new Date()
-    setSelectedMonth((today.getMonth() + 1).toString())
-    setSelectedYear(today.getFullYear().toString())
-    setCurrentDate(today)
-  }
 
   const handleSessionClick = (session: TeachingSession) => {
     setSelectedSession(session)
@@ -409,33 +102,319 @@ export default function ScheduleTab({
     }
   }
 
-  const getStudentStatusText = (status: string) => {
-    switch (status) {
-      case "present":
-        return "Có mặt"
-      case "absent":
-        return "Vắng mặt"
-      case "late":
-        return "Đi muộn"
+  // Navigation function based on view type
+  const handleNavigation = (direction: "prev" | "next") => {
+    switch (viewType) {
+      case "month":
+        navigateMonth(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
+        break
+      case "week":
+        // Navigation cho tuần sử dụng currentWeekDate
+        const newWeekDate = new Date(currentWeekDate)
+        if (direction === "prev") {
+          newWeekDate.setDate(newWeekDate.getDate() - 7)
+        } else {
+          newWeekDate.setDate(newWeekDate.getDate() + 7)
+        }
+        setCurrentWeekDate(newWeekDate)
+        setSelectedMonth((newWeekDate.getMonth() + 1).toString())
+        setSelectedYear(newWeekDate.getFullYear().toString())
+        break
+      case "day":
+        navigateDay(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
+        break
+      case "list":
+        navigateMonth(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
+        break
       default:
-        return "Chưa xác định"
+        navigateMonth(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
     }
   }
 
-  const monthNames = [
-    "Tháng 1",
-    "Tháng 2",
-    "Tháng 3",
-    "Tháng 4",
-    "Tháng 5",
-    "Tháng 6",
-    "Tháng 7",
-    "Tháng 8",
-    "Tháng 9",
-    "Tháng 10",
-    "Tháng 11",
-    "Tháng 12",
-  ]
+  // Get display info based on view type
+  const getDisplayInfo = () => {
+    switch (viewType) {
+      case "month":
+        return `${MONTH_NAMES[Number.parseInt(selectedMonth) - 1]}, ${selectedYear}`
+      case "week":
+        // Tạo tuần dựa trên currentWeekDate
+        const startOfWeek = new Date(currentWeekDate)
+        startOfWeek.setDate(currentWeekDate.getDate() - currentWeekDate.getDay())
+        
+        const weekDates: Date[] = []
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startOfWeek)
+          date.setDate(startOfWeek.getDate() + i)
+          weekDates.push(date)
+        }
+        return formatWeekRange(weekDates)
+      case "day":
+        const currentDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, 1)
+        return currentDate.toLocaleDateString("vi-VN", { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })
+      case "list":
+        return `${MONTH_NAMES[Number.parseInt(selectedMonth) - 1]}, ${selectedYear}`
+      default:
+        return `${MONTH_NAMES[Number.parseInt(selectedMonth) - 1]}, ${selectedYear}`
+    }
+  }
+
+  // Render different views based on viewType
+  const renderView = () => {
+    switch (viewType) {
+      case "month":
+        return renderMonthView()
+      case "week":
+        return renderWeekView()
+      case "day":
+        return renderDayView()
+      case "list":
+        return renderListView()
+      default:
+        return renderMonthView()
+    }
+  }
+
+  // Month view (existing calendar)
+  const renderMonthView = () => (
+    <Card>
+      <CardContent>
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {/* Day headers */}
+          {DAY_NAMES.map((day) => (
+            <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 bg-gray-50 rounded-t-lg">
+              {day}
+            </div>
+          ))}
+
+          {/* Empty days for first week */}
+          {emptyDays.map((day) => (
+            <div key={`empty-${day}`} className="p-2 min-h-[120px] border border-gray-200 bg-gray-50"></div>
+          ))}
+
+          {/* Calendar days */}
+          {days.map((day) => {
+            const daySessions = getSessionsForDay(sessions, day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
+            const isCurrentDay = isToday(day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
+            const hasMultipleSessions = daySessions.length > 1
+
+            return (
+              <div
+                key={day}
+                className={`p-2 min-h-[120px] border border-gray-200 cursor-pointer transition-colors ${
+                  isCurrentDay ? "bg-blue-50 border-blue-300" : "bg-white hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className={`text-sm font-medium ${
+                      isCurrentDay ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900"
+                    }`}
+                  >
+                    {day}
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
+                    {hasMultipleSessions && (
+                      <Badge variant="secondary" className="text-xs px-1 py-0">
+                        {daySessions.length}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {daySessions.slice(0, 3).map((session) => (
+                    <div
+                      key={session.id}
+                      className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
+                      title={`${session.title} - ${session.time} - ${session.room}`}
+                      onClick={() => handleSessionClick(session)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium truncate">{session.title}</span>
+                        {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                      </div>
+                      <div className="text-xs opacity-90 truncate">{session.time}</div>
+                    </div>
+                  ))}
+                  {daySessions.length > 3 && (
+                    <div className="text-xs text-gray-500 text-center py-1">+{daySessions.length - 3} buổi khác</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  // Week view
+  const renderWeekView = () => {
+    // Tạo tuần dựa trên currentWeekDate
+    const startOfWeek = new Date(currentWeekDate)
+    startOfWeek.setDate(currentWeekDate.getDate() - currentWeekDate.getDay())
+    
+    const weekDates: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
+      weekDates.push(date)
+    }
+    
+    const weekSessions = getSessionsForWeek(sessions, weekDates)
+    const timeSlots = Array.from({ length: 24 }, (_, i) => i) // 0-23 hours
+
+    return (
+      <div className="border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-8 gap-0">
+          {/* Time column header */}
+          <div className="bg-gray-50 p-2 border-r border-b">
+            <div className="text-xs font-medium text-gray-500 text-center">Giờ</div>
+          </div>
+          
+          {/* Day headers */}
+          {weekDates.map((date, index) => (
+            <div key={index} className="bg-gray-50 p-2 border-b">
+              <div className="text-xs font-medium text-gray-500 text-center">
+                {DAY_NAMES[date.getDay()]}
+              </div>
+              <div className="text-sm font-semibold text-gray-900 text-center">
+                {date.getDate()}
+              </div>
+            </div>
+          ))}
+
+          {/* Time slots and sessions */}
+          {timeSlots.map((hour) => (
+            <React.Fragment key={hour}>
+              {/* Time slot label */}
+              <div className="bg-gray-50 p-2 border-r border-b text-xs text-gray-500 text-center">
+                {hour.toString().padStart(2, '0')} giờ
+              </div>
+              
+              {/* Day columns for this hour */}
+              {weekDates.map((date, dayIndex) => {
+                const hourSessions = getSessionsForTimeSlot(weekSessions, date, hour)
+                
+                return (
+                  <div
+                    key={`${hour}-${dayIndex}`}
+                    className="min-h-[60px] border-b border-r bg-white hover:bg-gray-50 transition-colors relative"
+                  >
+                    {hourSessions.map((session, sessionIndex) => (
+                      <div
+                        key={session.id}
+                        className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
+                        title={`${session.title} - ${session.time} - ${session.room}`}
+                        onClick={() => handleSessionClick(session)}
+                        style={{
+                          top: `${sessionIndex * 20}px`,
+                          height: '36px',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <div className="truncate font-medium">{session.title}</div>
+                        <div className="truncate opacity-90">{session.time}</div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Day view
+  const renderDayView = () => (
+    <Card>
+      <CardContent>
+        <div className="text-center py-8">
+          <p className="text-gray-500">Mai rồi tao làm</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  // List view (existing sessions list)
+  const renderListView = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">
+            Danh sách buổi dạy - {MONTH_NAMES[Number.parseInt(selectedMonth) - 1]} {selectedYear}
+          </CardTitle>
+          <Button variant="outline" size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Thêm buổi dạy
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {sessions.length === 0 ? (
+          <div className="text-center py-8">
+            <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Không có buổi dạy nào trong tháng này</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                className="border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-white"
+                onClick={() => handleSessionClick(session)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium">{session.date.toLocaleDateString("vi-VN")}</span>
+                    </div>
+                    <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
+                    <span className="text-sm font-medium">{session.title}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <div className="text-sm font-medium flex items-center">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {session.time}
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {session.room}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
+                      <Badge
+                        variant={session.status === "completed" ? "default" : "secondary"}
+                        className={getStatusColor(session.status)}
+                      >
+                        {session.status === "completed"
+                          ? "Hoàn thành"
+                          : session.status === "cancelled"
+                            ? "Hủy"
+                            : "Đã lên lịch"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 
   // Loading state
   if (loading) {
@@ -466,112 +445,32 @@ export default function ScheduleTab({
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-bold text-gray-900">Lịch dạy</CardTitle>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("next")}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                Hôm nay
-              </Button>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <Select value={viewType} onValueChange={handleViewTypeChange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {monthNames.map((month, index) => (
-                    <SelectItem key={index + 1} value={(index + 1).toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="month">Tháng</SelectItem>
+                  <SelectItem value="week">Tuần</SelectItem>
+                  <SelectItem value="day">Ngày</SelectItem>
+                  <SelectItem value="list">Danh sách</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button variant="outline" size="sm" onClick={() => handleNavigation("prev")}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleNavigation("next")}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => goToToday(setSelectedMonth, setSelectedYear, setCurrentDate)}>
+                Hôm nay
+              </Button>
             </div>
           </div>
-          <div className="text-lg text-gray-600">
-            {monthNames[Number.parseInt(selectedMonth) - 1]}, {selectedYear}
-          </div>
+
         </CardHeader>
         <CardContent>
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day headers */}
-            {["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"].map((day) => (
-              <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 bg-gray-50 rounded-t-lg">
-                {day}
-              </div>
-            ))}
-
-            {/* Empty days for first week */}
-            {emptyDays.map((day) => (
-              <div key={`empty-${day}`} className="p-2 min-h-[120px] border border-gray-200 bg-gray-50"></div>
-            ))}
-
-            {/* Calendar days */}
-            {days.map((day) => {
-              const daySessions = getSessionsForDay(day)
-              const isCurrentDay = isToday(day)
-              const hasMultipleSessions = daySessions.length > 1
-
-              return (
-                <div
-                  key={day}
-                  className={`p-2 min-h-[120px] border border-gray-200 cursor-pointer transition-colors ${
-                    isCurrentDay ? "bg-blue-50 border-blue-300" : "bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span
-                      className={`text-sm font-medium ${
-                        isCurrentDay ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900"
-                      }`}
-                    >
-                      {day}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
-                      {hasMultipleSessions && (
-                        <Badge variant="secondary" className="text-xs px-1 py-0">
-                          {daySessions.length}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 max-h-20 overflow-y-auto">
-                    {daySessions.slice(0, 3).map((session) => (
-                      <div
-                        key={session.id}
-                        className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                        title={`${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => handleSessionClick(session)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium truncate">{session.title}</span>
-                          {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
-                        </div>
-                        <div className="text-xs opacity-90 truncate">{session.time}</div>
-                      </div>
-                    ))}
-                    {daySessions.length > 3 && (
-                      <div className="text-xs text-gray-500 text-center py-1">+{daySessions.length - 3} buổi khác</div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {renderView()}
         </CardContent>
       </Card>
 
@@ -691,74 +590,6 @@ export default function ScheduleTab({
         </DialogContent>
       </Dialog>
 
-      {/* Sessions List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              Danh sách buổi dạy - {monthNames[Number.parseInt(selectedMonth) - 1]} {selectedYear}
-            </CardTitle>
-            <Button variant="outline" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm buổi dạy
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {sessions.length === 0 ? (
-            <div className="text-center py-8">
-              <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Không có buổi dạy nào trong tháng này</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-white"
-                  onClick={() => handleSessionClick(session)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium">{session.date.toLocaleDateString("vi-VN")}</span>
-                      </div>
-                      <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
-                      <span className="text-sm font-medium">{session.title}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <div className="text-sm font-medium flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {session.time}
-                        </div>
-                        <div className="text-xs text-gray-500 flex items-center">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {session.room}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
-                        <Badge
-                          variant={session.status === "completed" ? "default" : "secondary"}
-                          className={getStatusColor(session.status)}
-                        >
-                          {session.status === "completed"
-                            ? "Hoàn thành"
-                            : session.status === "cancelled"
-                              ? "Hủy"
-                              : "Đã lên lịch"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
         </div>
       </div>
     )
@@ -773,112 +604,46 @@ export default function ScheduleTab({
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-bold text-gray-900">Lịch dạy</CardTitle>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("next")}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                Hôm nay
-              </Button>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <Select value={viewType} onValueChange={handleViewTypeChange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {monthNames.map((month, index) => (
+                  <SelectItem value="month">Tháng</SelectItem>
+                  <SelectItem value="week">Tuần</SelectItem>
+                  <SelectItem value="day">Ngày</SelectItem>
+                  <SelectItem value="list">Danh sách</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={() => handleNavigation("prev")}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleNavigation("next")}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => goToToday(setSelectedMonth, setSelectedYear, setCurrentDate)}>
+                Hôm nay
+              </Button>
+              {/* <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTH_NAMES.map((month, index) => (
                     <SelectItem key={index + 1} value={(index + 1).toString()}>
                       {month}
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
-                </SelectContent>
-              </Select>
+              </Select> */}
             </div>
           </div>
           <div className="text-lg text-gray-600">
-            {monthNames[Number.parseInt(selectedMonth) - 1]}, {selectedYear}
+            {getDisplayInfo()}
           </div>
         </CardHeader>
         <CardContent>
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day headers */}
-            {["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"].map((day) => (
-              <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 bg-gray-50 rounded-t-lg">
-                {day}
-              </div>
-            ))}
-
-            {/* Empty days for first week */}
-            {emptyDays.map((day) => (
-              <div key={`empty-${day}`} className="p-2 min-h-[120px] border border-gray-200 bg-gray-50"></div>
-            ))}
-
-            {/* Calendar days */}
-            {days.map((day) => {
-              const daySessions = getSessionsForDay(day)
-              const isCurrentDay = isToday(day)
-              const hasMultipleSessions = daySessions.length > 1
-
-              return (
-                <div
-                  key={day}
-                  className={`p-2 min-h-[120px] border border-gray-200 cursor-pointer transition-colors ${
-                    isCurrentDay ? "bg-blue-50 border-blue-300" : "bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span
-                      className={`text-sm font-medium ${
-                        isCurrentDay ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900"
-                      }`}
-                    >
-                      {day}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
-                      {hasMultipleSessions && (
-                        <Badge variant="secondary" className="text-xs px-1 py-0">
-                          {daySessions.length}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 max-h-20 overflow-y-auto">
-                    {daySessions.slice(0, 3).map((session) => (
-                      <div
-                        key={session.id}
-                        className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                        title={`${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => handleSessionClick(session)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium truncate">{session.title}</span>
-                          {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
-                        </div>
-                        <div className="text-xs opacity-90 truncate">{session.time}</div>
-                      </div>
-                    ))}
-                    {daySessions.length > 3 && (
-                      <div className="text-xs text-gray-500 text-center py-1">+{daySessions.length - 3} buổi khác</div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {renderView()}
         </CardContent>
       </Card>
 
@@ -998,74 +763,6 @@ export default function ScheduleTab({
         </DialogContent>
       </Dialog>
 
-      {/* Sessions List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              Danh sách buổi dạy - {monthNames[Number.parseInt(selectedMonth) - 1]} {selectedYear}
-            </CardTitle>
-            <Button variant="outline" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm buổi dạy
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {sessions.length === 0 ? (
-            <div className="text-center py-8">
-              <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Không có buổi dạy nào trong tháng này</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-white"
-                  onClick={() => handleSessionClick(session)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium">{session.date.toLocaleDateString("vi-VN")}</span>
-                      </div>
-                      <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
-                      <span className="text-sm font-medium">{session.title}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <div className="text-sm font-medium flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {session.time}
-                        </div>
-                        <div className="text-xs text-gray-500 flex items-center">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {session.room}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
-                        <Badge
-                          variant={session.status === "completed" ? "default" : "secondary"}
-                          className={getStatusColor(session.status)}
-                        >
-                          {session.status === "completed"
-                            ? "Hoàn thành"
-                            : session.status === "cancelled"
-                              ? "Hủy"
-                              : "Đã lên lịch"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }
