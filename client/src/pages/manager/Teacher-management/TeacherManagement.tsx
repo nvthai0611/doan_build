@@ -82,10 +82,6 @@ export default function TeacherQnmsManagement() {
         // Add filter parameters
         gender: filterState.gender && filterState.gender !== "all" ? filterState.gender : undefined,
         birthYear: filterState.birthYear || undefined,
-        salaryMin: filterState.salaryMin || undefined,
-        salaryMax: filterState.salaryMax || undefined,
-        hireDateFrom: filterState.hireDateFrom || undefined,
-        hireDateTo: filterState.hireDateTo || undefined,
       })
       console.log("Filter state:", filterState)
       
@@ -100,10 +96,6 @@ export default function TeacherQnmsManagement() {
         // Add filter parameters
         gender: filterState.gender && filterState.gender !== "all" ? filterState.gender : undefined,
         birthYear: filterState.birthYear || undefined,
-        salaryMin: filterState.salaryMin || undefined,
-        salaryMax: filterState.salaryMax || undefined,
-        hireDateFrom: filterState.hireDateFrom || undefined,
-        hireDateTo: filterState.hireDateTo || undefined,
       })
       return result
     },
@@ -263,8 +255,6 @@ export default function TeacherQnmsManagement() {
     switch (role) {
       case "Chủ trung tâm":
         return "bg-orange-100 text-orange-800"
-      case "Giáo vụ":
-        return "bg-purple-100 text-purple-800"
       case "Giáo viên":
       default:
         return "bg-blue-100 text-blue-800"
@@ -398,17 +388,6 @@ export default function TeacherQnmsManagement() {
                       </div>
                      </div> */}
                      <div className="flex gap-2 pt-2">
-                       <Button 
-                         size="sm" 
-                         className="flex-1"
-                         onClick={() => {
-                           // Apply filters
-                           setCurrentPage(1)
-                           refetch()
-                         }}
-                       >
-                         Áp dụng
-                       </Button>
                        <Button 
                          size="sm" 
                          variant="outline" 

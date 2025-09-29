@@ -19,7 +19,7 @@ export const privateRoutes = (
       {/* Profile chung cho tất cả user */}
       <Route path="/profile" element={<AuthMiddleware />}>
         <Route index element={<ProfilePage />} />
-      </Route>n
+      </Route>
 
       {/* Chủ trung tâm */}
       <Route path="/center-qn" element={<AuthMiddleware allowedRoles={['center_owner']}/>}>

@@ -5,7 +5,7 @@ export interface Employee {
     phone: string
     username: string
     code: string
-    role: "Giáo viên" | "Giáo vụ" | "Chủ trung tâm"
+    role: "Giáo viên" | "Chủ trung tâm"
     gender: "Nam" | "Nữ" | "Khác"
     birthDate?: string
     status: boolean
@@ -31,8 +31,6 @@ export interface Employee {
     birthMonth?: string
     birthYear?: string
     gender?: string
-    salaryMin?: number
-    salaryMax?: number
     hireDateFrom?: string
     hireDateTo?: string
   }

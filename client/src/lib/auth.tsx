@@ -3,6 +3,7 @@
 // Authentication context and utilities
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authService } from "../services/common/auth/auth.service"
+import { toast } from "sonner"
 
 export type UserRole = "center_owner" | "teacher" | "admin" | "student" | "parent"
 
@@ -52,29 +53,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log("AuthProvider: Initializing auth...")
       // Check for existing session
       const savedUser = localStorage.getItem("user")
       const savedAccessToken = localStorage.getItem("accessToken")
       const savedRefreshToken = localStorage.getItem("refreshToken")
 
-      console.log("AuthProvider: Saved user:", savedUser ? "exists" : "not found")
-      console.log("AuthProvider: Saved access token:", savedAccessToken ? "exists" : "not found")
-      console.log("AuthProvider: Raw saved user data:", savedUser)
-      console.log("AuthProvider: Raw saved access token:", savedAccessToken)
-      console.log("AuthProvider: Raw saved refresh token:", savedRefreshToken)
-      console.log("AuthProvider: Current time:", new Date().toISOString())
-      console.log("AuthProvider: User agent:", navigator.userAgent)
-
       if (savedUser && savedAccessToken) {
         try {
           const userData = JSON.parse(savedUser) as User
-          console.log("AuthProvider: Parsed user data:", userData)
-          console.log("AuthProvider: User role:", userData.role)
+          // await verifyToken();
           setUser(userData)
-          
           // Skip token verification for now to test
-          console.log("AuthProvider: Skipping token verification for testing")
         } catch (error) {
           console.error("Error parsing saved user data:", error)
           clearAuthData()
@@ -145,22 +134,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null)
     
     try {
-      console.log("Login: Attempting login with email:", email)
       const response = await authService.login({ email, password })
-      console.log("Login response:", response)
-      
       // Store tokens and user data
       localStorage.setItem("accessToken", response.accessToken)
       localStorage.setItem("refreshToken", response.refreshToken)
       localStorage.setItem("user", JSON.stringify(response.user))
-      
-      console.log("Login: User data stored:", response.user)
-      console.log("Login: User role:", response.user.role)
-      
+      toast.success("Đăng nhập thành công");
       setUser(response.user as User)
     } catch (error: any) {
-      console.error("Login: Login failed:", error)
       const errorMessage = error.response?.data?.message || "Đăng nhập thất bại"
+      toast.error(errorMessage)
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {
@@ -169,11 +152,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const logout = async () => {
-    setLoading(true)
+    setLoading(true)    
     try {
       await authService.logout()
+      toast.success("Đăng xuất thành công")
     } catch (error) {
-      console.error("Logout error:", error)
+      toast.error("Đăng xuất thất bại")
     } finally {
       clearAuthData()
       setLoading(false)

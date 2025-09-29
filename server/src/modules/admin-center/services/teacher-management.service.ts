@@ -73,7 +73,8 @@ export class TeacherManagementService {
       hireDateFrom,
       hireDateTo
     } = queryDto;
-
+    console.log(queryDto);
+    
     const skip = (page - 1) * limit;
 
     // Build where clause
