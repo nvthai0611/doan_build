@@ -59,8 +59,6 @@ export class ClassManagementService {
                 where: whereCondition
             });
 
-            console.log('Service - Total count:', totalCount);
-            
             // Lấy dữ liệu với phân trang
             const classes = await this.prisma.class.findMany({
                 where: whereCondition,
@@ -91,6 +89,13 @@ export class ClassManagementService {
                     { createdAt: 'desc' } // Rồi theo thời gian tạo
                 ]
             });
+
+            if (!classes.length) {
+                throw new HttpException(
+                    'Không tìm thấy lớp học',
+                    HttpStatus.NOT_FOUND
+                );
+            }
 
             // Transform data để trả về format đẹp hơn
             const transformedClasses = classes.map(cls => ({
@@ -153,6 +158,13 @@ export class ClassManagementService {
                 }
             });
             
+            if (!countByStatus.length) {
+                throw new HttpException(
+                    'Không tìm thấy lớp học nào cho giáo viên này',
+                    HttpStatus.NOT_FOUND
+                );
+            }
+            
             // Khởi tạo object với tất cả trạng thái = 0
             const result = {
                 total: 0,
@@ -185,25 +197,23 @@ export class ClassManagementService {
             // Nếu đã là HttpException thì ném lại
             if (error instanceof HttpException) throw error;
             
+            // Còn lại là lỗi từ Prisma hoặc runtime khác
             throw new HttpException(
-                {
-                    success: false,
-                    message: 'Có lỗi xảy ra khi lấy số lượng lớp học theo trạng thái',
-                    error: error?.message || error,
-                },
+                'Có lỗi xảy ra khi lấy số lượng lớp học theo trạng thái',
                 HttpStatus.INTERNAL_SERVER_ERROR,
-            );
+            );           
         }
     }
 
     async getClassDetail(teacherId: string, classId: string){
         try {
             if(!checkId(teacherId) || !checkId(classId)){
-                throw new HttpException({
-                    success: false,
-                    message: "ID không hợp lệ",
-                }, HttpStatus.BAD_REQUEST)
+                throw new HttpException(
+                    'ID không hợp lệ',
+                    HttpStatus.BAD_REQUEST
+                );
             }
+            
             const result = await this.prisma.class.findFirst({
                 where:{teacherId, id: classId},
                 include:{
@@ -216,29 +226,27 @@ export class ClassManagementService {
                                 select: {
                                     fullName: true,
                                     email: true,
-                                }   
-                            }
+                            }   
                         }
-                            }
+                    }
                 }
-            })
+            }})
 
             if(!result){
-                throw new HttpException({
-                    success: false,
-                    message:"Lớp học không tồn tại hoặc bạn không có quyền truy cập",
-                },
-            HttpStatus.NOT_FOUND)
+                throw new HttpException(
+                    'Lớp học không tồn tại hoặc bạn không có quyền truy cập',
+                    HttpStatus.NOT_FOUND
+                );
             }
-            return result
+            
+            return result;
         } catch (error) {
             if(error instanceof HttpException) throw error;
 
-            throw new HttpException({
-                success:false,
-                message: 'Có lỗi xảy ra khi lấy chi tiết lớp học',
-            }, HttpStatus.INTERNAL_SERVER_ERROR)
-            
+            throw new HttpException(
+                'Có lỗi xảy ra khi lấy chi tiết lớp học',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
