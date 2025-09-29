@@ -4,6 +4,7 @@ import { CreateTeacherDto } from '../dto/teacher/create-teacher.dto';
 import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
 import * as bcrypt from 'bcrypt';
+import { Gender } from 'src/common/constants';
 
 @Injectable()
 export class TeacherManagementService {
@@ -57,6 +58,30 @@ export class TeacherManagementService {
     return this.formatTeacherResponse(teacher);
   }
 
+  // Debug method to check database
+  async debugTeachers() {
+    const totalTeachers = await this.prisma.teacher.count();
+    const sampleTeachers = await this.prisma.teacher.findMany({
+      take: 5,
+      include: { user: true }
+    });
+    
+    return {
+      totalTeachers,
+      sampleTeachers: sampleTeachers.map(t => ({
+        id: t.id,
+        userId: t.userId,
+        user: t.user ? {
+          id: t.user.id,
+          email: t.user.email,
+          fullName: t.user.fullName,
+          role: t.user.role,
+          isActive: t.user.isActive
+        } : null
+      }))
+    };
+  }
+
   async findAllTeachers(queryDto: QueryTeacherDto) {
     const {
       search,
@@ -68,25 +93,24 @@ export class TeacherManagementService {
       sortOrder = 'desc',
       gender,
       birthYear,
-      salaryMin,
-      salaryMax,
       hireDateFrom,
       hireDateTo
     } = queryDto;
-    console.log(queryDto);
     
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {
-      user: {
-        role: role || undefined
-      }
-    };
+    const where: any = {};
+    const userWhere: any = {};
+
+    // Add role filter
+    if (role) {
+      userWhere.role = role;
+    }
 
     // Add search filter
     if (search) {
-      where.user.OR = [
+      userWhere.OR = [
         { fullName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
         { username: { contains: search, mode: 'insensitive' } },
@@ -96,33 +120,25 @@ export class TeacherManagementService {
 
     // Add status filter
     if (status && status !== 'all') {
-      where.user.isActive = status === 'active';
+      userWhere.isActive = status === 'active';
     }
 
-    // Add gender filter
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
+    }
     if (gender) {
       where.gender = gender;
     }
-
-    // Add birth year filter
     if (birthYear) {
-      where.birthDate = {
-        startsWith: birthYear
-      };
-    }
-
-    // Add salary range filter
-    if (salaryMin !== undefined || salaryMax !== undefined) {
-      where.salary = {};
-      if (salaryMin !== undefined) {
-        where.salary.gte = salaryMin;
-      }
-      if (salaryMax !== undefined) {
-        where.salary.lte = salaryMax;
+      const year = parseInt(birthYear);
+      if (!isNaN(year)) {
+        where.birthDate = {
+          gte: new Date(year, 0, 1), // Start of year
+          lt: new Date(year + 1, 0, 1) // Start of next year
+        };
       }
     }
-
-    // Add hire date range filter
+   
     if (hireDateFrom || hireDateTo) {
       where.hireDate = {};
       if (hireDateFrom) {
@@ -132,19 +148,61 @@ export class TeacherManagementService {
         where.hireDate.lte = new Date(hireDateTo);
       }
     }
-    // Get total count for pagination
+
+    console.log("📡 Where:", JSON.stringify(where, null, 2));
+    
+    const totalTeachers = await this.prisma.teacher.count();
+    console.log("📊 Total teachers in database:", totalTeachers);
+    
+    const teachersWithUser = await this.prisma.teacher.count();
+    console.log("📊 Teachers with user relation:", teachersWithUser);
+    
     const total = await this.prisma.teacher.count({ where });
     const totalPages = Math.ceil(total / limit);
 
-    // Get teachers with pagination
+    let orderBy: any = {};
+    
+      // Map frontend field names to database field names
+    const fieldMapping: { [key: string]: string } = {
+      'name': 'fullName',
+      'email': 'email',
+      'phone': 'phone',
+      'username': 'username',
+      'createdAt': 'createdAt',
+      'updatedAt': 'updatedAt',
+      'hireDate': 'hireDate',
+      'contractEnd': 'contractEnd',
+      'salary': 'salary'
+    };
+
+    const mappedSortBy = fieldMapping[sortBy] || sortBy;
+
+    // Check if it's a user field
+    if (['fullName', 'email', 'phone', 'username'].includes(mappedSortBy)) {
+      orderBy = {
+        user: {
+          [mappedSortBy]: sortOrder
+        }
+      };
+    } else {
+      orderBy = {
+        [mappedSortBy]: sortOrder
+      };
+    }
+
+    console.log("📡 OrderBy:", JSON.stringify(orderBy, null, 2));
+    const sampleTeachers = await this.prisma.teacher.findMany({
+      take: 3,
+      include: { user: true }
+    });
+    console.log("📊 Sample teachers:", JSON.stringify(sampleTeachers, null, 2));
+
     const teachers = await this.prisma.teacher.findMany({
       where,
       include: {
         user: true
       },
-      orderBy: {
-        [sortBy]: sortOrder
-      },
+      orderBy,
       skip,
       take: limit
     });
@@ -160,7 +218,7 @@ export class TeacherManagementService {
       message: 'Lấy danh sách giáo viên thành công'
     };
   }
-
+  
   async findOneTeacher(id: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
@@ -180,6 +238,8 @@ export class TeacherManagementService {
 
     return this.formatTeacherResponse(teacher);
   }
+
+
 
   async updateTeacher(id: string, updateTeacherDto: UpdateTeacherDto) {
     const teacher = await this.prisma.teacher.findUnique({
@@ -427,10 +487,10 @@ export class TeacherManagementService {
       email: teacher.user.email,
       phone: teacher.user.phone,
       username: teacher.user.username,
-      code: `***${teacher.id.slice(-4).toUpperCase()}A`, // Generate code from ID
+      code: `***${teacher.id.slice(-4).toUpperCase()}A`,
       role: this.mapRoleToVietnamese(teacher.user.role),
-      gender: 'Nam', // Default, can be added to User model later
-      birthDate: teacher.user.dateOfBirth ? this.formatDate(teacher.user.dateOfBirth) : undefined,
+      gender: teacher.gender === Gender.MALE ? 'Nam' : teacher.gender === Gender.FEMALE ? 'Nữ' : 'Khác',
+      birthDate: teacher.birthDate ? this.formatDate(teacher.birthDate) : undefined,
       status: teacher.user.isActive,
       hireDate: teacher.hireDate ? this.formatDate(teacher.hireDate) : undefined,
       contractEnd: teacher.contractEnd ? this.formatDate(teacher.contractEnd) : undefined,

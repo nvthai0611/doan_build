@@ -6,7 +6,7 @@ export interface Employee {
     username: string
     code: string
     role: "Giáo viên" | "Chủ trung tâm"
-    gender: "Nam" | "Nữ" | "Khác"
+    gender: "MALE" | "FEMALE" | "OTHER"
     birthDate?: string
     status: boolean
     verifiedPhone?: string

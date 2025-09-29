@@ -45,20 +45,11 @@ export class QueryTeacherDto {
   birthYear?: string;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  @IsNumber()
-  salaryMin?: number;
-
-  @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  @IsNumber()
-  salaryMax?: number;
-
-  @IsOptional()
   @IsString()
   hireDateFrom?: string;
 
   @IsOptional()
   @IsString()
   hireDateTo?: string;
+
 }
