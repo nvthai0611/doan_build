@@ -5,7 +5,6 @@ import axios, {
   AxiosResponse,
   Method,
 } from 'axios';
-import Cookies from 'js-cookie';
 import CryptoJS from 'crypto-js';
 
 /* =======================
@@ -29,19 +28,17 @@ const decrypt = (cipher: string): string | undefined => {
 
 export const TokenStorage = {
   set: (token: string | null) => {
-    if (!token) return Cookies.remove(AUTH_TOKEN, { path: '/' });
-    Cookies.set(AUTH_TOKEN, encrypt(token), {
-      expires: 7,
-      path: '/',
-      sameSite: 'strict',
-      secure: window.location.protocol === 'https:',
-    });
+    if (!token) {
+      localStorage.removeItem(AUTH_TOKEN);
+      return;
+    }
+    localStorage.setItem(AUTH_TOKEN, encrypt(token));
   },
   get: (): string | undefined => {
-    const cipher = Cookies.get(AUTH_TOKEN);
-    return cipher ? decrypt(cipher) : undefined;
+    const cipher = localStorage.getItem(AUTH_TOKEN);
+    return cipher === null ? undefined : cipher;
   },
-  clear: () => Cookies.remove(AUTH_TOKEN, { path: '/' }),
+  clear: () => localStorage.removeItem(AUTH_TOKEN),
 };
 
 /* =======================

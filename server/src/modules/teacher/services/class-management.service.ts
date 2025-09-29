@@ -14,6 +14,12 @@ export class ClassManagementService {
         search?: string
     ) {
         try {
+            if(checkId(teacherId) === false){
+                throw new HttpException(
+                    'ID giáo viên không hợp lệ',
+                    HttpStatus.BAD_REQUEST
+                )
+            }
             if(status == 'all' || status == '' || !status){
                 status = undefined;
             }

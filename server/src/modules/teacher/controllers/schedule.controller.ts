@@ -17,7 +17,7 @@ import { UpdateScheduleStatusDto } from '../dto/schedule/update-schedule-status.
 import { ScheduleFiltersDto } from '../dto/schedule/schedule-filters.dto';
 
 @ApiTags('Teacher Schedule')
-@Controller('teacher/schedule')
+@Controller('schedule')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
   teacherId = 'd37a2030-f63d-4b7d-b22f-210ceacaa51a';

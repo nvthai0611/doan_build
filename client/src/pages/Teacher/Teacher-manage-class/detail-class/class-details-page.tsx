@@ -168,6 +168,7 @@ export function ClassDetailsPage() {
             setDescription={setDescription}
             onEditClass={() => handleEdit("class")}
             onEditSchedule={() => handleEdit("schedule")}
+            allDays={allDays}
           />
         )
     }
