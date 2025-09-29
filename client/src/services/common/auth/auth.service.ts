@@ -76,7 +76,9 @@ export const authService = {
    * Lấy thông tin profile hiện tại
    */
   getProfile: async (): Promise<ProfileResponse> => {
-    const response = await ApiService.get<ProfileResponse>("/auth/profile")
+    const response = await ApiService.get<ProfileResponse>("/auth/profile");
+    console.log(response);
+    
     return response.data as ProfileResponse
   },
 

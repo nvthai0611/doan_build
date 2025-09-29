@@ -8,7 +8,7 @@ datasource db {
 }
 
 enum Gender {
-  MALE
+  MALE  
   FEMALE
   OTHER
 }

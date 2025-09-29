@@ -53,20 +53,20 @@ export interface TeacherResponse {
 export const teacherService = {
   // Lấy danh sách giáo viên
   getTeachers: async (params?: QueryTeacherParams): Promise<ApiResponse<TeacherResponse>> => {
-    const response = await apiClient.get<TeacherResponse>("/admin-center/teacher-management", params)
+    const response = await apiClient.get<TeacherResponse>("/admin-center/teachers", params);
     return response
   },
 
-  // Lấy thông tin chi tiết giáo viên
+  // Lấy thông tin chi tiết giáo viên     
   getTeacherById: async (id: string): Promise<Employee> => {
-    const response = await apiClient.get<Employee>(`/admin-center/teacher-management/${id}`)
+    const response = await apiClient.get<Employee>(`/admin-center/teachers/${id}`)
     console.log("📡 API Response:", response)
     return response.data
   },
 
   // Tạo giáo viên mới
   createTeacher: async (data: CreateTeacherRequest): Promise<Employee> => {
-    const response = await apiClient.post<Employee>("/admin-center/teacher-management", data)
+    const response = await apiClient.post<Employee>("/admin-center/teachers", data)
     console.log("📡 API Response:", response)
 
     return response.data
@@ -74,26 +74,26 @@ export const teacherService = {
 
   // Cập nhật thông tin giáo viên
   updateTeacher: async (id: string, data: Partial<CreateTeacherRequest>): Promise<Employee> => {
-    const response = await apiClient.patch<Employee>(`/admin-center/teacher-management/${id}`, data)
+    const response = await apiClient.patch<Employee>(`/admin-center/teachers/${id}`, data)
     console.log("API Response:", response)
     return response.data
   },
 
   // Xóa giáo viên
   deleteTeacher: async (id: string): Promise<void> => {
-    await apiClient.delete(`/admin-center/teacher-management/${id}`)
+    await apiClient.delete(`/admin-center/teachers/${id}`)
   },
 
   // Toggle trạng thái giáo viên
   toggleTeacherStatus: async (id: string): Promise<Employee> => {
-    const response = await apiClient.patch<Employee>(`/admin-center/teacher-management/${id}/toggle-status`)
+    const response = await apiClient.patch<Employee>(`/admin-center/teachers/${id}/toggle-status`)
     console.log("📡 API Response:", response)
     return response.data
   },
 
   // Tải xuống template
   downloadTemplate: async (): Promise<Blob> => {
-    const response = await apiClient.get("/admin-center/teacher-management/template", undefined, {
+    const response = await apiClient.get("/admin-center/teachers/template", undefined, {
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
     console.log("📡 API Response:", response)
@@ -105,7 +105,7 @@ export const teacherService = {
     const formData = new FormData()
     formData.append("file", file)
 
-    const response = await apiClient.post("/admin-center/teacher-management/upload", formData, {
+    const response = await apiClient.post("/admin-center/teachers/upload", formData, {
       contentType: "multipart/form-data",
     })
     console.log("📡 API Response:", response)
@@ -114,7 +114,7 @@ export const teacherService = {
 
   // Tải xuống tất cả dữ liệu
   downloadAllTeachers: async (): Promise<Blob> => {
-    const response = await apiClient.get("/admin-center/teacher-management/export", undefined, {
+    const response = await apiClient.get("/admin-center/teachers/export", undefined, {
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
     console.log("📡 API Response:", response)
@@ -125,12 +125,13 @@ export const teacherService = {
     const params: any = {}
     if (year) params.year = year.toString()
     if (month) params.month = month.toString()
-    const response = await apiClient.get(`/admin-center/teacher-management/${teacherId}/schedule`, params)
+    console.log("📡 API Params:", params)
+      const response = await apiClient.get(`/admin-center/teachers/${teacherId}/schedule`, params)
     return response
   },
 
   updateAttendance: async (sessionId: string, studentId: string, status: "present" | "absent" | "late") => {
-    const response = await apiClient.patch(`/admin-center/sessions/${sessionId}/attendance`, {
+    const response = await apiClient.patch(`/admin-center/teachers/${sessionId}/attendance`, {
       studentId,
       status,
     })
@@ -139,7 +140,7 @@ export const teacherService = {
   },
 
   createSession: async (sessionData: any) => {
-    const response = await apiClient.post("/admin-center/sessions", sessionData)
+    const response = await apiClient.post("/admin-center/teachers", sessionData)
     console.log("📡 Create Session API Response:", response)
     return response
   },

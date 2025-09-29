@@ -307,7 +307,7 @@ export default function TeacherProfilePage() {
                       </Button>
                     ) : (
                       <div className="text-sm text-green-700">
-                        ✅ Nút Quản lý tài chính đã được ẩn đúng cách
+                         Nút Quản lý tài chính đã được ẩn đúng cách
                       </div>
                     )}
                   </div>

@@ -18,7 +18,7 @@ export const centerOwnerTeacherService = {
    */
   getTeachers: async (params?: TeacherQueryParams): Promise<TeacherResponse> => {
     const response = await ApiService.get<TeacherResponse>("/admin-center/teacher-management", params)
-    return response.data
+    return response.data as TeacherResponse
   },
 
   /**
@@ -27,7 +27,7 @@ export const centerOwnerTeacherService = {
   getTeacherById: async (id: string): Promise<Teacher> => {
     const response = await ApiService.get<Teacher>(`/admin-center/teacher-management/${id}`)
     console.log("📡 API Response:", response)
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -36,7 +36,7 @@ export const centerOwnerTeacherService = {
   createTeacher: async (data: CreateTeacherRequest): Promise<Teacher> => {
     const response = await ApiService.post<Teacher>("/admin-center/teacher-management", data)
     console.log("📡 API Response:", response)
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -45,7 +45,7 @@ export const centerOwnerTeacherService = {
   updateTeacher: async (id: string, data: Partial<CreateTeacherRequest>): Promise<Teacher> => {
     const response = await ApiService.patch<Teacher>(`/admin-center/teacher-management/${id}`, data)
     console.log("API Response:", response)
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -63,7 +63,7 @@ export const centerOwnerTeacherService = {
   toggleTeacherStatus: async (id: string): Promise<Teacher> => {
     const response = await ApiService.patch<Teacher>(`/admin-center/teacher-management/${id}/toggle-status`)
     console.log("📡 API Response:", response)
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -71,7 +71,7 @@ export const centerOwnerTeacherService = {
    */
   getTeacherStats: async (): Promise<TeacherStats> => {
     const response = await ApiService.get<TeacherStats>("/admin-center/teacher-management/stats")
-    return response.data
+    return response.data as TeacherStats
   },
 
   /**
@@ -83,7 +83,7 @@ export const centerOwnerTeacherService = {
     if (month) params.month = month.toString()
     
     const response = await ApiService.get(`/admin-center/teacher-management/${teacherId}/schedule`, params)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -95,7 +95,7 @@ export const centerOwnerTeacherService = {
       status,
     })
     console.log("📡 Attendance API Response:", response)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -104,7 +104,7 @@ export const centerOwnerTeacherService = {
   createSession: async (sessionData: any) => {
     const response = await ApiService.post("/admin-center/sessions", sessionData)
     console.log("📡 Create Session API Response:", response)
-    return response.data
+    return response.data as any
   },
 
   // ===== File Operations =====
@@ -122,7 +122,7 @@ export const centerOwnerTeacherService = {
   uploadTeachers: async (file: File): Promise<TeacherImportResult> => {
     const response = await ApiService.uploadFile<TeacherImportResult>("/admin-center/teacher-management/upload", file)
     console.log("📡 API Response:", response)
-    return response.data
+    return response.data as TeacherImportResult
   },
 
   /**
@@ -140,7 +140,7 @@ export const centerOwnerTeacherService = {
    */
   assignSubjects: async (teacherId: string, subjects: string[]): Promise<Teacher> => {
     const response = await ApiService.patch<Teacher>(`/admin-center/teacher-management/${teacherId}/subjects`, { subjects })
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -148,7 +148,7 @@ export const centerOwnerTeacherService = {
    */
   updateSalary: async (teacherId: string, salary: number): Promise<Teacher> => {
     const response = await ApiService.patch<Teacher>(`/admin-center/teacher-management/${teacherId}/salary`, { salary })
-    return response.data
+    return response.data as Teacher   
   },
 
   /**
@@ -158,7 +158,7 @@ export const centerOwnerTeacherService = {
     const response = await ApiService.patch<Teacher>(`/admin-center/teacher-management/${teacherId}/contract`, { 
       contractEnd: newEndDate 
     })
-    return response.data
+    return response.data as Teacher
   },
 
   /**
@@ -167,6 +167,6 @@ export const centerOwnerTeacherService = {
   getTeacherActivityLog: async (teacherId: string, page?: number, limit?: number) => {
     const params = { page, limit }
     const response = await ApiService.get(`/admin-center/teacher-management/${teacherId}/activity-log`, params)
-    return response.data
+    return response.data as any
   }
 }

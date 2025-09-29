@@ -17,8 +17,8 @@ import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('Teacher Management')
-@Controller('admin-center/teacher-management')
+@ApiTags('Admin Center - Teacher Management')
+@Controller('admin-center/teachers')
 export class TeacherManagementController {
   constructor(private readonly teacherManagementService: TeacherManagementService) {}
 
@@ -30,6 +30,7 @@ export class TeacherManagementController {
 
   @Get()
   findAll(@Query() queryDto: QueryTeacherDto) {
+    console.log("📡 API Query:", queryDto);
     return this.teacherManagementService.findAllTeachers(queryDto);
   }
 
