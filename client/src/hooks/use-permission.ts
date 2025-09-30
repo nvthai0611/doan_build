@@ -21,7 +21,7 @@ export function usePermissions() {
   const checkAnyPermission = (permissions: Permission[]): boolean => {
     if (!user) return false
     
-    // If user has permissions from API, use them
+    // If user has permissions from API
     if (user.permissions && user.permissions.length > 0) {
       return permissions.some(permission => user.permissions!.includes(permission))
     }
@@ -33,7 +33,7 @@ export function usePermissions() {
   const checkAllPermissions = (permissions: Permission[]): boolean => {
     if (!user) return false
     
-    // If user has permissions from API, use them
+    // If user has permissions from API
     if (user.permissions && user.permissions.length > 0) {
       return permissions.every(permission => user.permissions!.includes(permission))
     }

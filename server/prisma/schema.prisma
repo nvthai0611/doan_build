@@ -84,7 +84,7 @@ model Teacher {
   documents     TeacherDocument[]
   school        School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignments   TeacherAssignment[]
+  teacherClassAssignments   TeacherClassAssignment[]
 
   @@map("teachers")
 }
@@ -141,7 +141,6 @@ model Subject {
 model Class {
   id                 String                @id @default(uuid()) @db.Uuid
   roomId             String?               @map("room_id") @db.Uuid
-  recurringSchedule  Json?                 @map("recurring_schedule")
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   description        String?
@@ -161,7 +160,7 @@ model Class {
   enrollments        Enrollment[]
   materials          Material[]
   scheduleChanges    ScheduleChange[]
-  teacherAssignments TeacherAssignment[]
+  teacherClassAssignments TeacherClassAssignment[]
 
   @@map("classes")
 }
@@ -546,10 +545,11 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-model TeacherAssignment {
+model TeacherClassAssignment {
   id           String    @id @default(uuid()) @db.Uuid
   teacherId    String    @map("teacher_id") @db.Uuid
   classId      String    @map("class_id") @db.Uuid
+  recurringSchedule  Json?    @map("recurring_schedule")
   startDate    DateTime  @map("start_date") @db.Date
   endDate      DateTime? @map("end_date") @db.Date
   status       String    @default("active") // active, completed, cancelled
@@ -558,10 +558,9 @@ model TeacherAssignment {
   notes        String?
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([classId, startDate]) // Một lớp chỉ có một giáo viên active tại một thời điểm
-  @@map("teacher_assignments")
+  @@map("teacher_class_assignments")
 }

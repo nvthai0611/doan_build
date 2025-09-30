@@ -24,10 +24,8 @@ export interface UpdateTeacherRequest extends Partial<CreateTeacherRequest> {
 
 export interface TeacherQueryParams extends BaseFilters, DateFilters {
   role?: "teacher" | "admin" | "center_owner"
-  gender?: Gender
   birthYear?: string
-  salaryMin?: number
-  salaryMax?: number
+  gender?: string
   hireDateFrom?: string
   hireDateTo?: string
   subjects?: string[]

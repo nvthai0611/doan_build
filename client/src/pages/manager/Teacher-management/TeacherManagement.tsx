@@ -31,12 +31,12 @@ import {
   Phone,
   Mail,
   Calendar,
-  ChevronLeft,
-  ChevronRightIcon,
 } from "lucide-react"
-import type { Employee, Tab, FilterState } from "./types/teacher"
-import { teacherService } from "../../../services/teacherService"
+import type { Teacher, Tab, FilterState } from "./types/teacher"
 import { toast } from "sonner"
+import { centerOwnerTeacherService } from "../../../services/center-owner/teacher-management/teacher.service"
+import { DataTable, Column, PaginationConfig } from "../../../components/common/Table"
+import { usePagination } from "../../../hooks/usePagination"
 
 
 export default function TeacherQnmsManagement() {
@@ -49,8 +49,13 @@ export default function TeacherQnmsManagement() {
   const [activeTab, setActiveTab] = useState<string>("all")
   const [collectData, setCollectData] = useState<boolean>(true)
   const [filterState, setFilterState] = useState<FilterState>({})
-  const [currentPage, setCurrentPage] = useState<number>(1)
-  const [itemsPerPage, setItemsPerPage] = useState<number>(2)
+  
+  // Pagination hook
+  const pagination = usePagination({
+    initialPage: 1,
+    initialItemsPerPage: 2,
+    totalItems: 0 // Will be updated from API response
+  })
 
   const roleMap: { [key: string]: string } = {
     "Giáo viên": "teacher",
@@ -70,14 +75,14 @@ export default function TeacherQnmsManagement() {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['teachers', debouncedSearchTerm, selectedRole, activeTab, currentPage, itemsPerPage, filterState],
+    queryKey: ['teachers', debouncedSearchTerm, selectedRole, activeTab, pagination.currentPage, pagination.itemsPerPage, filterState],
     queryFn: async () => {
-      const result = await teacherService.getTeachers({
+      const result = await centerOwnerTeacherService.getTeachers({
         search: debouncedSearchTerm || undefined,
         role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
         status: statusMap[activeTab] as "active" | "inactive" | "all",
-        page: currentPage,
-        limit: itemsPerPage,
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
         sortBy: "createdAt",
         sortOrder: "desc",
         // Add filter parameters
@@ -100,12 +105,18 @@ export default function TeacherQnmsManagement() {
   const finalEmployeeData = employeeData
   const finalTotalCount = totalCount
 
+  // Update pagination total items when data changes
+  useEffect(() => {
+    pagination.setItemsPerPage(pagination.itemsPerPage)
+    // Note: We can't directly update totalItems in the hook, so we'll pass it to the table
+  }, [totalCount])
+
 
 
   const tabs: Tab[] = [
     { key: "all", label: "Tất cả", count: finalTotalCount },
-    { key: "active", label: "Đang hoạt động", count: finalEmployeeData?.filter((emp: Employee) => emp.status).length || 0 },
-    { key: "inactive", label: "Dừng hoạt động", count: finalEmployeeData?.filter((emp: Employee) => !emp.status).length || 0 },
+    { key: "active", label: "Đang hoạt động", count: finalEmployeeData?.filter((emp: Teacher) => emp.status).length || 0 },
+    { key: "inactive", label: "Dừng hoạt động", count: finalEmployeeData?.filter((emp: Teacher) => !emp.status).length || 0 },
   ]
 
   // Debounce search term để giảm số lần gọi API
@@ -114,22 +125,20 @@ export default function TeacherQnmsManagement() {
       setDebouncedSearchTerm(searchTerm)
       // Reset về trang 1 khi search thay đổi
       if (searchTerm !== debouncedSearchTerm) {
-        setCurrentPage(1)
+        pagination.setCurrentPage(1)
       }
     }, 500) // Delay 500ms
 
     return () => clearTimeout(timer)
-  }, [searchTerm, debouncedSearchTerm])
+  }, [searchTerm, debouncedSearchTerm, pagination])
 
   // Gọi lại API khi component mount (quay lại trang)
   useEffect(() => {
     refetch()
   }, [])
 
-  const paginatedEmployees = finalEmployeeData
-
   const toggleStatusMutation = useMutation({
-    mutationFn: (employeeId: string) => teacherService.toggleTeacherStatus(employeeId),
+    mutationFn: (employeeId: string) => centerOwnerTeacherService.toggleTeacherStatus(employeeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       toast.success("Cập nhật trạng thái giáo viên thành công")
@@ -157,7 +166,7 @@ export default function TeacherQnmsManagement() {
 
   const handleDownloadTemplate = async (): Promise<void> => {
     try {
-      const blob = await teacherService.downloadTemplate()
+      const blob = await centerOwnerTeacherService.downloadTemplate()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -181,7 +190,7 @@ export default function TeacherQnmsManagement() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
         try {
-          const result = await teacherService.uploadTeachers(file)
+          const result = await centerOwnerTeacherService.uploadTeachers(file)
           alert(`Tải lên thành công: ${result.successCount} giáo viên, ${result.errorCount} lỗi`)
           queryClient.invalidateQueries({ queryKey: ['teachers'] }) // Reload data
           console.log(`[v0] Uploaded file: ${file.name}`)
@@ -199,7 +208,7 @@ export default function TeacherQnmsManagement() {
     setDebouncedSearchTerm("")
     setSelectedRole("Nhóm quyền")
     setFilterState({})
-    setCurrentPage(1)
+    pagination.setCurrentPage(1)
     refetch()
     alert("Đã làm mới dữ liệu")
     console.log("[v0] Refreshed page data")
@@ -207,7 +216,7 @@ export default function TeacherQnmsManagement() {
 
   const handleDownloadAll = async (): Promise<void> => {
     try {
-      const blob = await teacherService.downloadAllTeachers()
+      const blob = await centerOwnerTeacherService.downloadAllTeachers()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -233,16 +242,118 @@ export default function TeacherQnmsManagement() {
     console.log("[v0] Opening add employee form")
   }
 
-  const handlePageChange = (page: number): void => {
-    setCurrentPage(page)
-  }
+  // Define columns for DataTable
+  const columns: Column<Teacher>[] = [
+    {
+      key: 'stt',
+      header: 'STT',
+      width: '80px',
+      align: 'center',
+      render: (_: Teacher, index: number) => ((pagination.currentPage - 1) * pagination.itemsPerPage + index + 1)
+    },
+    {
+      key: 'account',
+      header: 'Tài khoản giáo viên',
+      width: '300px',
+      render: (employee: Teacher) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-gray-200">
+              <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+              </div>
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div
+              className="text-sm font-medium text-blue-600 cursor-pointer hover:underline"
+              onClick={() => handleViewEmployee(employee.id)}
+            >
+              {employee.name}
+            </div>
+            <div className="text-xs text-gray-500">{employee.username}</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <span>{employee.code}</span>
+              <Copy
+                className="w-3 h-3 cursor-pointer hover:text-gray-600"
+                onClick={() => handleCopyCode(employee.code)}
+              />
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'info',
+      header: 'Thông tin',
+      width: '250px',
+      render: (employee: Teacher) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Mail className="w-3 h-3" />
+            {employee.email}
+          </div>
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Phone className="w-3 h-3" />
+            {employee.phone}
+          </div>
+          {employee.birthDate && (
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <Calendar className="w-3 h-3" />
+              {employee.birthDate} - {employee.gender}
+            </div>
+          )}
+          {!employee.birthDate && <div className="text-sm text-gray-600">{employee.gender}</div>}
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      header: 'Nhóm quyền',
+      width: '150px',
+      render: (employee: Teacher) => (
+        <Badge variant="secondary" className={getRoleBadgeColor(employee.role)}>
+          {employee.role}
+        </Badge>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái tài khoản',
+      width: '150px',
+      align: 'center',
+      render: (employee: Teacher) => (
+        <Switch 
+          checked={employee.status} 
+          onCheckedChange={() => handleEmployeeStatusToggle(employee.id)} 
+          disabled={loading || toggleStatusMutation.isPending}
+        />
+      )
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '80px',
+      align: 'center',
+      render: (employee: Teacher) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem className="gap-2" onClick={() => handleViewEmployee(employee.id)}>
+              <Eye className="w-4 h-4" />
+              Xem
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  ]
 
-  const handleItemsPerPageChange = (value: string): void => {
-    setItemsPerPage(Number.parseInt(value))
-    setCurrentPage(1)
-  }
-
-  const getRoleBadgeColor = (role: Employee["role"]): string => {
+  const getRoleBadgeColor = (role: Teacher["role"]): string => {
     switch (role) {
       case "Chủ trung tâm":
         return "bg-orange-100 text-orange-800"
@@ -391,7 +502,7 @@ export default function TeacherQnmsManagement() {
                          className="flex-1"
                          onClick={() => {
                            setFilterState({})
-                           setCurrentPage(1)
+                           pagination.setCurrentPage(1)
                            refetch()
                          }}
                        >
@@ -452,195 +563,36 @@ export default function TeacherQnmsManagement() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STT</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tài khoản giáo viên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thông tin
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nhóm quyền
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái tài khoản
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    <div className="flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Đang tải dữ liệu...
-                    </div>
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-red-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <p>Có lỗi xảy ra khi tải dữ liệu</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => refetch()}
-                        className="mt-2"
-                      >
-                        Thử lại
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedEmployees.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Không có dữ liệu
-                  </td>
-                </tr>
-              ) : (
-                paginatedEmployees.map((employee: Employee, index: number) => (
-                <tr key={employee.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-gray-200">
-                          <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
-                          </div>
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div
-                          className="text-sm font-medium text-blue-600 cursor-pointer hover:underline"
-                          onClick={() => handleViewEmployee(employee.id)}
-                        >
-                          {employee.name}
-                        </div>
-                        <div className="text-xs text-gray-500">{employee.username}</div>
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>{employee.code}</span>
-                          <Copy
-                            className="w-3 h-3 cursor-pointer hover:text-gray-600"
-                            onClick={() => handleCopyCode(employee.code)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Mail className="w-3 h-3" />
-                        {employee.email}
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Phone className="w-3 h-3" />
-                        {employee.phone}
-                      </div>
-                      {employee.birthDate && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Calendar className="w-3 h-3" />
-                          {employee.birthDate} - {employee.gender}
-                        </div>
-                      )}
-                      {!employee.birthDate && <div className="text-sm text-gray-600">{employee.gender}</div>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant="secondary" className={getRoleBadgeColor(employee.role)}>
-                      {employee.role}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Switch 
-                      checked={employee.status} 
-                      onCheckedChange={() => handleEmployeeStatusToggle(employee.id)} 
-                      disabled={loading || toggleStatusMutation.isPending}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2" onClick={() => handleViewEmployee(employee.id)}>
-                          <Eye className="w-4 h-4" />
-                          Xem
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* DataTable */}
+        <DataTable
+          data={finalEmployeeData}
+          columns={columns}
+          loading={loading}
+          error={error ? "Có lỗi xảy ra khi tải dữ liệu" : null}
+          onRetry={refetch}
+          emptyMessage="Không có dữ liệu"
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: totalPages,
+            totalItems: finalTotalCount,
+            itemsPerPage: pagination.itemsPerPage,
+            onPageChange: pagination.setCurrentPage,
+            onItemsPerPageChange: pagination.setItemsPerPage,
+            showItemsPerPage: true,
+            showPageInfo: true
+          }}
+          rowKey="id"
+          hoverable={true}
+          striped={false}
+        />
+      </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={collectData} onCheckedChange={setCollectData} />
-                <span className="text-sm text-gray-600">Thu gọn</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Số hàng mỗi trang:</span>
-                <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                  <SelectTrigger className="w-16 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-sm text-gray-600">
-                {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, finalTotalCount)}{" "}
-                trong {finalTotalCount}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-gray-600 px-2">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  <ChevronRightIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+      {/* Additional Controls */}
+      <div className="bg-white rounded-lg shadow-sm border p-4 mt-6">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch checked={collectData} onCheckedChange={setCollectData} />
+            <span className="text-sm text-gray-600">Thu gọn</span>
           </div>
         </div>
       </div>

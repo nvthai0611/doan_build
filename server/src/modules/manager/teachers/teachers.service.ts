@@ -28,51 +28,55 @@ export class TeachersService {
               updatedAt: true,
             }
           },
-          classes: {
+          teacherClassAssignments: {
             include: {
-              subject: {
-                select: {
-                  id: true,
-                  code: true,
-                  name: true,
-                  description: true,
-                }
-              },
-              room: {
-                select: {
-                  id: true,
-                  name: true,
-                  capacity: true,
-                  equipment: true,
-                  isActive: true,
-                }
-              },
-              enrollments: {
-                select: {
-                  id: true,
-                  status: true,
-                  enrolledAt: true,
-                  student: {
+              class: {
+                include: {
+                  subject: {
                     select: {
                       id: true,
-                      studentCode: true,
-                      grade: true,
-                      user: {
+                      code: true,
+                      name: true,
+                      description: true,
+                    }
+                  },
+                  room: {
+                    select: {
+                      id: true,
+                      name: true,
+                      capacity: true,
+                      equipment: true,
+                      isActive: true,
+                    }
+                  },
+                  enrollments: {
+                    select: {
+                      id: true,
+                      status: true,
+                      enrolledAt: true,
+                      student: {
                         select: {
-                          fullName: true,
-                          email: true,
-                          phone: true,
+                          id: true,
+                          studentCode: true,
+                          grade: true,
+                          user: {
+                            select: {
+                              fullName: true,
+                              email: true,
+                              phone: true,
+                            }
+                          }
                         }
                       }
                     }
+                  },
+                  _count: {
+                    select: {
+                      enrollments: true,
+                      sessions: true,
+                      assessments: true,
+                    }
                   }
-                }
-              },
-              _count: {
-                select: {
-                  enrollments: true,
-                  sessions: true,
-                  assessments: true,
                 }
               }
             }
@@ -133,7 +137,7 @@ export class TeachersService {
           },
           _count: {
             select: {
-              classes: true,
+              teacherClassAssignments: true,
               contracts: true,
               payrolls: true,
               documents: true,
@@ -182,51 +186,55 @@ export class TeachersService {
               updatedAt: true,
             }
           },
-          classes: {
+          teacherClassAssignments: {
             include: {
-              subject: {
-                select: {
-                  id: true,
-                  code: true,
-                  name: true,
-                  description: true,
-                }
-              },
-              room: {
-                select: {
-                  id: true,
-                  name: true,
-                  capacity: true,
-                  equipment: true,
-                  isActive: true,
-                }
-              },
-              enrollments: {
-                select: {
-                  id: true,
-                  status: true,
-                  enrolledAt: true,
-                  student: {
+              class: {
+                include: {
+                  subject: {
                     select: {
                       id: true,
-                      studentCode: true,
-                      grade: true,
-                      user: {
+                      code: true,
+                      name: true,
+                      description: true,
+                    }
+                  },
+                  room: {
+                    select: {
+                      id: true,
+                      name: true,
+                      capacity: true,
+                      equipment: true,
+                      isActive: true,
+                    }
+                  },
+                  enrollments: {
+                    select: {
+                      id: true,
+                      status: true,
+                      enrolledAt: true,
+                      student: {
                         select: {
-                          fullName: true,
-                          email: true,
-                          phone: true,
+                          id: true,
+                          studentCode: true,
+                          grade: true,
+                          user: {
+                            select: {
+                              fullName: true,
+                              email: true,
+                              phone: true,
+                            }
+                          }
                         }
                       }
                     }
+                  },
+                  _count: {
+                    select: {
+                      enrollments: true,
+                      sessions: true,
+                      assessments: true,
+                    }
                   }
-                }
-              },
-              _count: {
-                select: {
-                  enrollments: true,
-                  sessions: true,
-                  assessments: true,
                 }
               }
             }
@@ -285,7 +293,7 @@ export class TeachersService {
           },
           _count: {
             select: {
-              classes: true,
+              teacherClassAssignments: true,
               contracts: true,
               payrolls: true,
               documents: true,

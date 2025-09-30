@@ -63,12 +63,12 @@ export class ClassManagementService {
             if (limit > 100) limit = 100;
 
             // Lấy tổng số assignment để tính tổng số trang
-            const totalCount = await this.prisma.teacherAssignment.count({
+            const totalCount = await this.prisma.teacherClassAssignment.count({
                 where: whereCondition
             });
 
             // Lấy dữ liệu assignments với thông tin class
-            const assignments = await this.prisma.teacherAssignment.findMany({
+            const assignments = await this.prisma.teacherClassAssignment.findMany({
                 where: whereCondition,
                 include: { 
                     teacher: {
@@ -152,10 +152,10 @@ export class ClassManagementService {
                 feeStructureId: assignment.class.feeStructureId,
                 
                 // Schedule (parse JSON)
-                schedule: assignment.class.recurringSchedule ? 
-                    (typeof assignment.class.recurringSchedule === 'string' ? 
-                        JSON.parse(assignment.class.recurringSchedule) : 
-                        assignment.class.recurringSchedule) : null
+                schedule: assignment.recurringSchedule ? 
+                    (typeof assignment.recurringSchedule === 'string' ? 
+                        JSON.parse(assignment.recurringSchedule) : 
+                        assignment.recurringSchedule) : null
             }));
             
             // Tính toán thông tin phân trang
@@ -207,7 +207,7 @@ export class ClassManagementService {
             }
 
             // Đếm theo status của TeacherAssignment
-            const countByStatus = await this.prisma.teacherAssignment.groupBy({
+            const countByStatus = await this.prisma.teacherClassAssignment.groupBy({
                 by: ['status'],
                 where: { teacherId },
                 _count: {
@@ -268,7 +268,7 @@ export class ClassManagementService {
             }
             
             // Tìm assignment của teacher với class này
-            const assignment = await this.prisma.teacherAssignment.findFirst({
+            const assignment = await this.prisma.teacherClassAssignment.findFirst({
                 where: { 
                     teacherId, 
                     classId 
@@ -346,10 +346,10 @@ export class ClassManagementService {
                 assessmentCount: assignment.class._count.assessments,
                 
                 // Schedule
-                recurringSchedule: assignment.class.recurringSchedule ? 
-                    (typeof assignment.class.recurringSchedule === 'string' ? 
-                        JSON.parse(assignment.class.recurringSchedule) : 
-                        assignment.class.recurringSchedule) : null
+                recurringSchedule: assignment.recurringSchedule ? 
+                    (typeof assignment.recurringSchedule === 'string' ? 
+                        JSON.parse(assignment.recurringSchedule) : 
+                        assignment.recurringSchedule) : null
             };
             
             return result;
@@ -374,7 +374,7 @@ export class ClassManagementService {
                 );
             }
 
-            const assignments = await this.prisma.teacherAssignment.findMany({
+            const assignments = await this.prisma.teacherClassAssignment.findMany({
                 where: { classId },
                 include: {
                     teacher: {

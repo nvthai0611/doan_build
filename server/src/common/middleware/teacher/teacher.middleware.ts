@@ -18,10 +18,9 @@ export class MiddlewareTeacher implements NestMiddleware {
 
       const payload = JWT.verifyAccessToken(token);
       
-      if (!payload) {
+      if (!payload || typeof payload === 'string') {
         return res.status(401).json({ message: 'Token không hợp lệ' });
       }
-
 
       // Bước 2: Tìm teacher và thêm teacherId vào payload
       if (payload.userId) {

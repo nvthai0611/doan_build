@@ -18,8 +18,8 @@ export class ClassDto {
   @ApiProperty({ description: 'Tên lớp học' })
   name: string;
 
-  @ApiProperty({ description: 'ID của giáo viên' })
-  teacherId: string;
+  @ApiProperty({ description: 'ID của giáo viên', required: false })
+  teacherId?: string;
 
   @ApiProperty({ description: 'Thông tin phòng học', type: RoomDto })
   room: RoomDto;

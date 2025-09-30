@@ -96,9 +96,7 @@ export class TeacherManagementService {
       hireDateFrom,
       hireDateTo
     } = queryDto;
-    
     const skip = (page - 1) * limit;
-
     // Build where clause
     const where: any = {};
     const userWhere: any = {};
@@ -149,13 +147,7 @@ export class TeacherManagementService {
       }
     }
 
-    console.log("📡 Where:", JSON.stringify(where, null, 2));
     
-    const totalTeachers = await this.prisma.teacher.count();
-    console.log("📊 Total teachers in database:", totalTeachers);
-    
-    const teachersWithUser = await this.prisma.teacher.count();
-    console.log("📊 Teachers with user relation:", teachersWithUser);
     
     const total = await this.prisma.teacher.count({ where });
     const totalPages = Math.ceil(total / limit);
@@ -190,12 +182,8 @@ export class TeacherManagementService {
       };
     }
 
-    console.log("📡 OrderBy:", JSON.stringify(orderBy, null, 2));
-    const sampleTeachers = await this.prisma.teacher.findMany({
-      take: 3,
-      include: { user: true }
-    });
-    console.log("📊 Sample teachers:", JSON.stringify(sampleTeachers, null, 2));
+    
+    
 
     const teachers = await this.prisma.teacher.findMany({
       where,
@@ -224,9 +212,9 @@ export class TeacherManagementService {
       where: { id },
       include: {
         user: true,
-        classes: {
+        teacherClassAssignments: {
           include: {
-            subject: true
+            class: true
           }
         }
       }
@@ -352,30 +340,34 @@ export class TeacherManagementService {
       where: { id },
       include: { 
         user: true,
-        classes: {
+        teacherClassAssignments: {
           include: {
-            subject: true,
-            room: true,
-            sessions: {
-              where: year && month ? {
-                sessionDate: {
-                  gte: new Date(year, month - 1, 1),
-                  lt: new Date(year, month, 1)
-                }
-              } : undefined,
+            class: {
               include: {
-                attendances: {
+                room: true,
+                subject: true,
+                sessions: {
+                  where: year && month ? {
+                    sessionDate: {
+                      gte: new Date(year, month - 1, 1),
+                      lt: new Date(year, month, 1)
+                    }
+                  } : undefined,
                   include: {
-                    student: {
+                    attendances: {
                       include: {
-                        user: true
+                        student: {
+                          include: {
+                            user: true
+                          }
+                        }
                       }
                     }
+                  },
+                  orderBy: {
+                    sessionDate: 'asc'
                   }
                 }
-              },
-              orderBy: {
-                sessionDate: 'asc'
               }
             }
           } 
@@ -388,15 +380,15 @@ export class TeacherManagementService {
     }
 
     // Chuyển đổi dữ liệu thành format phù hợp với frontend
-    const sessions = teacher.classes.flatMap(cls => 
-      cls.sessions.map(session => ({
+    const sessions = teacher.teacherClassAssignments.flatMap(assignment => 
+      assignment.class.sessions.map(session => ({
         id: session.id,
         date: session.sessionDate,
-        title: `Buổi ${cls.name}`,
+        title: `Buổi ${assignment.class.name}`,
         time: `${session.startTime}-${session.endTime}`,
-        subject: cls.subject.name,
-        class: cls.name,
-        room: cls.room?.name || 'Chưa xác định',
+        subject: assignment.class.subject.name,
+        class: assignment.class.name,
+        room: assignment.class.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
         status: session.status as "scheduled" | "completed" | "cancelled",
         teacher: teacher.user.fullName || 'Chưa xác định',

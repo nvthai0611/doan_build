@@ -4,7 +4,7 @@ import { ScheduleManagementService } from '../services/schedule-management.servi
 import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
 
 @ApiTags('Admin Center - Schedule Management')
-@Controller('admin-center/schedule-management')
+@Controller('schedule-management')
 export class ScheduleManagementController {
   constructor(private readonly scheduleService: ScheduleManagementService) {}
 

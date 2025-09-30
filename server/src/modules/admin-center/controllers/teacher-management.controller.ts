@@ -18,7 +18,7 @@ import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Admin Center - Teacher Management')
-@Controller('admin-center/teachers')
+@Controller('/teachers')
 export class TeacherManagementController {
   constructor(private readonly teacherManagementService: TeacherManagementService) {}
 

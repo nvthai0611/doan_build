@@ -3,15 +3,11 @@
 // Teacher Management
 export { centerOwnerTeacherService } from './teacher-management/teacher.service'
 export type {
-  CreateTeacherRequest,
+  CreateTeacherRequest, 
   UpdateTeacherRequest,
-  TeacherQueryParams,
+  QueryTeacherParams, 
   TeacherResponse,
-  Teacher,
-  TeacherStats,
-  TeacherImportResult,
-  TeacherExportOptions
-} from './teacher-management/teacher.types'
+} from './teacher-management/teacher.service'
 
 // Student Management
 export { centerOwnerStudentService } from './student-management/student.service'
@@ -20,8 +16,6 @@ export type {
   UpdateStudentRequest,
   StudentQueryParams,
   StudentResponse,
-  Student,
-  StudentStats,
   StudentImportResult,
   StudentExportOptions
 } from './student-management/student.types'
@@ -31,13 +25,9 @@ export { centerOwnerDashboardService } from './center-dashboard/dashboard.servic
 export type {
   DashboardOverview,
   RevenueData,
-  ClassStats,
-  TeacherStats,
-  StudentStats,
   RevenueChartData,
   AttendanceChartData,
   RecentActivity,
-  NotificationItem,
   QuickAction,
   DashboardFilters,
   PerformanceMetrics,
@@ -57,8 +47,6 @@ export type {
   CreateSessionRequest,
   UpdateSessionRequest,
   ScheduleChangeRequest,
-  ScheduleStats,
-  AttendanceStats,
   ScheduleConflict,
   RecurringSchedule,
   CreateRecurringScheduleRequest,
