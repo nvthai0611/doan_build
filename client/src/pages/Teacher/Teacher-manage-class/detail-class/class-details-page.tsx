@@ -26,6 +26,7 @@ import { useLocation, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
 import { daysOfWeek } from "../../../../utils/commonData"
+import Loading from "../../../../components/Loading/LoadingPage"
 
 const fetchData = async (classId :string) =>{
   const response = await getClassDetail(classId)
@@ -73,6 +74,11 @@ export function ClassDetailsPage() {
     enabled: !!classId,
   }) 
 
+  if(isLoading){
+    return (
+      <Loading />
+    )
+  }
   const handleEdit = (type: string, item?: any) => {
     setSelectedItem(item)
     switch (type) {

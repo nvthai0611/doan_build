@@ -150,15 +150,15 @@ export class ScheduleController {
         scheduleId,
       );
 
-      if (!result) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Không tìm thấy buổi dạy',
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      // if (!result) {
+      //   throw new HttpException(
+      //     {
+      //       success: false,
+      //       message: 'Không tìm thấy buổi dạy',
+      //     },
+      //     HttpStatus.NOT_FOUND,
+      //   );
+      // }
 
       return {
         success: true,
@@ -198,15 +198,15 @@ export class ScheduleController {
         updateStatusDto,
       );
 
-      if (!result) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Không tìm thấy buổi dạy hoặc không có quyền cập nhật',
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      // if (!result) {
+      //   throw new HttpException(
+      //     {
+      //       success: false,
+      //       message: 'Không tìm thấy buổi dạy hoặc không có quyền cập nhật',
+      //     },
+      //     HttpStatus.NOT_FOUND,
+      //   );
+      // }
 
       return {
         success: true,

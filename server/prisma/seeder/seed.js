@@ -34,53 +34,57 @@ const GRADE_LEVELS = ['Lớp 10', 'Lớp 11', 'Lớp 12'];
 
 async function main() {
   console.log('🌱 Starting database seeding...');
-  
+
   try {
     // Clear existing data
     await clearDatabase();
-    
+
     // Create core data
     const schools = await createSchools();
     const subjects = await createSubjects();
     const rooms = await createRooms();
-    
+
     // Create users and profiles
     const adminUser = await createAdminUser();
     const teachers = await createTeachers(schools);
     const students = await createStudents(schools);
     const parents = await createParents();
-    
+
     // Create relationships
     await createStudentParentRelationships(students, parents);
-    
+
     // Create academic data
-    const classes = await createClasses(teachers, subjects, rooms);
+    const classes = await createClasses(subjects, rooms); // Bỏ teachers parameter
+
+    // Tạo teacher assignments TRƯỚC khi tạo enrollments
+    const assignments = await createTeacherAssignments(teachers, classes);
+
     await createEnrollments(students, classes);
     const sessions = await createClassSessions(classes);
     await createAttendances(sessions, students);
-    
-    // Create assessments and grades
-    const assessments = await createAssessments(classes);
-    await createGrades(assessments, students, teachers);
-    
+
+    // Create assessments and grades - cần sửa để dùng assignments thay vì teacher trực tiếp
+    const assessments = await createAssessments(classes, assignments);
+    await createGrades(assessments, students, assignments);
+
     // Create financial data
     await createFeeStructures(classes);
     await createFeeRecords(students, classes);
     await createPayments(students);
-    
+
     // Create HR data
     await createContracts(teachers);
     await createPayrolls(teachers);
     await createTeacherDocuments(teachers);
-    
+
     // Create additional data
     await createNotifications(adminUser);
     await createLeaveRequests(teachers, students);
     await createStudentReports(students);
-    
+
     console.log('✅ Database seeding completed successfully!');
     await printSummary();
-    
+
   } catch (error) {
     console.error('❌ Error during seeding:', error);
     throw error;
@@ -89,7 +93,7 @@ async function main() {
 
 async function clearDatabase() {
   console.log('🧹 Clearing existing data...');
-  
+
   await prisma.$transaction([
     prisma.studentAssessmentGrade.deleteMany(),
     prisma.studentSessionAttendance.deleteMany(),
@@ -101,6 +105,7 @@ async function clearDatabase() {
     prisma.assessment.deleteMany(),
     prisma.material.deleteMany(),
     prisma.classSession.deleteMany(),
+    prisma.teacherAssignment.deleteMany(), // Thêm dòng này
     prisma.class.deleteMany(),
     prisma.room.deleteMany(),
     prisma.subject.deleteMany(),
@@ -123,7 +128,7 @@ async function clearDatabase() {
 async function createSchools() {
   console.log('🏫 Creating schools...');
   const schools = [];
-  
+
   for (let i = 0; i < NUM_SCHOOLS; i++) {
     const school = await prisma.school.create({
       data: {
@@ -138,28 +143,28 @@ async function createSchools() {
     });
     schools.push(school);
   }
-  
+
   return schools;
 }
 
 async function createSubjects() {
   console.log('📚 Creating subjects...');
   const subjects = [];
-  
+
   for (const subjectData of SUBJECTS) {
     const subject = await prisma.subject.create({
       data: subjectData,
     });
     subjects.push(subject);
   }
-  
+
   return subjects;
 }
 
 async function createRooms() {
   console.log('🏢 Creating rooms...');
   const rooms = [];
-  
+
   for (let i = 0; i < 10; i++) {
     const room = await prisma.room.create({
       data: {
@@ -177,13 +182,13 @@ async function createRooms() {
     });
     rooms.push(room);
   }
-  
+
   return rooms;
 }
 
 async function createAdminUser() {
   console.log('👤 Creating admin user...');
-  
+
   return await prisma.user.create({
     data: {
       username: 'admin',
@@ -200,7 +205,7 @@ async function createAdminUser() {
 async function createTeachers(schools) {
   console.log('👨‍🏫 Creating teachers...');
   const teachers = [];
-  
+
   for (let i = 0; i < NUM_TEACHERS; i++) {
     // Create user
     const user = await prisma.user.create({
@@ -214,7 +219,7 @@ async function createTeachers(schools) {
         isActive: true,
       },
     });
-    
+
     // Create teacher profile
     const teacher = await prisma.teacher.create({
       data: {
@@ -223,7 +228,7 @@ async function createTeachers(schools) {
         hireDate: faker.date.past({ years: 5 }),
         contractEnd: faker.date.future({ years: 2 }),
         subjects: faker.helpers.arrayElements(
-          SUBJECTS.map(s => s.name), 
+          SUBJECTS.map(s => s.name),
           faker.number.int({ min: 1, max: 3 })
         ),
         salary: parseFloat(faker.finance.amount({ min: 1000, max: 5000, dec: 2 })),
@@ -231,17 +236,17 @@ async function createTeachers(schools) {
         gender: faker.helpers.arrayElement(GENDER_OPTIONS),
       },
     });
-    
+
     teachers.push(teacher);
   }
-  
+
   return teachers;
 }
 
 async function createStudents(schools) {
   console.log('👨‍🎓 Creating students...');
   const students = [];
-  
+
   for (let i = 0; i < NUM_STUDENTS; i++) {
     // Create user
     const user = await prisma.user.create({
@@ -255,7 +260,7 @@ async function createStudents(schools) {
         isActive: true,
       },
     });
-    
+
     // Create student profile
     const student = await prisma.student.create({
       data: {
@@ -268,17 +273,17 @@ async function createStudents(schools) {
         schoolId: faker.helpers.arrayElement(schools).id,
       },
     });
-    
+
     students.push(student);
   }
-  
+
   return students;
 }
 
 async function createParents() {
   console.log('👨‍👩‍👧‍👦 Creating parents...');
   const parents = [];
-  
+
   for (let i = 0; i < NUM_PARENTS; i++) {
     // Create user
     const user = await prisma.user.create({
@@ -292,23 +297,23 @@ async function createParents() {
         isActive: true,
       },
     });
-    
+
     // Create parent profile
     const parent = await prisma.parent.create({
       data: {
         userId: user.id,
       },
     });
-    
+
     parents.push(parent);
   }
-  
+
   return parents;
 }
 
 async function createStudentParentRelationships(students, parents) {
   console.log('🔗 Creating student-parent relationships...');
-  
+
   for (let i = 0; i < Math.min(students.length, parents.length); i++) {
     await prisma.studentParentRelationship.create({
       data: {
@@ -321,29 +326,28 @@ async function createStudentParentRelationships(students, parents) {
   }
 }
 
-async function createClasses(teachers, subjects, rooms) {
+async function createClasses(subjects, rooms) { // Bỏ teachers parameter
   console.log('📖 Creating classes...');
   const classes = [];
-  
+
   for (let i = 0; i < NUM_CLASSES; i++) {
-    const teacher = faker.helpers.arrayElement(teachers);
     const subject = faker.helpers.arrayElement(subjects);
     const room = faker.helpers.arrayElement(rooms);
     const grade = faker.helpers.arrayElement(GRADE_LEVELS);
-    
+
     const newClass = await prisma.class.create({
       data: {
         name: `${subject.name} ${grade}${String.fromCharCode(65 + (i % 3))}`,
         grade: grade,
         subjectId: subject.id,
-        teacherId: teacher.id,
+        // teacherId: teacher.id, // Bỏ dòng này
         roomId: room.id,
         maxStudents: faker.number.int({ min: 20, max: 40 }),
-        startDate: faker.date.future({ years: 0.5 }),
-        endDate: faker.date.future({ years: 1.5 }),
+        // startDate: faker.date.future({ years: 0.5 }), // Bỏ dòng này
+        // endDate: faker.date.future({ years: 1.5 }), // Bỏ dòng này
         recurringSchedule: {
           days: faker.helpers.arrayElements(
-            ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 
+            ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
             faker.number.int({ min: 1, max: 3 })
           ),
           startTime: faker.helpers.arrayElement(['07:00', '08:00', '14:00', '15:00']),
@@ -355,17 +359,157 @@ async function createClasses(teachers, subjects, rooms) {
     });
     classes.push(newClass);
   }
-  
+
   return classes;
+}
+
+// Thêm hàm tạo TeacherAssignments
+async function createTeacherAssignments(teachers, classes) {
+  console.log('🔗 Creating teacher assignments...');
+  const assignments = [];
+
+  // Tạo các kỳ học và năm học
+  const semesters = ['2024-1', '2024-2', '2025-1'];
+  const academicYears = ['2024-2025', '2025-2026'];
+
+  for (const classItem of classes) {
+    // Mỗi lớp sẽ có ít nhất 1 assignment, có thể có nhiều assignment qua các kỳ
+    const numAssignments = faker.number.int({ min: 1, max: 3 });
+
+    let currentStartDate = faker.date.between({
+      from: '2024-09-01',
+      to: '2024-09-15'
+    });
+
+    for (let i = 0; i < numAssignments; i++) {
+      // Chọn giáo viên phù hợp với môn học của lớp
+      const classWithSubject = await prisma.class.findUnique({
+        where: { id: classItem.id },
+        include: { subject: true }
+      });
+
+      const suitableTeachers = teachers.filter(teacher =>
+        teacher.subjects.includes(classWithSubject.subject.name) ||
+        teacher.subjects.length === 0 // Giáo viên đa năng
+      );
+
+      const teacher = suitableTeachers.length > 0
+        ? faker.helpers.arrayElement(suitableTeachers)
+        : faker.helpers.arrayElement(teachers);
+
+      // Tính toán thời gian assignment
+      const assignmentDuration = faker.number.int({ min: 60, max: 120 }); // 60-120 ngày
+      const endDate = new Date(currentStartDate);
+      endDate.setDate(endDate.getDate() + assignmentDuration);
+
+      // Xác định trạng thái
+      const now = new Date();
+      let status;
+      if (i === numAssignments - 1) {
+        // Assignment cuối cùng
+        status = endDate > now ? 'active' : 'completed';
+      } else {
+        status = 'completed';
+      }
+
+      const semester = faker.helpers.arrayElement(semesters);
+      const academicYear = faker.helpers.arrayElement(academicYears);
+
+      const assignment = await prisma.teacherAssignment.create({
+        data: {
+          teacherId: teacher.id,
+          classId: classItem.id,
+          startDate: currentStartDate,
+          endDate: status === 'completed' ? endDate : null,
+          status: status,
+          semester: semester,
+          academicYear: academicYear,
+          notes: faker.helpers.maybe(() =>
+            faker.helpers.arrayElement([
+              'Phân công thường kỳ',
+              'Thay thế giáo viên nghỉ phép',
+              'Tăng cường giảng dạy',
+              'Phân công mới học kỳ',
+              'Hỗ trợ giảng dạy'
+            ])
+          ),
+        },
+      });
+
+      assignments.push(assignment);
+
+      // Cập nhật start date cho assignment tiếp theo
+      currentStartDate = new Date(endDate);
+      currentStartDate.setDate(currentStartDate.getDate() + 1);
+
+      // Nếu đã quá xa trong tương lai thì dừng
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 1);
+      if (currentStartDate >= maxDate) {
+        break;
+      }
+    }
+  }
+
+  // Tạo thêm assignments cho giáo viên chưa có lớp
+  await createAdditionalTeacherAssignments(teachers, classes, assignments);
+
+  console.log(`✅ Created ${assignments.length} teacher assignments`);
+  return assignments;
+}
+
+// Hàm tạo assignments cho giáo viên chưa có lớp
+async function createAdditionalTeacherAssignments(teachers, classes, existingAssignments) {
+  console.log('➕ Creating additional teacher assignments for unassigned teachers...');
+
+  // Tìm giáo viên chưa có assignment
+  const assignedTeacherIds = new Set(existingAssignments.map(a => a.teacherId));
+  const unassignedTeachers = teachers.filter(t => !assignedTeacherIds.has(t.id));
+
+  for (const teacher of unassignedTeachers) {
+    // Tìm lớp chưa có giáo viên active
+    const classesWithActiveAssignments = new Set(
+      existingAssignments
+        .filter(a => a.status === 'active')
+        .map(a => a.classId)
+    );
+
+    const availableClasses = classes.filter(cls =>
+      !classesWithActiveAssignments.has(cls.id)
+    );
+
+    if (availableClasses.length > 0) {
+      const selectedClass = faker.helpers.arrayElement(availableClasses);
+
+      const assignment = await prisma.teacherAssignment.create({
+        data: {
+          teacherId: teacher.id,
+          classId: selectedClass.id,
+          startDate: faker.date.between({
+            from: '2024-09-01',
+            to: '2024-09-30'
+          }),
+          endDate: null,
+          status: 'active',
+          semester: '2024-2',
+          academicYear: '2024-2025',
+          notes: 'Auto-assigned to unassigned teacher',
+        },
+      });
+
+      existingAssignments.push(assignment);
+      console.log(`📌 Assigned teacher ${teacher.id} to class ${selectedClass.id}`);
+    }
+  }
 }
 
 async function createEnrollments(students, classes) {
   console.log('📝 Creating enrollments...');
-  
+
   for (const student of students) {
     const numClasses = faker.number.int({ min: 1, max: 3 });
     const selectedClasses = faker.helpers.arrayElements(classes, numClasses);
-    
+
     for (const classItem of selectedClasses) {
       await prisma.enrollment.create({
         data: {
@@ -381,11 +525,11 @@ async function createEnrollments(students, classes) {
 async function createClassSessions(classes) {
   console.log('📅 Creating class sessions...');
   const sessions = [];
-  
+
   for (let i = 0; i < NUM_SESSIONS; i++) {
     const classItem = faker.helpers.arrayElement(classes);
     const sessionDate = faker.date.recent({ days: 60 });
-    
+
     const session = await prisma.classSession.create({
       data: {
         classId: classItem.id,
@@ -399,28 +543,28 @@ async function createClassSessions(classes) {
     });
     sessions.push(session);
   }
-  
+
   return sessions;
 }
 
 async function createAttendances(sessions, students) {
   console.log('✅ Creating attendances...');
-  
+
   for (const session of sessions) {
     // Get students enrolled in this class
     const enrollments = await prisma.enrollment.findMany({
       where: { classId: session.classId },
       include: { student: true }
     });
-    
+
     // Get a teacher to record attendance
     const classData = await prisma.class.findUnique({
       where: { id: session.classId },
       include: { teacher: { include: { user: true } } }
     });
-    
+
     if (!classData || !classData.teacher) continue;
-    
+
     for (const enrollment of enrollments) {
       await prisma.studentSessionAttendance.create({
         data: {
@@ -435,20 +579,20 @@ async function createAttendances(sessions, students) {
   }
 }
 
-async function createAssessments(classes) {
+async function createAssessments(classes, assignments) {
   console.log('📊 Creating assessments...');
   const assessments = [];
-  
+
   for (let i = 0; i < NUM_ASSESSMENTS; i++) {
     const classItem = faker.helpers.arrayElement(classes);
     const assessmentTypes = ['15_min', '45_min', 'homework', 'midterm', 'final'];
     const maxScores = [10, 15, 20, 100];
-    
+
     const assessment = await prisma.assessment.create({
       data: {
         name: faker.helpers.arrayElement([
           'Kiểm tra 15 phút',
-          'Kiểm tra 1 tiết', 
+          'Kiểm tra 1 tiết',
           'Bài tập về nhà',
           'Thi giữa kỳ',
           'Thi cuối kỳ'
@@ -462,38 +606,45 @@ async function createAssessments(classes) {
     });
     assessments.push(assessment);
   }
-  
+
   return assessments;
 }
 
-async function createGrades(assessments, students, teachers) {
+async function createGrades(assessments, students, assignments) {
   console.log('📈 Creating grades...');
-  
+
   for (const assessment of assessments) {
     // Get students enrolled in this class
     const enrollments = await prisma.enrollment.findMany({
       where: { classId: assessment.classId },
       include: { student: true }
     });
-    
-    // Get class teacher
-    const classData = await prisma.class.findUnique({
-      where: { id: assessment.classId },
-      include: { teacher: { include: { user: true } } }
+
+    // Get active teacher assignment for this class
+    const activeAssignment = assignments.find(a =>
+      a.classId === assessment.classId && a.status === 'active'
+    );
+
+    if (!activeAssignment) continue;
+
+    // Get teacher user
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: activeAssignment.teacherId },
+      include: { user: true }
     });
-    
-    if (!classData || !classData.teacher) continue;
-    
+
+    if (!teacher) continue;
+
     // Randomly select students to grade (80% chance)
     const studentsToGrade = enrollments.filter(() => faker.datatype.boolean({ probability: 0.8 }));
-    
+
     for (const enrollment of studentsToGrade) {
-      const score = faker.number.float({ 
-        min: 0, 
-        max: parseFloat(assessment.maxScore), 
-        fractionDigits: 1 
+      const score = faker.number.float({
+        min: 0,
+        max: parseFloat(assessment.maxScore),
+        fractionDigits: 1
       });
-      
+
       await prisma.studentAssessmentGrade.create({
         data: {
           assessmentId: assessment.id,
@@ -509,7 +660,7 @@ async function createGrades(assessments, students, teachers) {
             'Rất tốt!',
             'Cần cố gắng hơn nữa'
           ]),
-          gradedBy: classData.teacher.user.id,
+          gradedBy: teacher.user.id,
         },
       });
     }
@@ -518,7 +669,7 @@ async function createGrades(assessments, students, teachers) {
 
 async function createFeeStructures(classes) {
   console.log('💰 Creating fee structures...');
-  
+
   for (const classItem of classes) {
     const feeStructure = await prisma.feeStructure.create({
       data: {
@@ -529,7 +680,7 @@ async function createFeeStructures(classes) {
         isActive: true,
       },
     });
-    
+
     // Link fee structure to class
     await prisma.class.update({
       where: { id: classItem.id },
@@ -540,22 +691,22 @@ async function createFeeStructures(classes) {
 
 async function createFeeRecords(students, classes) {
   console.log('📋 Creating fee records...');
-  
+
   // Get classes with fee structures
   const classesWithFees = await prisma.class.findMany({
     where: { feeStructureId: { not: null } },
     include: { feeStructure: true }
   });
-  
+
   for (const student of students) {
     const numRecords = faker.number.int({ min: 1, max: 3 });
     const selectedClasses = faker.helpers.arrayElements(classesWithFees, numRecords);
-    
+
     for (const classItem of selectedClasses) {
       const amount = parseFloat(classItem.feeStructure.amount);
-      const paidAmount = faker.datatype.boolean({ probability: 0.7 }) ? 
+      const paidAmount = faker.datatype.boolean({ probability: 0.7 }) ?
         parseFloat(faker.finance.amount({ min: 0, max: amount, dec: 2 })) : 0;
-      
+
       await prisma.feeRecord.create({
         data: {
           studentId: student.id,
@@ -574,11 +725,11 @@ async function createFeeRecords(students, classes) {
 
 async function createPayments(students) {
   console.log('💳 Creating payments...');
-  
+
   const feeRecords = await prisma.feeRecord.findMany({
     where: { status: 'paid' }
   });
-  
+
   for (const feeRecord of feeRecords) {
     await prisma.payment.create({
       data: {
@@ -596,7 +747,7 @@ async function createPayments(students) {
 
 async function createContracts(teachers) {
   console.log('📄 Creating contracts...');
-  
+
   for (const teacher of teachers) {
     await prisma.contract.create({
       data: {
@@ -617,14 +768,14 @@ async function createContracts(teachers) {
 
 async function createPayrolls(teachers) {
   console.log('💼 Creating payrolls...');
-  
+
   for (const teacher of teachers) {
     for (let i = 0; i < 6; i++) { // 6 months of payroll
       const baseSalary = parseFloat(teacher.salary || 0);
       const bonuses = parseFloat(faker.finance.amount({ min: 0, max: 500, dec: 2 }));
       const deductions = parseFloat(faker.finance.amount({ min: 0, max: 200, dec: 2 }));
       const totalAmount = baseSalary + bonuses - deductions;
-      
+
       await prisma.payroll.create({
         data: {
           teacherId: teacher.id,
@@ -650,10 +801,10 @@ async function createPayrolls(teachers) {
 
 async function createTeacherDocuments(teachers) {
   console.log('📁 Creating teacher documents...');
-  
+
   for (const teacher of teachers) {
     const numDocs = faker.number.int({ min: 1, max: 3 });
-    
+
     for (let i = 0; i < numDocs; i++) {
       await prisma.teacherDocument.create({
         data: {
@@ -668,7 +819,7 @@ async function createTeacherDocuments(teachers) {
 
 async function createNotifications(adminUser) {
   console.log('🔔 Creating notifications...');
-  
+
   for (let i = 0; i < 20; i++) {
     await prisma.notification.create({
       data: {
@@ -690,14 +841,14 @@ async function createNotifications(adminUser) {
 
 async function createLeaveRequests(teachers, students) {
   console.log('🏖️ Creating leave requests...');
-  
+
   // Teacher leave requests
   for (let i = 0; i < 10; i++) {
     const teacher = faker.helpers.arrayElement(teachers);
     const teacherUser = await prisma.user.findUnique({
       where: { id: teacher.userId }
     });
-    
+
     await prisma.leaveRequest.create({
       data: {
         requestType: 'sick_leave',
@@ -711,14 +862,14 @@ async function createLeaveRequests(teachers, students) {
       },
     });
   }
-  
+
   // Student leave requests
   for (let i = 0; i < 15; i++) {
     const student = faker.helpers.arrayElement(students);
     const studentUser = await prisma.user.findUnique({
       where: { id: student.userId }
     });
-    
+
     await prisma.leaveRequest.create({
       data: {
         requestType: 'personal_leave',
@@ -736,7 +887,7 @@ async function createLeaveRequests(teachers, students) {
 
 async function createStudentReports(students) {
   console.log('📊 Creating student reports...');
-  
+
   for (const student of students) {
     await prisma.studentReport.create({
       data: {
@@ -766,30 +917,32 @@ async function createStudentReports(students) {
 
 async function printSummary() {
   console.log('\n📊 Database Summary:');
-  
+
   const counts = await Promise.all([
     prisma.school.count(),
     prisma.teacher.count(),
     prisma.student.count(),
     prisma.parent.count(),
     prisma.class.count(),
+    prisma.teacherAssignment.count(), // Thêm dòng này
     prisma.enrollment.count(),
     prisma.assessment.count(),
     prisma.studentAssessmentGrade.count(),
     prisma.feeRecord.count(),
     prisma.payment.count(),
   ]);
-  
+
   console.log(`🏫 Schools: ${counts[0]}`);
   console.log(`👨‍🏫 Teachers: ${counts[1]}`);
   console.log(`👨‍🎓 Students: ${counts[2]}`);
   console.log(`👨‍👩‍👧‍👦 Parents: ${counts[3]}`);
   console.log(`📖 Classes: ${counts[4]}`);
-  console.log(`📝 Enrollments: ${counts[5]}`);
-  console.log(`📊 Assessments: ${counts[6]}`);
-  console.log(`📈 Grades: ${counts[7]}`);
-  console.log(`💰 Fee Records: ${counts[8]}`);
-  console.log(`💳 Payments: ${counts[9]}`);
+  console.log(`🔗 Teacher Assignments: ${counts[5]}`); // Thêm dòng này
+  console.log(`📝 Enrollments: ${counts[6]}`);
+  console.log(`📊 Assessments: ${counts[7]}`);
+  console.log(`📈 Grades: ${counts[8]}`);
+  console.log(`💰 Fee Records: ${counts[9]}`);
+  console.log(`💳 Payments: ${counts[10]}`);
 }
 
 main()

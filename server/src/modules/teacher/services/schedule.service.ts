@@ -334,151 +334,152 @@ export class ScheduleService {
 
 
   async getWeeklySchedule(teacherId: string, weekStart: string) {
-    try {
-      const startDate = new Date(weekStart);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 6);
+    // try {
+    //   const startDate = new Date(weekStart);
+    //   const endDate = new Date(startDate);
+    //   endDate.setDate(endDate.getDate() + 6);
 
-      const schedules = await this.prisma.classSession.findMany({
-        where: {
-          class: { teacherId },
-          sessionDate: {
-            gte: startDate,
-            lte: endDate
-          }
-        },
-        include: {
-          class: {
-            include: {
-              subject: { select: { name: true } }
-            }
-          },
-          room: { select: { name: true } }
-        },
-        orderBy: [
-          { sessionDate: 'asc' },
-          { startTime: 'asc' }
-        ]
-      });
+    //   const schedules = await this.prisma.classSession.findMany({
+    //     where: {
+    //       class: { teacherId },
+    //       sessionDate: {
+    //         gte: startDate,
+    //         lte: endDate
+    //       }
+    //     },
+    //     include: {
+    //       class: {
+    //         include: {
+    //           subject: { select: { name: true } }
+    //         }
+    //       },
+    //       room: { select: { name: true } }
+    //     },
+    //     orderBy: [
+    //       { sessionDate: 'asc' },
+    //       { startTime: 'asc' }
+    //     ]
+    //   });
 
-      return schedules.map(session => ({
-        id: session.id,
-        date: session.sessionDate,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        subject: session.class.subject.name,
-        className: session.class.name,
-        room: session.room?.name || 'Chưa xác định',
-        studentCount: session.class.maxStudents || 0,
-        status: session.status,
-        notes: session.notes,
-        type: 'regular',
-        teacherId: session.class.teacherId,
-        createdAt: session.createdAt,
-        updatedAt: session.createdAt
-      }));
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy lịch dạy theo tuần: ${error.message}`);
-    }
+    //   return schedules.map(session => ({
+    //     id: session.id,
+    //     date: session.sessionDate,
+    //     startTime: session.startTime,
+    //     endTime: session.endTime,
+    //     subject: session.class.subject.name,
+    //     className: session.class.name,
+    //     room: session.room?.name || 'Chưa xác định',
+    //     studentCount: session.class.maxStudents || 0,
+    //     status: session.status,
+    //     notes: session.notes,
+    //     type: 'regular',
+    //     teacherId: session.class.teacherId,
+    //     createdAt: session.createdAt,
+    //     updatedAt: session.createdAt
+    //   }));
+    // } catch (error) {
+    //   throw new Error(`Lỗi khi lấy lịch dạy theo tuần: ${error.message}`);
+    // }
   }
 
   async getMonthlySchedule(teacherId: string, year: number, month: number) {
-    try {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 30);
+    // try {
+    //   const startDate = new Date(year, month - 1, 1);
+    //   const endDate = new Date(startDate);
+    //   endDate.setDate(endDate.getDate() + 30);
 
-      const schedules = await this.prisma.classSession.findMany({
-        where: {
-          class: { teacherId },
-          sessionDate: {
-            gte: startDate,
-            lte: endDate
-          },
-        },
-        include: {
-          class: {
-            include: {
-              subject: { select: { name: true } },
-            },
-          },
-          room: { select: { name: true } },
-        },
-        orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
-      });
+    //   const schedules = await this.prisma.classSession.findMany({
+    //     where: {
+    //       class: { teacherId },
+    //       sessionDate: {
+    //         gte: startDate,
+    //         lte: endDate
+    //       },
+    //     },
+    //     include: {
+    //       class: {
+    //         include: {
+    //           subject: { select: { name: true } },
+    //         },
+    //       },
+    //       room: { select: { name: true } },
+    //     },
+    //     orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+    //   });
 
-      return schedules.map((session) => ({
-        id: session.id,
-        date: session.sessionDate,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        subject: session.class.subject.name,
-        className: session.class.name,
-        room: session.room?.name || 'Chưa xác định',
-        studentCount: session.class.maxStudents || 0,
-        status: session.status,
-        notes: session.notes,
-        type: 'regular',
-        teacherId: session.class.teacherId,
-        createdAt: session.createdAt,
-        updatedAt: session.createdAt,
-      }));
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy lịch dạy theo tháng: ${error.message}`);
-    }
+    //   // return schedules.map((session) => ({
+    //   //   id: session.id,
+    //   //   date: session.sessionDate,
+    //   //   startTime: session.startTime,
+    //   //   endTime: session.endTime,
+    //   //   subject: session.class.subject.name,
+    //   //   className: session.class.name,
+    //   //   room: session.room?.name || 'Chưa xác định',
+    //   //   studentCount: session.class.maxStudents || 0,
+    //   //   status: session.status,
+    //   //   notes: session.notes,
+    //   //   type: 'regular',
+    //   //   teacherId: session.class.teacherId,
+    //   //   createdAt: session.createdAt,
+    //   //   updatedAt: session.createdAt,
+    //   // }));
+    //   return null
+    // } catch (error) {
+    //   throw new Error(`Lỗi khi lấy lịch dạy theo tháng: ${error.message}`);
+    // }
   }
 
   async getScheduleDetail(teacherId: string, scheduleId: string) {
-    try {
-      const session = await this.prisma.classSession.findFirst({
-        where: {
-          id: scheduleId,
-          class: { teacherId }
-        },
-        include: {
-          class: {
-            include: {
-              teacher: {
-                select: {
-                  id: true,
-                  user: {
-                    select: {
-                      fullName: true,
-                      email: true
-                    }
-                  }
-                }
-              },
-              subject: { select: { name: true } }
-            }
-          },
-          room: { select: { name: true } }
-        }
-      });
+    // try {
+    //   const session = await this.prisma.classSession.findFirst({
+    //     where: {
+    //       id: scheduleId,
+    //       class: { teacherId }
+    //     },
+    //     include: {
+    //       class: {
+    //         include: {
+    //           teacher: {
+    //             select: {
+    //               id: true,
+    //               user: {
+    //                 select: {
+    //                   fullName: true,
+    //                   email: true
+    //                 }
+    //               }
+    //             }
+    //           },
+    //           subject: { select: { name: true } }
+    //         }
+    //       },
+    //       room: { select: { name: true } }
+    //     }
+    //   });
 
-      if (!session) {
-        return null;
-      }
+    //   if (!session) {
+    //     return null;
+    //   }
 
-      return {
-        id: session.id,
-        date: session.sessionDate,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        subject: session.class.subject.name,
-        className: session.class.name,
-        room: session.room?.name || 'Chưa xác định',
-        studentCount: session.class.maxStudents || 0,
-        status: session.status,
-        notes: session.notes,
-        type: 'regular',
-        teacherId: session.class.teacherId,
-        createdAt: session.createdAt,
-        updatedAt: session.createdAt
-      };
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy chi tiết buổi dạy: ${error.message}`);
-    }
+    //   return {
+    //     id: session.id,
+    //     date: session.sessionDate,
+    //     startTime: session.startTime,
+    //     endTime: session.endTime,
+    //     subject: session.class.subject.name,
+    //     className: session.class.name,
+    //     room: session.room?.name || 'Chưa xác định',
+    //     studentCount: session.class.maxStudents || 0,
+    //     status: session.status,
+    //     notes: session.notes,
+    //     type: 'regular',
+    //     teacherId: session.class.teacherId,
+    //     createdAt: session.createdAt,
+    //     updatedAt: session.createdAt
+    //   };
+    // } catch (error) {
+    //   throw new Error(`Lỗi khi lấy chi tiết buổi dạy: ${error.message}`);
+    // }
   }
 
   async updateScheduleStatus(
@@ -486,62 +487,62 @@ export class ScheduleService {
     scheduleId: string, 
     updateStatusDto: UpdateScheduleStatusDto
   ) {
-    try {
-      // Kiểm tra xem buổi dạy có thuộc về giáo viên này không
-      const existingSession = await this.prisma.classSession.findFirst({
-        where: {
-          id: scheduleId,
-          class: { teacherId }
-        },
-        include: {
-          class: {
-            include: {
-              subject: { select: { name: true } }
-            }
-          },
-          room: { select: { name: true } }
-        }
-      });
+    // try {
+    //   // Kiểm tra xem buổi dạy có thuộc về giáo viên này không
+    //   const existingSession = await this.prisma.classSession.findFirst({
+    //     where: {
+    //       id: scheduleId,
+    //       class: { teacherId }
+    //     },
+    //     include: {
+    //       class: {
+    //         include: {
+    //           subject: { select: { name: true } }
+    //         }
+    //       },
+    //       room: { select: { name: true } }
+    //     }
+    //   });
 
-      if (!existingSession) {
-        return null;
-      }
+    //   if (!existingSession) {
+    //     return null;
+    //   }
 
-      const updatedSession = await this.prisma.classSession.update({
-        where: { id: scheduleId },
-        data: {
-          status: updateStatusDto.status,
-          notes: updateStatusDto.notes || existingSession.notes
-        },
-        include: {
-          class: {
-            include: {
-              subject: { select: { name: true } }
-            }
-          },
-          room: { select: { name: true } }
-        }
-      });
+    //   const updatedSession = await this.prisma.classSession.update({
+    //     where: { id: scheduleId },
+    //     data: {
+    //       status: updateStatusDto.status,
+    //       notes: updateStatusDto.notes || existingSession.notes
+    //     },
+    //     include: {
+    //       class: {
+    //         include: {
+    //           subject: { select: { name: true } }
+    //         }
+    //       },
+    //       room: { select: { name: true } }
+    //     }
+    //   });
 
-      return {
-        id: updatedSession.id,
-        date: updatedSession.sessionDate,
-        startTime: updatedSession.startTime,
-        endTime: updatedSession.endTime,
-        subject: updatedSession.class.subject.name,
-        className: updatedSession.class.name,
-        room: updatedSession.room?.name || 'Chưa xác định',
-        studentCount: updatedSession.class.maxStudents || 0,
-        status: updatedSession.status,
-        notes: updatedSession.notes,
-        type: 'regular',
-        teacherId: updatedSession.class.teacherId,
-        createdAt: updatedSession.createdAt,
-        updatedAt: updatedSession.createdAt
-      };
-    } catch (error) {
-      throw new Error(`Lỗi khi cập nhật trạng thái buổi dạy: ${error.message}`);
-    }
+    //   return {
+    //     id: updatedSession.id,
+    //     date: updatedSession.sessionDate,
+    //     startTime: updatedSession.startTime,
+    //     endTime: updatedSession.endTime,
+    //     subject: updatedSession.class.subject.name,
+    //     className: updatedSession.class.name,
+    //     room: updatedSession.room?.name || 'Chưa xác định',
+    //     studentCount: updatedSession.class.maxStudents || 0,
+    //     status: updatedSession.status,
+    //     notes: updatedSession.notes,
+    //     type: 'regular',
+    //     teacherId: updatedSession.class.teacherId,
+    //     createdAt: updatedSession.createdAt,
+    //     updatedAt: updatedSession.createdAt
+    //   };
+    // } catch (error) {
+    //   throw new Error(`Lỗi khi cập nhật trạng thái buổi dạy: ${error.message}`);
+    // }
   }
 
   async exportScheduleToExcel(teacherId: string, filters: ScheduleFiltersDto): Promise<Buffer> {
