@@ -8,7 +8,7 @@ export class ClassesService {
     async getClassByTeacherId(teacherId: string) {
         // Logic to get classes by teacher ID
         const classes = await this.prisma.class.findMany({
-            where: { teacherId },
+            // where: { teacherId },
             include:{
                 room: true,             
             }

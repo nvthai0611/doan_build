@@ -1,27 +1,31 @@
-import { Controller, Get, HttpException, HttpStatus, Param, Query } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { Controller, Get, HttpException, HttpStatus, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ClassManagementService } from '../services/class-management.service';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { ClassesListResponseDto, CountByStatusResponseDto } from '../dto/classes/response-class.dto';
 import { ClassQueryDto } from '../dto/classes/query-class.dto';
 import { ClassDetailsQueryDto } from '../dto/classes/class-details-query.dto';
 import { checkId } from 'src/utils/validate.util';
+import { MiddlewareTeacher } from 'src/common/middleware/teacher/teacher.middleware';
 
-@ApiTags('Classes')
+@ApiTags('Teacher - Classes')
 @Controller('class-management')
 export class ClassManagementController {
     constructor(private readonly classManagementService: ClassManagementService) {}
 
+
     // Đặt route cụ thể TRƯỚC route có param
-    @Get('class/details')
+    @Get('classes/details')
     @ApiOperation({summary: 'Lấy chi tiết lớp học theo ID lớp và ID giáo viên'})
     @ApiQuery({ name: 'classId', required: true, description: 'ID của lớp học (UUID)' })
     async getClassDetails(
+        @Req() request: any,
         @Query() query: any
     ){
         if (!query.classId) {
             throw new HttpException('Class ID is required', HttpStatus.BAD_REQUEST);
         }
-        const teacherId = "601a2029-dc56-4c2a-bc8d-440526cad471";
+        const teacherId =request.user?.teacherId
         const classDetail = await this.classManagementService.getClassDetail(teacherId, query.classId)
         return {
             success: true,
@@ -31,9 +35,9 @@ export class ClassManagementController {
             meta: null,
         }
     }
-
+    
     // Route có param đặt sau
-    @Get('teacher/:teacherId')
+    @Get('classes')
     @ApiOperation({ 
         summary: 'Lấy danh sách lớp học theo ID giáo viên với filter và search',
         description: 'API hỗ trợ phân trang, tìm kiếm và lọc theo trạng thái, ngày, ca học'
@@ -63,15 +67,13 @@ export class ClassManagementController {
         description: 'Lỗi server' 
     })
     async getClassByTeacherId(
-        @Param('teacherId') teacherId: string, 
+        @Req() request: any,
         @Query() queryParams: ClassQueryDto
     ) {
-
+        const tokenUser = request.user
         // check id cua teacher
-        if (!checkId(teacherId)) {
-            throw new HttpException('ID giáo viên không hợp lệ', HttpStatus.BAD_REQUEST);
-        }
 
+        const teacherId = tokenUser?.teacherId;
         // Validate và convert page, limit
         const pageNum = parseInt(queryParams.page) || 1;
         const limitNum = parseInt(queryParams.limit) || 10;
@@ -109,8 +111,9 @@ export class ClassManagementController {
         description: 'Lấy số lượng lớp học theo trạng thái thành công',
         type: CountByStatusResponseDto
     })
-    @Get('teacher/:teacherId/count-by-status')
-    async getCountByStatus(@Param('teacherId') teacherId: string){
+    @Get('classes/count-by-status')
+    async getCountByStatus(@Req() request: any){
+        const teacherId = request.user?.teacherId
         const countByStatus = await this.classManagementService.getCountByStatus(teacherId);
         return {
             success: true,
