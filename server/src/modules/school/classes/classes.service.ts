@@ -7,13 +7,20 @@ export class ClassesService {
     
     async getClassByTeacherId(teacherId: string) {
         // Logic to get classes by teacher ID
-        const classes = await this.prisma.class.findMany({
+        const assignments = await this.prisma.teacherClassAssignment.findMany({
             where: { teacherId },
-            include:{
-                room: true,             
+            include: {
+                class: {
+                    include: {
+                        room: true,
+                    }
+                }
             }
-        })
-        return classes;
+        });
+        return assignments.map(assignment => ({
+            ...assignment.class,
+            teacherId: assignment.teacherId
+        }));
     }
 
     async findOne(id: string) {
@@ -22,8 +29,22 @@ export class ClassesService {
             where: { id },
             include: {
                 room: true,
+                teacherClassAssignments: {
+                    select: {
+                        teacherId: true
+                    },
+                    take: 1
+                }
             }
         });
+        
+        if (classItem) {
+            return {
+                ...classItem,
+                teacherId: classItem.teacherClassAssignments[0]?.teacherId
+            };
+        }
+        
         return classItem;
     }
 }

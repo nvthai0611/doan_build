@@ -8,45 +8,45 @@ datasource db {
 }
 
 enum Gender {
-  MALE  
+  MALE
   FEMALE
   OTHER
 }
 
 model User {
-  email                 String         @unique
+  email                 String                     @unique
   password              String
-  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  fullName              String?        @map("full_name")
-  isActive              Boolean        @default(true) @map("is_active")
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  fullName              String?                    @map("full_name")
+  isActive              Boolean                    @default(true) @map("is_active")
   phone                 String?
   role                  String
-  roleId                String?        @map("role_id") @db.Uuid
-  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  username              String         @unique
-  id                    String         @id @default(uuid()) @db.Uuid
-  recordedAttendances   StudentSessionAttendance[]   @relation("RecordedBy")
-  auditLogs             AuditLog[]     @relation("PerformedBy")
-  gradedAssessments     StudentAssessmentGrade[]        @relation("GradedBy")
-  approvedLeaveRequests LeaveRequest[] @relation("ApprovedBy")
-  createdLeaveRequests  LeaveRequest[] @relation("CreatedBy")
-  uploadedMaterials     Material[]     @relation("UploadedBy")
-  createdNotifications  Notification[] @relation("CreatedBy")
+  roleId                String?                    @map("role_id") @db.Uuid
+  updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  username              String                     @unique
+  id                    String                     @id @default(uuid()) @db.Uuid
+  recordedAttendances   StudentSessionAttendance[] @relation("RecordedBy")
+  auditLogs             AuditLog[]                 @relation("PerformedBy")
+  gradedAssessments     StudentAssessmentGrade[]   @relation("GradedBy")
+  approvedLeaveRequests LeaveRequest[]             @relation("ApprovedBy")
+  createdLeaveRequests  LeaveRequest[]             @relation("CreatedBy")
+  uploadedMaterials     Material[]                 @relation("UploadedBy")
+  createdNotifications  Notification[]             @relation("CreatedBy")
   parent                Parent?
   student               Student?
   teacher               Teacher?
   sessions              UserSession[]
-  roleData              Role?          @relation(fields: [roleId], references: [id])
+  roleData              Role?                      @relation(fields: [roleId], references: [id])
 
   @@map("users")
 }
 
 model Parent {
-  id           String              @id @default(uuid()) @db.Uuid
-  userId       String              @unique @map("user_id") @db.Uuid
-  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String                      @id @default(uuid()) @db.Uuid
+  userId       String                      @unique @map("user_id") @db.Uuid
+  createdAt    DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   studentLinks StudentParentRelationship[]
 
   @@map("parents")
@@ -67,39 +67,39 @@ model StudentParentRelationship {
 }
 
 model Teacher {
-  id            String            @id @default(uuid()) @db.Uuid
-  userId        String            @unique @map("user_id") @db.Uuid
-  schoolId      String?           @map("school_id") @db.Uuid
-  hireDate      DateTime?         @map("hire_date") @db.Date
-  contractEnd   DateTime?         @map("contract_end") @db.Date
+  id            String              @id @default(uuid()) @db.Uuid
+  userId        String              @unique @map("user_id") @db.Uuid
+  schoolId      String?             @map("school_id") @db.Uuid
+  hireDate      DateTime?           @map("hire_date") @db.Date
+  contractEnd   DateTime?           @map("contract_end") @db.Date
   subjects      String[]
-  salary        Decimal?          @db.Decimal(12, 2)
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  birthDate     DateTime?         @map("birth_date") @db.Date
+  salary        Decimal?            @db.Decimal(12, 2)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  birthDate     DateTime?           @map("birth_date") @db.Date
   gender        Gender?
-  classes       Class[]
   contracts     Contract[]
   leaveRequests LeaveRequest[]
   payrolls      Payroll[]
   documents     TeacherDocument[]
-  school        School?           @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school        School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherClassAssignments   TeacherClassAssignment[]
 
   @@map("teachers")
 }
 
 model Student {
-  id             String              @id @default(uuid()) @db.Uuid
-  userId         String              @unique @map("user_id") @db.Uuid
-  studentCode    String?             @unique @map("student_code")
-  birthDate      DateTime?           @map("birth_date") @db.Date
+  id             String                      @id @default(uuid()) @db.Uuid
+  userId         String                      @unique @map("user_id") @db.Uuid
+  studentCode    String?                     @unique @map("student_code")
+  birthDate      DateTime?                   @map("birth_date") @db.Date
   gender         Gender?
   address        String?
-  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   grade          String?
-  schoolId       String              @map("school_id") @db.Uuid
+  schoolId       String                      @map("school_id") @db.Uuid
   attendances    StudentSessionAttendance[]
   classRequests  StudentClassRequest[]
   enrollments    Enrollment[]
@@ -109,8 +109,8 @@ model Student {
   payments       Payment[]
   parentLinks    StudentParentRelationship[]
   studentReports StudentReport[]
-  school         School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school         School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("students")
 }
@@ -139,48 +139,45 @@ model Subject {
 }
 
 model Class {
-  id                String           @id @default(uuid()) @db.Uuid
-  teacherId         String           @map("teacher_id") @db.Uuid
-  roomId            String?          @map("room_id") @db.Uuid
-  startDate         DateTime?        @map("start_date") @db.Date
-  endDate           DateTime?        @map("end_date") @db.Date
-  recurringSchedule Json?            @map("recurring_schedule")
-  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  description       String?
-  feeStructureId    String?          @map("fee_structure_id") @db.Uuid
-  grade             String?
-  maxStudents       Int?             @map("max_students")
-  name              String
-  status            String           @default("draft")
-  subjectId         String           @map("subject_id") @db.Uuid
-  assessments       Assessment[]
-  classRequests     StudentClassRequest[]
-  sessions          ClassSession[]
-  feeStructure      FeeStructure?    @relation(fields: [feeStructureId], references: [id])
-  room              Room?            @relation(fields: [roomId], references: [id])
-  subject           Subject          @relation(fields: [subjectId], references: [id])
-  teacher           Teacher          @relation(fields: [teacherId], references: [id])
-  enrollments       Enrollment[]
-  materials         Material[]
-  scheduleChanges   ScheduleChange[]
+  id                 String                @id @default(uuid()) @db.Uuid
+  roomId             String?               @map("room_id") @db.Uuid
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  description        String?
+  feeStructureId     String?               @map("fee_structure_id") @db.Uuid
+  grade              String?
+  maxStudents        Int?                  @map("max_students")
+  name               String
+  status             String                @default("draft")
+  subjectId          String                @map("subject_id") @db.Uuid
+  // Relations
+  assessments        Assessment[]
+  classRequests      StudentClassRequest[]
+  sessions           ClassSession[]
+  feeStructure       FeeStructure?         @relation(fields: [feeStructureId], references: [id])
+  room               Room?                 @relation(fields: [roomId], references: [id])
+  subject            Subject               @relation(fields: [subjectId], references: [id])
+  enrollments        Enrollment[]
+  materials          Material[]
+  scheduleChanges    ScheduleChange[]
+  teacherClassAssignments TeacherClassAssignment[]
 
   @@map("classes")
 }
 
 model ClassSession {
-  id          String       @id @default(uuid()) @db.Uuid
-  classId     String       @map("class_id") @db.Uuid
-  sessionDate DateTime     @map("session_date") @db.Date
-  startTime   String       @map("start_time")
-  endTime     String       @map("end_time")
-  roomId      String?      @map("room_id") @db.Uuid
-  status      String       @default("scheduled")
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String                     @id @default(uuid()) @db.Uuid
+  classId     String                     @map("class_id") @db.Uuid
+  sessionDate DateTime                   @map("session_date") @db.Date
+  startTime   String                     @map("start_time")
+  endTime     String                     @map("end_time")
+  roomId      String?                    @map("room_id") @db.Uuid
+  status      String                     @default("scheduled")
+  createdAt   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   notes       String?
   attendances StudentSessionAttendance[]
-  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  room        Room?        @relation(fields: [roomId], references: [id])
+  class       Class                      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  room        Room?                      @relation(fields: [roomId], references: [id])
 
   @@map("class_sessions")
 }
@@ -230,7 +227,7 @@ model StudentSessionAttendance {
   id             BigInt       @id @default(autoincrement())
   sessionId      String       @map("session_id") @db.Uuid
   studentId      String       @map("student_id") @db.Uuid
-  status         String       
+  status         String
   note           String?
   recordedBy     String       @map("recorded_by") @db.Uuid
   recordedAt     DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
@@ -243,15 +240,15 @@ model StudentSessionAttendance {
 }
 
 model Assessment {
-  id          String   @id @default(uuid()) @db.Uuid
-  classId     String   @map("class_id") @db.Uuid
+  id          String                   @id @default(uuid()) @db.Uuid
+  classId     String                   @map("class_id") @db.Uuid
   name        String
   type        String
-  maxScore    Decimal  @map("max_score") @db.Decimal(5, 2)
-  date        DateTime @db.Date
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  maxScore    Decimal                  @map("max_score") @db.Decimal(5, 2)
+  date        DateTime                 @db.Date
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   description String?
-  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class       Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
   grades      StudentAssessmentGrade[]
 
   @@map("assessments")
@@ -419,7 +416,7 @@ model StudentReport {
   feedback    String?
   suggestions String?
   generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
-  student     Student  @relation(fields: [studentId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@map("student_reports")
 }
@@ -508,29 +505,29 @@ model schema_audit {
 
 // Permission System Models
 model Role {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  displayName String   @map("display_name")
-  description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users       User[]
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique
+  displayName     String           @map("display_name")
+  description     String?
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users           User[]
   rolePermissions RolePermission[]
 
   @@map("roles")
 }
 
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  displayName String   @map("display_name")
-  description String?
-  module      String   // e.g., "students", "teachers", "courses"
-  action      String   // e.g., "view", "create", "edit", "delete"
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique
+  displayName     String           @map("display_name")
+  description     String?
+  module          String // e.g., "students", "teachers", "courses"
+  action          String // e.g., "view", "create", "edit", "delete"
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   rolePermissions RolePermission[]
 
   @@map("permissions")
@@ -546,4 +543,24 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model TeacherClassAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  teacherId    String    @map("teacher_id") @db.Uuid
+  classId      String    @map("class_id") @db.Uuid
+  recurringSchedule  Json?    @map("recurring_schedule")
+  startDate    DateTime  @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  status       String    @default("active") // active, completed, cancelled
+  semester     String? // Kỳ học: "2024-1", "2024-2", etc.
+  academicYear String?   @map("academic_year") // Năm học: "2024-2025"
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, startDate]) // Một lớp chỉ có một giáo viên active tại một thời điểm
+  @@map("teacher_class_assignments")
 }

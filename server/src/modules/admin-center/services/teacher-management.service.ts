@@ -212,9 +212,9 @@ export class TeacherManagementService {
       where: { id },
       include: {
         user: true,
-        classes: {
+        teacherClassAssignments: {
           include: {
-            subject: true
+            class: true
           }
         }
       }
@@ -340,30 +340,34 @@ export class TeacherManagementService {
       where: { id },
       include: { 
         user: true,
-        classes: {
+        teacherClassAssignments: {
           include: {
-            subject: true,
-            room: true,
-            sessions: {
-              where: year && month ? {
-                sessionDate: {
-                  gte: new Date(year, month - 1, 1),
-                  lt: new Date(year, month, 1)
-                }
-              } : undefined,
+            class: {
               include: {
-                attendances: {
+                room: true,
+                subject: true,
+                sessions: {
+                  where: year && month ? {
+                    sessionDate: {
+                      gte: new Date(year, month - 1, 1),
+                      lt: new Date(year, month, 1)
+                    }
+                  } : undefined,
                   include: {
-                    student: {
+                    attendances: {
                       include: {
-                        user: true
+                        student: {
+                          include: {
+                            user: true
+                          }
+                        }
                       }
                     }
+                  },
+                  orderBy: {
+                    sessionDate: 'asc'
                   }
                 }
-              },
-              orderBy: {
-                sessionDate: 'asc'
               }
             }
           } 
@@ -376,15 +380,15 @@ export class TeacherManagementService {
     }
 
     // Chuyển đổi dữ liệu thành format phù hợp với frontend
-    const sessions = teacher.classes.flatMap(cls => 
-      cls.sessions.map(session => ({
+    const sessions = teacher.teacherClassAssignments.flatMap(assignment => 
+      assignment.class.sessions.map(session => ({
         id: session.id,
         date: session.sessionDate,
-        title: `Buổi ${cls.name}`,
+        title: `Buổi ${assignment.class.name}`,
         time: `${session.startTime}-${session.endTime}`,
-        subject: cls.subject.name,
-        class: cls.name,
-        room: cls.room?.name || 'Chưa xác định',
+        subject: assignment.class.subject.name,
+        class: assignment.class.name,
+        room: assignment.class.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
         status: session.status as "scheduled" | "completed" | "cancelled",
         teacher: teacher.user.fullName || 'Chưa xác định',

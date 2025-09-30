@@ -5,10 +5,15 @@ import { PrismaService } from '../../../db/prisma.service';
 export class ClassManagementService {
     constructor(private prisma: PrismaService) {}
     async getClassByTeacherId(query: any) {
-        return this.prisma.class.findMany({
+        const assignments = await this.prisma.teacherClassAssignment.findMany({
             where: { teacherId: query.teacherId },
-            include: { room: true }
+            include: { 
+                class: {
+                    include: { room: true }
+                }
+            }
         });
+        return assignments.map(assignment => assignment.class);
     }
     async getClassDetail(id: string) {
         return this.prisma.class.findUnique({ where: { id } });

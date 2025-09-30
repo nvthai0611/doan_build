@@ -1,7 +1,6 @@
 import { ApiResponse } from "../../types/response";
 import { apiClient } from "../../utils/clientAxios";
 
-const  teacherId = "601a2029-dc56-4c2a-bc8d-440526cad471"; // Có thể lấy từ context hoặc props
 
 const getClassByTeacherId = async(
     status: string, 
@@ -27,7 +26,7 @@ const getClassByTeacherId = async(
         
 
         
-        const url = `/class-management/teacher/${teacherId}?${queryParams.toString()}`;
+        const url = `/teacher/class-management/classes?${queryParams.toString()}`;
         const response = await apiClient.get(url);
 
         // Kiểm tra status code thành công (200-299)
@@ -46,7 +45,7 @@ const getClassByTeacherId = async(
 
 const getCountByStatus = async(): Promise<ApiResponse<any>> => {
     try {
-        const response = await apiClient.get(`/class-management/teacher/${teacherId}/count-by-status`);
+        const response = await apiClient.get(`teacher/class-management/classes/count-by-status`);
 
         // Kiểm tra status code thành công (200-299)
         if (response.status >= 200 && response.status < 300) {
@@ -63,7 +62,7 @@ const getCountByStatus = async(): Promise<ApiResponse<any>> => {
 
 const getClassDetail = async (classId: string): Promise<any> => {
   try {
-    const response = await apiClient.get(`class-management/class/details?classId=${classId}`);
+    const response = await apiClient.get(`teacher/class-management/classes/details?classId=${classId}`);
     if (response.status >= 200 && response.status < 300) {
       return response.data; // Trả về data gốc (any)
     } else {

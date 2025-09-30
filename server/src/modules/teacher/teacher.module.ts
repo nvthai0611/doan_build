@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma.service';
 import { AttendanceController } from './controllers/attendance.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
@@ -17,9 +17,16 @@ import { MaterialService } from './services/material.service';
 import { ReportService } from './services/report.service';
 import { ScheduleService } from './services/schedule.service';
 import { StudentManagementService } from './services/student-management.service';
+import { RouterModule } from '@nestjs/core';
+import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middleware';
 
 @Module({
-  imports: [],
+  imports: [RouterModule.register([
+    {
+      path:'teacher',
+      module: TeacherModule
+    }
+  ])],
   controllers: [
     AttendanceController,
     ClassManagementController,
@@ -43,4 +50,8 @@ import { StudentManagementService } from './services/student-management.service'
     StudentManagementService,
   ],
 })
-export class TeacherModule {}
+export class TeacherModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+      consumer.apply(MiddlewareTeacher).forRoutes('teacher');
+  }
+}

@@ -17,7 +17,7 @@ import { UpdateScheduleStatusDto } from '../dto/schedule/update-schedule-status.
 import { ScheduleFiltersDto } from '../dto/schedule/schedule-filters.dto';
 
 @ApiTags('Teacher Schedule')
-@Controller('teacher/schedule')
+@Controller('schedule')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
   teacherId = 'd37a2030-f63d-4b7d-b22f-210ceacaa51a';
@@ -150,15 +150,15 @@ export class ScheduleController {
         scheduleId,
       );
 
-      if (!result) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Không tìm thấy buổi dạy',
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      // if (!result) {
+      //   throw new HttpException(
+      //     {
+      //       success: false,
+      //       message: 'Không tìm thấy buổi dạy',
+      //     },
+      //     HttpStatus.NOT_FOUND,
+      //   );
+      // }
 
       return {
         success: true,
@@ -198,15 +198,15 @@ export class ScheduleController {
         updateStatusDto,
       );
 
-      if (!result) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Không tìm thấy buổi dạy hoặc không có quyền cập nhật',
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      // if (!result) {
+      //   throw new HttpException(
+      //     {
+      //       success: false,
+      //       message: 'Không tìm thấy buổi dạy hoặc không có quyền cập nhật',
+      //     },
+      //     HttpStatus.NOT_FOUND,
+      //   );
+      // }
 
       return {
         success: true,
