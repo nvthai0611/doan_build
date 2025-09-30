@@ -6,7 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, GraduationCap, Users, Clock, Eye } from "lucide-react"
+import { Search, GraduationCap, Users, Clock, Eye, AlertCircle, MoreHorizontal } from "lucide-react"
+import { useTeacherClasses } from "./hooks"
+import { classService } from "../../../../../services/center-owner/class-management/class.service"
+import { toast } from "sonner"
+import Loading from "../../../../../components/Loading/LoadingPage"
+import { SimpleTable, SimpleColumn } from "../../../../../components/common/Table"
 
 interface ClassesTabProps {
   employeeId: string
@@ -16,78 +21,6 @@ interface ClassesTabProps {
   setSearch: (search: string) => void
 }
 
-// Mock classes data
-const getClassesData = (employeeId: string, status: string, search: string) => {
-  const allClasses = [
-    {
-      id: 1,
-      name: "Lớp Toán 12A1",
-      subject: "Toán học",
-      students: 25,
-      schedule: "T2, T4, T6 - 19:00-21:00",
-      status: "active",
-      startDate: "2024-09-01",
-      endDate: "2024-12-31",
-      room: "Phòng 101",
-      description: "Lớp học toán nâng cao cho học sinh lớp 12"
-    },
-    {
-      id: 2,
-      name: "Lớp Lý 11B2",
-      subject: "Vật lý",
-      students: 20,
-      schedule: "T3, T5 - 18:00-20:00",
-      status: "active",
-      startDate: "2024-09-01",
-      endDate: "2024-12-31",
-      room: "Phòng 102",
-      description: "Lớp học vật lý cơ bản cho học sinh lớp 11"
-    },
-    {
-      id: 3,
-      name: "Lớp Hóa 10C1",
-      subject: "Hóa học",
-      students: 18,
-      schedule: "T2, T6 - 17:00-19:00",
-      status: "completed",
-      startDate: "2024-06-01",
-      endDate: "2024-08-31",
-      room: "Phòng 103",
-      description: "Lớp học hóa học cho học sinh lớp 10"
-    },
-    {
-      id: 4,
-      name: "Lớp Toán 9D1",
-      subject: "Toán học",
-      students: 22,
-      schedule: "T3, T7 - 19:30-21:30",
-      status: "pending",
-      startDate: "2024-10-01",
-      endDate: "2025-01-31",
-      room: "Phòng 104",
-      description: "Lớp học toán cho học sinh lớp 9"
-    }
-  ]
-
-  let filteredClasses = allClasses
-
-  // Filter by status
-  if (status !== "all") {
-    filteredClasses = filteredClasses.filter(cls => cls.status === status)
-  }
-
-  // Filter by search
-  if (search) {
-    filteredClasses = filteredClasses.filter(cls =>
-      cls.name.toLowerCase().includes(search.toLowerCase()) ||
-      cls.subject.toLowerCase().includes(search.toLowerCase()) ||
-      cls.room.toLowerCase().includes(search.toLowerCase())
-    )
-  }
-
-  return filteredClasses
-}
-
 export default function ClassesTab({
   employeeId,
   activeTab,
@@ -95,7 +28,11 @@ export default function ClassesTab({
   setActiveTab,
   setSearch
 }: ClassesTabProps) {
-  const classes = getClassesData(employeeId, activeTab, search)
+  const { classes, stats, loading, error, refetch } = useTeacherClasses(employeeId, activeTab, search)
+  console.log("check classes", classes);
+  
+  const [selectedClass, setSelectedClass] = useState<any>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -110,8 +47,136 @@ export default function ClassesTab({
     }
   }
 
+  const handleViewDetails = async (classId: number) => {
+    try {
+      const classDetails = await classService.getClassDetails(classId)
+      setSelectedClass(classDetails)
+      setIsDetailOpen(true)
+    } catch (error) {
+      console.error('Error fetching class details:', error)
+      toast.error('Không thể tải chi tiết lớp học')
+    }
+  }
+
+  const handleUpdateStatus = async (classId: number, newStatus: string) => {
+    try {
+      await classService.updateClassStatus(classId, newStatus)
+      toast.success('Cập nhật trạng thái thành công')
+      refetch()
+    } catch (error) {
+      console.error('Error updating class status:', error)
+      toast.error('Không thể cập nhật trạng thái')
+    }
+  }
+
+  // Define columns for SimpleTable
+  const columns: SimpleColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Tên lớp',
+      width: '200px',
+      render: (cls: any) => (
+        <div className="font-medium">{cls.name}</div>
+      )
+    },
+    {
+      key: 'subject',
+      header: 'Môn học',
+      width: '150px',
+      render: (cls: any) => cls.subject
+    },
+    {
+      key: 'students',
+      header: 'Số học sinh',
+      width: '120px',
+      align: 'center',
+      render: (cls: any) => cls.students
+    },
+    {
+      key: 'schedule',
+      header: 'Lịch học',
+      width: '200px',
+      render: (cls: any) => cls.schedule
+    },
+    {
+      key: 'room',
+      header: 'Phòng',
+      width: '120px',
+      render: (cls: any) => cls.room
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      width: '150px',
+      render: (cls: any) => getStatusBadge(cls.status)
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      width: '200px',
+      align: 'center',
+      render: (cls: any) => (
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleViewDetails(cls.id)}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Xem chi tiết
+          </Button>
+          {cls.status === "pending" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleUpdateStatus(cls.id, "active")}
+              className="text-green-600 hover:text-green-700"
+            >
+              Bắt đầu
+            </Button>
+          )}
+          {cls.status === "active" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleUpdateStatus(cls.id, "completed")}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              Kết thúc
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ]
+
+  // Loading state
+  if (loading) {
+    return (
+      <Loading/>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Error notification */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <span className="text-red-700 text-sm">{error}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refetch}
+              className="ml-auto"
+            >
+              Thử lại
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center justify-between mb-6">
@@ -147,7 +212,9 @@ export default function ClassesTab({
               <GraduationCap className="w-8 h-8 text-blue-600" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-blue-600">Tổng số lớp</p>
-                <p className="text-2xl font-bold text-blue-900">{classes.length}</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  {stats?.totalClasses || classes?.length}
+                </p>
               </div>
             </div>
           </div>
@@ -157,7 +224,7 @@ export default function ClassesTab({
               <div className="ml-3">
                 <p className="text-sm font-medium text-green-600">Tổng học sinh</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {classes.reduce((sum, cls) => sum + cls.students, 0)}
+                  {stats?.totalStudents || classes?.reduce((sum, cls) => sum + cls.students, 0)}
                 </p>
               </div>
             </div>
@@ -168,7 +235,7 @@ export default function ClassesTab({
               <div className="ml-3">
                 <p className="text-sm font-medium text-orange-600">Lớp đang hoạt động</p>
                 <p className="text-2xl font-bold text-orange-900">
-                  {classes.filter(cls => cls.status === "active").length}
+                  {stats?.activeClasses || classes?.filter(cls => cls.status === "active").length}
                 </p>
               </div>
             </div>
@@ -177,49 +244,121 @@ export default function ClassesTab({
       </div>
 
       {/* Classes Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Danh sách lớp học</h3>
-          {classes.length === 0 ? (
-            <div className="text-center py-8">
-              <GraduationCap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Không có lớp học nào</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên lớp</TableHead>
-                  <TableHead>Môn học</TableHead>
-                  <TableHead>Số học sinh</TableHead>
-                  <TableHead>Lịch học</TableHead>
-                  <TableHead>Phòng</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {classes.map((cls) => (
-                  <TableRow key={cls.id}>
-                    <TableCell className="font-medium">{cls.name}</TableCell>
-                    <TableCell>{cls.subject}</TableCell>
-                    <TableCell>{cls.students}</TableCell>
-                    <TableCell>{cls.schedule}</TableCell>
-                    <TableCell>{cls.room}</TableCell>
-                    <TableCell>{getStatusBadge(cls.status)}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Xem chi tiết
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Danh sách lớp học</h3>
+        <SimpleTable
+          data={classes || []}
+          columns={columns}
+          loading={loading}
+          error={error}
+          onRetry={refetch}
+          emptyMessage="Không có lớp học nào"
+          rowKey="id"
+          hoverable={true}
+          striped={true}
+        />
       </div>
+
+      {/* Class Details Modal */}
+      {isDetailOpen && selectedClass && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Chi tiết lớp học</h3>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsDetailOpen(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Tên lớp</label>
+                  <p className="text-sm font-semibold">{selectedClass.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Môn học</label>
+                  <p className="text-sm">{selectedClass.subject}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Số học sinh</label>
+                  <p className="text-sm">{selectedClass.students}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Phòng học</label>
+                  <p className="text-sm">{selectedClass.room}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ngày bắt đầu</label>
+                  <p className="text-sm">{selectedClass.startDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ngày kết thúc</label>
+                  <p className="text-sm">{selectedClass.endDate}</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500">Lịch học</label>
+                <p className="text-sm">{selectedClass.schedule}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500">Mô tả</label>
+                <p className="text-sm">{selectedClass.description}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500">Trạng thái</label>
+                <div className="mt-1">
+                  {getStatusBadge(selectedClass.status)}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsDetailOpen(false)}
+              >
+                Đóng
+              </Button>
+              {selectedClass.status === "pending" && (
+                <Button 
+                  onClick={() => {
+                    handleUpdateStatus(selectedClass.id, "active")
+                    setIsDetailOpen(false)
+                  }}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Bắt đầu lớp
+                </Button>
+              )}
+              {selectedClass.status === "active" && (
+                <Button 
+                  onClick={() => {
+                    handleUpdateStatus(selectedClass.id, "completed")
+                    setIsDetailOpen(false)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Kết thúc lớp
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

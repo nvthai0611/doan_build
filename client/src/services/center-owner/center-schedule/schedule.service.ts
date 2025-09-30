@@ -27,7 +27,7 @@ export const centerOwnerScheduleService = {
   getDailySchedule: async (date: string, filters?: ScheduleFilters): Promise<ScheduleView> => {
     const params = { date, ...filters }
     const response = await ApiService.get<ScheduleView>("/admin-center/schedule/daily", params)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -36,7 +36,7 @@ export const centerOwnerScheduleService = {
   getWeeklySchedule: async (startDate: string, filters?: ScheduleFilters): Promise<ScheduleView> => {
     const params = { startDate, ...filters }
     const response = await ApiService.get<ScheduleView>("/admin-center/schedule/weekly", params)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -45,7 +45,7 @@ export const centerOwnerScheduleService = {
   getMonthlySchedule: async (year: number, month: number, filters?: ScheduleFilters): Promise<ScheduleView> => {
     const params = { year, month, ...filters }
     const response = await ApiService.get<ScheduleView>("/admin-center/schedule/monthly", params)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -54,7 +54,7 @@ export const centerOwnerScheduleService = {
   getTeacherSchedule: async (teacherId: string, startDate: string, endDate: string): Promise<TeacherSchedule> => {
     const params = { startDate, endDate }
     const response = await ApiService.get<TeacherSchedule>(`/admin-center/schedule/teacher/${teacherId}`, params)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -63,7 +63,7 @@ export const centerOwnerScheduleService = {
   getRoomSchedule: async (roomId: string, startDate: string, endDate: string): Promise<RoomSchedule> => {
     const params = { startDate, endDate }
     const response = await ApiService.get<RoomSchedule>(`/admin-center/schedule/room/${roomId}`, params)
-    return response.data
+    return response.data as any
   },
 
   // ===== Session Management =====
@@ -73,8 +73,7 @@ export const centerOwnerScheduleService = {
    */
   createSession: async (data: CreateSessionRequest): Promise<ClassSession> => {
     const response = await ApiService.post<ClassSession>("/admin-center/schedule/sessions", data)
-    console.log("📡 Create Session API Response:", response)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -82,7 +81,7 @@ export const centerOwnerScheduleService = {
    */
   updateSession: async (sessionId: string, data: Partial<CreateSessionRequest>): Promise<ClassSession> => {
     const response = await ApiService.patch<ClassSession>(`/admin-center/schedule/sessions/${sessionId}`, data)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -97,7 +96,7 @@ export const centerOwnerScheduleService = {
    */
   getSessionById: async (sessionId: string): Promise<ClassSession> => {
     const response = await ApiService.get<ClassSession>(`/admin-center/schedule/sessions/${sessionId}`)
-    return response.data
+    return response.data as any
   },
 
   // ===== Attendance Management =====
@@ -107,7 +106,7 @@ export const centerOwnerScheduleService = {
    */
   getSessionAttendance: async (sessionId: string): Promise<Attendance[]> => {
     const response = await ApiService.get<Attendance[]>(`/admin-center/schedule/sessions/${sessionId}/attendance`)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -119,8 +118,7 @@ export const centerOwnerScheduleService = {
       status,
       note
     })
-    console.log("📡 Attendance API Response:", response)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -130,7 +128,7 @@ export const centerOwnerScheduleService = {
     const response = await ApiService.patch<Attendance[]>(`/admin-center/schedule/sessions/${sessionId}/attendance/bulk`, {
       attendances
     })
-    return response.data
+    return response.data as any
   },
 
   // ===== Schedule Changes =====
@@ -140,7 +138,7 @@ export const centerOwnerScheduleService = {
    */
   requestScheduleChange: async (data: ScheduleChangeRequest): Promise<any> => {
     const response = await ApiService.post("/admin-center/schedule/change-requests", data)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -164,7 +162,7 @@ export const centerOwnerScheduleService = {
    */
   createRecurringSchedule: async (data: CreateRecurringScheduleRequest): Promise<RecurringSchedule> => {
     const response = await ApiService.post<RecurringSchedule>("/admin-center/schedule/recurring", data)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -172,7 +170,7 @@ export const centerOwnerScheduleService = {
    */
   updateRecurringSchedule: async (id: string, data: Partial<CreateRecurringScheduleRequest>): Promise<RecurringSchedule> => {
     const response = await ApiService.patch<RecurringSchedule>(`/admin-center/schedule/recurring/${id}`, data)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -189,7 +187,7 @@ export const centerOwnerScheduleService = {
    */
   getScheduleStats: async (filters?: ScheduleFilters): Promise<ScheduleStats> => {
     const response = await ApiService.get<ScheduleStats>("/admin-center/schedule/stats", filters)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -197,7 +195,7 @@ export const centerOwnerScheduleService = {
    */
   getAttendanceStats: async (filters?: ScheduleFilters): Promise<AttendanceStats> => {
     const response = await ApiService.get<AttendanceStats>("/admin-center/schedule/attendance-stats", filters)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -205,7 +203,7 @@ export const centerOwnerScheduleService = {
    */
   getScheduleConflicts: async (filters?: ScheduleFilters): Promise<ScheduleConflict[]> => {
     const response = await ApiService.get<ScheduleConflict[]>("/admin-center/schedule/conflicts", filters)
-    return response.data
+    return response.data as any
   },
 
   /**
@@ -222,7 +220,7 @@ export const centerOwnerScheduleService = {
    */
   getScheduleTemplates: async (): Promise<ScheduleTemplate[]> => {
     const response = await ApiService.get<ScheduleTemplate[]>("/admin-center/schedule/templates")
-    return response.data
+    return response.data as any   
   },
 
   /**
@@ -234,7 +232,7 @@ export const centerOwnerScheduleService = {
       description,
       template
     })
-    return response.data
+    return response.data as any
   },
 
   /**

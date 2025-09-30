@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react"
 import type { Employee } from "../../types/teacher"
-import type { CreateTeacherRequest } from "../../../../../services/teacherService"
+import type { CreateTeacherRequest } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 interface GeneralInfoTabProps {

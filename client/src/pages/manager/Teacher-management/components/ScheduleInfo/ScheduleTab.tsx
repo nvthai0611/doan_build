@@ -149,7 +149,7 @@ export default function ScheduleTab({
         }
         return formatWeekRange(weekDates)
       case "day":
-        const currentDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, 1)
+        const currentDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, 1);
         return currentDate.toLocaleDateString("vi-VN", { 
           weekday: 'long', 
           year: 'numeric', 

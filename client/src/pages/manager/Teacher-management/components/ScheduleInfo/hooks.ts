@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { teacherService } from "../../../../../services/teacherService"
+import { centerOwnerTeacherService } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import { TeachingSession, UseTeachingSessionsReturn } from "./types"
 import { getMockSessions } from "./utils"
 
@@ -19,7 +19,7 @@ export const useTeachingSessions = (employeeId: string, year: number, month: num
       setError(null)
       
       try {
-        const response = await teacherService.getTeacherSchedule(employeeId, year, month)
+        const response = await centerOwnerTeacherService.getTeacherSchedule(employeeId, year, month)
         console.log('Schedule API Response:', response)
         
         if (response.data && (response.data as any).sessions) {

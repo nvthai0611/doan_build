@@ -96,9 +96,7 @@ export class TeacherManagementService {
       hireDateFrom,
       hireDateTo
     } = queryDto;
-    
     const skip = (page - 1) * limit;
-
     // Build where clause
     const where: any = {};
     const userWhere: any = {};
@@ -149,13 +147,7 @@ export class TeacherManagementService {
       }
     }
 
-    console.log("📡 Where:", JSON.stringify(where, null, 2));
     
-    const totalTeachers = await this.prisma.teacher.count();
-    console.log("📊 Total teachers in database:", totalTeachers);
-    
-    const teachersWithUser = await this.prisma.teacher.count();
-    console.log("📊 Teachers with user relation:", teachersWithUser);
     
     const total = await this.prisma.teacher.count({ where });
     const totalPages = Math.ceil(total / limit);
@@ -190,12 +182,8 @@ export class TeacherManagementService {
       };
     }
 
-    console.log("📡 OrderBy:", JSON.stringify(orderBy, null, 2));
-    const sampleTeachers = await this.prisma.teacher.findMany({
-      take: 3,
-      include: { user: true }
-    });
-    console.log("📊 Sample teachers:", JSON.stringify(sampleTeachers, null, 2));
+    
+    
 
     const teachers = await this.prisma.teacher.findMany({
       where,

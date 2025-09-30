@@ -28,6 +28,7 @@ export const privateRoutes = (
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
+        <Route path="permission-test" element={<PermissionTestPage />} />
         {/* có thể thêm: /finance, /reports, ... */}
       </Route>
 

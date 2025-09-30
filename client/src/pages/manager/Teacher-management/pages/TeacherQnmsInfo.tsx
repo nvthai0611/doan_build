@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import TeacherInfo from "../components/TeacherInfo/TeacherInfo"
 import {
   Breadcrumb,
@@ -7,15 +8,26 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { useParams } from "react-router-dom"
+import { centerOwnerTeacherService } from "../../../../services/center-owner/teacher-management/teacher.service"
+import { Teacher } from "../types/teacher"
 
 export default function TeacherQnmsInfo() {
+  const params = useParams()
+  const employeeId = params.id as string
+   // Fetch employee data
+   const { data: employee, isLoading, error } = useQuery({
+    queryKey: ['teacher', employeeId],
+    queryFn: () => centerOwnerTeacherService.getTeacherById(employeeId),
+    enabled: !!employeeId,
+  })
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-foreground">Thông tin giáo viên</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Chi tiết giáo viên {employee?.name}</h1>
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -38,7 +50,7 @@ export default function TeacherQnmsInfo() {
           </div>
         </div>
       </div>
-      <TeacherInfo />
+      <TeacherInfo employee={employee as Teacher} isLoading={isLoading} error={error as Error} />
     </div>
   )
 }
