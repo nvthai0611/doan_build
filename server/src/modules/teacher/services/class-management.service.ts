@@ -155,7 +155,19 @@ export class ClassManagementService {
                 schedule: assignment.recurringSchedule ? 
                     (typeof assignment.recurringSchedule === 'string' ? 
                         JSON.parse(assignment.recurringSchedule) : 
-                        assignment.recurringSchedule) : null
+                        assignment.recurringSchedule) : null,
+
+                // Enrollment info
+                enrollmentStatus: {
+                    current: assignment.class._count.enrollments,
+                    max: assignment.class.maxStudents,
+                    percentage: assignment.class.maxStudents > 0 ? 
+                        Math.round((assignment.class._count.enrollments / assignment.class.maxStudents) * 100) : 0,
+                    available: Math.max(0, assignment.class.maxStudents - assignment.class._count.enrollments),
+                    isFull: assignment.class._count.enrollments >= assignment.class.maxStudents,
+                    status: assignment.class._count.enrollments >= assignment.class.maxStudents ? 'full' : 
+                            assignment.class._count.enrollments >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
+                },
             }));
             
             // Tính toán thông tin phân trang
