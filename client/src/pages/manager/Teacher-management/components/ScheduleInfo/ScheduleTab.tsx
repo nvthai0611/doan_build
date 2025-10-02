@@ -50,7 +50,7 @@ import { useTeachingSessions } from "./hooks"
 
 
 export default function ScheduleTab({
-  employeeId,
+  teacherId,
   currentDate,
   selectedMonth,
   selectedYear,
@@ -74,7 +74,7 @@ export default function ScheduleTab({
   }
   
   const { sessions, loading, error } = useTeachingSessions(
-    employeeId, 
+    teacherId, 
     Number.parseInt(selectedYear), 
     Number.parseInt(selectedMonth) 
   )

@@ -82,7 +82,7 @@ export class TeacherManagementService {
     };
   }
 
-  async findAllTeachers(queryDto: QueryTeacherDto) {
+  async findAllTeachers(queryDto: any) {
     const {
       search,
       role,

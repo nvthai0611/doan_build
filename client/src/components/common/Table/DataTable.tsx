@@ -1,14 +1,15 @@
-import React from 'react'
+"use client"
+
+import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 export interface Column<T> {
   key: string
   header: string
   width?: string
-  align?: 'left' | 'center' | 'right'
+  align?: "left" | "center" | "right"
   render?: (item: T, index: number) => React.ReactNode
   sortable?: boolean
 }
@@ -51,14 +52,14 @@ export function DataTable<T>({
   rowKey,
   onRowClick,
   hoverable = true,
-  striped = false
+  striped = false,
 }: DataTableProps<T>) {
   const getRowKey = (item: T, index: number): string | number => {
     if (rowKey) {
-      if (typeof rowKey === 'function') {
-        return rowKey(item, index)
+      if (typeof rowKey === "function") {
+        return `${rowKey(item, index)}-${index}`
       }
-      return item[rowKey] as string | number
+      return `${item[rowKey]}-${index}`
     }
     return index
   }
@@ -79,12 +80,7 @@ export function DataTable<T>({
         <div className="flex flex-col items-center justify-center">
           <p>{error}</p>
           {onRetry && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onRetry}
-              className="mt-2"
-            >
+            <Button variant="outline" size="sm" onClick={onRetry} className="mt-2 bg-transparent">
               Thử lại
             </Button>
           )}
@@ -107,22 +103,22 @@ export function DataTable<T>({
     if (data.length === 0) return renderEmptyRow()
 
     return data.map((item, index) => (
-      <tr 
+      <tr
         key={getRowKey(item, index)}
         className={`
-          ${hoverable ? 'hover:bg-gray-50' : ''}
-          ${striped && index % 2 === 1 ? 'bg-gray-50' : ''}
-          ${onRowClick ? 'cursor-pointer' : ''}
+          ${hoverable ? "hover:bg-gray-50" : ""}
+          ${striped && index % 2 === 1 ? "bg-gray-50" : ""}
+          ${onRowClick ? "cursor-pointer" : ""}
         `}
         onClick={() => onRowClick?.(item, index)}
       >
         {columns.map((column) => (
-          <td 
+          <td
             key={column.key}
             className={`
               px-6 py-4 whitespace-nowrap text-sm text-gray-900
-              ${column.align === 'center' ? 'text-center' : ''}
-              ${column.align === 'right' ? 'text-right' : ''}
+              ${column.align === "center" ? "text-center" : ""}
+              ${column.align === "right" ? "text-right" : ""}
             `}
             style={{ width: column.width }}
           >
@@ -136,7 +132,16 @@ export function DataTable<T>({
   const renderPagination = () => {
     if (!pagination) return null
 
-    const { currentPage, totalPages, totalItems, itemsPerPage, onPageChange, onItemsPerPageChange, showItemsPerPage = true, showPageInfo = true } = pagination
+    const {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      onPageChange,
+      onItemsPerPageChange,
+      showItemsPerPage = true,
+      showPageInfo = true,
+    } = pagination
 
     return (
       <div className="px-6 py-4 border-t bg-gray-50">
@@ -163,8 +168,8 @@ export function DataTable<T>({
           <div className="flex items-center gap-4">
             {showPageInfo && (
               <div className="text-sm text-gray-600">
-                {((currentPage - 1) * itemsPerPage + 1)}-{Math.min(currentPage * itemsPerPage, totalItems)}{" "}
-                trong {totalItems}
+                {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} trong{" "}
+                {totalItems}
               </div>
             )}
             <div className="flex items-center gap-1">
@@ -201,12 +206,12 @@ export function DataTable<T>({
           <thead className="bg-gray-50">
             <tr>
               {columns.map((column) => (
-                <th 
+                <th
                   key={column.key}
                   className={`
                     px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                    ${column.align === 'center' ? 'text-center' : ''}
-                    ${column.align === 'right' ? 'text-right' : ''}
+                    ${column.align === "center" ? "text-center" : ""}
+                    ${column.align === "right" ? "text-right" : ""}
                   `}
                   style={{ width: column.width }}
                 >
@@ -215,9 +220,7 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {renderDataRows()}
-          </tbody>
+          <tbody className="bg-white divide-y divide-gray-200">{renderDataRows()}</tbody>
         </table>
       </div>
       {renderPagination()}

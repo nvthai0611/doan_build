@@ -136,17 +136,25 @@ async function main() {
   });
 
   // Tạo Student-Parent relationship
+  const studentProfile = await prisma.student.findUnique({
+    where: { userId: student.id }
+  });
+  
+  const parentProfile = await prisma.parent.findUnique({
+    where: { userId: parent.id }
+  });
+
   await prisma.studentParentRelationship.upsert({
     where: {
       studentId_parentId: {
-        studentId: student.id,
-        parentId: parent.id,
+        studentId: studentProfile.id,
+        parentId: parentProfile.id,
       },
     },
     update: {},
     create: {
-      studentId: student.id,
-      parentId: parent.id,
+      studentId: studentProfile.id,
+      parentId: parentProfile.id,
       relation: 'Mẹ',
       primaryContact: true,
     },

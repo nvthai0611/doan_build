@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, FileText, Calendar, Eye, Check, X } from "lucide-react"
 
 interface LeaveRequestsTabProps {
-  employeeId: string
+  teacherId: string
   activeTab: string
   fromDate: string
   toDate: string
@@ -105,7 +105,7 @@ const getLeaveRequestsData = (employeeId: string, status: string, fromDate: stri
 }
 
 export default function LeaveRequestsTab({
-  employeeId,
+  teacherId,
   activeTab,
   fromDate,
   toDate,
@@ -115,7 +115,7 @@ export default function LeaveRequestsTab({
   setToDate,
   setSearch
 }: LeaveRequestsTabProps) {
-  const requests = getLeaveRequestsData(employeeId, activeTab, fromDate, toDate, search)
+  const requests = getLeaveRequestsData(teacherId, activeTab, fromDate, toDate, search)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
