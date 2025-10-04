@@ -67,24 +67,24 @@ model StudentParentRelationship {
 }
 
 model Teacher {
-  id            String              @id @default(uuid()) @db.Uuid
-  userId        String              @unique @map("user_id") @db.Uuid
-  schoolId      String?             @map("school_id") @db.Uuid
-  hireDate      DateTime?           @map("hire_date") @db.Date
-  contractEnd   DateTime?           @map("contract_end") @db.Date
-  subjects      String[]
-  salary        Decimal?            @db.Decimal(12, 2)
-  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  birthDate     DateTime?           @map("birth_date") @db.Date
-  gender        Gender?
-  contracts     Contract[]
-  leaveRequests LeaveRequest[]
-  payrolls      Payroll[]
-  documents     TeacherDocument[]
-  school        School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  teacherClassAssignments   TeacherClassAssignment[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  userId                  String                   @unique @map("user_id") @db.Uuid
+  schoolId                String?                  @map("school_id") @db.Uuid
+  hireDate                DateTime?                @map("hire_date") @db.Date
+  contractEnd             DateTime?                @map("contract_end") @db.Date
+  subjects                String[]
+  salary                  Decimal?                 @db.Decimal(12, 2)
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  birthDate               DateTime?                @map("birth_date") @db.Date
+  gender                  Gender?
+  contracts               Contract[]
+  leaveRequests           LeaveRequest[]
+  payrolls                Payroll[]
+  documents               TeacherDocument[]
+  school                  School?                  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherClassAssignments TeacherClassAssignment[]
 
   @@map("teachers")
 }
@@ -139,28 +139,29 @@ model Subject {
 }
 
 model Class {
-  id                 String                @id @default(uuid()) @db.Uuid
-  roomId             String?               @map("room_id") @db.Uuid
-  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  description        String?
-  feeStructureId     String?               @map("fee_structure_id") @db.Uuid
-  grade              String?
-  maxStudents        Int?                  @map("max_students")
-  name               String
-  status             String                @default("draft")
-  subjectId          String                @map("subject_id") @db.Uuid
+  id                      String                   @id @default(uuid()) @db.Uuid
+  roomId                  String?                  @map("room_id") @db.Uuid
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  description             String?
+  feeStructureId          String?                  @map("fee_structure_id") @db.Uuid
+  grade                   String?
+  maxStudents             Int?                     @map("max_students")
+  name                    String
+  status                  String                   @default("draft")
+  subjectId               String                   @map("subject_id") @db.Uuid
   // Relations
-  assessments        Assessment[]
-  classRequests      StudentClassRequest[]
-  sessions           ClassSession[]
-  feeStructure       FeeStructure?         @relation(fields: [feeStructureId], references: [id])
-  room               Room?                 @relation(fields: [roomId], references: [id])
-  subject            Subject               @relation(fields: [subjectId], references: [id])
-  enrollments        Enrollment[]
-  materials          Material[]
-  scheduleChanges    ScheduleChange[]
+  assessments             Assessment[]
+  classRequests           StudentClassRequest[]
+  sessions                ClassSession[]
+  feeStructure            FeeStructure?            @relation(fields: [feeStructureId], references: [id])
+  room                    Room?                    @relation(fields: [roomId], references: [id])
+  subject                 Subject                  @relation(fields: [subjectId], references: [id])
+  enrollments             Enrollment[]
+  materials               Material[]
+  scheduleChanges         ScheduleChange[]
   teacherClassAssignments TeacherClassAssignment[]
+  classHistories          ClassHistory[]
 
   @@map("classes")
 }
@@ -199,13 +200,25 @@ model Room {
 model Enrollment {
   id         BigInt   @id @default(autoincrement())
   studentId  String   @map("student_id") @db.Uuid
-  classId    String   @map("class_id") @db.Uuid
+  classId    String   @map("class_id") @db.Uuid // GIỮ LẠI
   enrolledAt DateTime @default(now()) @map("enrolled_at") @db.Timestamptz(6)
   status     String   @default("active")
-  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // THÊM MỚI: Liên kết với TeacherClassAssignment
+  teacherAssignmentId String? @map("teacher_assignment_id") @db.Uuid
+  
+  // THÊM MỚI: Thông tin lịch sử khi hoàn thành
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  finalGrade       String?   @map("final_grade")
+  completionStatus String?   @map("completion_status") // "completed", "dropped", "transferred", "active"
+  completionNotes  String?   @map("completion_notes")
+  
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // THÊM MỚI: Relation
+  teacherAssignment TeacherClassAssignment? @relation(fields: [teacherAssignmentId], references: [id])
 
-  @@unique([studentId, classId])
+  // SỬA ĐỔI: Unique constraint
+  @@unique([studentId, teacherAssignmentId])
   @@map("enrollments")
 }
 
@@ -546,21 +559,103 @@ model RolePermission {
 }
 
 model TeacherClassAssignment {
-  id           String    @id @default(uuid()) @db.Uuid
-  teacherId    String    @map("teacher_id") @db.Uuid
-  classId      String    @map("class_id") @db.Uuid
-  recurringSchedule  Json?    @map("recurring_schedule")
-  startDate    DateTime  @map("start_date") @db.Date
-  endDate      DateTime? @map("end_date") @db.Date
-  status       String    @default("active") // active, completed, cancelled
-  semester     String? // Kỳ học: "2024-1", "2024-2", etc.
-  academicYear String?   @map("academic_year") // Năm học: "2024-2025"
-  notes        String?
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid()) @db.Uuid
+  teacherId         String    @map("teacher_id") @db.Uuid
+  classId           String    @map("class_id") @db.Uuid
+  recurringSchedule Json?     @map("recurring_schedule")
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime? @map("end_date") @db.Date
+  status            String    @default("active")
+  semester          String?
+  academicYear      String?   @map("academic_year")
+
+  // THÊM MỚI: Số lượng sinh viên
+  maxStudents     Int? @map("max_students")
+  currentStudents Int  @default(0) @map("current_students")
+
+  // THÊM MỚI: Thông tin lịch sử khi hoàn thành
+  actualEndDate     DateTime? @map("actual_end_date") @db.Date
+  completionNotes   String?   @map("completion_notes")
+  finalStudentCount Int?      @map("final_student_count")
+  completionStatus  String?   @map("completion_status") // "completed", "cancelled", "transferred"
+
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
-  @@unique([classId, startDate]) // Một lớp chỉ có một giáo viên active tại một thời điểm
+  // THÊM MỚI: Relation với enrollments
+  enrollments   Enrollment[]
+  classHistories ClassHistory[]
+
+  @@unique([classId, startDate])
   @@map("teacher_class_assignments")
 }
+
+model ClassHistory {
+  id                  String    @id @default(uuid()) @db.Uuid
+  classId             String    @map("class_id") @db.Uuid
+  teacherAssignmentId String    @map("teacher_assignment_id") @db.Uuid
+  snapshotDate        DateTime  @map("snapshot_date") @db.Timestamptz(6)
+  snapshotType        String    @map("snapshot_type") // "completion", "periodic", "manual"
+  
+  // SEARCH-OPTIMIZED FIELDS - Dữ liệu có thể search nhanh
+  className           String    @map("class_name")
+  classNameNormalized String    @map("class_name_normalized") // Lowercase, no accents cho search
+  teacherName         String    @map("teacher_name")
+  teacherNameNormalized String  @map("teacher_name_normalized")
+  teacherId           String    @map("teacher_id") @db.Uuid
+  subjectName         String    @map("subject_name")
+  subjectNameNormalized String  @map("subject_name_normalized")
+  subjectId           String    @map("subject_id") @db.Uuid
+  studentCount        Int       @map("student_count")
+  startDate           DateTime  @map("start_date") @db.Date
+  endDate             DateTime? @map("end_date") @db.Date
+  actualEndDate       DateTime? @map("actual_end_date") @db.Date
+  semester            String?
+  academicYear        String?   @map("academic_year")
+  grade               String?
+  
+  // PERFORMANCE METRICS - Có thể filter/sort
+  averageAttendanceRate Decimal? @map("average_attendance_rate") @db.Decimal(5, 2)
+  completionRate        Decimal? @map("completion_rate") @db.Decimal(5, 2)
+  averageGrade          Decimal? @map("average_grade") @db.Decimal(5, 2)
+  totalSessions         Int?     @map("total_sessions")
+  completedSessions     Int?     @map("completed_sessions")
+  
+  // SEARCH TAGS - Tổng hợp keywords cho full-text search
+  searchTags          String?   @map("search_tags") // "math, nguyen van a, grade 10, 2024, fall"
+  
+  // JSON cho dữ liệu chi tiết
+  enrollmentDetails   Json?     @map("enrollment_details")
+  scheduleDetails     Json?     @map("schedule_details")
+  assessmentDetails   Json?     @map("assessment_details")
+  
+  // Metadata
+  createdBy           String?   @map("created_by") @db.Uuid
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  class               Class                  @relation(fields: [classId], references: [id])
+  teacherAssignment   TeacherClassAssignment @relation(fields: [teacherAssignmentId], references: [id])
+  
+  // OPTIMIZED INDEXES cho search nhanh
+  @@index([classNameNormalized])
+  @@index([teacherNameNormalized])
+  @@index([subjectNameNormalized])
+  @@index([teacherId, academicYear, semester])
+  @@index([subjectId, academicYear])
+  @@index([snapshotDate])
+  @@index([academicYear, semester, completionRate])
+  @@index([searchTags]) // Cho full-text search
+  
+  @@map("class_histories")
+}
+
+// VIEW cho search tổng hợp (Active + History)
+// Sẽ tạo bằng raw SQL trong migration
+// CREATE VIEW class_search_view AS 
+// SELECT ... FROM classes UNION ALL SELECT ... FROM class_histories

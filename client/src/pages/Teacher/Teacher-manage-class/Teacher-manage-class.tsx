@@ -384,14 +384,14 @@ export default function ClassManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      {classItem.recurringSchedule.days.map((schedule: any, idx: number) => (
+                      {classItem?.schedule?.days.map((schedule: any, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center gap-1 text-sm"
                         >
                           <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                           <span>
-                            {formatDayToVietnamese(schedule)} - {classItem.recurringSchedule.startTime} <ArrowRight className="inline-block" size={14} /> {classItem.recurringSchedule.endTime}
+                            {formatDayToVietnamese(schedule)} - {classItem.schedule.startTime} <ArrowRight className="inline-block" size={14} /> {classItem.schedule.endTime}
                           </span>
                         </div>
                       ))}
@@ -400,9 +400,9 @@ export default function ClassManagement() {
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={` ${statusColors[classItem.status as keyof typeof statusColors] } hover:bg-red-200 transition-colors duration-200`}
+                      className={` ${statusColors[classItem.assignmentStatus as keyof typeof statusColors] } hover:bg-red-200 transition-colors duration-200`}
                     >
-                      {statusTabs.find(tab => tab.key === classItem.status)?.label || classItem.status}
+                      {statusTabs.find(tab => tab.key === classItem.assignmentStatus)?.label || classItem.assignmentStatus}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -412,7 +412,7 @@ export default function ClassManagement() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{classItem._count.enrollments}/{classItem.maxStudents}</span>
+                    <span className="font-medium">{classItem.enrollmentStatus.current}/{classItem.enrollmentStatus.max}</span>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

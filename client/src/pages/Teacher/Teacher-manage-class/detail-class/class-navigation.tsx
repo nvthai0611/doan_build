@@ -16,9 +16,9 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
     { id: "thong-tin-chung", label: "Thông tin chung", icon: BookOpen },
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "hoc-vien", label: "Học viên", icon: Users },
-    { id: "giao-vien", label: "Giáo viên", icon: GraduationCap },
-    { id: "buoi-hoc", label: "Buổi học", icon: Calendar },
-    { id: "cong-viec", label: "Công việc", icon: CheckSquare },
+    // { id: "giao-vien", label: "Giáo viên", icon: GraduationCap },
+    // { id: "buoi-hoc", label: "Buổi học", icon: Calendar },
+    // { id: "cong-viec", label: "Công việc", icon: CheckSquare },
     { id: "danh-gia", label: "Đánh giá", icon: UserCheck },
   ]
 

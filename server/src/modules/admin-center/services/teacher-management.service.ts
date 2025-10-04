@@ -58,29 +58,6 @@ export class TeacherManagementService {
     return this.formatTeacherResponse(teacher);
   }
 
-  // Debug method to check database
-  async debugTeachers() {
-    const totalTeachers = await this.prisma.teacher.count();
-    const sampleTeachers = await this.prisma.teacher.findMany({
-      take: 5,
-      include: { user: true }
-    });
-    
-    return {
-      totalTeachers,
-      sampleTeachers: sampleTeachers.map(t => ({
-        id: t.id,
-        userId: t.userId,
-        user: t.user ? {
-          id: t.user.id,
-          email: t.user.email,
-          fullName: t.user.fullName,
-          role: t.user.role,
-          isActive: t.user.isActive
-        } : null
-      }))
-    };
-  }
 
   async findAllTeachers(queryDto: any) {
     const {
@@ -96,7 +73,11 @@ export class TeacherManagementService {
       hireDateFrom,
       hireDateTo
     } = queryDto;
-    const skip = (page - 1) * limit;
+    
+    // Convert string parameters to numbers
+    const pageNum = parseInt(page.toString());
+    const limitNum = parseInt(limit.toString());
+    const skip = (pageNum - 1) * limitNum;
     // Build where clause
     const where: any = {};
     const userWhere: any = {};
@@ -148,9 +129,8 @@ export class TeacherManagementService {
     }
 
     
-    
     const total = await this.prisma.teacher.count({ where });
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limitNum);
 
     let orderBy: any = {};
     
@@ -181,10 +161,7 @@ export class TeacherManagementService {
         [mappedSortBy]: sortOrder
       };
     }
-
     
-    
-
     const teachers = await this.prisma.teacher.findMany({
       where,
       include: {
@@ -192,14 +169,15 @@ export class TeacherManagementService {
       },
       orderBy,
       skip,
-      take: limit
+      take: limitNum
     });
-
+    console.log(teachers);
+    
     return {
       data: teachers.map(teacher => this.formatTeacherResponse(teacher)),
       meta: {
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         total,
         totalPages
       },
@@ -471,7 +449,7 @@ export class TeacherManagementService {
 
     return warnings;
   }
-
+  
   private formatTeacherResponse(teacher: any) {
     return {
       id: teacher.id,
