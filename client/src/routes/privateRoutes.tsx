@@ -40,7 +40,7 @@ export const privateRoutes = (
         <Route path="schedule" element={<TeacherSchedule />} />
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
-        <Route path="classes/:classId" element={<ClassDetailsPage />} />
+        <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<GradeInputPage/>}/>
         <Route path="grades/view" element={<StudentGradesPage/>}/>
       </Route>
