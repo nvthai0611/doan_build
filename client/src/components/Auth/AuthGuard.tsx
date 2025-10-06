@@ -39,9 +39,6 @@ export function AuthGuard({
   // Nếu có user và có yêu cầu role cụ thể
   if (user && allowedRoles.length > 0) {
     const hasRequiredRole = allowedRoles.includes(user.role)
-    console.log('User role:', user.role);
-    console.log('Allowed roles:', allowedRoles);
-    console.log('Has required role:', hasRequiredRole);
     
     if (!hasRequiredRole) {
       return (

@@ -154,7 +154,7 @@ export default function PermissionTestPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h5 className="font-medium">{role.displayName}</h5>
-                      <p className="text-sm text-gray-600">{role.name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{role.name}</p>
                     </div>
                     <Badge variant="outline">
                       {role.permissions.length} perms
@@ -178,10 +178,10 @@ export default function PermissionTestPage() {
               ).map(([module, permissions]) => (
                 <div key={module} className="p-3 border rounded-lg">
                   <h5 className="font-medium capitalize">{module}</h5>
-                  <p className="text-sm text-gray-600">{(permissions as any[]).length} permissions</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{(permissions as any[]).length} permissions</p>
                   <div className="mt-2 space-y-1">
                     {(permissions as any[]).slice(0, 3).map((perm: any) => (
-                      <div key={perm.id} className="text-xs text-gray-500">
+                      <div key={perm.id} className="text-xs text-gray-500 dark:text-gray-400">
                         {perm.name}
                       </div>
                     ))}
