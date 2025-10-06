@@ -89,7 +89,7 @@ async function main() {
     await createLeaveRequests(teachers, students);
     await createStudentReports(students);
     await createAlerts();
-    await createScheduleChanges(classes);
+    await createScheduleChanges(classes, rooms);
     await createUserSessions(teachers, students, parents, adminUser);
 
     console.log('✅ Database seeding completed successfully!');
@@ -122,7 +122,7 @@ async function clearDatabase() {
     prisma.class.deleteMany(),
     prisma.room.deleteMany(),
     prisma.subject.deleteMany(),
-    prisma.studentParentRelationship.deleteMany(),
+    // prisma.studentParentRelationship.deleteMany(), // Removed - no longer exists
     prisma.studentReport.deleteMany(),
     prisma.leaveRequest.deleteMany(),
     prisma.notification.deleteMany(),
@@ -441,12 +441,11 @@ async function createStudentParentRelationships(students, parents) {
   console.log('🔗 Creating student-parent relationships...');
 
   for (let i = 0; i < Math.min(students.length, parents.length); i++) {
-    await prisma.studentParentRelationship.create({
+    // Update student with parentId instead of creating separate relationship
+    await prisma.student.update({
+      where: { id: students[i].id },
       data: {
-        studentId: students[i].id,
         parentId: parents[i].id,
-        relation: faker.helpers.arrayElement(['father', 'mother', 'guardian']),
-        primaryContact: faker.datatype.boolean({ probability: 0.7 }),
       },
     });
   }
@@ -529,6 +528,21 @@ async function createTeacherAssignments(teachers, classes) {
 
       const semester = faker.helpers.arrayElement(semesters);
       const academicYear = faker.helpers.arrayElement(academicYears);
+
+      // Check if assignment already exists
+      const existingAssignment = await prisma.teacherClassAssignment.findFirst({
+        where: {
+          teacherId: teacher.id,
+          classId: classItem.id,
+          semester: semester,
+          academicYear: academicYear,
+        },
+      });
+
+      if (existingAssignment) {
+        console.log(`⚠️  Assignment already exists for teacher ${teacher.id} and class ${classItem.id}`);
+        continue;
+      }
 
       const assignment = await prisma.teacherClassAssignment.create({
         data: {
@@ -1071,7 +1085,7 @@ async function createAlerts() {
           source: faker.helpers.arrayElement(['system', 'user', 'automated']),
           metadata: {
             timestamp: faker.date.recent(),
-            userId: faker.datatype.uuid(),
+            userId: faker.string.uuid(),
             additionalInfo: faker.lorem.sentence()
           }
         },
@@ -1082,7 +1096,7 @@ async function createAlerts() {
   }
 }
 
-async function createScheduleChanges(classes) {
+async function createScheduleChanges(classes, rooms) {
   console.log('📅 Creating schedule changes...');
 
   for (let i = 0; i < NUM_SCHEDULE_CHANGES; i++) {
@@ -1097,7 +1111,7 @@ async function createScheduleChanges(classes) {
         originalTime: faker.helpers.arrayElement(['07:00', '08:00', '14:00', '15:00']),
         newDate: newDate,
         newTime: faker.helpers.arrayElement(['07:00', '08:00', '14:00', '15:00']),
-        newRoomId: faker.datatype.boolean({ probability: 0.5 }) ? faker.datatype.uuid() : null,
+        newRoomId: faker.datatype.boolean({ probability: 0.5 }) ? faker.helpers.arrayElement(rooms).id : null,
         reason: faker.helpers.arrayElement([
           'Room maintenance',
           'Teacher unavailable',
@@ -1106,7 +1120,7 @@ async function createScheduleChanges(classes) {
           'Weather conditions'
         ]),
         status: faker.helpers.arrayElement(['pending', 'approved', 'rejected']),
-        requestedBy: faker.datatype.uuid(),
+        requestedBy: faker.string.uuid(),
         requestedAt: faker.date.recent(),
         processedAt: faker.datatype.boolean({ probability: 0.6 }) ? faker.date.recent() : null,
       },
