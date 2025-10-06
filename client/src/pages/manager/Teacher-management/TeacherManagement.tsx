@@ -238,7 +238,7 @@ export default function TeacherQnmsManagement() {
   }
 
   const handleAddEmployee = (): void => {
-    alert("Mở form thêm nhân viên mới...")
+    navigate("/center-qn/teachers/add")
     console.log("[v0] Opening add employee form")
   }
 
@@ -264,7 +264,7 @@ export default function TeacherQnmsManagement() {
           <Avatar className="w-10 h-10">
             <AvatarFallback className="bg-gray-200">
               <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
+                <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
               </div>
             </AvatarFallback>
           </Avatar>
@@ -275,11 +275,11 @@ export default function TeacherQnmsManagement() {
             >
               {employee.name}
             </div>
-            <div className="text-xs text-gray-500">{employee.username}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{employee.username}</div>
             <div className="flex items-center gap-1 text-xs text-gray-400">
               <span>{employee.code}</span>
               <Copy
-                className="w-3 h-3 cursor-pointer hover:text-gray-600"
+                className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:text-gray-300"
                 onClick={() => handleCopyCode(employee.code)}
               />
             </div>
@@ -293,21 +293,21 @@ export default function TeacherQnmsManagement() {
       width: '250px',
       render: (employee: Teacher) => (
         <div className="space-y-1">
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
             <Mail className="w-3 h-3" />
             {employee.email}
           </div>
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
             <Phone className="w-3 h-3" />
             {employee.phone}
           </div>
           {employee.birthDate && (
-            <div className="flex items-center gap-1 text-sm text-gray-600">
+            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
               <Calendar className="w-3 h-3" />
               {employee.birthDate} - {employee.gender}
             </div>
           )}
-          {!employee.birthDate && <div className="text-sm text-gray-600">{employee.gender}</div>}
+          {!employee.birthDate && <div className="text-sm text-gray-600 dark:text-gray-300">{employee.gender}</div>}
         </div>
       )
     },
@@ -368,7 +368,7 @@ export default function TeacherQnmsManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -389,10 +389,10 @@ export default function TeacherQnmsManagement() {
             </Breadcrumb>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="text-gray-600 bg-transparent" onClick={handleInviteEmployee}>
+            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-transparent" onClick={handleInviteEmployee}>
               Mời nhân viên
             </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAddEmployee}>
+            <Button  onClick={handleAddEmployee}>
               <Plus className="w-4 h-4 mr-2" />
               Nhân viên
             </Button>
@@ -401,7 +401,7 @@ export default function TeacherQnmsManagement() {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
             <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -450,7 +450,7 @@ export default function TeacherQnmsManagement() {
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-sm text-gray-600 mb-1 block">Giới tính</label>
+                      <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Giới tính</label>
                       <Select 
                         value={filterState.gender || "all"} 
                         onValueChange={(value) => setFilterState((prev: FilterState) => ({ ...prev, gender: value === "all" ? undefined : value }))}
@@ -467,7 +467,7 @@ export default function TeacherQnmsManagement() {
                       </Select>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-600 mb-1 block">Năm sinh</label>
+                      <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Năm sinh</label>
                       <Input
                         type="number"
                         placeholder="Nhập năm sinh"
@@ -479,7 +479,7 @@ export default function TeacherQnmsManagement() {
                     </div>
                     {/* <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-sm text-gray-600 mb-1 block">Từ ngày</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Từ ngày</label>
                         <Input
                           type="date"
                           value={filterState.hireDateFrom || ""}
@@ -489,7 +489,7 @@ export default function TeacherQnmsManagement() {
                         />
                       </div>
                       <div>
-                        <label className="text-sm text-gray-600 mb-1 block">Đến ngày</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Đến ngày</label>
                         <Input
                           type="date"
                           value={filterState.hireDateTo || ""}
@@ -548,7 +548,7 @@ export default function TeacherQnmsManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
         <div className="border-b">
           <div className="flex">
             {tabs.map((tab) => (
@@ -558,10 +558,10 @@ export default function TeacherQnmsManagement() {
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.key
                     ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
+                    : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white"
                 }`}
               >
-                {tab.label} <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">{tab.count}</span>
+                {tab.label} <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{tab.count}</span>
               </button>
             ))}
           </div>
@@ -592,11 +592,11 @@ export default function TeacherQnmsManagement() {
       </div>
 
       {/* Additional Controls */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mt-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 mt-6">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch checked={collectData} onCheckedChange={setCollectData} />
-            <span className="text-sm text-gray-600">Thu gọn</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Thu gọn</span>
           </div>
         </div>
       </div>

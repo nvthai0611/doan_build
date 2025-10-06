@@ -60,24 +60,24 @@ export function StudentTable({ students, filters }: StudentTableProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
       <Table>
         <TableHeader>
-          <TableRow className="border-border bg-gray-50">
-            <TableHead className="w-12 text-left text-gray-500 uppercase tracking-wider text-xs">STT</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs">Tài khoản học viên</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs">Thông tin</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Trạng thái</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Khóa học</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Lớp học</TableHead>
-            <TableHead className="text-gray-500 uppercase tracking-wider text-xs text-center">Điểm trung bình</TableHead>
+          <TableRow className="border-border bg-gray-50 dark:bg-gray-900">
+            <TableHead className="w-12 text-left text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs">STT</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs">Tài khoản học viên</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs">Thông tin</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Trạng thái</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Khóa học</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Lớp học</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Điểm trung bình</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {students.map((student, index) => (
-            <TableRow key={student.id} className="hover:bg-gray-50">
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <TableRow key={student.id} className="hover:bg-gray-50 dark:bg-gray-900">
+              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                 {index + 1}
               </TableCell>
 
@@ -86,17 +86,17 @@ export function StudentTable({ students, filters }: StudentTableProps) {
                   <Avatar className="w-10 h-10">
                     <AvatarFallback className="bg-gray-200">
                       <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                        <div className="w-3 h-3 bg-white rounded-full"></div>
+                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
                       </div>
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="text-sm font-medium text-blue-600">{student.user.fullName || student.user.username}</div>
-                    <div className="text-xs text-gray-500">{student.user.username}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{student.user.username}</div>
                     {student.studentCode && (
                       <div className="flex items-center gap-1 text-xs text-gray-400">
                         <span>{student.studentCode}</span>
-                        <Copy className="w-3 h-3 cursor-pointer hover:text-gray-600" />
+                        <Copy className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:text-gray-300" />
                       </div>
                     )}
                   </div>
@@ -106,13 +106,13 @@ export function StudentTable({ students, filters }: StudentTableProps) {
               <TableCell className="px-6 py-4 whitespace-nowrap">
                 <div className="space-y-1">
                   {student.user.email && (
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                       <Mail className="w-3 h-3" />
                       {student.user.email}
                     </div>
                   )}
                   {student.user.phone && (
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                       <Phone className="w-3 h-3" />
                       {student.user.phone}
                     </div>
@@ -125,18 +125,18 @@ export function StudentTable({ students, filters }: StudentTableProps) {
               </TableCell>
 
               <TableCell className="px-6 py-4 whitespace-nowrap text-center">
-                <span className="text-gray-900 text-sm">{student.totalCourses}</span>
+                <span className="text-gray-900 dark:text-white text-sm">{student.totalCourses}</span>
               </TableCell>
 
               <TableCell className="px-6 py-4 whitespace-nowrap text-center">
-                <span className="text-gray-900 text-sm">{student.totalClasses}</span>
+                <span className="text-gray-900 dark:text-white text-sm">{student.totalClasses}</span>
               </TableCell>
 
               <TableCell className="px-6 py-4 whitespace-nowrap text-center">
                 <div className="inline-flex items-center gap-2">
                   {student.averageGrade > 0 && (
-                    <div className="w-12 h-6 bg-gray-100 rounded flex items-center justify-center">
-                      <span className="text-xs text-gray-600">{formatGrade(student.averageGrade)}</span>
+                    <div className="w-12 h-6 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
+                      <span className="text-xs text-gray-600 dark:text-gray-300">{formatGrade(student.averageGrade)}</span>
                     </div>
                   )}
                 </div>

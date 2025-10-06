@@ -126,10 +126,10 @@ export default function TeacherSchedule() {
   return (
     <div>
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Lịch dạy</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Lịch dạy</h2>
             <p className="text-lg font-semibold text-gray-700 mt-1">
               {formatMonthYear(currentDate)}
             </p>
@@ -196,7 +196,7 @@ export default function TeacherSchedule() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
         <div className="p-6">
           {loading ? (
             <Loading />
@@ -207,7 +207,7 @@ export default function TeacherSchedule() {
                 {daysOfWeek.map((day) => (
                   <div
                     key={day}
-                    className="p-3 text-center font-semibold text-gray-600 text-sm"
+                    className="p-3 text-center font-semibold text-gray-600 dark:text-gray-300 text-sm"
                   >
                     {day}
                   </div>
@@ -227,15 +227,15 @@ export default function TeacherSchedule() {
                   return (
                     <div
                       key={day.getDate()}
-                      className={`h-24 border border-gray-200 p-1 ${
-                        isToday ? 'bg-blue-50' : 'bg-white'
-                      } hover:bg-gray-50`}
+                      className={`h-24 border border-gray-200 dark:border-gray-700 p-1 ${
+                        isToday ? 'bg-blue-50' : 'bg-white dark:bg-gray-800'
+                      } hover:bg-gray-50 dark:bg-gray-900`}
                       onDoubleClick={() => daySchedules.length > 0 && openDayModal(day)}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <span
                           className={`text-sm font-medium ${
-                            isToday ? 'text-blue-600' : 'text-gray-900'
+                            isToday ? 'text-blue-600' : 'text-gray-900 dark:text-white'
                           }`}
                         >
                           {day.getDate()}
@@ -264,7 +264,7 @@ export default function TeacherSchedule() {
                           </button>
                         ))}
                         {daySchedules.length > 2 && (
-                          <div className="text-xs text-gray-500 text-center">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                             +{daySchedules.length - 2} khác
                           </div>
                         )}

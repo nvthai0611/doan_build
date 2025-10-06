@@ -141,7 +141,7 @@ export default function StudentGradesPage() {
       case "down":
         return <TrendingDown className="w-4 h-4 text-red-600" />
       default:
-        return <Minus className="w-4 h-4 text-gray-600" />
+        return <Minus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
     }
   }
 

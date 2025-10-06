@@ -33,7 +33,7 @@ export const getSubjectColor = (subject: string): string => {
 }
 
 export const getStatusColor = (status: string): string => {
-  return STATUS_COLORS[status] || "bg-gray-100 text-gray-800 border-gray-200"
+  return STATUS_COLORS[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 border-gray-200 dark:border-gray-700"
 }
 
 // Student utility functions

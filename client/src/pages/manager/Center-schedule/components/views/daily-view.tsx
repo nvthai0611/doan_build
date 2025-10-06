@@ -46,7 +46,7 @@ export function DailyView({
   const dayName = weekDays[currentDate.getDay()];
 
   return (
-    <div className="bg-white rounded-lg border border-border">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-border">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-foreground">{dayName}</h2>

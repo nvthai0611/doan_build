@@ -67,7 +67,7 @@ export function AddStudentModal({ open, onOpenChange }: AddStudentModalProps) {
                   </p>
                   <div>
                     <p className="text-sm font-medium mb-1">Lý do đăng ký:</p>
-                    <p className="text-sm text-muted-foreground bg-gray-50 p-2 rounded">{request.message}</p>
+                    <p className="text-sm text-muted-foreground bg-gray-50 dark:bg-gray-900 p-2 rounded">{request.message}</p>
                   </div>
                 </div>
 

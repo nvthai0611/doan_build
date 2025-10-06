@@ -360,7 +360,7 @@ export default function StudentManagement() {
       case "Tốt nghiệp":
         return "bg-emerald-100 text-emerald-800"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 dark:bg-gray-800 text-gray-800"
     }
   }
 
@@ -370,7 +370,7 @@ export default function StudentManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -399,7 +399,7 @@ export default function StudentManagement() {
               <Plus className="w-4 h-4 mr-2" />
               Tài khoản học viên
             </Button>
-            <Button variant="outline" className="text-gray-600 bg-white" onClick={handleInviteStudent}>
+            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800" onClick={handleInviteStudent}>
               Mời tài khoản học viên
             </Button>
           </div>
@@ -407,7 +407,7 @@ export default function StudentManagement() {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-4 mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
             <Select value={selectedCourse} onValueChange={setSelectedCourse}>
@@ -470,7 +470,7 @@ export default function StudentManagement() {
           </div>
 
           <div className="flex items-center gap-2 relative">
-            <Button variant="outline" className="gap-2 bg-white" onClick={handleToggleFilter}>
+            <Button variant="outline" className="gap-2 bg-white dark:bg-gray-800" onClick={handleToggleFilter}>
               <Filter className="w-4 h-4" />
               Bộ lọc
             </Button>
@@ -512,7 +512,7 @@ export default function StudentManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
         <div className="border-b">
           <div className="flex overflow-x-auto">
             {tabs.map((tab) => (
@@ -522,10 +522,10 @@ export default function StudentManagement() {
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.key
                     ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
+                    : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white"
                 }`}
               >
-                {tab.label} <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">{getTabCount(tab.key)}</span>
+                {tab.label} <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{getTabCount(tab.key)}</span>
               </button>
             ))}
           </div>
@@ -534,40 +534,40 @@ export default function StudentManagement() {
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STT</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">STT</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Tài khoản học viên
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Thông tin liên hệ
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Trạng thái
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Khóa học
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Lớp học
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Điểm trung bình
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Tổng số dư học phí
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Số dư ví
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200">
               {paginatedStudents.map((student: Student, index: number) => (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={student.id} className="hover:bg-gray-50 dark:bg-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -575,17 +575,17 @@ export default function StudentManagement() {
                       <Avatar className="w-10 h-10">
                         <AvatarFallback className="bg-gray-200">
                           <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
+                            <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
                           </div>
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                        <div className="text-xs text-gray-500">{student.username}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{student.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{student.username}</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
                           <span>{student.code}</span>
                           <Copy
-                            className="w-3 h-3 cursor-pointer hover:text-gray-600"
+                            className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:text-gray-300"
                             onClick={() => handleCopyCode(student.code)}
                           />
                         </div>
@@ -595,19 +595,19 @@ export default function StudentManagement() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
                       {student.phone && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                           <Phone className="w-3 h-3" />
                           {student.phone}
                         </div>
                       )}
                       {!student.phone && <div className="text-sm text-gray-400">-</div>}
                       {student.birthDate && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                           <Calendar className="w-3 h-3" />
                           {student.birthDate} - {student.gender}
                         </div>
                       )}
-                      {!student.birthDate && <div className="text-sm text-gray-600">{student.gender}</div>}
+                      {!student.birthDate && <div className="text-sm text-gray-600 dark:text-gray-300">{student.gender}</div>}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -640,9 +640,9 @@ export default function StudentManagement() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.course}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.class}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{student.course}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{student.class}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {student.averageScore > 0 ? `${student.averageScore}/10` : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -652,7 +652,7 @@ export default function StudentManagement() {
                           ? "text-red-600"
                           : student.totalFee > 0
                             ? "text-green-600"
-                            : "text-gray-900"
+                            : "text-gray-900 dark:text-white"
                       }
                     >
                       {formatCurrency(student.totalFee)}
@@ -665,7 +665,7 @@ export default function StudentManagement() {
                           ? "text-red-600"
                           : student.walletBalance > 0
                             ? "text-green-600"
-                            : "text-gray-900"
+                            : "text-gray-900 dark:text-white"
                       }
                     >
                       {formatCurrency(student.walletBalance)}
@@ -693,16 +693,16 @@ export default function StudentManagement() {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50">
+        <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Switch checked={collectData} onCheckedChange={setCollectData} />
-                <span className="text-sm text-gray-600">Thu gọn</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300">Thu gọn</span>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <span>Số hàng mỗi trang:</span>
                 <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
                   <SelectTrigger className="w-16 h-8">
@@ -715,7 +715,7 @@ export default function StudentManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 dark:text-gray-300">
                 {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredStudents.length)}{" "}
                 trong {filteredStudents.length}
               </div>

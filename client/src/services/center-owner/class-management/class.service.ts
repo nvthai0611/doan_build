@@ -19,7 +19,7 @@ class ClassService {
           limit: params.limit
         }
       })
-      console.log(response);
+      console.log(params);
       
       return response as any
     } catch (error) {

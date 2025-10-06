@@ -171,7 +171,6 @@ export class TeacherManagementService {
       skip,
       take: limitNum
     });
-    console.log(teachers);
     
     return {
       data: teachers.map(teacher => this.formatTeacherResponse(teacher)),
