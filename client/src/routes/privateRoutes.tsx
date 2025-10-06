@@ -13,6 +13,8 @@ import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-c
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
+import GradeInputPage from "../pages/teacher/PointManagement/Score_input";
+import StudentGradesPage from "../pages/teacher/PointManagement/Score_view";
 export const privateRoutes = (
   <>
     <Route element={<DefaultLayout />}>
@@ -39,6 +41,8 @@ export const privateRoutes = (
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:classId" element={<ClassDetailsPage />} />
+        <Route path="grades/input" element={<GradeInputPage/>}/>
+        <Route path="grades/view" element={<StudentGradesPage/>}/>
       </Route>
 
       {/* Học sinh */}

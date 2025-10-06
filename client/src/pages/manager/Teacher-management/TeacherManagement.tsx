@@ -249,12 +249,16 @@ export default function TeacherQnmsManagement() {
       header: 'STT',
       width: '80px',
       align: 'center',
-      render: (_: Teacher, index: number) => ((pagination.currentPage - 1) * pagination.itemsPerPage + index + 1)
+      render: (_: Teacher, index: number) => ((pagination.currentPage - 1) * pagination.itemsPerPage + index + 1),
+      sortable: true,
+      sortKey: 'stt',
     },
     {
       key: 'account',
       header: 'Tài khoản giáo viên',
       width: '300px',
+      sortable: true,
+      sortKey: 'account',
       render: (employee: Teacher) => (
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10">
