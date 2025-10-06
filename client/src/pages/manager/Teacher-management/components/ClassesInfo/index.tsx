@@ -1,2 +1,2 @@
 export { default } from './ClassesTab'
-export * from './hooks'
+export * from './useTeacherClassesQuery'

@@ -4,7 +4,7 @@ import { TeachingSession, UseTeachingSessionsReturn } from "./types"
 import { getMockSessions } from "./utils"
 
 // Hook để gọi API lịch dạy
-export const useTeachingSessions = (employeeId: string, year: number, month: number): UseTeachingSessionsReturn => {
+export const useTeachingSessions = (teacherId: string, year: number, month: number): UseTeachingSessionsReturn => {
   console.log(year, month);
   
   const [sessions, setSessions] = useState<TeachingSession[]>([])
@@ -13,14 +13,13 @@ export const useTeachingSessions = (employeeId: string, year: number, month: num
 
   useEffect(() => {
     const fetchSessions = async () => {
-      if (!employeeId) return
+          if (!teacherId) return
       
       setLoading(true)
       setError(null)
       
       try {
-        const response = await centerOwnerTeacherService.getTeacherSchedule(employeeId, year, month)
-        console.log('Schedule API Response:', response)
+        const response = await centerOwnerTeacherService.getTeacherSchedule(teacherId, year, month)
         
         if (response.data && (response.data as any).sessions) {
           const formattedSessions: TeachingSession[] = (response.data as any).sessions.map((session: any) => ({
@@ -55,7 +54,7 @@ export const useTeachingSessions = (employeeId: string, year: number, month: num
     }
 
     fetchSessions()
-  }, [employeeId, year, month])
+  }, [teacherId, year, month])
 
   return { sessions, loading, error }
 }

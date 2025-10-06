@@ -54,7 +54,7 @@ export default function TeacherQnmsManagement() {
   const pagination = usePagination({
     initialPage: 1,
     initialItemsPerPage: 2,
-    totalItems: 0 // Will be updated from API response
+    totalItems: 0 
   })
 
   const roleMap: { [key: string]: string } = {

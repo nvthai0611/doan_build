@@ -161,6 +161,7 @@ model Class {
   materials               Material[]
   scheduleChanges         ScheduleChange[]
   teacherClassAssignments TeacherClassAssignment[]
+  classHistories          ClassHistory[]
 
   @@map("classes")
 }
@@ -202,13 +203,17 @@ model Enrollment {
   classId    String   @map("class_id") @db.Uuid // GIỮ LẠI
   enrolledAt DateTime @default(now()) @map("enrolled_at") @db.Timestamptz(6)
   status     String   @default("active")
-
   // THÊM MỚI: Liên kết với TeacherClassAssignment
   teacherAssignmentId String? @map("teacher_assignment_id") @db.Uuid
-
+  
+  // THÊM MỚI: Thông tin lịch sử khi hoàn thành
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  finalGrade       String?   @map("final_grade")
+  completionStatus String?   @map("completion_status") // "completed", "dropped", "transferred", "active"
+  completionNotes  String?   @map("completion_notes")
+  
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
   // THÊM MỚI: Relation
   teacherAssignment TeacherClassAssignment? @relation(fields: [teacherAssignmentId], references: [id])
 
@@ -568,6 +573,12 @@ model TeacherClassAssignment {
   maxStudents     Int? @map("max_students")
   currentStudents Int  @default(0) @map("current_students")
 
+  // THÊM MỚI: Thông tin lịch sử khi hoàn thành
+  actualEndDate     DateTime? @map("actual_end_date") @db.Date
+  completionNotes   String?   @map("completion_notes")
+  finalStudentCount Int?      @map("final_student_count")
+  completionStatus  String?   @map("completion_status") // "completed", "cancelled", "transferred"
+
   notes     String?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -576,8 +587,75 @@ model TeacherClassAssignment {
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   // THÊM MỚI: Relation với enrollments
-  enrollments Enrollment[]
+  enrollments   Enrollment[]
+  classHistories ClassHistory[]
 
   @@unique([classId, startDate])
   @@map("teacher_class_assignments")
 }
+
+model ClassHistory {
+  id                  String    @id @default(uuid()) @db.Uuid
+  classId             String    @map("class_id") @db.Uuid
+  teacherAssignmentId String    @map("teacher_assignment_id") @db.Uuid
+  snapshotDate        DateTime  @map("snapshot_date") @db.Timestamptz(6)
+  snapshotType        String    @map("snapshot_type") // "completion", "periodic", "manual"
+  
+  // SEARCH-OPTIMIZED FIELDS - Dữ liệu có thể search nhanh
+  className           String    @map("class_name")
+  classNameNormalized String    @map("class_name_normalized") // Lowercase, no accents cho search
+  teacherName         String    @map("teacher_name")
+  teacherNameNormalized String  @map("teacher_name_normalized")
+  teacherId           String    @map("teacher_id") @db.Uuid
+  subjectName         String    @map("subject_name")
+  subjectNameNormalized String  @map("subject_name_normalized")
+  subjectId           String    @map("subject_id") @db.Uuid
+  studentCount        Int       @map("student_count")
+  startDate           DateTime  @map("start_date") @db.Date
+  endDate             DateTime? @map("end_date") @db.Date
+  actualEndDate       DateTime? @map("actual_end_date") @db.Date
+  semester            String?
+  academicYear        String?   @map("academic_year")
+  grade               String?
+  
+  // PERFORMANCE METRICS - Có thể filter/sort
+  averageAttendanceRate Decimal? @map("average_attendance_rate") @db.Decimal(5, 2)
+  completionRate        Decimal? @map("completion_rate") @db.Decimal(5, 2)
+  averageGrade          Decimal? @map("average_grade") @db.Decimal(5, 2)
+  totalSessions         Int?     @map("total_sessions")
+  completedSessions     Int?     @map("completed_sessions")
+  
+  // SEARCH TAGS - Tổng hợp keywords cho full-text search
+  searchTags          String?   @map("search_tags") // "math, nguyen van a, grade 10, 2024, fall"
+  
+  // JSON cho dữ liệu chi tiết
+  enrollmentDetails   Json?     @map("enrollment_details")
+  scheduleDetails     Json?     @map("schedule_details")
+  assessmentDetails   Json?     @map("assessment_details")
+  
+  // Metadata
+  createdBy           String?   @map("created_by") @db.Uuid
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  class               Class                  @relation(fields: [classId], references: [id])
+  teacherAssignment   TeacherClassAssignment @relation(fields: [teacherAssignmentId], references: [id])
+  
+  // OPTIMIZED INDEXES cho search nhanh
+  @@index([classNameNormalized])
+  @@index([teacherNameNormalized])
+  @@index([subjectNameNormalized])
+  @@index([teacherId, academicYear, semester])
+  @@index([subjectId, academicYear])
+  @@index([snapshotDate])
+  @@index([academicYear, semester, completionRate])
+  @@index([searchTags]) // Cho full-text search
+  
+  @@map("class_histories")
+}
+
+// VIEW cho search tổng hợp (Active + History)
+// Sẽ tạo bằng raw SQL trong migration
+// CREATE VIEW class_search_view AS 
+// SELECT ... FROM classes UNION ALL SELECT ... FROM class_histories

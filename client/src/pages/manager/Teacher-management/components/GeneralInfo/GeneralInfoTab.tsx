@@ -19,12 +19,12 @@ import {
   Save,
   X,
 } from "lucide-react"
-import type { Employee } from "../../types/teacher"
+import type { Teacher } from "../../types/teacher"
 import type { CreateTeacherRequest } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 interface GeneralInfoTabProps {
-  employee: Employee
+  teacher: Teacher
   accountStatus: boolean
   isVerified: boolean
   isEditDialogOpen: boolean
@@ -39,7 +39,7 @@ interface GeneralInfoTabProps {
 }
 
 export default function GeneralInfoTab({
-  employee,
+  teacher,
   accountStatus,
   isVerified,
   isEditDialogOpen,
@@ -64,32 +64,32 @@ export default function GeneralInfoTab({
                   <div className="w-6 h-6 bg-white rounded-full"></div>
                 </div>
               </AvatarFallback>
-            </Avatar>
+            </Avatar>   
             <div className="space-y-2">
               <div className="flex items-center space-x-3">
-                <h2 className="text-2xl font-semibold text-gray-900">{employee.name}</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">{teacher.name}</h2>
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  {employee.role}
+                  {teacher.role}
                 </Badge>
               </div>
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center space-x-1">
                   <Mail className="w-4 h-4" />
-                  <span>{employee.email}</span>
+                  <span>{teacher.email}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Phone className="w-4 h-4" />
-                  <span>{employee.phone}</span>
+                  <span>{teacher.phone}</span>
                 </div>
               </div>
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center space-x-1">
                   <User className="w-4 h-4" />
-                  <span>{employee.username}</span>
+                  <span>{teacher.username}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
-                  <span>{employee.birthDate || "Chưa cập nhật"}</span>
+                  <span>{teacher.birthDate || "Chưa cập nhật"}</span>
                 </div>
               </div>
             </div>
@@ -141,9 +141,9 @@ export default function GeneralInfoTab({
           <div>
             <Label className="text-sm font-medium text-gray-700">Môn dạy</Label>
             <div className="mt-1">
-              {employee.subjects && employee.subjects.length > 0 ? (
+              {teacher.subjects && teacher.subjects.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {employee.subjects.map((subject, index) => (
+                  {teacher.subjects.map((subject, index) => (
                     <Badge key={index} variant="outline">
                       {subject}
                     </Badge>
@@ -157,19 +157,19 @@ export default function GeneralInfoTab({
           <div>
             <Label className="text-sm font-medium text-gray-700">Lương cơ bản</Label>
             <p className="mt-1 text-sm text-gray-900">
-              {employee.salary ? `${employee.salary.toLocaleString()} VNĐ` : "Chưa cập nhật"}
+              {teacher.salary ? `${teacher.salary.toLocaleString()} VNĐ` : "Chưa cập nhật"}
             </p>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-700">Ngày bắt đầu làm việc</Label>
             <p className="mt-1 text-sm text-gray-900">
-              {employee.hireDate || "Chưa cập nhật"}
+              {teacher.hireDate || "Chưa cập nhật"}
             </p>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-700">Ngày kết thúc hợp đồng</Label>
             <p className="mt-1 text-sm text-gray-900">
-              {employee.contractEnd || "Chưa cập nhật"}
+              {teacher.contractEnd || "Chưa cập nhật"}
             </p>
           </div>
         </div>

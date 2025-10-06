@@ -1,7 +1,7 @@
 import { SessionStatus, StudentStatus } from "./enums"
 
 export interface ScheduleTabProps {
-  employeeId: string
+  teacherId: string
   currentDate: Date
   selectedMonth: string
   selectedYear: string

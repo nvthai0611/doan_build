@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Calendar, Clock, Eye, Download } from "lucide-react"
 
 interface TimesheetTabProps {
-  employeeId: string
+  teacherId: string
   activeTab: string
   fromDate: string
   toDate: string
@@ -92,7 +92,7 @@ const getTimesheetData = (employeeId: string, status: string, fromDate: string, 
 }
 
 export default function TimesheetTab({
-  employeeId,
+  teacherId,
   activeTab,
   fromDate,
   toDate,
@@ -102,7 +102,7 @@ export default function TimesheetTab({
   setToDate,
   setSearch
 }: TimesheetTabProps) {
-  const timesheets = getTimesheetData(employeeId, activeTab, fromDate, toDate, search)
+  const timesheets = getTimesheetData(teacherId, activeTab, fromDate, toDate, search)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
