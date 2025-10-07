@@ -8,7 +8,6 @@ export interface CreateTeacherRequest {
   username: string
   phone?: string
   role: "teacher"
-  hireDate?: string
   contractEnd?: string
   subjects?: string[]
   salary?: number
@@ -26,8 +25,6 @@ export interface TeacherQueryParams extends BaseFilters, DateFilters {
   role?: "teacher" | "admin" | "center_owner"
   birthYear?: string
   gender?: string
-  hireDateFrom?: string
-  hireDateTo?: string
   subjects?: string[]
 }
 
@@ -47,7 +44,6 @@ export interface TeacherResponse {
 export interface Teacher {
   id: string
   userId: string
-  hireDate?: string
   contractEnd?: string
   subjects: string[]
   salary?: number

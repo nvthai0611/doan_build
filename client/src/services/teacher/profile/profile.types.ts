@@ -2,7 +2,6 @@ import type { User, Gender } from "../../common/types/shared.types"
 
 export interface TeacherProfile extends User {
   teacherId: string
-  hireDate?: string
   contractEnd?: string
   subjects: string[]
   salary?: number

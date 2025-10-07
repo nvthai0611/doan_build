@@ -161,12 +161,6 @@ export default function GeneralInfoTab({
             </p>
           </div>
           <div>
-            <Label className="text-sm font-medium text-gray-700">Ngày bắt đầu làm việc</Label>
-            <p className="mt-1 text-sm text-gray-900 dark:text-white">
-              {teacher.hireDate || "Chưa cập nhật"}
-            </p>
-          </div>
-          <div>
             <Label className="text-sm font-medium text-gray-700">Ngày kết thúc hợp đồng</Label>
             <p className="mt-1 text-sm text-gray-900 dark:text-white">
               {teacher.contractEnd || "Chưa cập nhật"}

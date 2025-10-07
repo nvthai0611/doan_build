@@ -17,7 +17,7 @@ export class AuthService {
         [field]: value,
       },
       include: {
-        teacher: true,
+        // teacher: true,
         student: true,
         parent: true,
         roleData: {
@@ -86,7 +86,7 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         isActive: user.isActive,
-        teacher: user.teacher,
+        // teacher: user.teacher,
         student: user.student,
         parent: user.parent,
       },
@@ -105,7 +105,7 @@ export class AuthService {
       include: {
         user: {
           include: {
-            teacher: true,
+            // teacher: true,
             student: true,
             parent: true,
           },
@@ -133,7 +133,7 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         isActive: user.isActive,
-        teacher: user.teacher,
+        //    teacher: user.teacher,
         student: user.student,
         parent: user.parent,
       },
@@ -205,7 +205,7 @@ export class AuthService {
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      teacher: user.teacher,
+      // teacher: user.teacher,
       student: user.student,
       parent: user.parent,
       permissions: permissions.map(p => p.name), // Return permission names for frontend
@@ -226,7 +226,7 @@ export class AuthService {
         phone: updateData.phone,
       },
       include: {
-        teacher: true,
+        // teacher: true,
         student: true,
         parent: true,
       },
@@ -239,7 +239,7 @@ export class AuthService {
       role: updatedUser.role,
       phone: updatedUser.phone,
       isActive: updatedUser.isActive,
-      teacher: updatedUser.teacher,
+      // teacher: updatedUser.teacher,
       student: updatedUser.student,
       parent: updatedUser.parent,
     };
