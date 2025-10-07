@@ -12,35 +12,6 @@ export interface TeacherScheduleResponse {
 class TeacherScheduleService {
   private baseUrl = '/teacher/schedule'
 
-  // Lấy danh sách lịch dạy của giáo viên
-  async getMySchedule(filters?: ScheduleFilters): Promise<any> {
-    try {
-      const params = new URLSearchParams()
-      
-      if (filters?.status && filters.status !== 'all') {
-        params.append('status', filters.status)
-      }
-      if (filters?.type && filters.type !== 'all') {
-        params.append('type', filters.type)
-      }
-      if (filters?.fromDate) {
-        params.append('fromDate', filters.fromDate)
-      }
-      if (filters?.toDate) {
-        params.append('toDate', filters.toDate)
-      }
-      if (filters?.search) {
-        params.append('search', filters.search)
-      }
-
-      const response = await apiClient.get<any>(`${this.baseUrl}?${params.toString()}`)
-      return response.data
-    } catch (error) {
-      console.error('Error fetching teacher schedule:', error)
-      throw error
-    }
-  }
-
 
   // Lấy chi tiết một buổi dạy
   async getScheduleDetail(scheduleId: string): Promise<{ success: boolean; data: ScheduleData; message: string }> {
