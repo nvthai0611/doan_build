@@ -1,5 +1,6 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,13 +15,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Undo, Check, Sparkles } from "lucide-react"
+import { Combobox, ComboboxOption } from "@/components/ui/combobox"
+import { Calendar, Undo, Check, Sparkles, MapPin, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
+import { schoolService, SchoolOption } from "../../../../services/common"
 
 export default function AddEmployee() {
   const navigate = useNavigate()
+  
   const [formData, setFormData] = useState({
     name: "",
     gender: "",
@@ -29,22 +33,127 @@ export default function AddEmployee() {
     username: "",
     email: "",
     phone: "",
+    school: "",
+    schoolName: "",
+    schoolAddress: "",
     status: true,
     notes: ""
   })
 
-  const handleInputChange = (field: string, value: any) => {
+  // State để quản lý danh sách trường học local
+  const [localSchools, setLocalSchools] = useState<SchoolOption[]>([])
+
+  // Convert any school data to SchoolOption
+  const convertToSchoolOption = (school: any): SchoolOption => ({
+    value: school.name || school.label || school.value,
+    label: school.name || school.label || school.value,
+    description: school.address || school.description
+  })
+
+  // Mock data fallback
+  const mockSchools: SchoolOption[] = [
+    { value: "THPT Nguyễn Huệ", label: "THPT Nguyễn Huệ", description: "123 Nguyễn Huệ, Quận 1, TP.HCM" },
+    { value: "THPT Lê Lợi", label: "THPT Lê Lợi", description: "456 Lê Lợi, Quận 1, TP.HCM" },
+    { value: "THPT Điện Biên Phủ", label: "THPT Điện Biên Phủ", description: "789 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM" },
+    { value: "THPT Cách Mạng Tháng 8", label: "THPT Cách Mạng Tháng 8", description: "321 Cách Mạng Tháng 8, Quận 10, TP.HCM" },
+    { value: "THPT Nguyễn Thị Minh Khai", label: "THPT Nguyễn Thị Minh Khai", description: "654 Nguyễn Thị Minh Khai, Quận 3, TP.HCM" },
+    { value: "THPT Võ Văn Tần", label: "THPT Võ Văn Tần", description: "987 Võ Văn Tần, Quận 3, TP.HCM" },
+    { value: "THPT Nguyễn Văn Cừ", label: "THPT Nguyễn Văn Cừ", description: "147 Nguyễn Văn Cừ, Quận 5, TP.HCM" },
+    { value: "THPT Trần Hưng Đạo", label: "THPT Trần Hưng Đạo", description: "258 Trần Hưng Đạo, Quận 5, TP.HCM" },
+    { value: "THPT Nguyễn Trãi", label: "THPT Nguyễn Trãi", description: "369 Nguyễn Trãi, Quận 5, TP.HCM" },
+    { value: "THPT Lý Tự Trọng", label: "THPT Lý Tự Trọng", description: "741 Lý Tự Trọng, Quận 1, TP.HCM" },
+    { value: "THPT Pasteur", label: "THPT Pasteur", description: "852 Pasteur, Quận 3, TP.HCM" },
+    { value: "THPT Hai Bà Trưng", label: "THPT Hai Bà Trưng", description: "963 Hai Bà Trưng, Quận 1, TP.HCM" },
+    { value: "THPT Nguyễn Du", label: "THPT Nguyễn Du", description: "159 Nguyễn Du, Quận 1, TP.HCM" },
+    { value: "THPT Đồng Khởi", label: "THPT Đồng Khởi", description: "357 Đồng Khởi, Quận 1, TP.HCM" },
+    { value: "THPT Nguyễn Thị Nghĩa", label: "THPT Nguyễn Thị Nghĩa", description: "468 Nguyễn Thị Nghĩa, Quận 1, TP.HCM" }
+  ]
+
+  // TanStack Query for fetching schools
+  const { 
+    data: schoolsData, 
+    isLoading: schoolsLoading, 
+    error: schoolsError 
+  } = useQuery({
+    queryKey: ['schools'],
+    queryFn: async () => {
+      try {
+        const response = await schoolService.getAllSchools()
+        return response.data?.map(convertToSchoolOption) || []
+      } catch (error) {
+        console.error('Error fetching schools:', error)
+        // Return mock data on error
+        return mockSchools
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1
+  })
+
+  // Cập nhật localSchools khi có data từ API
+  React.useEffect(() => {
+    if (schoolsData) {
+      setLocalSchools(schoolsData)
+    }
+  }, [schoolsData])
+
+  // Sử dụng localSchools thay vì schoolsData để có thể thêm trường mới
+  const schools = localSchools.length > 0 ? localSchools : mockSchools
+
+  const handleAddSchool = (name: string, address?: string) => {
+    // Tạo SchoolOption mới
+    const newSchool: SchoolOption = {
+      value: name,
+      label: name,
+      description: address || ''
+    }
+    
+    // Thêm vào danh sách localSchools
+    setLocalSchools(prev => [...prev, newSchool])
+    
+    // Cập nhật form data
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      school: name,
+      schoolName: name,
+      schoolAddress: address || ''
     }))
+    
+    toast.success(`Đã thêm trường học "${name}" vào danh sách`)
   }
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      }
+      
+      // Nếu chọn trường từ dropdown, cập nhật thêm schoolName và schoolAddress
+      if (field === 'school' && value) {
+        const selectedSchool = schools.find((school: any) => school.value === value)
+        if (selectedSchool) {
+          newData.schoolName = selectedSchool.label
+          newData.schoolAddress = selectedSchool.description || ''
+        }
+      }
+      
+      return newData
+    })
+  }
+  console.log(formData);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       // TODO: Implement API call to create employee
       console.log("Form data:", formData)
+      console.log("School info:", {
+        school: formData.school,
+        schoolName: formData.schoolName,
+        schoolAddress: formData.schoolAddress
+      })
       toast.success("Thêm nhân viên thành công!")
       navigate("/center-qn/teachers")
     } catch (error) {
@@ -203,6 +312,37 @@ export default function AddEmployee() {
                       placeholder="Nhập số điện thoại"
                       required
                     />
+                  </div>
+
+                  {/* School */}
+                  <div className="space-y-2">
+                    <Label htmlFor="school">Trường học</Label>
+                    <div className="relative">
+                      <Combobox
+                        options={schools}
+                        value={formData.school}
+                        onValueChange={(value) => handleInputChange("school", value)}
+                        placeholder={schoolsLoading ? "Đang tải danh sách trường..." : "Chọn hoặc nhập tên trường học"}
+                        searchPlaceholder="Tìm kiếm tên trường..."
+                        emptyText={schoolsError ? "Lỗi tải danh sách trường học" : "Không tìm thấy trường học phù hợp"}
+                        className="w-full"
+                        allowCustom={true}
+                        onAddCustom={handleAddSchool}
+                        customDialogTitle="Thêm trường học mới"
+                        customDialogDescription="Nhập tên và địa chỉ của trường học mới"
+                        disabled={schoolsLoading}
+                      />
+                      {schoolsLoading ? (
+                        <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+                      ) : (
+                        <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                      )}
+                    </div>
+                    {schoolsError && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {schoolsError instanceof Error ? schoolsError.message : 'Có lỗi xảy ra khi tải danh sách trường học'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

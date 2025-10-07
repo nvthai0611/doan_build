@@ -40,6 +40,10 @@ export type {
   DateFilters
 } from './types/shared.types'
 
+// School Services
+export { SchoolService, schoolService } from './school/school.service'
+export type { SchoolOption } from './school/school.types'
+
 // Validation Utils
 export {
   isValidEmail,

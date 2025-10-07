@@ -10,7 +10,6 @@ export * from './student'
 export * from './parent'
 
 // Legacy Services (for backward compatibility)
-export { teacherService } from './center-owner/teacher-management/teacher.service'
-export { teacherScheduleService } from './teacherScheduleService'
+export { centerOwnerTeacherService } from './center-owner/teacher-management/teacher.service'
+export { teacherScheduleService } from './teacher/schedule/schedule.service'
 export { scheduleService } from './scheduleService'
-export { todoService } from './todoService'
