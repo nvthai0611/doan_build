@@ -22,11 +22,11 @@ export class ClassManagementController {
         @Req() request: any,
         @Query() query: any
     ){
-        if (!query.classId) {
+        if (!query.teacherClassAssignmentId) {
             throw new HttpException('Class ID is required', HttpStatus.BAD_REQUEST);
         }
         const teacherId =request.user?.teacherId
-        const classDetail = await this.classManagementService.getClassDetail(teacherId, query.classId)
+        const classDetail = await this.classManagementService.getClassDetail(teacherId, query.teacherClassAssignmentId)
         return {
             success: true,
             status: HttpStatus.OK,
@@ -72,7 +72,6 @@ export class ClassManagementController {
     ) {
         const tokenUser = request.user
         // check id cua teacher
-
         const teacherId = tokenUser?.teacherId;
         // Validate và convert page, limit
         const pageNum = parseInt(queryParams.page) || 1;

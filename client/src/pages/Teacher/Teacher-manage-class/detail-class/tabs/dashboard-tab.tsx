@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Calendar, BarChart3, UserCheck } from "lucide-react"
 
-export function DashboardTab() {
+export function DashboardTab(props: any) {
+  const { classData } = props
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -10,7 +11,7 @@ export function DashboardTab() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Tổng học viên</p>
-                <p className="text-2xl font-bold">25</p>
+                <p className="text-2xl font-bold">{classData.studentCount}</p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
             </div>
