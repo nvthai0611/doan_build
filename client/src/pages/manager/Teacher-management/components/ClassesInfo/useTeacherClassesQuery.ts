@@ -26,8 +26,11 @@ export const useTeacherClassesQuery = ({
         page,   
         limit
       })
-      return response.data
+      return response
     },
     enabled: !!teacherId,
+    staleTime: 30000, // Cache 30 giây
+    refetchOnWindowFocus: true, // Không gọi lại khi focus window
+    refetchOnMount: true, // Không gọi lại khi mount
   })
 }

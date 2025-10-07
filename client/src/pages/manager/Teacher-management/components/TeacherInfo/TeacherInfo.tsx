@@ -82,10 +82,10 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Lỗi tải dữ liệu</h1>
-          <p className="text-gray-600 mt-2">Không thể tải thông tin giáo viên</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Lỗi tải dữ liệu</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Không thể tải thông tin giáo viên</p>
           <button onClick={() => navigate(-1)} className="mt-4">
             Quay lại
           </button>
@@ -211,9 +211,9 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         {/* Tabs */}
         <div className="px-6">
           <nav className="flex space-x-8">
@@ -223,7 +223,7 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
                 onClick={() => setActiveTab(tab.key)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
                     ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300 dark:border-gray-600"
                   }`}
               >
                 {tab.label}

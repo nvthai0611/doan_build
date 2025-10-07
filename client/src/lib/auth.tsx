@@ -71,7 +71,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         console.log("AuthProvider: No saved user or access token found")
       }
-      console.log("AuthProvider: Setting loading to false")
       setLoading(false)
     }
 

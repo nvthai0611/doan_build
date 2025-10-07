@@ -43,20 +43,20 @@ export const getStatusBadgeClass = (status: string): string => {
     case "cancelled":
       return "bg-red-100 text-red-800"
     default:
-      return "bg-gray-100 text-gray-800"
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800"
   }
 }
 
 export const getTypeBadgeClass = (type: string): string => {
   switch (type) {
     case "regular":
-      return "bg-gray-100 text-gray-800"
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800"
     case "exam":
       return "bg-orange-100 text-orange-800"
     case "makeup":
       return "bg-purple-100 text-purple-800"
     default:
-      return "bg-gray-100 text-gray-800"
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800"
   }
 }
 

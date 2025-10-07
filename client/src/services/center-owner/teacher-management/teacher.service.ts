@@ -60,14 +60,12 @@ export const centerOwnerTeacherService = {
   // Lấy thông tin chi tiết giáo viên     
   getTeacherById: async (id: string): Promise<Teacher> => {
     const response = await apiClient.get<Teacher>(`/admin-center/teachers/${id}`)
-    console.log("📡 API Response:", response)
     return response.data
   },
 
   // Tạo giáo viên mới
   createTeacher: async (data: CreateTeacherRequest): Promise<Teacher> => {
     const response = await apiClient.post<Teacher>("/admin-center/teachers", data)
-    console.log("📡 API Response:", response)
 
     return response.data
   },
@@ -75,7 +73,6 @@ export const centerOwnerTeacherService = {
   // Cập nhật thông tin giáo viên
   updateTeacher: async (id: string, data: Partial<CreateTeacherRequest>): Promise<Teacher> => {
     const response = await apiClient.patch<Teacher>(`/admin-center/teachers/${id}`, data)
-    console.log("API Response:", response)
     return response.data
   },
 
@@ -87,7 +84,6 @@ export const centerOwnerTeacherService = {
   // Toggle trạng thái giáo viên
   toggleTeacherStatus: async (id: string): Promise<Teacher> => {
         const response = await apiClient.patch<Teacher>(`/admin-center/teachers/${id}/toggle-status`)
-    console.log("📡 API Response:", response)
     return response.data
   },
 
@@ -96,7 +92,6 @@ export const centerOwnerTeacherService = {
     const response = await apiClient.get("/admin-center/teachers/template", undefined, {
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
-    console.log("📡 API Response:", response)
     return response.data as Blob
   },
 
@@ -108,7 +103,6 @@ export const centerOwnerTeacherService = {
     const response = await apiClient.post("/admin-center/teachers/upload", formData, {
       contentType: "multipart/form-data",
     })
-    console.log("📡 API Response:", response)
     return response.data as { message: string; successCount: number; errorCount: number }
   },
 
@@ -117,7 +111,6 @@ export const centerOwnerTeacherService = {
     const response = await apiClient.get("/admin-center/teachers/export", undefined, {
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
-    console.log("📡 API Response:", response)
     return response.data as Blob
   },
 
@@ -125,7 +118,6 @@ export const centerOwnerTeacherService = {
     const params: any = {}
     if (year) params.year = year.toString()
     if (month) params.month = month.toString()
-    console.log("📡 API Params:", params)
       const response = await apiClient.get(`/admin-center/teachers/${teacherId}/schedule`, params)
     return response
   },
@@ -135,13 +127,11 @@ export const centerOwnerTeacherService = {
       studentId,
       status,
     })
-    console.log("📡 Attendance API Response:", response)
     return response
   },
 
   createSession: async (sessionData: any) => {
     const response = await apiClient.post("/admin-center/teachers", sessionData)
-    console.log("📡 Create Session API Response:", response)
     return response
   },
 }

@@ -48,7 +48,7 @@ import { useNavigate } from 'react-router-dom';
 
 //draft, active, completed, cancelled
 const statusColors = {
-  draft: 'bg-gray-100 text-gray-700',
+  draft: 'bg-gray-100 dark:bg-gray-800 text-gray-700',
   active: 'bg-green-100 text-green-700',
   completed: 'bg-blue-100 text-blue-700',
   cancelled: 'bg-red-100 text-red-700',
@@ -177,7 +177,7 @@ export default function ClassManagement() {
 
   // Tạo statusTabs từ dữ liệu API
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: countData?.total || 0, color: 'bg-gray-100 text-gray-700' },
+    { key: 'all', label: 'Tất cả', count: countData?.total || 0, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700' },
     { key: 'active', label: 'Đang diễn ra', count: countData?.active || 0, color: 'bg-green-100 text-green-700' },
     { key: 'completed', label: 'Đã kết thúc', count: countData?.completed || 0, color: 'bg-blue-100 text-blue-700' },
     { key: 'draft', label: 'Chưa diễn ra', count: countData?.draft || 0, color: 'bg-yellow-100 text-yellow-700' },
@@ -351,8 +351,8 @@ export default function ClassManagement() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 pb-3 px-1 relative transition-all duration-300 ease-out transform hover:scale-105 ${
                 activeTab === tab.key
-                  ? 'text-gray-900 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-gray-900 dark:text-white font-medium'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
               }`}
             >
               <span className="transition-all duration-200">{tab.label}</span>
@@ -529,7 +529,7 @@ export default function ClassManagement() {
                   setCurrentPage(1);
                 }}
               >
-                <SelectTrigger className="w-20 h-8 border-gray-300 hover:border-blue-400 focus:border-blue-500">
+                <SelectTrigger className="w-20 h-8 border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -555,7 +555,7 @@ export default function ClassManagement() {
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1 || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
                 title="Trang đầu"
               >
                 ««
@@ -565,7 +565,7 @@ export default function ClassManagement() {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
                 title="Trang trước"
               >
                 ‹
@@ -580,7 +580,7 @@ export default function ClassManagement() {
                       <>
                         <button
                           onClick={() => handlePageChange(1)}
-                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white"
+                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white dark:bg-gray-800"
                         >
                           1
                         </button>
@@ -613,7 +613,7 @@ export default function ClassManagement() {
                           className={`min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border rounded-md transition-all duration-200 ${
                             pageNum === currentPage
                               ? 'bg-blue-500 border-blue-500 text-white hover:bg-blue-600'
-                              : 'bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600'
+                              : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600'
                           }`}
                         >
                           {pageNum}
@@ -629,7 +629,7 @@ export default function ClassManagement() {
                         )}
                         <button
                           onClick={() => handlePageChange(pagination.totalPages)}
-                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white"
+                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white dark:bg-gray-800"
                         >
                           {pagination.totalPages}
                         </button>
@@ -643,7 +643,7 @@ export default function ClassManagement() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={!pagination?.hasNextPage || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
                 title="Trang sau"
               >
                 ›
@@ -653,7 +653,7 @@ export default function ClassManagement() {
               <button
                 onClick={() => pagination?.totalPages && handlePageChange(pagination.totalPages)}
                 disabled={!pagination?.hasNextPage || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
                 title="Trang cuối"
               >
                 »»
@@ -677,7 +677,7 @@ export default function ClassManagement() {
                   onChange={(e) => setGoToPage(e.target.value)}
                   onKeyDown={handleGoToPageKeyPress}
                   placeholder="Trang"
-                  className="w-16 h-8 text-sm border-gray-300 hover:border-blue-400 focus:border-blue-500"
+                  className="w-16 h-8 text-sm border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500"
                   disabled={isLoading}
                 />
                 <Button
@@ -685,7 +685,7 @@ export default function ClassManagement() {
                   size="sm"
                   onClick={handleGoToPage}
                   disabled={!goToPage || isLoading}
-                  className="h-8 border-gray-300 hover:bg-blue-50 hover:border-blue-300"
+                  className="h-8 border-gray-300 dark:border-gray-600 hover:bg-blue-50 hover:border-blue-300"
                 >
                   Đi
                 </Button>
