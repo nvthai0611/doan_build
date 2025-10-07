@@ -9,6 +9,7 @@ import CenterSchedulePage from "../pages/manager/Center-schedule/CenterScheduleP
 
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
+import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
 import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
@@ -28,6 +29,7 @@ export const privateRoutes = (
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
+        <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
@@ -40,7 +42,7 @@ export const privateRoutes = (
         <Route path="schedule" element={<TeacherSchedule />} />
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
-        <Route path="classes/:classId" element={<ClassDetailsPage />} />
+        <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<GradeInputPage/>}/>
         <Route path="grades/view" element={<StudentGradesPage/>}/>
       </Route>

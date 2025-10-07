@@ -57,7 +57,7 @@ export function WeeklyView({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-border overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-border overflow-hidden">
       {/* Header with days */}
       <div className="grid grid-cols-8 border-b border-border">
         <div className="p-3 border-r border-border">

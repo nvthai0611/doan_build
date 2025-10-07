@@ -36,9 +36,9 @@ export function ThongTinChungTab({
               <BookOpen className="h-5 w-5" />
               Chi tiết lớp học
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onEditClass}>
+            {/* <Button variant="ghost" size="sm" onClick={onEditClass}>
               <Edit className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -55,17 +55,19 @@ export function ThongTinChungTab({
                 <p className="text-lg font-semibold mt-1">{classData?.subject.code}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Ngày kết thúc</label>
-                <p className="text-lg font-semibold mt-1">{formatDate(classData?.endDate)}</p>
+                <label className="text-sm font-medium text-muted-foreground">Phòng học</label>
+                <p className="text-lg font-semibold mt-1">{classData?.room.name}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Ngày bắt đầu</label>
                 <p className="text-lg font-semibold mt-1">{formatDate(classData?.startDate)}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Phòng học</label>
-                <p className="text-lg font-semibold mt-1">{classData?.room.name}</p>
+                <label className="text-sm font-medium text-muted-foreground">Ngày kết thúc</label>
+                <p className="text-lg font-semibold mt-1">{formatDate(classData?.endDate)}</p>
               </div>
+              
+              
             </div>
           </CardContent>
         </Card>
@@ -77,9 +79,9 @@ export function ThongTinChungTab({
               <Calendar className="h-5 w-5" />
               Lịch học hàng tuần
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onEditSchedule}>
+            {/* <Button variant="ghost" size="sm" onClick={onEditSchedule}>
               <Edit className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -99,7 +101,7 @@ export function ThongTinChungTab({
         </Card>
 
         {/* Expandable Sections */}
-        <div className="space-y-4">
+        {/* <div className="space-y-4">
           <Collapsible>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border rounded-lg hover:bg-accent transition-colors">
               <span className="font-medium">Thiết lập điểm tiêu chí buổi học</span>
@@ -144,7 +146,7 @@ export function ThongTinChungTab({
               <p className="text-muted-foreground">Cấu hình các loại bài tập khác nhau cho lớp học...</p>
             </CollapsibleContent>
           </Collapsible>
-        </div>
+        </div> */}
       </div>
     </div>
   )
