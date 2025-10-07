@@ -9,8 +9,12 @@ import {
   Query,
   UseGuards,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  UseInterceptors,
+  UploadedFile
 } from '@nestjs/common';
+import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
 import { TeacherManagementService } from '../services/teacher-management.service';
 import { CreateTeacherDto } from '../dto/teacher/create-teacher.dto';
 import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
@@ -24,7 +28,17 @@ export class TeacherManagementController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createTeacherDto: CreateTeacherDto) {
+  @UseInterceptors(FileInterceptor('contractImage'))
+  create(@Body() createTeacherDto: CreateTeacherDto, @UploadedFile() file?: any) {
+    console.log("Raw body:", createTeacherDto);
+    // Thêm file vào DTO
+    if (file) {
+      createTeacherDto.contractImage = file;
+    }
+    
+    console.log("Processed DTO:", createTeacherDto);
+    console.log("=====================================");
+    
     return this.teacherManagementService.createTeacher(createTeacherDto);
   }
 

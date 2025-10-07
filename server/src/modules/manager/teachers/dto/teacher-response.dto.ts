@@ -265,9 +265,6 @@ export class TeacherDetailDto {
   @ApiProperty({ description: 'ID của user' })
   userId: string;
 
-  @ApiProperty({ description: 'Ngày tuyển dụng', required: false })
-  hireDate?: Date;
-
   @ApiProperty({ description: 'Ngày kết thúc hợp đồng', required: false })
   contractEnd?: Date;
 

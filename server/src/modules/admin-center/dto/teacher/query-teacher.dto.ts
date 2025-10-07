@@ -44,12 +44,4 @@ export class QueryTeacherDto {
   @IsString()
   birthYear?: string;
 
-  @IsOptional()
-  @IsString()
-  hireDateFrom?: string;
-
-  @IsOptional()
-  @IsString()
-  hireDateTo?: string;
-
 }

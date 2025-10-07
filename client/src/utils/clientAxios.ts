@@ -63,7 +63,7 @@ export interface ApiRequestConfig extends AxiosRequestConfig {
    Axios Client
    ======================= */
 const client: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999',
+  baseURL: import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1',
   timeout: 10000,
   withCredentials: true,
 });
@@ -120,7 +120,7 @@ client.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const response = await axios.post(
-            `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999'}/auth/refresh`,
+            `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1'}/auth/refresh`,
             {},
             {
               headers: {
