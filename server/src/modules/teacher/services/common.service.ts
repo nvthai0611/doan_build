@@ -5,5 +5,11 @@ export class CommonService {
 
     async getListStudentOfClass(assignmentId: string) {}
 
-    async getDetailStudentOfClass(assignmentId: string, studentId: string) {}
+    async getDetailStudentOfClass( studentId: string) {
+        const student = await this.prisma.student.findUnique({
+            where: { id: studentId },
+            include: {
+            }
+        });
+    }
 }
