@@ -28,14 +28,14 @@ import { getClassDetail } from "../../../../services/teacher-service/manage-clas
 import { daysOfWeek } from "../../../../utils/commonData"
 import Loading from "../../../../components/Loading/LoadingPage"
 
-const fetchData = async (classId :string) =>{
-  const response = await getClassDetail(classId)
+const fetchData = async (teacherClassAssignmentId :string) =>{
+  const response = await getClassDetail(teacherClassAssignmentId)
   return response
 }
 export function ClassDetailsPage() {
   const [activeTab, setActiveTab] = useState("thong-tin-chung")
   const [description, setDescription] = useState("")
-  const { classId } = useParams()
+  const { teacherClassAssignmentId } = useParams()
   const [editClassOpen, setEditClassOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [addStudentOpen, setAddStudentOpen] = useState(false)
@@ -67,12 +67,12 @@ export function ClassDetailsPage() {
   const allDays = daysOfWeek
 
  const {data : classDetails, isLoading, isError} = useQuery({
-    queryKey:['classDetails',classId],
-    queryFn: () => fetchData(classId as string),
+    queryKey:['classDetails',teacherClassAssignmentId],
+    queryFn: () => fetchData(teacherClassAssignmentId as string),
     retry: false, // Không retry khi lỗi
     refetchOnWindowFocus: false,
-    enabled: !!classId,
-  }) 
+    enabled: !!teacherClassAssignmentId,
+  })
 
   if(isLoading){
     return (
@@ -110,7 +110,6 @@ export function ClassDetailsPage() {
     setSelectedItem({ ...item, type })
     setDeleteConfirmOpen(true)
   }
-
   const renderTabContent = () => {
     switch (activeTab) {
       case "thong-tin-chung":
@@ -125,7 +124,7 @@ export function ClassDetailsPage() {
           />
         )
       case "dashboard":
-        return <DashboardTab />
+        return <DashboardTab classData={classDetails} />
       case "hoc-vien":
         return (
           <HocVienTab
@@ -182,7 +181,7 @@ export function ClassDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <ClassHeader className={classData.name} />
+      <ClassHeader className={classDetails.name} />
 
       <ClassNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 

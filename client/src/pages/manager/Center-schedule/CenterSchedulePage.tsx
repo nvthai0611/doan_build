@@ -15,7 +15,7 @@ import { scheduleService } from '../../../services/scheduleService';
 import type { ApiResponse } from '../../../utils/clientAxios';
 import type { ClassSessionResponse } from '../../../services/scheduleService';
 import { ClassSessions } from '../Teacher-management/types/session';
-import { Loader2 } from 'lucide-react';
+import Loading from '../../../components/Loading/LoadingPage';
 
 export type ViewType = 'subject' | 'class' | 'room' | 'teacher';
 export type CalendarView = 'month' | 'day' | 'week';
@@ -150,7 +150,7 @@ export default function CenterSchedulePage() {
 
   return isPending ? (
     <div className="flex justify-center items-center h-screen">
-      <Loader2 className="h-8 w-8 animate-spin" />
+      <Loading />
     </div>
   ) : (
     <div className="min-h-screen bg-background">

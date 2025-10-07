@@ -62,7 +62,7 @@ export function MonthlyView({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-border">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-border">
       {/* Header with weekdays */}
       <div className="grid grid-cols-7 border-b border-border">
         {weekDays.map((day) => (
@@ -120,7 +120,7 @@ export function MonthlyView({
                 {sessions.length > 3 && (
                   <div
                     onClick={() => onDayClick?.(date, sessions)}
-                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors bg-white-500 border border-white-500 rounded w-fit px-2 py-0.5 rounded-md"
+                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors bg-white dark:bg-gray-800-500 border border-white-500 rounded w-fit px-2 py-0.5 rounded-md"
                   >
                     +{sessions.length - 3} lớp
                   </div>

@@ -84,7 +84,7 @@ export function SimpleTable<T>({
   const renderDataRows = () => {
     if (loading) return renderLoadingRow()
     if (error) return renderErrorRow()
-    if (data.length === 0) return renderEmptyRow()
+    if (!data || data.length === 0) return renderEmptyRow()
 
     return data.map((item, index) => (
       <tr 
@@ -106,7 +106,7 @@ export function SimpleTable<T>({
             `}
             style={{ width: column.width }}
           >
-            {column.render ? column.render(item, index) : (item as any)[column.key]}
+            {column.render ? column.render(item, index) : (item as any)?.[column.key] || '-'}
           </td>
         ))}
       </tr>

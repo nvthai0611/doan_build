@@ -14,34 +14,34 @@ import { toast } from "sonner"
 import type { CreateTeacherRequest } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import type { Teacher } from "../../types/teacher"
 
-export default function TeacherInfo({ employee, isLoading, error }: { employee: Teacher, isLoading: boolean, error: Error }) {
+export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Teacher, isLoading: boolean, error: Error }) {
   const params = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const employeeId = params.id as string
+  const teacherId = params.id as string
 
  
 
   // Toggle status mutation
   const toggleStatusMutation = useMutation({
-    mutationFn: () => centerOwnerTeacherService.toggleTeacherStatus(employeeId),
+    mutationFn: () => centerOwnerTeacherService.toggleTeacherStatus(teacherId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teacher', employeeId] })
+      queryClient.invalidateQueries({ queryKey: ['teacher', teacherId] })
     },
   })
 
   // Update teacher mutation
   const updateTeacherMutation = useMutation({
     mutationFn: (data: Partial<CreateTeacherRequest>) =>
-      centerOwnerTeacherService.updateTeacher(employeeId, data),
+      centerOwnerTeacherService.updateTeacher(teacherId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teacher', employeeId] })
+      queryClient.invalidateQueries({ queryKey: ['teacher', teacherId] })
       toast.success("Cập nhật thông tin giáo viên thành công")
     },
   })
 
   const [activeTab, setActiveTab] = useState("general")
-  const [accountStatus, setAccountStatus] = useState(employee?.status || false)
+  const [accountStatus, setAccountStatus] = useState(teacher?.status || false)
   const [isVerified, setIsVerified] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editFormData, setEditFormData] = useState<Partial<CreateTeacherRequest>>({})
@@ -64,15 +64,15 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
   const [timesheetSearch, setTimesheetSearch] = useState("")
 
   // Classes state
-  const [classesActiveTab, setClassesActiveTab] = useState("all")
+  const [classesActiveTab, setClassesActiveTab] = useState<"all" | "teaching" | "stopped">("all")
   const [classesSearch, setClassesSearch] = useState("")
 
   // Update account status when employee data changes
   useEffect(() => {
-    if (employee) {
-      setAccountStatus(employee.status || false)
+    if (teacher) {
+      setAccountStatus(teacher.status || false)
     }
-  }, [employee])
+  }, [teacher])
 
   // Loading state
   if (isLoading) {
@@ -82,10 +82,10 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Lỗi tải dữ liệu</h1>
-          <p className="text-gray-600 mt-2">Không thể tải thông tin giáo viên</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Lỗi tải dữ liệu</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Không thể tải thông tin giáo viên</p>
           <button onClick={() => navigate(-1)} className="mt-4">
             Quay lại
           </button>
@@ -95,7 +95,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
   }
 
   // Not found state
-  if (!employee) {
+  if (!teacher) {
     return <Loading />
   }
 
@@ -107,13 +107,13 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
 
   const handleEditEmployee = () => {
     setEditFormData({
-      fullName: employee.name,
-      email: employee.email,
-      phone: employee.phone,  
-      username: employee.username,
-      role: employee.role === "Giáo viên" ? "teacher" : employee.role === "Chủ trung tâm" ? "admin" : "center_owner",
-      isActive: employee.status,
-      notes: employee.notes,
+      fullName: teacher.name,
+      email: teacher.email,
+      phone: teacher.phone,  
+      username: teacher.username,
+      role: teacher.role === "Giáo viên" ? "teacher" : teacher.role === "Chủ trung tâm" ? "admin" : "center_owner",
+      isActive: teacher.status,
+      notes: teacher.notes,
     })
     setIsEditDialogOpen(true)
   }
@@ -140,7 +140,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
       case "general":
         return (
           <GeneralInfo
-            employee={employee}
+            teacher={teacher}
             accountStatus={accountStatus}
             isVerified={isVerified}
             isEditDialogOpen={isEditDialogOpen}
@@ -158,7 +158,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
 
         return (
           <ScheduleInfo
-            employeeId={employeeId}
+            teacherId={teacherId}
             currentDate={currentDate}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
@@ -170,7 +170,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
       case "classes":
         return (
           <ClassesInfo
-            employeeId={employeeId}
+            teacherId={teacherId}
             activeTab={classesActiveTab}
             search={classesSearch}
             setActiveTab={setClassesActiveTab}
@@ -180,7 +180,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
       case "timesheet":
         return (
           <TimesheetInfo
-            employeeId={employeeId}
+            teacherId={teacherId}
             activeTab={timesheetActiveTab}
             fromDate={timesheetFromDate}
             toDate={timesheetToDate}
@@ -194,7 +194,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
       case "leave":
         return (
           <LeaveRequestsInfo
-            employeeId={employeeId}
+              teacherId={teacherId}
             activeTab={leaveActiveTab}
             fromDate={leaveFromDate}
             toDate={leaveToDate}
@@ -211,9 +211,9 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         {/* Tabs */}
         <div className="px-6">
           <nav className="flex space-x-8">
@@ -223,7 +223,7 @@ export default function TeacherInfo({ employee, isLoading, error }: { employee: 
                 onClick={() => setActiveTab(tab.key)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
                     ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300 dark:border-gray-600"
                   }`}
               >
                 {tab.label}

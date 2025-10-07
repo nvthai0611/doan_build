@@ -61,7 +61,7 @@ export class ClassManagementService {
             if (page < 1) page = 1;
             if (limit < 1) limit = 10;
             if (limit > 100) limit = 100;
-
+            
             // Lấy tổng số assignment để tính tổng số trang
             const totalCount = await this.prisma.teacherClassAssignment.count({
                 where: whereCondition
@@ -87,12 +87,12 @@ export class ClassManagementService {
                         include: {
                             subject: true,
                             room: true,
-                            feeStructure: true,
-                            _count: {
-                                select: {
-                                    enrollments: true,
-                                }
-                            }
+                            feeStructure: true
+                        }
+                    },
+                    _count:{
+                        select:{
+                            enrollments: true
                         }
                     }
                 },
@@ -145,7 +145,7 @@ export class ClassManagementService {
                 roomId: assignment.class.roomId,
                 
                 // Student count
-                studentCount: assignment.class._count.enrollments,
+                studentCount: assignment._count.enrollments,
                 
                 // Fee structure
                 feeStructure: assignment.class.feeStructure,
@@ -155,7 +155,19 @@ export class ClassManagementService {
                 schedule: assignment.recurringSchedule ? 
                     (typeof assignment.recurringSchedule === 'string' ? 
                         JSON.parse(assignment.recurringSchedule) : 
-                        assignment.recurringSchedule) : null
+                        assignment.recurringSchedule) : null,
+
+                // Enrollment info
+                enrollmentStatus: {
+                    current: assignment._count.enrollments,
+                    max: assignment.class.maxStudents,
+                    percentage: assignment.class.maxStudents > 0 ? 
+                        Math.round((assignment._count.enrollments / assignment.class.maxStudents) * 100) : 0,
+                    available: Math.max(0, assignment.class.maxStudents - assignment._count.enrollments),
+                    isFull: assignment._count.enrollments >= assignment.class.maxStudents,
+                    status: assignment._count.enrollments >= assignment.class.maxStudents ? 'full' : 
+                            assignment._count.enrollments >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
+                },
             }));
             
             // Tính toán thông tin phân trang
@@ -258,9 +270,9 @@ export class ClassManagementService {
         }
     }
 
-    async getClassDetail(teacherId: string, classId: string){
+    async getClassDetail(teacherId: string, teacherClassAssignmentId: string){
         try {
-            if(!checkId(teacherId) || !checkId(classId)){
+            if(!checkId(teacherId) || !checkId(teacherClassAssignmentId)){
                 throw new HttpException(
                     'ID không hợp lệ',
                     HttpStatus.BAD_REQUEST
@@ -270,22 +282,14 @@ export class ClassManagementService {
             // Tìm assignment của teacher với class này
             const assignment = await this.prisma.teacherClassAssignment.findFirst({
                 where: { 
-                    teacherId, 
-                    classId 
+                    id:teacherClassAssignmentId
                 },
                 include: {
                     class: {
                         include: {
                             room: true,
                             subject: true,
-                            feeStructure: true,
-                            _count: {
-                                select: {
-                                    enrollments: true,
-                                    sessions: true,
-                                    assessments: true
-                                }
-                            }
+                            feeStructure: true,                         
                         }
                     },
                     teacher: {
@@ -298,6 +302,11 @@ export class ClassManagementService {
                                     phone: true
                                 }   
                             }
+                        }
+                    },
+                    _count:{
+                        select:{
+                            enrollments: true
                         }
                     }
                 },
@@ -341,10 +350,10 @@ export class ClassManagementService {
                 teacher: assignment.teacher,
                 
                 // Counts
-                studentCount: assignment.class._count.enrollments,
-                sessionCount: assignment.class._count.sessions,
-                assessmentCount: assignment.class._count.assessments,
-                
+                studentCount: assignment._count.enrollments,
+                // sessionCount: assignment._count.sessions,
+                // assessmentCount: assignment._count.assessments,
+
                 // Schedule
                 recurringSchedule: assignment.recurringSchedule ? 
                     (typeof assignment.recurringSchedule === 'string' ? 

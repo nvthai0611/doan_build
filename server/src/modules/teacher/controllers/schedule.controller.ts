@@ -20,50 +20,6 @@ import { ScheduleFiltersDto } from '../dto/schedule/schedule-filters.dto';
 @Controller('schedule')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
-  teacherId = 'd37a2030-f63d-4b7d-b22f-210ceacaa51a';
-
-  @Get()
-  @ApiOperation({ summary: 'Lấy danh sách lịch dạy của giáo viên' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lấy danh sách lịch dạy thành công',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Lỗi server',
-  })
-  async getMySchedule(
-    @Request() req: any,
-    @Query() filters: ScheduleFiltersDto,
-  ) {
-    try {
-      // TODO: Lấy teacherId từ JWT token sau
-      const teacherId = this.teacherId;
-      const result = await this.scheduleService.getTeacherSchedule(
-        teacherId,
-        filters,
-      );
-
-      return {
-        success: true,
-        data: result,
-        message: 'Lấy danh sách lịch dạy thành công',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Có lỗi xảy ra khi lấy danh sách lịch dạy',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
 
   @Get('weekly')
   @ApiOperation({ summary: 'Lấy lịch dạy theo tuần' })
@@ -77,7 +33,7 @@ export class ScheduleController {
   ) {
     try {
       // TODO: Lấy teacherId từ JWT token sau
-      const teacherId = this.teacherId;
+      const teacherId = req.user.teacherId;
       const result = await this.scheduleService.getWeeklySchedule(
         teacherId,
         weekStart,
@@ -111,7 +67,7 @@ export class ScheduleController {
   ) {
     try {
       // TODO: Lấy teacherId từ JWT token sau
-      const teacherId = this.teacherId;
+      const teacherId = req.user.teacherId;
       const result = await this.scheduleService.getMonthlySchedule(
         teacherId,
         year,
@@ -144,7 +100,7 @@ export class ScheduleController {
   ) {
     try {
       // TODO: Lấy teacherId từ JWT token sau
-      const teacherId = this.teacherId;
+      const teacherId = req.user.id;
       const result = await this.scheduleService.getScheduleDetail(
         teacherId,
         scheduleId,
@@ -191,7 +147,7 @@ export class ScheduleController {
   ) {
     try {
       // TODO: Lấy teacherId từ JWT token sau
-      const teacherId = this.teacherId;
+      const teacherId = req.user.id;
       const result = await this.scheduleService.updateScheduleStatus(
         teacherId,
         scheduleId,
