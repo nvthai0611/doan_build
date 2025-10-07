@@ -2,15 +2,17 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-import TeacherProfilePage from "../pages/teacher/Teacher-profile";
+import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
-import  TeacherManageClass  from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
+import  TeacherManageClass  from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
+import ScoreInputPage from "../pages/Teacher/PointManagement/Score_input";
+import ViewStudentPage from "../pages/Teacher/PointManagement/Score_view";
 
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
-import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
+import { ClassDetailsPage } from "../pages/Teacher/Teacher-manage-class/detail-class/class-details-page";
+import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 export const privateRoutes = (
@@ -39,6 +41,8 @@ export const privateRoutes = (
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:classId" element={<ClassDetailsPage />} />
+                <Route path="grades/input" element={<ScoreInputPage />} />
+        <Route path="grades/view" element={<ViewStudentPage />} />
       </Route>
 
       {/* Học sinh */}
