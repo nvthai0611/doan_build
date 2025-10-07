@@ -15,6 +15,7 @@ import { ClassDetailsPage } from "../pages/Teacher/Teacher-manage-class/detail-c
 import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
+import { AttendanceTable } from "../pages/Teacher/Attendance-Manage/Attendance-Table";
 
 export const privateRoutes = (
   <>
@@ -40,9 +41,10 @@ export const privateRoutes = (
         <Route path="profile" element={<TeacherProfilePage />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
-        <Route path="classes/:classId" element={<ClassDetailsPage />} />
+        <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
+        <Route path="attendance" element={<AttendanceTable />} />
       </Route>
 
       {/* Học sinh */}

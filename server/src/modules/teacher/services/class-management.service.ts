@@ -315,6 +315,62 @@ export class ClassManagementService {
                 }
             });
 
+            const classSessionInfo = await this.prisma.classSession.findMany({
+                where: {
+                    classId: assignment?.classId,
+                    academicYear: assignment?.academicYear,
+                },
+                include: {
+                    attendances: {
+                        select: {
+                            status: true,
+                            studentId: true
+                        }
+                    }
+                }
+            });
+
+            // Tính tỷ lệ tham gia
+            let totalAttendanceRate = 0;
+            let totalSessions = classSessionInfo.length;
+            
+            if (totalSessions > 0) {
+                const totalStudents = assignment._count.enrollments;
+                
+                if (totalStudents > 0) {
+                    let totalPresentCount = 0;
+                    let totalPossibleAttendances = totalSessions * totalStudents;
+                    
+                    classSessionInfo.forEach(session => {
+                        const presentCount = session.attendances.filter(
+                            attendance => attendance.status === 'present'
+                        ).length;
+                        totalPresentCount += presentCount;
+                    });
+                    
+                    totalAttendanceRate = totalPossibleAttendances > 0 ? 
+                        Math.round((totalPresentCount / totalPossibleAttendances) * 100) : 0;
+                }
+            }
+
+            //Lấy tổng số lượng attendance với status 'present'
+
+            const totalPresentCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'present').length;
+            }, 0);
+
+            // //Lấy tổng số lượng attendance với status 'absent'
+
+            const totalAbsentCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'absent').length;
+            }, 0);
+
+            // Lấy tổng số lượng attendance với status 'excused'
+            const totalExcusedCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'excused').length;
+            }, 0);
+
+            
             if(!assignment){
                 throw new HttpException(
                     'Lớp học không tồn tại hoặc bạn không có quyền truy cập',
@@ -346,14 +402,25 @@ export class ClassManagementService {
                 // Relations
                 room: assignment.class.room,
                 subject: assignment.class.subject,
-                feeStructure: assignment.class.feeStructure,
-                teacher: assignment.teacher,
                 
                 // Counts
                 studentCount: assignment._count.enrollments,
-                // sessionCount: assignment._count.sessions,
-                // assessmentCount: assignment._count.assessments,
 
+                // Class sessions với tỷ lệ tham gia
+                classSession:{
+                    total: classSessionInfo.length,
+                    completed: classSessionInfo.filter(session => session.status === 'completed').length,
+                    upcoming: classSessionInfo.filter(session => session.status === 'scheduled' && new Date(session.sessionDate) > new Date()).length,
+                    attendanceRate: totalAttendanceRate, // Tỷ lệ tham gia tổng thể (%)
+                    averageAttendancePerSession: totalSessions > 0 && assignment._count.enrollments > 0 ? 
+                        Math.round((classSessionInfo.reduce((sum, session) => {
+                            return sum + session.attendances.filter(att => att.status === 'present').length;
+                        }, 0) / totalSessions)) : 0,
+                    totalPresentCount: totalPresentCount,
+                    totalAbsentCount: totalAbsentCount,
+                    totalExcusedCount: totalExcusedCount
+                },
+                
                 // Schedule
                 recurringSchedule: assignment.recurringSchedule ? 
                     (typeof assignment.recurringSchedule === 'string' ? 
@@ -414,4 +481,6 @@ export class ClassManagementService {
             );
         }
     }
+
+    
 }
