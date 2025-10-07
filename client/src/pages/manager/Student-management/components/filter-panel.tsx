@@ -36,16 +36,16 @@ export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters }:
   if (!isOpen) return null
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+    <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
       <div className="p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-900">Bộ lọc</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white">Bộ lọc</h3>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClearFilters}
-            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-300"
           >
             <Trash2 className="w-4 h-4" />
           </Button>

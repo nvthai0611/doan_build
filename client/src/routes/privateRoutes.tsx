@@ -11,10 +11,13 @@ import ViewStudentPage from "../pages/Teacher/PointManagement/Score_view";
 
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
-import { ClassDetailsPage } from "../pages/Teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule";
+import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
+import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
+import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
+import GradeInputPage from "../pages/teacher/PointManagement/Score_input";
+import StudentGradesPage from "../pages/teacher/PointManagement/Score_view";
 export const privateRoutes = (
   <>
     <Route element={<DefaultLayout />}>
@@ -28,6 +31,7 @@ export const privateRoutes = (
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
+        <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
@@ -40,9 +44,9 @@ export const privateRoutes = (
         <Route path="schedule" element={<TeacherSchedule />} />
         {/* thêm: /classes, /attendance, ... */}
         <Route path="classes" element={<TeacherManageClass />} />
-        <Route path="classes/:classId" element={<ClassDetailsPage />} />
-                <Route path="grades/input" element={<ScoreInputPage />} />
-        <Route path="grades/view" element={<ViewStudentPage />} />
+        <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
+        <Route path="grades/input" element={<GradeInputPage/>}/>
+        <Route path="grades/view" element={<StudentGradesPage/>}/>
       </Route>
 
       {/* Học sinh */}

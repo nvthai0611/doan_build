@@ -10,24 +10,23 @@ import {
 } from "@/components/ui/breadcrumb"
 import { useParams } from "react-router-dom"
 import { centerOwnerTeacherService } from "../../../../services/center-owner/teacher-management/teacher.service"
-import { Teacher } from "../types/teacher"
 
 export default function TeacherQnmsInfo() {
   const params = useParams()
-  const employeeId = params.id as string
+  const teacherId = params.id as string
    // Fetch employee data
-   const { data: employee, isLoading, error } = useQuery({
-    queryKey: ['teacher', employeeId],
-    queryFn: () => centerOwnerTeacherService.getTeacherById(employeeId),
-    enabled: !!employeeId,
+   const { data: teacher, isLoading, error } = useQuery({
+    queryKey: ['teacher', teacherId],
+    queryFn: () => centerOwnerTeacherService.getTeacherById(teacherId),
+    enabled: !!teacherId, 
   })
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-foreground">Chi tiết giáo viên {employee?.name}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Chi tiết giáo viên {teacher?.name}</h1>
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -50,7 +49,7 @@ export default function TeacherQnmsInfo() {
           </div>
         </div>
       </div>
-      <TeacherInfo employee={employee as Teacher} isLoading={isLoading} error={error as Error} />
+      <TeacherInfo teacher={teacher as any} isLoading={isLoading} error={error as Error} />
     </div>
   )
 }

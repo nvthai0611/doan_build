@@ -29,7 +29,7 @@ export class TeacherManagementController {
   }
 
   @Get()
-  findAll(@Query() queryDto: QueryTeacherDto) {
+  findAll(@Query() queryDto: any) {
     return this.teacherManagementService.findAllTeachers(queryDto);
   }
 

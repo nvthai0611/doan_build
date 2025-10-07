@@ -34,7 +34,11 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
+  console.log(email);
+      
     const user = await this.getUserByField('email', email);
+    console.log(user);
+    
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
@@ -52,14 +56,15 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    console.log(email, password);
     const user = await this.validateUser(email, password);
-    
+    console.log(user);
     const accessToken = JWT.createAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
-
+    console.log(accessToken);
     const refreshToken = JWT.createRefreshToken();
 
     // Lưu refresh token vào database

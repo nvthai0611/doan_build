@@ -1,0 +1,169 @@
+# Dự án SEP - Hệ thống quản lý trung tâm giáo dục
+
+## Tổng quan dự án
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: NestJS + TypeScript + Prisma + PostgreSQL
+- **UI Library**: shadcn/ui + Lucide React icons
+- **State Management**: TanStack Query (React Query)
+- **Authentication**: JWT + AuthGuard
+
+## Cấu trúc thư mục
+```
+client/src/
+├── components/          # UI components tái sử dụng
+├── pages/              # Các trang chính
+├── services/           # API services
+├── utils/              # Utility functions
+├── lib/                # Libraries và configs
+└── types/              # TypeScript types
+
+server/src/
+├── modules/            # Feature modules
+├── db/                 # Database config (Prisma)
+├── common/             # Shared utilities
+└── main.ts             # Entry point
+```
+
+## Quy tắc coding
+
+### Frontend (React + TypeScript)
+- Sử dụng functional components với hooks
+- Luôn type props với any và state với any    
+- Sử dụng TanStack Query cho data fetching
+- Component naming: PascalCase (VD: `LeaveRequestsTab`)
+- File naming: kebab-case (VD: `leave-requests-tab.tsx`)
+
+### Backend (NestJS + Prisma)
+- Sử dụng decorators cho validation và API documentation
+- Service pattern cho business logic
+- Controller chỉ handle HTTP requests/responses
+- DTOs cho request/response validation
+- Error handling với HttpException
+
+### Database (Prisma)
+- Model naming: PascalCase (VD: `LeaveRequest`)
+- Field naming: camelCase (VD: `createdAt`)
+- Luôn có `id`, `createdAt`, `updatedAt` cho các model chính
+- Sử dụng relations thay vì foreign keys trực tiếp
+
+## API Conventions
+- RESTful endpoints với proper HTTP methods
+- Response format: `{ data: any, message: string }`
+- Error format: `{ success: false, error: string, message: string }`
+- Pagination: `{ meta: { total, page, limit, totalPages } }`
+
+## UI/UX Guidelines
+- Sử dụng shadcn/ui components
+- Responsive design với Tailwind CSS
+- Dark mode support
+- Loading states và error handling
+- Debouncing cho search inputs (500ms)
+- DataTable component cho tables với pagination
+
+## Naming Conventions
+- **Variables**: camelCase (`userName`, `isLoading`)
+- **Functions**: camelCase (`getUserData`, `handleSubmit`)
+- **Components**: PascalCase (`UserProfile`, `DataTable`)
+- **Files**: kebab-case (`user-profile.tsx`, `data-table.tsx`)
+- **API endpoints**: kebab-case (`/admin-center/leave-requests`)
+- **Database tables**: snake_case (`leave_requests`)
+
+## Code Style
+- Sử dụng 2 spaces cho indentation
+- Single quotes cho strings
+- Semicolons ở cuối statements
+- Trailing commas trong objects/arrays
+- Destructuring khi có thể
+- Async/await thay vì .then()
+
+## Common Patterns
+
+### React Query Usage
+```typescript
+const { data, isLoading, isError, refetch } = useQuery({
+  queryKey: ['resource', params],
+  queryFn: () => service.getData(params),
+  enabled: !!requiredParam,
+  staleTime: 30000,
+  refetchOnWindowFocus: false
+})
+```
+
+### Service Pattern
+```typescript
+class Service {
+  async getData(params: any) {
+    try {
+      const response = await apiClient.get('/endpoint', params)
+      return response
+    } catch (error) {
+      console.error('Error:', error)
+      throw error
+    }
+  }
+}
+```
+
+### Error Handling
+```typescript
+try {
+  const result = await operation()
+  return { data: result }
+} catch (error) {
+  return { error: error.message }
+}
+```
+
+## Database Relations
+- User -> Teacher (1:1)
+- User -> Student (1:1) 
+- User -> Parent (1:1)
+- Teacher -> LeaveRequest (1:N)
+- Class -> Student (N:N through enrollments)
+
+## Security
+- JWT authentication
+- Role-based access control
+- Input validation với DTOs
+- SQL injection prevention với Prisma
+- CORS configuration
+
+## Performance
+- Lazy loading cho routes
+- Memoization với useMemo/useCallback
+- Pagination cho large datasets
+- Debouncing cho search
+- Image optimization
+
+## Testing
+- Unit tests cho utilities
+- Integration tests cho APIs
+- Component testing với React Testing Library
+
+## Deployment
+- Frontend: Vite build
+- Backend: NestJS build
+- Database: PostgreSQL với Prisma migrations
+- Environment variables cho configs
+
+## Common Commands
+```bash
+# Frontend
+npm run dev          # Start dev server
+npm run build        # Build for production
+npm run type-check   # TypeScript check
+
+# Backend  
+npm run start:dev    # Start dev server
+npm run build        # Build for production
+npx prisma migrate   # Run migrations
+npx prisma generate  # Generate Prisma client
+```
+
+## Notes
+- Luôn check linter errors trước khi commit
+- Sử dụng meaningful variable names
+- Comment complex business logic
+- Keep components small and focused
+- Reuse components khi có thể
+- Follow DRY principle

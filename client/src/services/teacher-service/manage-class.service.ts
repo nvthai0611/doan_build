@@ -6,7 +6,8 @@ const getClassByTeacherId = async(
     status: string, 
     page: number = 1, 
     limit: number = 10,
-    searchQuery?: string
+    searchQuery?: string,
+    academicYear?: string // Thêm tham số
 ): Promise<ApiResponse<any>> => {
     try {
         // Xây dựng query string thủ công để tránh vấn đề serialization
@@ -22,6 +23,10 @@ const getClassByTeacherId = async(
         // Thêm các tham số filter và search
         if (searchQuery && searchQuery.trim() !== '') {
             queryParams.append('search', searchQuery.trim());
+        }
+
+        if (academicYear) {
+            queryParams.append('academicYear', academicYear);
         }
         
 
@@ -60,9 +65,9 @@ const getCountByStatus = async(): Promise<ApiResponse<any>> => {
     }
 }
 
-const getClassDetail = async (classId: string): Promise<any> => {
+const getClassDetail = async (teacherClassAssignmentId: string): Promise<any> => {
   try {
-    const response = await apiClient.get(`teacher/class-management/classes/details?classId=${classId}`);
+    const response = await apiClient.get(`teacher/class-management/classes/details?teacherClassAssignmentId=${teacherClassAssignmentId}`);
     if (response.status >= 200 && response.status < 300) {
       return response.data; // Trả về data gốc (any)
     } else {
@@ -74,8 +79,24 @@ const getClassDetail = async (classId: string): Promise<any> => {
     throw error;
   }
 };
+
+// Cập nhật hàm fetchClassData
+const fetchClassData = async ( 
+  { status, page, limit, searchQuery, academicYear }: { 
+    status: string,
+    page: number,
+    limit: number,
+    searchQuery?: string,
+    academicYear?: string // Thêm tham số academicYear
+  }
+) => {
+  const res = await getClassByTeacherId(status, page, limit, searchQuery, academicYear);
+  return res;
+};
+
 export {
     getClassByTeacherId,
     getCountByStatus,
-    getClassDetail
+    getClassDetail,
+    fetchClassData
 }

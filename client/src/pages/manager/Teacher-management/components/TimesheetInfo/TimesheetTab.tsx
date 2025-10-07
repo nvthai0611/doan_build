@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Calendar, Clock, Eye, Download } from "lucide-react"
 
 interface TimesheetTabProps {
-  employeeId: string
+  teacherId: string
   activeTab: string
   fromDate: string
   toDate: string
@@ -92,7 +92,7 @@ const getTimesheetData = (employeeId: string, status: string, fromDate: string, 
 }
 
 export default function TimesheetTab({
-  employeeId,
+  teacherId,
   activeTab,
   fromDate,
   toDate,
@@ -102,7 +102,7 @@ export default function TimesheetTab({
   setToDate,
   setSearch
 }: TimesheetTabProps) {
-  const timesheets = getTimesheetData(employeeId, activeTab, fromDate, toDate, search)
+  const timesheets = getTimesheetData(teacherId, activeTab, fromDate, toDate, search)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -125,9 +125,9 @@ export default function TimesheetTab({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Bảng công</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng công</h2>
           <div className="flex items-center space-x-4">
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
@@ -205,13 +205,13 @@ export default function TimesheetTab({
       </div>
 
       {/* Timesheet Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết bảng công</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Chi tiết bảng công</h3>
           {timesheets.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Không có dữ liệu bảng công</p>
+              <p className="text-gray-500 dark:text-gray-400">Không có dữ liệu bảng công</p>
             </div>
           ) : (
             <Table>

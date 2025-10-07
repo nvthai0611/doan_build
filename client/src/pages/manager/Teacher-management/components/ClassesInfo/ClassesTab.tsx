@@ -1,364 +1,374 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, GraduationCap, Users, Clock, Eye, AlertCircle, MoreHorizontal } from "lucide-react"
-import { useTeacherClasses } from "./hooks"
-import { classService } from "../../../../../services/center-owner/class-management/class.service"
-import { toast } from "sonner"
-import Loading from "../../../../../components/Loading/LoadingPage"
-import { SimpleTable, SimpleColumn } from "../../../../../components/common/Table"
+import { Switch } from "@/components/ui/switch"
+import { Search, RefreshCw } from "lucide-react"
+import { DataTable, type Column } from "../../../../../components/common/Table/DataTable"
+import { useState, useMemo, useEffect } from "react"
+import { useTeacherClassesQuery } from "./useTeacherClassesQuery"
+import { formatSchedule } from "../../../../../utils/format"
+import { useNavigate } from "react-router-dom"
 
-interface ClassesTabProps {
-  employeeId: string
-  activeTab: string
+// API Response interfaces
+interface ApiClassData {
+  id: string
+  name: string
+  subject: string
+  students: number
+  schedule: {
+    days: string[]
+    endTime: string
+    startTime: string
+  }
+  status: string
+  startDate: string
+  endDate: string
+  room: string
+  description: string
+  teacherId: string
+}
+
+// Table Data interface
+interface ClassData {
+  id: string
+  name: string
+  subject: string
+  students: number
+  schedule: string[]
+  status: string
+  startDate: string
+  endDate: string
+  room: string
+  description: string
+  role: string
+  roleStatus: string
+  present: number
+  late: number
+  absent: number
+}
+
+interface ClassesInfoProps {
+  teacherId: string
+  activeTab: "all" | "teaching" | "stopped"
   search: string
-  setActiveTab: (tab: string) => void
+  setActiveTab: (tab: "all" | "teaching" | "stopped") => void
   setSearch: (search: string) => void
 }
 
-export default function ClassesTab({
-  employeeId,
-  activeTab,
-  search,
-  setActiveTab,
-  setSearch
-}: ClassesTabProps) {
-  const { classes, stats, loading, error, refetch } = useTeacherClasses(employeeId, activeTab, search)
-  console.log("check classes", classes);
+function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: ClassesInfoProps) {
+  const navigate = useNavigate()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+
+  console.log(teacherId);
   
-  const [selectedClass, setSelectedClass] = useState<any>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  // Debounce search term để giảm số lần gọi API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      // Reset về trang 1 khi search thay đổi
+      setCurrentPage(1)
+    }, 500) // Delay 500ms
+
+    return () => clearTimeout(timer)
+  }, [search]) // Chỉ depend vào search, không depend vào debouncedSearch
+  
+  // Gọi API chỉ với status và pagination, không có search
+  const { data, isLoading, isError, refetch } = useTeacherClassesQuery({
+    teacherId: teacherId,
+    status: activeTab,
+    search: '', // Không gửi search lên API
+    page: currentPage,
+    limit: itemsPerPage
+  })
+  
+ 
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "Chưa cập nhật"
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN')
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-800">Đang hoạt động</Badge>
-      case "completed":
-        return <Badge variant="secondary">Đã kết thúc</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Chờ bắt đầu</Badge>
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800">Đang dạy</Badge>
+      case 'inactive':
+        return <Badge className="bg-red-100 text-red-800">Ngừng dạy</Badge>
+      case 'completed':
+        return <Badge className="bg-blue-100 text-blue-800">Hoàn thành</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
     }
   }
 
-  const handleViewDetails = async (classId: number) => {
-    try {
-      const classDetails = await classService.getClassDetails(classId)
-      setSelectedClass(classDetails)
-      setIsDetailOpen(true)
-    } catch (error) {
-      console.error('Error fetching class details:', error)
-      toast.error('Không thể tải chi tiết lớp học')
-    }
-  }
+  // Transform API data to table format
+  const transformedData = useMemo(() => {
+    if (!data?.data || !Array.isArray(data.data)) return []
+    
+    let filteredData = data.data
 
-  const handleUpdateStatus = async (classId: number, newStatus: string) => {
-    try {
-      await classService.updateClassStatus(classId, newStatus)
-      toast.success('Cập nhật trạng thái thành công')
-      refetch()
-    } catch (error) {
-      console.error('Error updating class status:', error)
-      toast.error('Không thể cập nhật trạng thái')
+    // Filter by status tab
+    if (activeTab !== 'all') {
+      filteredData = filteredData.filter((item: ApiClassData) => {
+        if (activeTab === 'teaching') return item.status === 'active'
+        if (activeTab === 'stopped') return item.status === 'inactive'
+        return true
+      })
     }
-  }
 
-  // Define columns for SimpleTable
-  const columns: SimpleColumn<any>[] = [
-    {
-      key: 'name',
-      header: 'Tên lớp',
-      width: '200px',
-      render: (cls: any) => (
-        <div className="font-medium">{cls.name}</div>
+    // Filter by search term (local filtering as backup)
+    if (debouncedSearch.trim()) {
+      const searchLower = debouncedSearch.toLowerCase()
+      filteredData = filteredData.filter((item: ApiClassData) => 
+        item.name.toLowerCase().includes(searchLower) ||
+        item.subject.toLowerCase().includes(searchLower) ||
+        item.room.toLowerCase().includes(searchLower)
       )
+    }
+    
+    return filteredData.map((item: ApiClassData) => ({
+      id: item.id,
+      name: item.name,
+      subject: item.subject,
+      students: item.students,
+      schedule: formatSchedule(item.schedule),
+      status: item.status,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      room: item.room,
+      description: item.description,
+      role: "Giáo viên chính", // TODO: role mặc định
+      roleStatus: item.status === 'active' ? 'Đang dạy' : 'Ngừng dạy',
+      present: 0, // These would come from attendance data
+      late: 0,
+      absent: 0
+    }))
+  }, [data, activeTab, debouncedSearch])
+  // Tab counts based on actual data (before filtering)
+  const tabCounts = useMemo(() => {
+    if (!data?.data || !Array.isArray(data.data)) return { all: 0, teaching: 0, stopped: 0 }
+    
+    const all = data.data.length
+    const teaching = data.data.filter((item: ApiClassData) => item.status === 'active').length
+    const stopped = data.data.filter((item: ApiClassData) => item.status === 'inactive').length
+    return { all, teaching, stopped }
+  }, [data])
+
+  // Filtered counts for display
+  const filteredCounts = useMemo(() => {
+    const all = transformedData.length
+    const teaching = transformedData.filter((item: ClassData) => item.status === 'active').length
+    const stopped = transformedData.filter((item: ClassData) => item.status === 'inactive').length
+    return { all, teaching, stopped }
+  }, [transformedData])
+
+  // Reset page when search or tab changes
+  const handleTabChange = (tab: "all" | "teaching" | "stopped") => {
+    setActiveTab(tab)
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setCurrentPage(1)
+  }
+
+  const handleViewClass = (classId: string) => {
+    navigate(`/center-qn/classes/${classId}`)
+  }
+
+  const columns: Column<ClassData>[] = [
+    {
+      key: "id",
+      header: "STT",
+      width: "80px",
+      align: "center",
+      render: (item, index) => <span className="text-gray-700">{index + 1}</span>,
     },
     {
-      key: 'subject',
-      header: 'Môn học',
-      width: '150px',
-      render: (cls: any) => cls.subject
-    },
-    {
-      key: 'students',
-      header: 'Số học sinh',
-      width: '120px',
-      align: 'center',
-      render: (cls: any) => cls.students
-    },
-    {
-      key: 'schedule',
-      header: 'Lịch học',
-      width: '200px',
-      render: (cls: any) => cls.schedule
-    },
-    {
-      key: 'room',
-      header: 'Phòng',
-      width: '120px',
-      render: (cls: any) => cls.room
-    },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      width: '150px',
-      render: (cls: any) => getStatusBadge(cls.status)
-    },
-    {
-      key: 'actions',
-      header: 'Thao tác',
-      width: '200px',
-      align: 'center',
-      render: (cls: any) => (
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => handleViewDetails(cls.id)}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Xem chi tiết
-          </Button>
-          {cls.status === "pending" && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleUpdateStatus(cls.id, "active")}
-              className="text-green-600 hover:text-green-700"
-            >
-              Bắt đầu
-            </Button>
-          )}
-          {cls.status === "active" && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleUpdateStatus(cls.id, "completed")}
-              className="text-blue-600 hover:text-blue-700"
-            >
-              Kết thúc
-            </Button>
-          )}
+      key: "name",
+      header: "Tên lớp",
+      width: "300px",
+      render: (item) => (
+        <div className="space-y-1">
+          <div className="text-blue-600 font-medium hover:underline" onClick={() => handleViewClass(item.id)}>{item.name}</div>
+          {item.schedule.map((time, idx) => (
+            <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
+              <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
+              {time}
+            </div>
+          ))}
         </div>
-      )
-    }
+      ),
+    },
+    {
+      key: "students",
+      header: "Số học sinh",
+      width: "120px",
+      align: "center",
+      render: (item) => <div className="text-gray-900 dark:text-white font-medium">{item.students}</div>,
+    },
+    {
+      key: "role",
+      header: "Vai trò",
+      width: "180px",
+      render: (item) => (
+        <div className="space-y-1">
+          <div className="text-gray-700">{item.role}</div>
+          {getStatusBadge(item.status)}
+        </div>
+      ),
+    },
+    {
+      key: "room",
+      header: "Phòng học",
+      width: "180px",
+      render: (item) => (
+        <div className="space-y-1">
+          <div className="text-gray-700">{item.room}</div>
+        </div>
+      ),
+    },
+    {
+      key: "startDate",
+      header: "Ngày bắt đầu",
+      width: "120px",
+      align: "center",
+      render: (item) => <div className="text-gray-700">{formatDate(item.startDate)}</div>,
+    },
+    {
+      key: "endDate",
+      header: "Ngày kết thúc",
+      width: "120px",
+      align: "center",
+      render: (item) => <div className="text-gray-700">{formatDate(item.endDate)}</div>,
+    },
+    {
+      key: "present",
+      header: "Có mặt",
+      width: "100px",
+      align: "center",
+      render: (item) => <div className="text-gray-900 dark:text-white font-medium">{item.present}</div>,
+    },
+    {
+      key: "late",
+      header: "Đi muộn",
+      width: "100px",
+      align: "center",
+      render: (item) => <div className="text-orange-500 font-medium">{item.late}</div>,
+    },
+    {
+      key: "absent",
+      header: "Nghỉ dạy",
+      width: "100px",
+      align: "center",
+      render: (item) => <div className="text-orange-500 font-medium">{item.absent}</div>,
+    },
   ]
 
-  // Loading state
-  if (loading) {
-    return (
-      <Loading/>
-    )
-  }
+  const tabs = [
+    { key: "all" as const, label: "Tất cả", count: filteredCounts.all },
+    { key: "teaching" as const, label: "Đang dạy", count: filteredCounts.teaching },
+    { key: "stopped" as const, label: "Ngừng dạy", count: filteredCounts.stopped },
+  ]
 
   return (
-    <div className="space-y-6">
-      {/* Error notification */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-            <span className="text-red-700 text-sm">{error}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refetch}
-              className="ml-auto"
-            >
-              Thử lại
-            </Button>
-          </div>
-        </div>
-      )}
-
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Lớp học</h2>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Tìm kiếm lớp học..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-            <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="active">Đang hoạt động</SelectItem>
-                <SelectItem value="completed">Đã kết thúc</SelectItem>
-                <SelectItem value="pending">Chờ bắt đầu</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="p-6 border-b">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Danh sách lớp học đã tham gia giảng dạy</h1>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-6 mb-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? "border-blue-600 text-blue-600 font-medium"
+                  : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white"
+              }`}
+            >
+              {tab.label}{" "}
+              <span className={`ml-1 ${activeTab === tab.key ? "text-blue-600" : "text-gray-400"}`}>{tab.count}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <GraduationCap className="w-8 h-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-blue-600">Tổng số lớp</p>
-                <p className="text-2xl font-bold text-blue-900">
-                  {stats?.totalClasses || classes?.length}
-                </p>
-              </div>
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Tìm kiếm theo tên, mã lớp"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10"
+          />
+          {/* Loading indicator khi đang debounce */}
+          {search !== debouncedSearch && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
             </div>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <Users className="w-8 h-8 text-green-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-600">Tổng học sinh</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {stats?.totalStudents || classes?.reduce((sum, cls) => sum + cls.students, 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-orange-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <Clock className="w-8 h-8 text-orange-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-orange-600">Lớp đang hoạt động</p>
-                <p className="text-2xl font-bold text-orange-900">
-                  {stats?.activeClasses || classes?.filter(cls => cls.status === "active").length}
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Classes Table */}
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Danh sách lớp học</h3>
-        <SimpleTable
-          data={classes || []}
+      {/* Table */}
+      {isLoading ? (
+        <div className="p-8 text-center">
+          <div className="text-gray-500">Đang tải dữ liệu...</div>
+        </div>
+      ) : isError ? (
+        <div className="p-8 text-center">
+          <div className="text-red-500">Có lỗi xảy ra khi tải dữ liệu</div>
+          <button 
+            onClick={() => refetch()} 
+            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : transformedData.length === 0 ? (
+        <div className="p-8 text-center">
+          <div className="text-gray-500">Không có dữ liệu lớp học</div>
+          <div className="text-sm text-gray-400 mt-2">
+            Giáo viên này chưa có lớp học nào được gán
+          </div>
+        </div>
+      ) : (
+        <DataTable
+          data={transformedData}
           columns={columns}
-          loading={loading}
-          error={error}
-          onRetry={refetch}
-          emptyMessage="Không có lớp học nào"
           rowKey="id"
           hoverable={true}
-          striped={true}
+          pagination={{
+            currentPage: 1, // Always show page 1 for filtered data
+            totalPages: 1, // No pagination for filtered data
+            totalItems: transformedData.length,
+            itemsPerPage: transformedData.length,
+            onPageChange: () => {}, // Disabled for filtered data
+            onItemsPerPageChange: () => {}, // Disabled for filtered data
+            showItemsPerPage: false,
+            showPageInfo: true,
+          }}
         />
-      </div>
-
-      {/* Class Details Modal */}
-      {isDetailOpen && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Chi tiết lớp học</h3>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsDetailOpen(false)}
-              >
-                ✕
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Tên lớp</label>
-                  <p className="text-sm font-semibold">{selectedClass.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Môn học</label>
-                  <p className="text-sm">{selectedClass.subject}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Số học sinh</label>
-                  <p className="text-sm">{selectedClass.students}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Phòng học</label>
-                  <p className="text-sm">{selectedClass.room}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Ngày bắt đầu</label>
-                  <p className="text-sm">{selectedClass.startDate}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Ngày kết thúc</label>
-                  <p className="text-sm">{selectedClass.endDate}</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-500">Lịch học</label>
-                <p className="text-sm">{selectedClass.schedule}</p>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-500">Mô tả</label>
-                <p className="text-sm">{selectedClass.description}</p>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-500">Trạng thái</label>
-                <div className="mt-1">
-                  {getStatusBadge(selectedClass.status)}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsDetailOpen(false)}
-              >
-                Đóng
-              </Button>
-              {selectedClass.status === "pending" && (
-                <Button 
-                  onClick={() => {
-                    handleUpdateStatus(selectedClass.id, "active")
-                    setIsDetailOpen(false)
-                  }}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Bắt đầu lớp
-                </Button>
-              )}
-              {selectedClass.status === "active" && (
-                <Button 
-                  onClick={() => {
-                    handleUpdateStatus(selectedClass.id, "completed")
-                    setIsDetailOpen(false)
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Kết thúc lớp
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
       )}
+
+      {/* Footer with toggle */}
+      <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Switch checked={isCollapsed} onCheckedChange={setIsCollapsed} className="data-[state=checked]:bg-blue-600" />
+          <span className="text-sm text-gray-700">Thu gọn</span>
+        </div>
+      </div>
     </div>
   )
 }
+
+export default ClassesTab

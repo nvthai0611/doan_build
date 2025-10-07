@@ -19,12 +19,12 @@ import {
   Save,
   X,
 } from "lucide-react"
-import type { Employee } from "../../types/teacher"
+import type { Teacher } from "../../types/teacher"
 import type { CreateTeacherRequest } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 interface GeneralInfoTabProps {
-  employee: Employee
+  teacher: Teacher
   accountStatus: boolean
   isVerified: boolean
   isEditDialogOpen: boolean
@@ -39,7 +39,7 @@ interface GeneralInfoTabProps {
 }
 
 export default function GeneralInfoTab({
-  employee,
+  teacher,
   accountStatus,
   isVerified,
   isEditDialogOpen,
@@ -55,41 +55,41 @@ export default function GeneralInfoTab({
   return (
     <div className="space-y-6">
       {/* Basic Information Card */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start space-x-4">
             <Avatar className="w-20 h-20">
               <AvatarFallback className="bg-gray-200 text-2xl">
                 <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
-                  <div className="w-6 h-6 bg-white rounded-full"></div>
+                  <div className="w-6 h-6 bg-white dark:bg-gray-800 rounded-full"></div>
                 </div>
               </AvatarFallback>
-            </Avatar>
+            </Avatar>   
             <div className="space-y-2">
               <div className="flex items-center space-x-3">
-                <h2 className="text-2xl font-semibold text-gray-900">{employee.name}</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{teacher.name}</h2>
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  {employee.role}
+                  {teacher.role}
                 </Badge>
               </div>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
                 <div className="flex items-center space-x-1">
                   <Mail className="w-4 h-4" />
-                  <span>{employee.email}</span>
+                  <span>{teacher.email}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Phone className="w-4 h-4" />
-                  <span>{employee.phone}</span>
+                  <span>{teacher.phone}</span>
                 </div>
               </div>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
                 <div className="flex items-center space-x-1">
                   <User className="w-4 h-4" />
-                  <span>{employee.username}</span>
+                  <span>{teacher.username}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
-                  <span>{employee.birthDate || "Chưa cập nhật"}</span>
+                  <span>{teacher.birthDate || "Chưa cập nhật"}</span>
                 </div>
               </div>
             </div>
@@ -104,13 +104,13 @@ export default function GeneralInfoTab({
       </div>
 
       {/* Account Status Card */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Trạng thái tài khoản</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Trạng thái tài khoản</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-900">Trạng thái hoạt động</p>
-              <p className="text-sm text-gray-600">
+              <p className="font-medium text-gray-900 dark:text-white">Trạng thái hoạt động</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {accountStatus ? "Tài khoản đang hoạt động" : "Tài khoản đã bị khóa"}
               </p>
             </div>
@@ -122,8 +122,8 @@ export default function GeneralInfoTab({
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-900">Xác thực tài khoản</p>
-              <p className="text-sm text-gray-600">
+              <p className="font-medium text-gray-900 dark:text-white">Xác thực tài khoản</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {isVerified ? "Đã xác thực" : "Chưa xác thực"}
               </p>
             </div>
@@ -135,41 +135,41 @@ export default function GeneralInfoTab({
       </div>
 
       {/* Professional Information Card */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin chuyên môn</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Thông tin chuyên môn</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label className="text-sm font-medium text-gray-700">Môn dạy</Label>
             <div className="mt-1">
-              {employee.subjects && employee.subjects.length > 0 ? (
+              {teacher.subjects && teacher.subjects.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {employee.subjects.map((subject, index) => (
+                  {teacher.subjects.map((subject, index) => (
                     <Badge key={index} variant="outline">
                       {subject}
                     </Badge>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Chưa cập nhật</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Chưa cập nhật</p>
               )}
             </div>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-700">Lương cơ bản</Label>
-            <p className="mt-1 text-sm text-gray-900">
-              {employee.salary ? `${employee.salary.toLocaleString()} VNĐ` : "Chưa cập nhật"}
+            <p className="mt-1 text-sm text-gray-900 dark:text-white">
+              {teacher.salary ? `${teacher.salary.toLocaleString()} VNĐ` : "Chưa cập nhật"}
             </p>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-700">Ngày bắt đầu làm việc</Label>
-            <p className="mt-1 text-sm text-gray-900">
-              {employee.hireDate || "Chưa cập nhật"}
+            <p className="mt-1 text-sm text-gray-900 dark:text-white">
+              {teacher.hireDate || "Chưa cập nhật"}
             </p>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-700">Ngày kết thúc hợp đồng</Label>
-            <p className="mt-1 text-sm text-gray-900">
-              {employee.contractEnd || "Chưa cập nhật"}
+            <p className="mt-1 text-sm text-gray-900 dark:text-white">
+              {teacher.contractEnd || "Chưa cập nhật"}
             </p>
           </div>
         </div>
