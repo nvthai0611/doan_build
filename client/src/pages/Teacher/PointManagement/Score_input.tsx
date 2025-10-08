@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Target, Save, Users, Search, CheckCircle, AlertCircle, BookOpen } from "lucide-react"
 import { teacherPointService } from "../../../services/teacher/point-management/point.service"
 import { GradeEntry, TeacherClassItem, TeacherStudentSummary } from "../../../services/teacher/point-management/point.types"
+import { teacherCommonService } from "../../../services/teacher/common/common.service"
 import { teacherClassService } from "../../../services/teacher/class-management/class.service"
 import { apiClient } from "../../../utils/clientAxios"
 // classes sẽ fetch từ API teacher/class-management/classes
@@ -38,15 +39,7 @@ export default function GradeInputPage() {
       try {
         setLoading(true)
         console.log('🔍 Starting to fetch classes...')
-        
-        // Debug: Kiểm tra token
-        const token = localStorage.getItem('accessToken')
-        console.log('🔑 Token exists:', !!token)
-        if (token) {
-          console.log('🔑 Token length:', token.length)
-          console.log('🔑 Token preview:', token.substring(0, 50) + '...')
-        }
-        
+                
         const response = await teacherClassService.getClasses()
         console.log('📦 Classes response:', response)
         
@@ -59,7 +52,6 @@ export default function GradeInputPage() {
         }
         
         const items = ((response as any) || []).map((c: any) => {
-          console.log('🔍 Mapping class item:', c)
           return {
             id: c.id, 
             name: c.name, 
@@ -84,7 +76,6 @@ export default function GradeInputPage() {
     fetchClasses()
   }, [])
 
-  // Khi chọn lớp: lấy danh sách học sinh ngay lập tức
   // Khi chọn lớp: lấy danh sách học sinh ngay lập tức
 useEffect(() => {
   const run = async () => {
@@ -122,74 +113,26 @@ useEffect(() => {
     
     try {
       setLoading(true)
-      console.log('🎓 Calling API /teacher/common/assignment/${assignmentId}/students')
       
-      // Gọi API mới
-      const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/students`)
-      console.log('🎓 Students response:', response)
-      console.log('🎓 Response data:', (response as any).data)
-      console.log('🎓 Response data.data:', (response as any).data?.data)
-      console.log('🎓 Response data.data type:', typeof (response as any).data?.data)
-      console.log('🎓 Response data.data length:', Array.isArray((response as any).data?.data) ? (response as any).data.data.length : 'Not an array')
+      const response = await teacherCommonService.getListStudentOfClass(assignmentId)
       
-      // Kiểm tra response structure thực tế
-      const responseData = (response as any).data
-      
-      // Thử nhiều cách truy cập data
+      // Kiểm tra response structure
       let studentsArray = null
-      if (responseData?.data && Array.isArray(responseData.data)) {
-        studentsArray = responseData.data
-        console.log('🎓 Found students in response.data.data')
-      } else if (Array.isArray(responseData)) {
-        studentsArray = responseData
-        console.log('🎓 Found students in response.data directly')
-      } else if (responseData?.success && responseData?.data) {
-        studentsArray = responseData.data
-        console.log('🎓 Found students in response.data.data (nested)')
+      if (Array.isArray(response)) {
+        // Response trực tiếp là array
+        studentsArray = response
+      } else if (response && response.data && Array.isArray(response.data)) {
+        // Response có structure {success, data, message}
+        studentsArray = response.data
       }
       
       if (studentsArray && Array.isArray(studentsArray)) {
-        console.log('🎓 Students array found:', studentsArray.length, 'students')
-        // Transform data từ API mới sang format cũ
-        const studentsData = studentsArray.map((enrollment: any) => {
-          // Tính điểm trung bình hiện tại từ grades
-          let currentGrade = null
-          console.log(`🎓 Student ${enrollment.student.user.fullName} grades:`, enrollment.student.grades)
-          
-          if (enrollment.student.grades && enrollment.student.grades.length > 0) {
-            const validGrades = enrollment.student.grades
-              .filter((grade: any) => grade.score !== null && grade.score !== undefined)
-              .map((grade: any) => parseFloat(grade.score))
-            
-            console.log(`🎓 Student ${enrollment.student.user.fullName} valid grades:`, validGrades)
-            
-            if (validGrades.length > 0) {
-              const sum = validGrades.reduce((acc: number, score: number) => acc + score, 0)
-              currentGrade = parseFloat((sum / validGrades.length).toFixed(1))
-              console.log(`🎓 Student ${enrollment.student.user.fullName} calculated average:`, currentGrade)
-            }
-          } else {
-            console.log(`🎓 Student ${enrollment.student.user.fullName} has no grades`)
-          }
-          
-          return {
-            studentId: enrollment.student.id,
-            fullName: enrollment.student.user.fullName || 'N/A',
-            email: enrollment.student.user.email,
-            studentCode: enrollment.student.studentCode,
-            currentGrade: currentGrade
-          }
-        })
-        
-        console.log('🎓 Transformed students:', studentsData)
-        console.log('🎓 Transformed students length:', studentsData.length)
+        console.log('🎓 Found', studentsArray.length, 'students')
+        // Sử dụng helper method từ service để transform data
+        const studentsData = teacherCommonService.processStudentsData(studentsArray)
         setStudents(studentsData)
       } else {
-        console.log('⚠️ No students found - response format issue')
-        console.log('⚠️ Response success:', responseData?.success)
-        console.log('⚠️ Response data:', responseData?.data)
-        console.log('⚠️ Students array:', studentsArray)
-        console.log('⚠️ Response structure:', responseData)
+        console.log('⚠️ No students found')
         setStudents([])
       }
       
@@ -217,8 +160,6 @@ useEffect(() => {
       if (!selectedClass) return
       try {
         const types = await teacherPointService.getAssessmentTypes(selectedClass)
-        console.log('Assessment types response:', types)
-        console.log('Assessment types data:', (types as any).data)
         
         // Backend trả về trực tiếp array, không cần .data
         const apiTypes = types || []
