@@ -1,39 +1,107 @@
-import { apiClient } from '../../../utils/clientAxios'
-import { Assessment, AssessmentGradeView, RecordGradesPayload, TeacherStudentSummary, UpdateGradePayload } from './point.types'
+import { ApiService } from "../../common/api/api-client"
+import type { 
+  Assessment,
+  AssessmentGradeView,
+  RecordGradesPayload,
+  TeacherStudentSummary,
+  UpdateGradePayload,
+  TeacherClassItem
+} from "./point.types"
 
-const base = '/teacher/grades'
-
-export const pointService = {
-  getClassStudents: async (classId: string) => {
-    const res = await apiClient.get<{ success: boolean; data: TeacherStudentSummary[] }>(`${base}/class-students`, { classId })
-    return res.data
+export const teacherPointService = {
+  // ===== Class Students Management =====
+  
+  /**
+   * Lấy danh sách học sinh trong lớp để quản lý điểm
+   */
+  getClassStudents: async (classId: string): Promise<TeacherStudentSummary[]> => {
+    const response = await ApiService.get<TeacherStudentSummary[]>("/teacher/grades/class-students", { classId })
+    return response.data || []
   },
 
-  getAssessments: async (classId: string) => {
-    const res = await apiClient.get<{ success: boolean; data: Assessment[] }>(`${base}/assessments`, { classId })
-    return res.data
+  // ===== Assessment Management =====
+
+  /**
+   * Lấy danh sách bài kiểm tra của lớp
+   */
+  getAssessments: async (classId: string): Promise<Assessment[]> => {
+    const response = await ApiService.get<Assessment[]>("/teacher/grades/assessments", { classId })
+    return response.data || []
   },
 
-  getAssessmentTypes: async (classId?: string) => {
-    const res = await apiClient.get<{ success: boolean; data: string[] }>(`${base}/assessment-types`, classId ? { classId } : undefined)
-    return res.data
+  /**
+   * Lấy danh sách loại bài kiểm tra
+   */
+  getAssessmentTypes: async (classId?: string): Promise<string[]> => {
+    const params = classId ? { classId } : {}
+    const response = await ApiService.get<string[]>("/teacher/grades/assessment-types", params)
+    return response.data || []
   },
 
-  getAssessmentGrades: async (assessmentId: string) => {
-    const res = await apiClient.get<{ success: boolean; data: AssessmentGradeView[] }>(`${base}/assessments/${assessmentId}/grades`)
-    return res.data
+  /**
+   * Lấy chi tiết điểm số của bài kiểm tra
+   */
+  getAssessmentGrades: async (assessmentId: string): Promise<AssessmentGradeView[]> => {
+    const response = await ApiService.get<AssessmentGradeView[]>(`/teacher/grades/assessments/${assessmentId}/grades`)
+    return response.data || []
   },
 
-  recordGrades: async (payload: RecordGradesPayload) => {
-    const res = await apiClient.post<{ success: boolean; data: { assessmentId: string } }>(`${base}/record`, payload)
-    return res.data
+  // ===== Grade Management =====
+
+  /**
+   * Ghi điểm cho học sinh
+   */
+  recordGrades: async (payload: RecordGradesPayload): Promise<{ assessmentId: string }> => {
+    const response = await ApiService.post<{ assessmentId: string }>("/teacher/grades/record", payload)
+    return response.data || { assessmentId: '' }
   },
 
-  updateGrade: async (payload: UpdateGradePayload) => {
-    const res = await apiClient.put<{ success: boolean; data: any }>(`${base}/update`, payload)
-    return res.data
+  /**
+   * Cập nhật điểm số của học sinh
+   */
+  updateGrade: async (payload: UpdateGradePayload): Promise<void> => {
+    await ApiService.put("/teacher/grades/update", payload)
   },
+
+  /**
+   * Xóa điểm số của học sinh
+   */
+  deleteGrade: async (assessmentId: string, studentId: string): Promise<void> => {
+    await ApiService.delete(`/teacher/grades/assessments/${assessmentId}/students/${studentId}`)
+  },
+
+  /**
+   * Lấy báo cáo điểm số của lớp
+   */
+  getClassGradeReport: async (classId: string): Promise<{
+    classInfo: TeacherClassItem;
+    students: TeacherStudentSummary[];
+    assessments: Assessment[];
+    averageGrade: number;
+    gradeDistribution: { grade: string; count: number }[];
+  }> => {
+    const response = await ApiService.get<{
+      classInfo: TeacherClassItem;
+      students: TeacherStudentSummary[];
+      assessments: Assessment[];
+      averageGrade: number;
+      gradeDistribution: { grade: string; count: number }[];
+    }>(`/teacher/grades/classes/${classId}/report`)
+    return response.data || {
+      classInfo: { id: '', name: '', subject: null, studentCount: 0 },
+      students: [],
+      assessments: [],
+      averageGrade: 0,
+      gradeDistribution: []
+    }
+  },
+
+  /**
+   * Xuất báo cáo điểm số ra file Excel
+   */
+  exportGradeReport: async (classId: string, format: 'excel' | 'pdf' = 'excel'): Promise<Blob> => {
+    const response = await ApiService.get(`/teacher/grades/classes/${classId}/export`, { format })
+    return response.data as Blob
+  }
 }
-
-export type PointService = typeof pointService
 
