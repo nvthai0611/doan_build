@@ -78,6 +78,21 @@ export class AttendanceService {
                 HttpStatus.BAD_REQUEST
             );
         }
+
+        // Đây là cho trường hợp lớp chưa đến lịch
+    const sessionDate = new Date(findSession.sessionDate);
+    const currentDate = new Date();
+    
+    // Compare dates only (ignore time)
+    const sessionDateOnly = new Date(sessionDate.toDateString());
+    const currentDateOnly = new Date(currentDate.toDateString());
+    
+    if (sessionDateOnly.getTime() !== currentDateOnly.getTime()) {
+        throw new HttpException(
+            'Chỉ có thể điểm danh vào đúng ngày học',
+            HttpStatus.BAD_REQUEST
+        );
+    }
         try {
             const result = await this.prisma.$transaction(async (prisma) => {
                 const updatePromises = records.map(record => 
