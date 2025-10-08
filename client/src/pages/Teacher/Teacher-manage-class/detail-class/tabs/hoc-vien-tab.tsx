@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Plus, Edit, Trash2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 
 interface HocVienTabProps {
   onAddStudent: () => void
@@ -17,6 +18,15 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent }: Hoc
     { id: 2, name: "Trần Thị B", email: "tranthib@email.com", status: "Đang học", attendance: "88%" },
     { id: 3, name: "Lê Văn C", email: "levanc@email.com", status: "Đã Nghỉ Học", attendance: "70%" },
   ]
+
+  // const {data: listStudents, isLoading, error} = useQuery({
+  //   queryKey: ['students'],
+  //   queryFn: async () => {
+  //     const response = await 
+  //     if (!response.ok) throw new Error('Network response was not ok')
+  //     return response.json()
+  //   }
+  // })
 
   return (
     <div>
