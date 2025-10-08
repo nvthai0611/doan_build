@@ -16,6 +16,7 @@ import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule"
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import  AttendanceTable  from "../pages/Teacher/Attendance-Manage/Attendance-Table";
+import LeaveRequestPage from "../pages/Teacher/LeaveRequest/LeaveRequestPage";
 
 export const privateRoutes = (
   <>
@@ -45,6 +46,7 @@ export const privateRoutes = (
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
         <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
+        <Route path="schedule/leave" element={<LeaveRequestPage />} />
         
       </Route>
 
