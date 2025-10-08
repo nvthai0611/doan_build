@@ -19,6 +19,8 @@ import { ScheduleService } from './services/schedule.service';
 import { StudentManagementService } from './services/student-management.service';
 import { RouterModule } from '@nestjs/core';
 import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middleware';
+import { CommonController } from './controllers/common.controller';
+import { CommonService } from './services/common.service';
 
 @Module({
   imports: [RouterModule.register([
@@ -36,6 +38,7 @@ import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middl
     MaterialController,
     ScheduleController,
     StudentManagementController,
+    CommonController,
   ],
   providers: [
     PrismaService,
@@ -48,6 +51,7 @@ import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middl
     ReportService,
     ScheduleService,
     StudentManagementService,
+    CommonService,
   ],
 })
 export class TeacherModule implements NestModule {

@@ -51,11 +51,16 @@ export class GradeService {
     }
 
     async getStudentsOfClass(teacherId: string, classId: string) {
+        console.log(`🎓 Getting students for class ${classId} by teacher ${teacherId}`);
+        
         await this.ensureTeacherCanAccessClass(teacherId, classId);
 
-        // Debug: Kiểm tra tất cả enrollment trước
-        const allEnrollments = await this.prisma.enrollment.findMany({
-            where: { classId },
+        // Lấy danh sách học sinh đã đăng ký vào lớp với status active
+        const enrollments = await this.prisma.enrollment.findMany({
+            where: { 
+                classId,
+                status: 'active' // Chỉ lấy enrollment có status active
+            },
             include: {
                 student: {
                     include: {
@@ -68,67 +73,15 @@ export class GradeService {
             orderBy: { id: 'asc' }
         });
 
-        console.log(`🔍 Tìm thấy ${allEnrollments.length} enrollment cho class ${classId}`);
-        console.log('🔍 Status của enrollments:', allEnrollments.map(e => ({ id: e.id, status: e.status, studentName: e.student.user.fullName })));
-
-        // Lấy danh sách học sinh đã đăng ký vào lớp (lấy tất cả trước, sau đó lọc)
-        const enrollments = allEnrollments.filter(e => e.status === 'active');
-
-        console.log(`🔍 Sau khi lọc status='active': ${enrollments.length} enrollment`);
+        console.log(`🎓 Tìm thấy ${enrollments.length} học sinh active trong lớp ${classId}`);
 
         if (enrollments.length === 0) {
-            // Nếu không có enrollment active, lấy tất cả enrollment
-            console.log('⚠️ Không có enrollment active, lấy tất cả enrollment');
-            const fallbackEnrollments = allEnrollments;
-            if (fallbackEnrollments.length === 0) {
-                return [];
-            }
-            // Sử dụng fallback enrollments
-            const studentIds = fallbackEnrollments.map(e => e.studentId);
-            
-            // Lấy tất cả điểm của học sinh trong lớp này
-            const grades = await this.prisma.studentAssessmentGrade.findMany({
-                where: {
-                    studentId: { in: studentIds },
-                    assessment: { classId }
-                },
-                select: { 
-                    studentId: true, 
-                    score: true,
-                    assessment: {
-                        select: { maxScore: true }
-                    }
-                }
-            });
-
-            // Tính điểm trung bình cho từng học sinh
-            const aggregate: Record<string, { sum: number; count: number }> = {};
-            for (const g of grades) {
-                const sid = g.studentId;
-                const score = g.score ? Number(g.score) : null;
-                if (score === null || Number.isNaN(score)) continue;
-                
-                if (!aggregate[sid]) aggregate[sid] = { sum: 0, count: 0 };
-                aggregate[sid].sum += score;
-                aggregate[sid].count += 1;
-            }
-
-            return fallbackEnrollments.map(e => {
-                const agg = aggregate[e.studentId];
-                const currentGrade = agg && agg.count > 0 ? Number((agg.sum / agg.count).toFixed(2)) : null;
-                return {
-                    studentId: e.studentId,
-                    fullName: e.student.user.fullName,
-                    email: e.student.user.email,
-                    studentCode: e.student.studentCode,
-                    currentGrade,
-                };
-            });
+            console.log('⚠️ Không có học sinh nào với status active');
+            return [];
         }
 
-        const studentIds = enrollments.map(e => e.studentId);
-        
         // Lấy tất cả điểm của học sinh trong lớp này
+        const studentIds = enrollments.map(e => e.studentId);
         const grades = await this.prisma.studentAssessmentGrade.findMany({
             where: {
                 studentId: { in: studentIds },
@@ -143,6 +96,8 @@ export class GradeService {
             }
         });
 
+        console.log(`🎓 Tìm thấy ${grades.length} điểm của học sinh trong lớp`);
+
         // Tính điểm trung bình cho từng học sinh
         const aggregate: Record<string, { sum: number; count: number }> = {};
         for (const g of grades) {
@@ -155,7 +110,7 @@ export class GradeService {
             aggregate[sid].count += 1;
         }
 
-        return enrollments.map(e => {
+        const result = enrollments.map(e => {
             const agg = aggregate[e.studentId];
             const currentGrade = agg && agg.count > 0 ? Number((agg.sum / agg.count).toFixed(2)) : null;
             return {
@@ -166,6 +121,9 @@ export class GradeService {
                 currentGrade,
             };
         });
+
+        console.log(`🎓 Trả về ${result.length} học sinh cho lớp ${classId}`);
+        return result;
     }
 
     async listAssessments(teacherId: string, classId: string) {

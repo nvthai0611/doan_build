@@ -11,10 +11,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Target, Save, Users, Search, CheckCircle, AlertCircle, BookOpen } from "lucide-react"
-import { pointService } from "../../../services/teacher/point-management/point.service"
+import { teacherPointService } from "../../../services/teacher/point-management/point.service"
 import { GradeEntry, TeacherClassItem, TeacherStudentSummary } from "../../../services/teacher/point-management/point.types"
 import { teacherClassService } from "../../../services/teacher/class-management/class.service"
-
+import { apiClient } from "../../../utils/clientAxios"
 // classes sẽ fetch từ API teacher/class-management/classes
 
 // students sẽ fetch theo classId
@@ -24,6 +24,7 @@ export default function GradeInputPage() {
   const [classes, setClasses] = useState<TeacherClassItem[]>([])
   const [students, setStudents] = useState<TeacherStudentSummary[]>([])
   const [selectedClass, setSelectedClass] = useState("")
+  const [selectedAssignment, setSelectedAssignment] = useState("")
   const [selectedExamType, setSelectedExamType] = useState("")
   const [examTypes, setExamTypes] = useState<string[]>([])
   const [examDate, setExamDate] = useState("")
@@ -63,7 +64,8 @@ export default function GradeInputPage() {
             id: c.id, 
             name: c.name, 
             subject: { name: c.subject?.name || 'N/A' }, 
-            studentCount: c.studentCount || 0
+            studentCount: c.studentCount || 0,
+            assignmentId: c.assignmentId // Thêm assignmentId vào mapping
           }
         }) as TeacherClassItem[]
         console.log('📋 Mapped classes:', items)
@@ -83,63 +85,143 @@ export default function GradeInputPage() {
   }, [])
 
   // Khi chọn lớp: lấy danh sách học sinh ngay lập tức
-  useEffect(() => {
-    const run = async () => {
-      if (!selectedClass) {
-        console.log('🎓 No class selected, clearing students')
-        setStudents([])
-        return
-      }
-      
-      console.log('🎓 Selected class:', selectedClass)
-      console.log('🎓 Fetching students for class:', selectedClass)
-      
+  // Khi chọn lớp: lấy danh sách học sinh ngay lập tức
+useEffect(() => {
+  const run = async () => {
+    if (!selectedClass) {
+      console.log('🎓 No class selected, clearing students')
+      setStudents([])
+      setSelectedAssignment("")
+      return
+    }
+    
+    // Tìm lớp được chọn để lấy assignmentId
+    const classData = classes.find(c => c.id === selectedClass)
+    const assignmentId = classData?.assignmentId
+    
+    console.log('🎓 Selected class:', selectedClass)
+    console.log('🎓 Assignment ID:', assignmentId)
+    
+    if (!assignmentId) {
+      console.error('⚠️ Không tìm thấy assignmentId cho lớp này')
+      // Fallback về API cũ nếu không có assignmentId
       try {
         setLoading(true)
-        console.log('🎓 Calling pointService.getClassStudents...')
-        const data = await pointService.getClassStudents(selectedClass)
-        console.log('🎓 Students response:', data)
-        console.log('🎓 Students data:', data.data)
-        console.log('🎓 Students count:', data.data?.length || 0)
-        
-        if (data.data && data.data.length > 0) {
-          console.log('🎓 First student:', data.data[0])
-          console.log('🎓 All students:', data.data)
-        } else {
-          console.log('⚠️ No students found for class:', selectedClass)
-        }
-        
-        setStudents(data.data || [])
-        setGrades({})
-        setSavedGrades(new Set())
+        const data = await teacherPointService.getClassStudents(selectedClass)
+        setStudents(data || [])
       } catch (e: any) {
         console.error('❌ Fetch students error', e)
-        console.error('❌ Error details:', {
-          status: e?.status,
-          message: e?.message,
-          response: e?.response,
-          stack: e?.stack
-        })
-        // Vẫn set students = [] để clear UI
         setStudents([])
       } finally {
         setLoading(false)
       }
+      return
     }
-    run()
-  }, [selectedClass])
+    
+    setSelectedAssignment(assignmentId)
+    
+    try {
+      setLoading(true)
+      console.log('🎓 Calling API /teacher/common/assignment/${assignmentId}/students')
+      
+      // Gọi API mới
+      const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/students`)
+      console.log('🎓 Students response:', response)
+      console.log('🎓 Response data:', (response as any).data)
+      console.log('🎓 Response data.data:', (response as any).data?.data)
+      console.log('🎓 Response data.data type:', typeof (response as any).data?.data)
+      console.log('🎓 Response data.data length:', Array.isArray((response as any).data?.data) ? (response as any).data.data.length : 'Not an array')
+      
+      // Kiểm tra response structure thực tế
+      const responseData = (response as any).data
+      
+      // Thử nhiều cách truy cập data
+      let studentsArray = null
+      if (responseData?.data && Array.isArray(responseData.data)) {
+        studentsArray = responseData.data
+        console.log('🎓 Found students in response.data.data')
+      } else if (Array.isArray(responseData)) {
+        studentsArray = responseData
+        console.log('🎓 Found students in response.data directly')
+      } else if (responseData?.success && responseData?.data) {
+        studentsArray = responseData.data
+        console.log('🎓 Found students in response.data.data (nested)')
+      }
+      
+      if (studentsArray && Array.isArray(studentsArray)) {
+        console.log('🎓 Students array found:', studentsArray.length, 'students')
+        // Transform data từ API mới sang format cũ
+        const studentsData = studentsArray.map((enrollment: any) => {
+          // Tính điểm trung bình hiện tại từ grades
+          let currentGrade = null
+          console.log(`🎓 Student ${enrollment.student.user.fullName} grades:`, enrollment.student.grades)
+          
+          if (enrollment.student.grades && enrollment.student.grades.length > 0) {
+            const validGrades = enrollment.student.grades
+              .filter((grade: any) => grade.score !== null && grade.score !== undefined)
+              .map((grade: any) => parseFloat(grade.score))
+            
+            console.log(`🎓 Student ${enrollment.student.user.fullName} valid grades:`, validGrades)
+            
+            if (validGrades.length > 0) {
+              const sum = validGrades.reduce((acc: number, score: number) => acc + score, 0)
+              currentGrade = parseFloat((sum / validGrades.length).toFixed(1))
+              console.log(`🎓 Student ${enrollment.student.user.fullName} calculated average:`, currentGrade)
+            }
+          } else {
+            console.log(`🎓 Student ${enrollment.student.user.fullName} has no grades`)
+          }
+          
+          return {
+            studentId: enrollment.student.id,
+            fullName: enrollment.student.user.fullName || 'N/A',
+            email: enrollment.student.user.email,
+            studentCode: enrollment.student.studentCode,
+            currentGrade: currentGrade
+          }
+        })
+        
+        console.log('🎓 Transformed students:', studentsData)
+        console.log('🎓 Transformed students length:', studentsData.length)
+        setStudents(studentsData)
+      } else {
+        console.log('⚠️ No students found - response format issue')
+        console.log('⚠️ Response success:', responseData?.success)
+        console.log('⚠️ Response data:', responseData?.data)
+        console.log('⚠️ Students array:', studentsArray)
+        console.log('⚠️ Response structure:', responseData)
+        setStudents([])
+      }
+      
+      setGrades({})
+      setSavedGrades(new Set())
+    } catch (e: any) {
+      console.error('❌ Fetch students error', e)
+      console.error('❌ Error details:', {
+        status: e?.status,
+        message: e?.message,
+        response: e?.response,
+        stack: e?.stack
+      })
+      setStudents([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  run()
+}, [selectedClass, classes])
 
   // Khi chọn lớp: cũng lấy danh sách loại kiểm tra để hiển thị trong dropdown
   useEffect(() => {
     const run = async () => {
       if (!selectedClass) return
       try {
-        const types = await pointService.getAssessmentTypes(selectedClass)
+        const types = await teacherPointService.getAssessmentTypes(selectedClass)
         console.log('Assessment types response:', types)
-        console.log('Assessment types data:', types.data)
+        console.log('Assessment types data:', (types as any).data)
         
         // Backend trả về trực tiếp array, không cần .data
-        const apiTypes = types.data || types
+        const apiTypes = types || []
         console.log('API types:', apiTypes)
         
         // Nếu không có loại kiểm tra nào, thêm một số loại mặc định
@@ -201,7 +283,7 @@ export default function GradeInputPage() {
     }))
     try {
       setLoading(true)
-      await pointService.recordGrades({
+      await teacherPointService.recordGrades({
         classId: selectedClass,
         assessmentName: examTitle || `${selectedExamType} - ${examDate}`,
         assessmentType: selectedExamType,
