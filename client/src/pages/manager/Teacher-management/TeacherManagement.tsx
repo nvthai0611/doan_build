@@ -239,7 +239,6 @@ export default function TeacherQnmsManagement() {
 
   const handleAddEmployee = (): void => {
     navigate("/center-qn/teachers/add")
-    console.log("[v0] Opening add employee form")
   }
 
   // Define columns for DataTable

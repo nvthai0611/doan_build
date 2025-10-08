@@ -17,8 +17,12 @@ async function bootstrap() {
   //Validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
+      transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true, 
+      },
       exceptionFactory: (ValidationError: ValidationError[]) => {
         const newError = ValidationError.map((error: ValidationError) => {
           return {

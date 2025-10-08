@@ -24,6 +24,7 @@ import { ClassRequestsModule } from './modules/school/class-requests/class-reque
 import { ClassSessionsModule } from './modules/school/class-sessions/class-sessions.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { AdminCenterModule } from './modules/admin-center/admin-center.module';
+import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 // ...existing code...
 
 @Module({
@@ -37,6 +38,7 @@ import { AdminCenterModule } from './modules/admin-center/admin-center.module';
     ClassRequestsModule,
     ClassSessionsModule,
     AdminCenterModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService],

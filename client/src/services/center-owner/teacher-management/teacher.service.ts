@@ -3,17 +3,19 @@ import { apiClient, type ApiResponse } from "../../../utils/clientAxios"
 
 export interface CreateTeacherRequest {
   email: string
-  password: string  
   fullName: string
   username: string
   phone?: string
   role: "teacher" | "admin" | "center_owner"
-  hireDate?: string
   contractEnd?: string
   subjects?: string[]
   salary?: number
   isActive?: boolean
   notes?: string
+  // Thêm các field cho trường học và ảnh hợp đồng
+  schoolName?: string
+  schoolAddress?: string
+  contractImage?: File | string // Accept both File and string (base64)
 }
 
 export interface UpdateTeacherRequest extends Partial<CreateTeacherRequest> {
@@ -33,8 +35,6 @@ export interface QueryTeacherParams {
   birthYear?: string
   salaryMin?: number
   salaryMax?: number
-  hireDateFrom?: string
-  hireDateTo?: string
 }
 
 export interface TeacherResponse {
@@ -64,9 +64,13 @@ export const centerOwnerTeacherService = {
   },
 
   // Tạo giáo viên mới
-  createTeacher: async (data: CreateTeacherRequest): Promise<Teacher> => {
-    const response = await apiClient.post<Teacher>("/admin-center/teachers", data)
-
+  createTeacher: async (data: CreateTeacherRequest | FormData): Promise<Teacher> => {
+    // Kiểm tra nếu là FormData (có file upload)
+    const isFormData = data instanceof FormData
+    const options = isFormData ? {
+      contentType: "multipart/form-data"
+    } : {}
+    const response = await apiClient.post<Teacher>("/admin-center/teachers", data, options)
     return response.data
   },
 

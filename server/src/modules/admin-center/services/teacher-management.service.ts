@@ -5,57 +5,105 @@ import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
 import * as bcrypt from 'bcrypt';
 import { Gender } from 'src/common/constants';
-
 @Injectable()
 export class TeacherManagementService {
   constructor(private prisma: PrismaService) {}
 
   async createTeacher(createTeacherDto: CreateTeacherDto) {
-    // Check if email or username already exists
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: createTeacherDto.email },
-          { username: createTeacherDto.username }
-        ]
+    console.log("Create teacher dto:", createTeacherDto)
+    
+    return await this.prisma.$transaction(async (prisma) => {
+      // Check if email or username already exists
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: createTeacherDto.email },
+            { username: createTeacherDto.username }
+          ]
+        }
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('Email hoặc username đã tồn tại');
       }
-    });
 
-    if (existingUser) {
-      throw new BadRequestException('Email hoặc username đã tồn tại');
-    }
+      // Hash password
+      const hashedPassword = await bcrypt.hash("123456", 10);
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(createTeacherDto.password, 10);
+      // Handle school creation/finding
+      let schoolId = null;
+      if (createTeacherDto.schoolName) {
+        // Tìm school đã tồn tại
+        let school = await prisma.school.findFirst({
+          where: {
+            name: createTeacherDto.schoolName,
+            address: createTeacherDto.schoolAddress || undefined
+          }
+        });
 
-    // Create user first
-    const user = await this.prisma.user.create({
-      data: {
-        email: createTeacherDto.email,
-        password: hashedPassword,
-        fullName: createTeacherDto.fullName,
-        username: createTeacherDto.username,
-        phone: createTeacherDto.phone,
-        role: createTeacherDto.role,
-        isActive: createTeacherDto.isActive ?? true,
+        // Nếu không tìm thấy, tạo school mới
+        if (!school) {
+          school = await prisma.school.create({
+            data: {
+              name: createTeacherDto.schoolName,
+              address: createTeacherDto.schoolAddress || null,
+              phone: null
+            }
+          });
+        }
+        schoolId = school.id;
       }
-    });
 
-    // Create teacher record
-    const teacher = await this.prisma.teacher.create({
-      data: {
-        userId: user.id,
-        hireDate: createTeacherDto.hireDate ? new Date(createTeacherDto.hireDate) : null,
-        contractEnd: createTeacherDto.contractEnd ? new Date(createTeacherDto.contractEnd) : null,
-        subjects: createTeacherDto.subjects || [],
-        salary: createTeacherDto.salary ? createTeacherDto.salary : null,
-      },
-      include: {
-        user: true
+      // Create user first
+      const user = await prisma.user.create({
+        data: {
+          email: createTeacherDto.email,
+          password: hashedPassword,
+          fullName: createTeacherDto.fullName,
+          username: createTeacherDto.username,
+          phone: createTeacherDto.phone,
+          role: createTeacherDto.role,
+          isActive: createTeacherDto.isActive ?? true,
+          gender: createTeacherDto.gender ?? Gender.MALE,
+          birthDate: createTeacherDto.birthDate ? new Date(createTeacherDto.birthDate) : null,
+        }
+      });
+
+      // Create teacher record
+      const teacher = await prisma.teacher.create({
+        data: {
+          userId: user.id,
+          schoolId: schoolId,
+        },
+        include: {
+          user: true,
+          school: true
+        }
+      });
+
+      // Handle contract image upload if provided
+      if (createTeacherDto.contractImage) {
+        console.log("Contract image received:", createTeacherDto.contractImage);
+        
+        // Tạo templateId hợp lệ hoặc skip nếu không có
+        const templateId = '00000000-0000-0000-0000-000000000000'; // UUID hợp lệ
+        
+        await prisma.contractUpload.create({
+          data: {
+            teacherId: teacher.id,
+            templateId: templateId,
+            contractType: 'teacher_contract',
+            uploadedImageUrl: createTeacherDto.contractImage.filename || 'temp-filename',
+            uploadedImageName: createTeacherDto.contractImage.originalname,
+            uploadedAt: new Date(),
+            isSigned: false,
+            status: 'pending'
+          }
+        });
       }
-    });
 
-    return this.formatTeacherResponse(teacher);
+      return this.formatTeacherResponse(teacher);
+    });
   }
 
 
@@ -69,9 +117,7 @@ export class TeacherManagementService {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       gender,
-      birthYear,
-      hireDateFrom,
-      hireDateTo
+      birthYear
     } = queryDto;
     
     // Convert string parameters to numbers
@@ -118,15 +164,8 @@ export class TeacherManagementService {
       }
     }
    
-    if (hireDateFrom || hireDateTo) {
-      where.hireDate = {};
-      if (hireDateFrom) {
-        where.hireDate.gte = new Date(hireDateFrom);
-      }
-      if (hireDateTo) {
-        where.hireDate.lte = new Date(hireDateTo);
-      }
-    }
+    // hireDate field has been removed from Teacher model
+    // Filtering by hire date is no longer supported
 
     
     const total = await this.prisma.teacher.count({ where });
@@ -142,9 +181,6 @@ export class TeacherManagementService {
       'username': 'username',
       'createdAt': 'createdAt',
       'updatedAt': 'updatedAt',
-      'hireDate': 'hireDate',
-      'contractEnd': 'contractEnd',
-      'salary': 'salary'
     };
 
     const mappedSortBy = fieldMapping[sortBy] || sortBy;
@@ -246,9 +282,7 @@ export class TeacherManagementService {
     if (updateTeacherDto.role) userUpdateData.role = updateTeacherDto.role;
     if (updateTeacherDto.isActive !== undefined) userUpdateData.isActive = updateTeacherDto.isActive;
 
-    if (updateTeacherDto.password) {
-      userUpdateData.password = await bcrypt.hash(updateTeacherDto.password, 10);
-    }
+
 
     if (Object.keys(userUpdateData).length > 0) {
       await this.prisma.user.update({
@@ -259,10 +293,8 @@ export class TeacherManagementService {
 
     // Update teacher data
     const teacherUpdateData: any = {};
-    if (updateTeacherDto.hireDate) teacherUpdateData.hireDate = new Date(updateTeacherDto.hireDate);
     if (updateTeacherDto.contractEnd) teacherUpdateData.contractEnd = new Date(updateTeacherDto.contractEnd);
-    if (updateTeacherDto.subjects) teacherUpdateData.subjects = updateTeacherDto.subjects;
-    if (updateTeacherDto.salary !== undefined) teacherUpdateData.salary = updateTeacherDto.salary;
+    // if (updateTeacherDto.salary !== undefined) teacherUpdateData.salary = updateTeacherDto.salary;
 
     if (Object.keys(teacherUpdateData).length > 0) {
       await this.prisma.teacher.update({
@@ -461,10 +493,11 @@ export class TeacherManagementService {
       gender: teacher.gender === Gender.MALE ? 'Nam' : teacher.gender === Gender.FEMALE ? 'Nữ' : 'Khác',
       birthDate: teacher.birthDate ? this.formatDate(teacher.birthDate) : undefined,
       status: teacher.user.isActive,
-      hireDate: teacher.hireDate ? this.formatDate(teacher.hireDate) : undefined,
-      contractEnd: teacher.contractEnd ? this.formatDate(teacher.contractEnd) : undefined,
-      subjects: teacher.subjects || [],
-      salary: teacher.salary,
+      school: teacher.school ? {
+        id: teacher.school.id,
+        name: teacher.school.name,
+        address: teacher.school.address
+      } : null,
       createdAt: teacher.createdAt,
       updatedAt: teacher.updatedAt
     };

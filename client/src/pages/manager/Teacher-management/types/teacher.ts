@@ -14,7 +14,6 @@ export interface Teacher {
     loginUsername?: string
     accountStatus?: boolean
     notes?: string
-    hireDate?: string
     contractEnd?: string
     subjects?: string[]
     salary?: number
@@ -31,7 +30,5 @@ export interface Teacher {
     birthMonth?: string
     birthYear?: string
     gender?: string
-    hireDateFrom?: string
-    hireDateTo?: string
   }
   

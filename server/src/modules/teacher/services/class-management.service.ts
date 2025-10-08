@@ -69,7 +69,14 @@ export class ClassManagementService {
 
             // Lấy dữ liệu assignments với thông tin class
             const assignments = await this.prisma.teacherClassAssignment.findMany({
-                where: whereCondition,
+                // where: whereCondition,
+                where: {
+                    teacherId: teacherId, // Chỉ lấy assignment của giáo viên này
+                    status: 'active', // Chỉ lấy assignment có status active
+                    class: {
+                        status: 'active' // Chỉ lấy class có status active
+                    }
+                },
                 include: { 
                     teacher: {
                         select: {
@@ -111,8 +118,33 @@ export class ClassManagementService {
                 );
             }
 
+            // Tính toán số lượng học sinh active cho mỗi assignment
+            const assignmentsWithActiveStudents = await Promise.all(
+                assignments.map(async (assignment) => {
+                    const activeStudentCount = await this.prisma.enrollment.count({
+                        where: {
+                            teacherClassAssignmentId: assignment.id,
+                            status: 'active',
+                            completedAt: null,
+                            student: {
+                                user: {
+                                    isActive: true
+                                }
+                            }
+                        }
+                    });
+                    
+                    console.log(`📊 Class ${assignment.class.name}: Total enrollments: ${assignment._count.enrollments}, Active students: ${activeStudentCount}`);
+                    
+                    return {
+                        ...assignment,
+                        activeStudentCount
+                    };
+                })
+            );
+
             // Transform data để trả về format phù hợp
-            const transformedClasses = assignments.map(assignment => ({
+            const transformedClasses = assignmentsWithActiveStudents.map(assignment => ({
                 // Assignment info
                 assignmentId: assignment.id,
                 assignmentStatus: assignment.status,
@@ -144,8 +176,8 @@ export class ClassManagementService {
                 room: assignment.class.room,
                 roomId: assignment.class.roomId,
                 
-                // Student count
-                studentCount: assignment._count.enrollments,
+                // Student count (chỉ học sinh active)
+                studentCount: assignment.activeStudentCount,
                 
                 // Fee structure
                 feeStructure: assignment.class.feeStructure,
@@ -157,16 +189,16 @@ export class ClassManagementService {
                         JSON.parse(assignment.recurringSchedule) : 
                         assignment.recurringSchedule) : null,
 
-                // Enrollment info
+                // Enrollment info (chỉ học sinh active)
                 enrollmentStatus: {
-                    current: assignment._count.enrollments,
+                    current: assignment.activeStudentCount,
                     max: assignment.class.maxStudents,
                     percentage: assignment.class.maxStudents > 0 ? 
-                        Math.round((assignment._count.enrollments / assignment.class.maxStudents) * 100) : 0,
-                    available: Math.max(0, assignment.class.maxStudents - assignment._count.enrollments),
-                    isFull: assignment._count.enrollments >= assignment.class.maxStudents,
-                    status: assignment._count.enrollments >= assignment.class.maxStudents ? 'full' : 
-                            assignment._count.enrollments >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
+                        Math.round((assignment.activeStudentCount / assignment.class.maxStudents) * 100) : 0,
+                    available: Math.max(0, assignment.class.maxStudents - assignment.activeStudentCount),
+                    isFull: assignment.activeStudentCount >= assignment.class.maxStudents,
+                    status: assignment.activeStudentCount >= assignment.class.maxStudents ? 'full' : 
+                            assignment.activeStudentCount >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
                 },
             }));
             
@@ -315,6 +347,82 @@ export class ClassManagementService {
                 }
             });
 
+            // Tính toán số lượng học sinh active
+            const activeStudentCount = await this.prisma.enrollment.count({
+                where: {
+                    teacherClassAssignmentId: assignment.id,
+                    status: 'active',
+                    completedAt: null,
+                    student: {
+                        user: {
+                            isActive: true
+                        }
+                    }
+                }
+            });
+
+            // Thêm activeStudentCount vào assignment object
+            const assignmentWithActiveCount = {
+                ...assignment,
+                activeStudentCount
+            };
+
+            const classSessionInfo = await this.prisma.classSession.findMany({
+                where: {
+                    classId: assignment?.classId,
+                    academicYear: assignment?.academicYear,
+                },
+                include: {
+                    attendances: {
+                        select: {
+                            status: true,
+                            studentId: true
+                        }
+                    }
+                }
+            });
+
+            // Tính tỷ lệ tham gia
+            let totalAttendanceRate = 0;
+            let totalSessions = classSessionInfo.length;
+            
+            if (totalSessions > 0) {
+                const totalStudents = assignmentWithActiveCount.activeStudentCount;
+                
+                if (totalStudents > 0) {
+                    let totalPresentCount = 0;
+                    let totalPossibleAttendances = totalSessions * totalStudents;
+                    
+                    classSessionInfo.forEach(session => {
+                        const presentCount = session.attendances.filter(
+                            attendance => attendance.status === 'present'
+                        ).length;
+                        totalPresentCount += presentCount;
+                    });
+                    
+                    totalAttendanceRate = totalPossibleAttendances > 0 ? 
+                        Math.round((totalPresentCount / totalPossibleAttendances) * 100) : 0;
+                }
+            }
+
+            //Lấy tổng số lượng attendance với status 'present'
+
+            const totalPresentCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'present').length;
+            }, 0);
+
+            // //Lấy tổng số lượng attendance với status 'absent'
+
+            const totalAbsentCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'absent').length;
+            }, 0);
+
+            // Lấy tổng số lượng attendance với status 'excused'
+            const totalExcusedCount = classSessionInfo.reduce((total, session) => {
+                return total + session.attendances.filter(attendance => attendance.status === 'excused').length;
+            }, 0);
+
+            
             if(!assignment){
                 throw new HttpException(
                     'Lớp học không tồn tại hoặc bạn không có quyền truy cập',
@@ -346,14 +454,25 @@ export class ClassManagementService {
                 // Relations
                 room: assignment.class.room,
                 subject: assignment.class.subject,
-                feeStructure: assignment.class.feeStructure,
-                teacher: assignment.teacher,
                 
-                // Counts
-                studentCount: assignment._count.enrollments,
-                // sessionCount: assignment._count.sessions,
-                // assessmentCount: assignment._count.assessments,
+                // Counts (chỉ học sinh active)
+                studentCount: assignmentWithActiveCount.activeStudentCount,
 
+                // Class sessions với tỷ lệ tham gia
+                classSession:{
+                    total: classSessionInfo.length,
+                    completed: classSessionInfo.filter(session => session.status === 'completed').length,
+                    upcoming: classSessionInfo.filter(session => session.status === 'scheduled' && new Date(session.sessionDate) > new Date()).length,
+                    attendanceRate: totalAttendanceRate, // Tỷ lệ tham gia tổng thể (%)
+                    averageAttendancePerSession: totalSessions > 0 && assignmentWithActiveCount.activeStudentCount > 0 ? 
+                        Math.round((classSessionInfo.reduce((sum, session) => {
+                            return sum + session.attendances.filter(att => att.status === 'present').length;
+                        }, 0) / totalSessions)) : 0,
+                    totalPresentCount: totalPresentCount,
+                    totalAbsentCount: totalAbsentCount,
+                    totalExcusedCount: totalExcusedCount
+                },
+                
                 // Schedule
                 recurringSchedule: assignment.recurringSchedule ? 
                     (typeof assignment.recurringSchedule === 'string' ? 
@@ -414,4 +533,6 @@ export class ClassManagementService {
             );
         }
     }
+
+    
 }

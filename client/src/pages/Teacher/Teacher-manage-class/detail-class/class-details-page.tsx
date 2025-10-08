@@ -36,6 +36,8 @@ export function ClassDetailsPage() {
   const [activeTab, setActiveTab] = useState("thong-tin-chung")
   const [description, setDescription] = useState("")
   const { teacherClassAssignmentId } = useParams()
+  console.log(teacherClassAssignmentId);
+  
   const [editClassOpen, setEditClassOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [addStudentOpen, setAddStudentOpen] = useState(false)
@@ -181,7 +183,7 @@ export function ClassDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <ClassHeader className={classDetails.name} />
+      <ClassHeader className={classDetails?.name} />
 
       <ClassNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
