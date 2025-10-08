@@ -11,6 +11,7 @@ import { AlertTriangle, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock
 import Loading from "../../../components/Loading/LoadingPage"
 import { teacherScheduleService } from "../../../services/teacherScheduleService"
 import { formatDate, ScheduleData } from "./utils"
+import { useNavigate } from "react-router-dom"
 
 type ViewType = "month" | "week" | "list"
 
@@ -29,7 +30,7 @@ export default function TeacherSchedule() {
   const [schedules, setSchedules] = useState<ScheduleData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  const navigate = useNavigate()
   const [selected, setSelected] = useState<ScheduleData | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -120,8 +121,8 @@ export default function TeacherSchedule() {
   }
 
   const openDetail = (s: ScheduleData) => {
-    setSelected(s)
-    setIsDialogOpen(true)
+    navigate(`/teacher/schedule/attendance/${s.id}`);
+    return;
   }
   
   const getWeekRange = () => {

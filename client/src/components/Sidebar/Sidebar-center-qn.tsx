@@ -153,11 +153,11 @@ const teacherMenuItems = [
             { title: "Thống kê tiến độ", href: "/teacher/classes/progress" },
         ],
     },
-    {
-        title: "Điểm danh",
-        icon: UserCheck,
-        href: "/teacher/attendance",
-    },
+    // {
+    //     title: "Điểm danh",
+    //     icon: UserCheck,
+    //     href: "/teacher/attendance",
+    // },
     {
         title: "Quản lý điểm",
         icon: Target,
