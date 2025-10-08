@@ -156,6 +156,37 @@ export default function AttendanceTable() {
         return dbStatus;
     };
 
+    const isAttendanceDisabled = () => {
+        if (!attendanceData?.[0]?.session) return true;
+        
+        const session = attendanceData[0].session;
+        const currentDate = new Date();
+        const sessionDate = new Date(session.sessionDate);
+        
+        // Check if session is completed
+        if (session.status === 'completed') {
+            console.log('Lớp học đã hoàn thành');
+            return true;
+        }
+        
+        // Check if session date has passed (compare dates only, not time)
+        const currentDateOnly = new Date(currentDate.toDateString());
+        const sessionDateOnly = new Date(sessionDate.toDateString());
+        
+        if (sessionDateOnly < currentDateOnly) {
+            console.log('Ngày học đã qua');
+            return true;
+        }
+        
+        // Check if not same date (only allow attendance on session date)
+        if (currentDateOnly.getTime() !== sessionDateOnly.getTime()) {
+            console.log('Không phải ngày học hôm nay');
+            return true;
+        }
+        
+        return false;
+    };
+
     if (isLoading) {
         return (
             <Loading />
@@ -170,8 +201,6 @@ export default function AttendanceTable() {
         );
     }
 
-    console.log('Rendering with attendanceData:', localAttendance);
-    
     return (
         <div>
             <div className="mb-8">
@@ -331,20 +360,14 @@ export default function AttendanceTable() {
                         <Button
                             onClick={handleSave}
                             size="lg"
-                            disabled={!hasChanges || saveMutation.isPending  }
+                            disabled={!hasChanges || saveMutation.isPending}
                             className={cn(
                                 "min-w-40 h-12 text-base font-semibold shadow-lg transition-all",
                                 hasChanges 
                                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" 
                                     : "bg-gray-400 cursor-not-allowed"
                             )}
-                            style={
-                              (() => {
-                                  const date = new Date();
-                                  if(date > new Date(attendanceData?.[0]?.session?.sessionDate || "")) return true;
-                                  return false;
-                              })()? { display: 'none' }: {}
-                            }
+                            style={isAttendanceDisabled() ? { display: 'none' } : {}}
                         >
                             <Save className="h-5 w-5 mr-2" />
                             {saveMutation.isPending ? 'Đang lưu...' : hasChanges ? 'Lưu điểm danh' : 'Không có thay đổi'}

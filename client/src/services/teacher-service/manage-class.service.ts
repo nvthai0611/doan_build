@@ -12,8 +12,8 @@ const getClassByTeacherId = async(
     try {
         // Xây dựng query string thủ công để tránh vấn đề serialization
         const queryParams = new URLSearchParams();
-        
-        if (status && status !== 'undefined' && status !== 'all') {
+        // queryParams.append('status', 'all')
+        if (status && status !== 'undefined') {
             queryParams.append('status', status);
         }
         
