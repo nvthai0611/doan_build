@@ -36,8 +36,6 @@ export function ClassDetailsPage() {
   const [activeTab, setActiveTab] = useState("thong-tin-chung")
   const [description, setDescription] = useState("")
   const { teacherClassAssignmentId } = useParams()
-  console.log(teacherClassAssignmentId);
-  
   const [editClassOpen, setEditClassOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [addStudentOpen, setAddStudentOpen] = useState(false)
@@ -133,6 +131,7 @@ export function ClassDetailsPage() {
             onAddStudent={() => setAddStudentOpen(true)}
             onEditStudent={(student) => handleEdit("student", student)}
             onDeleteStudent={(student) => handleDelete("student", student)}
+            teacherClassAssignmentId= {teacherClassAssignmentId as string}
           />
         )
       case "giao-vien":
@@ -159,7 +158,7 @@ export function ClassDetailsPage() {
             onDeleteTask={(task) => handleDelete("task", task)}
           />
         )
-      case "danh-gia":
+      case "history-attendance-class":
         return (
           <DanhGiaTab
             onAddAssessment={() => setAddAssessmentOpen(true)}

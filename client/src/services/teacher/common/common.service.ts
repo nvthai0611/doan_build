@@ -29,7 +29,7 @@ export const teacherCommonService = {
    */
   getDetailStudentOfClass: async (studentId: string, assignmentId?: string): Promise<StudentDetailResponse> => {
     const url = assignmentId 
-      ? `/teacher/common/assignment/${assignmentId}/student/${studentId}`
+      ? `/teacher/common/student/${studentId}?assignmentId=${assignmentId}`
       : `/teacher/common/student/${studentId}`
     
     const response = await apiClient.get(url)
