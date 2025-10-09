@@ -291,7 +291,7 @@ function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProp
           </div>
 
           {/* Teacher Info */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="h-5 w-5" />
@@ -314,7 +314,7 @@ function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProp
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </DialogContent>
     </Dialog>
