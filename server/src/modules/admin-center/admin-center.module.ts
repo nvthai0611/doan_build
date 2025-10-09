@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
+import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
 import { FinancialManagementController } from './controllers/financial-management.controller';
 import { LeaveRequestsController } from './controllers/leave-requests.controller';
 import { ScheduleManagementController } from './controllers/schedule-management.controller';
@@ -8,6 +9,7 @@ import { TeacherManagementController } from './controllers/teacher-management.co
 import { UsersController } from './controllers/user-management.controller';
 import { ApprovalManagementService } from './services/approval-management.service';
 import { ClassManagementService } from './services/class-management.service';
+import { EnrollmentManagementService } from './services/enrollment-management.service';
 import { FinancialManagementService } from './services/financial-management.service';
 import { LeaveRequestsService } from './services/leave-requests.service';
 import { ScheduleManagementService } from './services/schedule-management.service';
@@ -28,6 +30,7 @@ import { RouterModule } from '@nestjs/core';
   controllers: [
     ApprovalManagementController,
     ClassManagementController,
+    EnrollmentManagementController,
     FinancialManagementController,
     LeaveRequestsController,
     ScheduleManagementController,
@@ -38,6 +41,7 @@ import { RouterModule } from '@nestjs/core';
     PrismaService,
     ApprovalManagementService,
     ClassManagementService,
+    EnrollmentManagementService,
     FinancialManagementService,
     LeaveRequestsService,
     ScheduleManagementService,

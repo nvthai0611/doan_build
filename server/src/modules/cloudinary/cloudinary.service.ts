@@ -15,9 +15,11 @@ export class CloudinaryService {
   async uploadImage(file: Express.Multer.File, folder?: string): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder || 'uploads',
+        {                    
+          folder: `QNEduManagementSystem/${folder}` || 'QNEduManagementSystem/default',
           resource_type: 'auto',
+          use_filename: true,  // Giữ tên file gốc
+          unique_filename: true,  // Thêm unique ID để tránh trùng
           transformation: [
             { width: 1000, height: 1000, crop: 'limit' },
             { quality: 'auto' },

@@ -20,7 +20,7 @@ import { HocVienTab } from "./tabs/hoc-vien-tab"
 import { GiaoVienTab } from "./tabs/giao-vien-tab"
 import { BuoiHocTab } from "./tabs/buoi-hoc-tab"
 import { CongViecTab } from "./tabs/cong-viec-tab"
-import { DanhGiaTab } from "./tabs/danh-gia-tab"
+import ClassAttendancePage from "./tabs/lich-su-diem-danh"
 import { ClassModals } from "./modals/class-modals"
 import { useLocation, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
@@ -36,8 +36,6 @@ export function ClassDetailsPage() {
   const [activeTab, setActiveTab] = useState("thong-tin-chung")
   const [description, setDescription] = useState("")
   const { teacherClassAssignmentId } = useParams()
-  console.log(teacherClassAssignmentId);
-  
   const [editClassOpen, setEditClassOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [addStudentOpen, setAddStudentOpen] = useState(false)
@@ -133,6 +131,7 @@ export function ClassDetailsPage() {
             onAddStudent={() => setAddStudentOpen(true)}
             onEditStudent={(student) => handleEdit("student", student)}
             onDeleteStudent={(student) => handleDelete("student", student)}
+            teacherClassAssignmentId= {teacherClassAssignmentId as string}
           />
         )
       case "giao-vien":
@@ -159,13 +158,9 @@ export function ClassDetailsPage() {
             onDeleteTask={(task) => handleDelete("task", task)}
           />
         )
-      case "danh-gia":
+      case "history-attendance-class":
         return (
-          <DanhGiaTab
-            onAddAssessment={() => setAddAssessmentOpen(true)}
-            onEditAssessment={(assessment) => handleEdit("assessment", assessment)}
-            onDeleteAssessment={(assessment) => handleDelete("assessment", assessment)}
-          />
+          <ClassAttendancePage teacherClassAssignmentId={teacherClassAssignmentId as string} />
         )
       default:
         return (
@@ -222,7 +217,7 @@ export function ClassDetailsPage() {
       />
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      {/* <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
@@ -255,7 +250,7 @@ export function ClassDetailsPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </div>
   )
 }

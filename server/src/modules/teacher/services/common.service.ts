@@ -14,7 +14,7 @@ export class CommonService {
                 where: {
                     teacherClassAssignmentId: assignmentId,
                     status: 'active',  // Chỉ lấy enrollment active
-                    completedAt: null,  // Chưa hoàn thành khóa học
+                    // completedAt: null,  // Chưa hoàn thành khóa học
                     student: {
                         user: {
                             isActive: true  // Chỉ lấy học sinh có user active

@@ -11,7 +11,6 @@ import type {
 } from "./student.types"
   
 class StudentService {
-  // ===== CRUD Operations =====
 
   /**
    * Lấy danh sách học sinh với phân trang và filter
@@ -221,3 +220,5 @@ class StudentService {
     return response.data as any
   };
 }
+
+export const centerOwnerStudentService = new StudentService()

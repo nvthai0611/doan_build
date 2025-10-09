@@ -22,6 +22,8 @@ import { ParentModule } from './modules/parent/parent.module';
 import { SchoolsModule } from './modules/school/schools/schools.module';
 import { ClassRequestsModule } from './modules/school/class-requests/class-requests.module';
 import { ClassSessionsModule } from './modules/school/class-sessions/class-sessions.module';
+import { SubjectsModule } from './modules/school/subjects/subjects.module';
+import { RoomsModule } from './modules/school/rooms/rooms.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
@@ -37,6 +39,8 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     SchoolsModule,
     ClassRequestsModule,
     ClassSessionsModule,
+    SubjectsModule,
+    RoomsModule,
     AdminCenterModule,
     CloudinaryModule,
   ],
