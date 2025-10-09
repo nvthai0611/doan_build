@@ -10,15 +10,22 @@ export class CommonService {
      */
     async getListStudentOfClass(assignmentId: string) {
         try {
+            console.log(`🔍 Getting students for assignment: ${assignmentId}`);
+            
             const students = await this.prisma.enrollment.findMany({
                 where: {
                     teacherClassAssignmentId: assignmentId,
-                    status: 'active',  // Chỉ lấy enrollment active
-                    // completedAt: null,  // Chưa hoàn thành khóa học
+                    status: 'active',  // Enrollment active
                     student: {
                         user: {
-                            isActive: true  // Chỉ lấy học sinh có user active
+                            isActive: true  // User active
                         }
+                    },
+                    class: {
+                        status: 'active'  // Class active
+                    },
+                    teacherClassAssignment: {
+                        status: 'active'  // Teacher assignment active
                     }
                 },
                 include: {
@@ -105,6 +112,7 @@ export class CommonService {
                 message: `Lấy danh sách học sinh thành công - ${students.length} học sinh đang học`
             };
         } catch (error) {
+            console.error(`❌ Error in getListStudentOfClass:`, error);
             throw new Error(`Lỗi khi lấy danh sách học sinh: ${error.message}`);
         }
     }
@@ -116,12 +124,14 @@ export class CommonService {
         try {
             const whereCondition: any = {
                 studentId: studentId,
-                status: 'active',  // Chỉ lấy enrollment active
-                completedAt: null,  // Chưa hoàn thành khóa học
+                status: 'active',  // Enrollment active
                 student: {
                     user: {
-                        isActive: true  // Chỉ lấy học sinh có user active
+                        isActive: true  // User active
                     }
+                },
+                class: {
+                    status: 'active'  // Class active
                 }
             };
 
@@ -258,90 +268,105 @@ export class CommonService {
         }
     }
 
-    // /**
-    //  * Lấy thống kê tổng quan về lớp học
-    //  */
-    // async getClassStatistics(assignmentId: string) {
-    //     try {
-    //         const [totalStudents, attendanceStats, gradeStats] = await Promise.all([
-    //             // Tổng số học sinh active
-    //             this.prisma.enrollment.count({
-    //                 where: {
-    //                     teacherClassAssignmentId: assignmentId,
-    //                     status: 'active',
-    //                     completedAt: null,
-    //                     student: {
-    //                         user: {
-    //                             isActive: true
-    //                         }
-    //                     }
-    //                 }
-    //             }),
-    //             // Thống kê điểm danh (chỉ học sinh active)
-    //             this.prisma.studentSessionAttendance.groupBy({
-    //                 by: ['status'],
-    //                 where: {
-    //                     student: {
-    //                         user: {
-    //                             isActive: true
-    //                         },
-    //                         enrollments: {
-    //                             some: {
-    //                                 teacherClassAssignmentId: assignmentId,
-    //                                 status: 'active',
-    //                                 completedAt: null
-    //                             }
-    //                         }
-    //                     }
-    //                 },
-    //                 _count: {
-    //                     status: true
-    //                 }
-    //             }),
-    //             // Thống kê điểm số (chỉ học sinh active)
-    //             this.prisma.studentAssessmentGrade.aggregate({
-    //                 where: {
-    //                     student: {
-    //                         user: {
-    //                             isActive: true
-    //                         },
-    //                         enrollments: {
-    //                             some: {
-    //                                 teacherClassAssignmentId: assignmentId,
-    //                                 status: 'active',
-    //                                 completedAt: null
-    //                             }
-    //                         }
-    //                     }
-    //                 },
-    //                 _avg: {
-    //                     score: true
-    //                 },
-    //                 _max: {
-    //                     score: true
-    //                 },
-    //                 _min: {
-    //                     score: true
-    //                 }
-    //             })
-    //         ]);
+    /**
+     * Lấy thống kê tổng quan về lớp học
+     */
+    async getClassStatistics(assignmentId: string) {
+        try {
+            const [totalStudents, attendanceStats, gradeStats] = await Promise.all([
+                // Tổng số học sinh active
+                this.prisma.enrollment.count({
+                    where: {
+                        teacherClassAssignmentId: assignmentId,
+                        status: 'active',
+                        student: {
+                            user: {
+                                isActive: true
+                            }
+                        },
+                        class: {
+                            status: 'active'
+                        },
+                        teacherClassAssignment: {
+                            status: 'active'
+                        }
+                    }
+                }),
+                // Thống kê điểm danh (chỉ học sinh active)
+                this.prisma.studentSessionAttendance.groupBy({
+                    by: ['status'],
+                    where: {
+                        student: {
+                            user: {
+                                isActive: true
+                            },
+                            enrollments: {
+                                some: {
+                                    teacherClassAssignmentId: assignmentId,
+                                    status: 'active',
+                                    class: {
+                                        status: 'active'
+                                    },
+                                    teacherClassAssignment: {
+                                        status: 'active'
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    _count: {
+                        status: true
+                    }
+                }),
+                // Thống kê điểm số (chỉ học sinh active)
+                this.prisma.studentAssessmentGrade.aggregate({
+                    where: {
+                        student: {
+                            user: {
+                                isActive: true
+                            },
+                            enrollments: {
+                                some: {
+                                    teacherClassAssignmentId: assignmentId,
+                                    status: 'active',
+                                    class: {
+                                        status: 'active'
+                                    },
+                                    teacherClassAssignment: {
+                                        status: 'active'
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    _avg: {
+                        score: true
+                    },
+                    _max: {
+                        score: true
+                    },
+                    _min: {
+                        score: true
+                    }
+                })
+            ]);
 
-    //         console.log(`📊 Class statistics for assignment ${assignmentId}:`);
-    //         console.log(`   - Total active students: ${totalStudents}`);
-    //         console.log(`   - Attendance stats:`, attendanceStats);
-    //         console.log(`   - Grade stats:`, gradeStats);
+            console.log(`📊 Class statistics for assignment ${assignmentId}:`);
+            console.log(`   - Total active students: ${totalStudents}`);
+            console.log(`   - Attendance stats:`, attendanceStats);
+            console.log(`   - Grade stats:`, gradeStats);
             
-    //         return {
-    //             success: true,
-    //             data: {
-    //                 totalStudents,
-    //                 attendanceStats,
-    //                 gradeStats
-    //             },
-    //             message: `Lấy thống kê lớp học thành công - ${totalStudents} học sinh đang học`
-    //         };
-    //     } catch (error) {
-    //         throw new Error(`Lỗi khi lấy thống kê lớp học: ${error.message}`);
-    //     }
-    // }
+            return {
+                success: true,
+                data: {
+                    totalStudents,
+                    attendanceStats,
+                    gradeStats
+                },
+                message: `Lấy thống kê lớp học thành công - ${totalStudents} học sinh đang học`
+            };
+        } catch (error) {
+            throw new Error(`Lỗi khi lấy thống kê lớp học: ${error.message}`);
+        }
+    }
 }
