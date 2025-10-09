@@ -8,6 +8,18 @@ interface StudentAttendanceRowProps {
   summary: any
   sessions: any[]
 }
+const getAttendanceStatus = (status) => {
+  switch (status) {
+    case 'present':
+      return 'Có mặt';
+    case 'absent':
+      return 'Vắng mặt';
+    case 'excused':
+      return 'Có phép';
+    default:
+      return 'Chưa mở'; // Trạng thái dự phòng
+  }
+};
 
 export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRowProps) {
   const { student, attendanceRecords, stats } = summary
@@ -26,8 +38,8 @@ export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRow
           <p className="text-xs text-muted-foreground truncate">{student.studentCode || student.user.email}</p>
         </div>
       </div>
-
-      <div className="flex gap-2 min-w-max">
+{/* flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] overflow-x-auto */}
+      <div className="flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[800px]">
         {sessions.map((session) => {
           const attendance = attendanceRecords.get(session.id)
           return (
@@ -49,7 +61,7 @@ export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRow
                     <p className="font-medium">{new Date(session.sessionDate).toLocaleDateString("vi-VN")}</p>
                     {attendance ? (
                       <>
-                        <p>Trạng thái: {attendance.status}</p>
+                        <p>Trạng thái: {getAttendanceStatus(attendance.status)}</p>
                         {attendance.note && <p>Ghi chú: {attendance.note}</p>}
                       </>
                     ) : (

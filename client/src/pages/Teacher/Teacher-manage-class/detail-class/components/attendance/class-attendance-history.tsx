@@ -14,13 +14,14 @@ import {
   formatSessionTime,
   ATTENDANCE_STATUS_CONFIG,
 } from "../../lib/attendance-utils"
-import { Search, Download, Filter, Calendar } from "lucide-react"
+import { Search, Download, Filter, Calendar, RefreshCw } from "lucide-react"
 
 interface ClassAttendanceHistoryProps {
   classId: string
   className: string
   students: any[]
   attendanceRecords: any[]
+  onRefresh?: () => void // Add refresh callback
 }
 
 export function ClassAttendanceHistory({
@@ -28,11 +29,11 @@ export function ClassAttendanceHistory({
   className,
   students,
   attendanceRecords,
+  onRefresh,
 }: ClassAttendanceHistoryProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"name" | "rate">("name")
-
   // Calculate attendance summaries
   const attendanceSummaries = useMemo(() => {
     return calculateAttendanceStats(students, attendanceRecords)
@@ -100,18 +101,39 @@ export function ClassAttendanceHistory({
     console.log("Exporting attendance data...")
   }
 
+  // Add refresh button if onRefresh is provided
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh()
+    }
+  }
+
+  
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{className}</h1>
-        <p className="text-muted-foreground mt-1">
-          Lịch sử điểm danh - {students.length} học sinh, {sortedSessions.length} buổi học
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Lịch sử điểm danh</h1>
+          <p className="text-muted-foreground">{className}</p>
+        </div>
+        {onRefresh && (
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Làm mới
+          </Button>
+        )}
       </div>
 
+      {/* Show message if no data */}
+      {attendanceRecords.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Chưa có dữ liệu điểm danh</p>
+        </div>
+      )}
+
       {/* Overall Stats */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Tổng số buổi</CardDescription>
@@ -134,14 +156,14 @@ export function ClassAttendanceHistory({
             <CardTitle className="text-3xl text-red-600">{overallStats.absent}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        {/* <Card>
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-1.5">
               <span className="text-orange-600">⏰</span> Muộn
             </CardDescription>
             <CardTitle className="text-3xl text-orange-600">{overallStats.late}</CardTitle>
           </CardHeader>
-        </Card>
+        </Card> */}
         <Card>
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-1.5">
@@ -177,7 +199,6 @@ export function ClassAttendanceHistory({
                   <SelectItem value="all">Tất cả</SelectItem>
                   <SelectItem value="present">Có mặt</SelectItem>
                   <SelectItem value="absent">Vắng</SelectItem>
-                  <SelectItem value="late">Muộn</SelectItem>
                   <SelectItem value="excused">Có phép</SelectItem>
                 </SelectContent>
               </Select>
@@ -217,7 +238,7 @@ export function ClassAttendanceHistory({
                 <div className="w-64 flex-shrink-0">
                   <p className="text-sm font-medium">Học sinh</p>
                 </div>
-                <div className="flex gap-2 min-w-max">
+                <div className="flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[800px]">
                   {sortedSessions.map((session, index) => (
                     <div
                       key={session.id}

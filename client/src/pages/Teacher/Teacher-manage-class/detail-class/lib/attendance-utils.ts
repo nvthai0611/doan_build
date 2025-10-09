@@ -2,7 +2,7 @@
 export const ATTENDANCE_STATUS = {
   PRESENT: "present",
   ABSENT: "absent",
-  LATE: "late",
+  SCHEDULE: "late",
   EXCUSED: "excused",
 } as const
 
@@ -19,8 +19,8 @@ export const ATTENDANCE_STATUS_CONFIG = {
     darkColor: "dark:text-red-400 dark:bg-red-950 dark:border-red-800",
     icon: "✗",
   },
-  late: {
-    label: "Muộn",
+  schedule: {
+    label: "Chưa mở",
     color: "text-orange-600 bg-orange-50 border-orange-200",
     darkColor: "dark:text-orange-400 dark:bg-orange-950 dark:border-orange-800",
     icon: "⏰",
@@ -41,9 +41,9 @@ export function calculateAttendanceStats(
     const attendanceMap = new Map<string, any>()
     let present = 0
     let absent = 0
-    let late = 0
     let excused = 0
-
+    // Nếu AttendanceRecords mà có session status là 'scheduled' thì không tính vào thống kê
+    attendanceRecords = attendanceRecords.filter((record) => record.session.status !== 'scheduled')
     attendanceRecords.forEach((record) => {
       const attendance = record.attendances.find((a: any) => a.studentId === student.id)
       attendanceMap.set(record.session.id, attendance || null)
@@ -55,9 +55,6 @@ export function calculateAttendanceStats(
             break
           case ATTENDANCE_STATUS.ABSENT:
             absent++
-            break
-          case ATTENDANCE_STATUS.LATE:
-            late++
             break
           case ATTENDANCE_STATUS.EXCUSED:
             excused++
@@ -72,7 +69,6 @@ export function calculateAttendanceStats(
       stats: {
         present,
         absent,
-        late,
         excused,
         total: attendanceRecords.length,
       },
