@@ -5,7 +5,11 @@ import type {
   RecordGradesPayload,
   TeacherStudentSummary,
   UpdateGradePayload,
-  TeacherClassItem
+  TeacherClassItem,
+  StudentGradeDetail,
+  SubjectStats,
+  GradeViewFilters,
+  GradeViewResponse
 } from "./point.types"
 
 export const teacherPointService = {
@@ -102,6 +106,71 @@ export const teacherPointService = {
   exportGradeReport: async (classId: string, format: 'excel' | 'pdf' = 'excel'): Promise<Blob> => {
     const response = await ApiService.get(`/teacher/grades/classes/${classId}/export`, { format })
     return response.data as Blob
+  },
+
+  // ===== Grade View Management =====
+
+  /**
+   * Lấy dữ liệu điểm số cho trang Score_view
+   */
+  getGradeViewData: async (filters?: GradeViewFilters): Promise<GradeViewResponse> => {
+    console.log('🔍 Calling getGradeViewData with filters:', filters)
+    try {
+      const response = await ApiService.get<GradeViewResponse>("/teacher/grades/view", filters)
+      console.log('✅ getGradeViewData response:', response)
+      return response.data || {
+        students: [],
+        subjectStats: [],
+        totalStudents: 0,
+        overallAverage: 0,
+        passRate: 0
+      }
+    } catch (error) {
+      console.error('❌ getGradeViewData error:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Lấy danh sách học sinh với điểm số chi tiết
+   */
+  getStudentGrades: async (filters?: GradeViewFilters): Promise<StudentGradeDetail[]> => {
+    const response = await ApiService.get<StudentGradeDetail[]>("/teacher/grades/students", filters)
+    return response.data || []
+  },
+
+  /**
+   * Lấy thống kê theo môn học
+   */
+  getSubjectStats: async (): Promise<SubjectStats[]> => {
+    const response = await ApiService.get<SubjectStats[]>("/teacher/grades/subject-stats")
+    return response.data || []
+  },
+
+  /**
+   * Cập nhật điểm số của học sinh
+   */
+  updateStudentGrade: async (studentId: string, assessmentId: string, score: number): Promise<void> => {
+    await ApiService.put("/teacher/grades/students/update", {
+      studentId,
+      assessmentId,
+      score
+    })
+  },
+
+  // ===== Filter Options =====
+
+  /**
+   * Lấy danh sách lớp học active của giáo viên (cho dropdown filter)
+   * Sử dụng endpoint getClassByTeacherId
+   */
+  getTeacherActiveClasses: async (): Promise<any[]> => {
+    const response = await ApiService.get("/teacher/class-management/classes", {
+      status: 'active',
+      page: '1',
+      limit: '100'
+    })
+    return response.data || []
   }
 }
 
