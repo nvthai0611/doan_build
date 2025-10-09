@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useTeacherClassesQuery } from "./useTeacherClassesQuery"
 import { formatSchedule } from "../../../../../utils/format"
 import { useNavigate } from "react-router-dom"
+import { usePagination } from "../../../../../hooks/usePagination"
 
 // API Response interfaces
 interface ApiClassData {
@@ -59,10 +60,13 @@ interface ClassesInfoProps {
 function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: ClassesInfoProps) {
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [debouncedSearch, setDebouncedSearch] = useState(search)
-
+  // Pagination hook
+  const pagination = usePagination({
+    initialPage: 1,
+    initialItemsPerPage: 2,
+    totalItems: 0 
+  })
   console.log(teacherId);
   
   // Debounce search term để giảm số lần gọi API
@@ -70,21 +74,23 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     const timer = setTimeout(() => {
       setDebouncedSearch(search)
       // Reset về trang 1 khi search thay đổi
-      setCurrentPage(1)
+      pagination.setCurrentPage(1)
     }, 500) // Delay 500ms
 
     return () => clearTimeout(timer)
   }, [search]) // Chỉ depend vào search, không depend vào debouncedSearch
   
   // Gọi API chỉ với status và pagination, không có search
-  const { data, isLoading, isError, refetch } = useTeacherClassesQuery({
+  const { data: teacherClassesData, isLoading, isError, refetch } = useTeacherClassesQuery({
     teacherId: teacherId,
     status: activeTab,
     search: '', // Không gửi search lên API
-    page: currentPage,
-    limit: itemsPerPage
+    page: pagination.currentPage,
+    limit: pagination.itemsPerPage
   })
   
+  console.log(teacherClassesData);
+
  
 
   const formatDate = (dateString: string): string => {
@@ -108,9 +114,9 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
 
   // Transform API data to table format
   const transformedData = useMemo(() => {
-    if (!data?.data || !Array.isArray(data.data)) return []
+    if (!teacherClassesData?.data || !Array.isArray(teacherClassesData.data)) return []
     
-    let filteredData = data.data
+    let filteredData = teacherClassesData.data
 
     // Filter by status tab
     if (activeTab !== 'all') {
@@ -148,16 +154,16 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
       late: 0,
       absent: 0
     }))
-  }, [data, activeTab, debouncedSearch])
+  }, [teacherClassesData, activeTab, debouncedSearch])
   // Tab counts based on actual data (before filtering)
   const tabCounts = useMemo(() => {
-    if (!data?.data || !Array.isArray(data.data)) return { all: 0, teaching: 0, stopped: 0 }
-    
-    const all = data.data.length
-    const teaching = data.data.filter((item: ApiClassData) => item.status === 'active').length
-    const stopped = data.data.filter((item: ApiClassData) => item.status === 'inactive').length
+    if (!teacherClassesData?.data || !Array.isArray(teacherClassesData.data)) return { all: 0, teaching: 0, stopped: 0 }
+    console.log(teacherClassesData.data);
+    const all = teacherClassesData.data.length
+      const teaching = teacherClassesData.data.filter((item: ApiClassData) => item.status === 'active').length
+    const stopped = teacherClassesData.data.filter((item: ApiClassData) => item.status === 'inactive').length
     return { all, teaching, stopped }
-  }, [data])
+  }, [teacherClassesData])
 
   // Filtered counts for display
   const filteredCounts = useMemo(() => {
@@ -170,12 +176,12 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   // Reset page when search or tab changes
   const handleTabChange = (tab: "all" | "teaching" | "stopped") => {
     setActiveTab(tab)
-    setCurrentPage(1)
+    pagination.setCurrentPage(1)
   }
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    setCurrentPage(1)
+    pagination.setCurrentPage(1)
   }
 
   const handleViewClass = (classId: string) => {
@@ -319,21 +325,23 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         </div>
       </div>
 
-     
-   
         <DataTable
           data={transformedData}
           columns={columns}
           rowKey="id"
+          loading={isLoading}
+          error={isError ? "Có lỗi xảy ra khi tải dữ liệu" : null}
+          onRetry={refetch}
+          emptyMessage="Không có dữ liệu lớp học"
           hoverable={true}
           pagination={{
-            currentPage: 1, // Always show page 1 for filtered data
-            totalPages: 1, // No pagination for filtered data
+            currentPage: pagination.currentPage, // Always show page 1 for filtered data
+            totalPages: pagination.totalPages, // No pagination for filtered data
             totalItems: transformedData.length,
             itemsPerPage: transformedData.length,
-            onPageChange: () => {}, // Disabled for filtered data
+            onPageChange: pagination.setCurrentPage, // Disabled for filtered data
             onItemsPerPageChange: () => {}, // Disabled for filtered data
-            showItemsPerPage: false,
+            showItemsPerPage: true,
             showPageInfo: true,
           }}
         />

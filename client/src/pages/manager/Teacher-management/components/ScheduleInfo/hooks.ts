@@ -5,8 +5,6 @@ import { getMockSessions } from "./utils"
 
 // Hook để gọi API lịch dạy
 export const useTeachingSessions = (teacherId: string, year: number, month: number): UseTeachingSessionsReturn => {
-  console.log(year, month);
-  
   const [sessions, setSessions] = useState<TeachingSession[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

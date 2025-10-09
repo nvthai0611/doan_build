@@ -19,8 +19,7 @@ export const useTeacherClassesQuery = ({
   return useQuery({
     queryKey: ['teacher-classes', teacherId, status, search, page, limit],
     queryFn: async () => {
-      const response = await classService.getTeacherClasses({
-        teacherId,
+      const response = await classService.getClassByTeacherId(teacherId, {
         status,
         search,
         page,   
@@ -28,8 +27,6 @@ export const useTeacherClassesQuery = ({
       })
       return response
     },
-    enabled: !!teacherId,
-    staleTime: 30000, // Cache 30 giây
     refetchOnWindowFocus: true, // Không gọi lại khi focus window
     refetchOnMount: true, // Không gọi lại khi mount
   })
