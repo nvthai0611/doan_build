@@ -49,4 +49,9 @@ export class CreateTeacherDto {
 
   // contractImage sẽ được xử lý riêng trong service (File hoặc string)
   contractImage?: any;
+
+  // contractImageUrl từ Excel import hoặc từ Cloudinary
+  @IsOptional()
+  @IsString()
+  contractImageUrl?: string;
 }

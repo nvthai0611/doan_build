@@ -2,21 +2,22 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
+import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
-import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
+import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
-import ScoreInputPage from "../pages/Teacher/PointManagement/Score_input";
-import ViewStudentPage from "../pages/Teacher/PointManagement/Score_view";
+import ScoreInputPage from "../pages/teacher/PointManagement/Score_input";
+import ViewStudentPage from "../pages/teacher/PointManagement/Score_view";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
-import { ClassDetailsPage } from "../pages/Teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule";
+import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
+import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
-import AttendanceTable from "../pages/Teacher/Attendance-Manage/Attendance-Table";
-import LeaveRequestPage from "../pages/Teacher/LeaveRequest/LeaveRequestPage";
+import ClassManagement from "../pages/manager/Class-management/ClassManagement";
+import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
+import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 
 export const privateRoutes = (
   <>
@@ -30,6 +31,7 @@ export const privateRoutes = (
       <Route path="/center-qn" element={<AuthMiddleware allowedRoles={['center_owner']} />}>
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
+        <Route path="classes" element={<ClassManagement />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
@@ -45,9 +47,10 @@ export const privateRoutes = (
         <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
+        <Route path="attendance" element={<AttendanceTable />} />
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
-        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
+        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable  />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
       </Route>
 

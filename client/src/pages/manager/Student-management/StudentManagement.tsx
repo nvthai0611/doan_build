@@ -34,6 +34,7 @@ import {
   ChevronRightIcon,
 } from "lucide-react"
 import type { Student, Tab, FilterState } from "./types/student"
+import { toast } from "sonner"
 
 // Mock data for students
 const students: Student[] = [
@@ -258,12 +259,11 @@ export default function StudentManagement() {
   const handleCopyCode = (code: string): void => {
     navigator.clipboard.writeText(code)
     alert(`Đã sao chép mã: ${code}`)
-    console.log(`[v0] Copied code: ${code}`)
+    console.log(`Copied code: ${code}`)
   }
 
   const handleDownloadTemplate = (): void => {
     alert("Đang tải xuống mẫu học viên...")
-    console.log("[v0] Downloading student template")
   }
 
   const handleUploadFile = (): void => {
@@ -274,7 +274,7 @@ export default function StudentManagement() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
         alert(`Đang tải lên file: ${file.name}`)
-        console.log(`[v0] Uploading file: ${file.name}`)
+        console.log(`Uploading file: ${file.name}`)
       }
     }
     input.click()
@@ -285,24 +285,23 @@ export default function StudentManagement() {
     setSelectedCourse("Tất cả khóa học")
     setFilterState({})
     setAdvancedFilters({})
-    setCurrentPage(1)
-    alert("Đã làm mới dữ liệu")
-    console.log("[v0] Refreshed page data")
+    setCurrentPage(1) 
+    toast.success("Đã làm mới dữ liệu")
   }
 
   const handleDownloadAll = (): void => {
     alert("Đang tải xuống tất cả dữ liệu học viên...")
-    console.log("[v0] Downloading all student data")
+    console.log("Downloading all student data")
   }
 
   const handleInviteStudent = (): void => {
     alert("Mở form mời học viên...")
-    console.log("[v0] Opening invite student form")
+    console.log("Opening invite student form")
   }
 
   const handleAddStudent = (): void => {
     alert("Mở form thêm học viên mới...")
-    console.log("[v0] Opening add student form")
+    console.log("Opening add student form")
   }
 
   const handlePageChange = (page: number): void => {
@@ -316,7 +315,7 @@ export default function StudentManagement() {
 
   const handleAdvancedFilterChange = (filters: FilterOptions) => {
     setAdvancedFilters(filters)
-    console.log("[v0] Advanced filters changed:", filters)
+    console.log("Advanced filters changed:", filters)
   }
 
   const handleToggleFilter = () => {

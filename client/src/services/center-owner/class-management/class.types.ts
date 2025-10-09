@@ -1,40 +1,72 @@
+export interface ClassType {
+    id: string;
+    name: string;
+    subjectId: string;
+    subjectName: string;
+    grade: string;
+    status: 'draft' | 'active' | 'completed' | 'deleted';
+    maxStudents: number;
+    currentStudents: number;
+    roomId?: string;
+    roomName?: string;
+    description?: string;
+    feeStructureId?: string;
+    teachers: TeacherAssignment[];
+    createdAt: Date;
+    updatedAt: Date;
+}
 
-export interface Class {
-    id: number
-    name: string
-    subject: string
-    students: number
-    schedule: string
-    status: 'active' | 'completed' | 'pending'
-    startDate: string
-    endDate: string
-    room: string
-    description: string
-    teacherId?: string
-  }
-  
-  export interface ClassStats {
-    totalClasses: number
-    totalStudents: number
-    activeClasses: number
-    completedClasses: number
-    pendingClasses: number
-  }
-  
-  export interface GetClassesParams {
-    teacherId: string
-    status?: string
-    search?: string
-    page?: number
-    limit?: number
-  }
-  
-  export interface GetClassesResponse {
-    classes: Class[]
-    stats: ClassStats
-    total: number
-    page: number
-    limit: number
-    totalPages: number
-  } 
+export interface TeacherAssignment {
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    assignmentId: string;
+    startDate: Date;
+    endDate?: Date;
+    semester: string;
+    academicYear: string;
+}
 
+export interface ClassFilters {
+    status?: string;
+    grade?: string;
+    subjectId?: string;
+    teacherId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface CreateClassData {
+    name: string;
+    subjectId: string;
+    grade?: string;
+    maxStudents?: number;
+    roomId?: string;
+    feeStructureId?: string;
+    description?: string;
+    status?: string;
+}
+
+export interface UpdateClassData extends Partial<CreateClassData> {}
+
+export interface AssignTeacherData {
+    teacherId: string;
+    semester: string;
+    academicYear: string;
+    startDate: string;
+    endDate?: string;
+    recurringSchedule?: any;
+    maxStudents?: number;
+    notes?: string;
+}
+
+export interface ClassStats {
+    totalStudents: number;
+    activeStudents: number;
+    completedStudents: number;
+    withdrawnStudents: number;
+    maxStudents: number;
+    availableSlots: number | null;
+}
