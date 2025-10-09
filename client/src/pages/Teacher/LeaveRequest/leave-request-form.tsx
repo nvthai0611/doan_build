@@ -26,6 +26,7 @@ import { ConfirmationModal } from './confirmation-modal';
 import { Calendar, Upload, X, FileText } from 'lucide-react';
 import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
 import { teacherCommonService } from '../../../services/teacher/common/common.service';
+import Loading from '../../../components/Loading/LoadingPage';
 
 export interface AffectedSession {
   id: string;
@@ -52,6 +53,7 @@ export function LeaveRequestForm() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isAffectedSessionsLoading, setIsAffectedSessionsLoading] = useState(false);
 
   useEffect(() => {
     const fetchTeacherInfo = async () => {
@@ -69,6 +71,7 @@ export function LeaveRequestForm() {
         return;
       }
       try {
+        setIsAffectedSessionsLoading(true);
         const data = await teacherLeaveRequestService.getAffectedSessions({ startDate, endDate });
         if (!isCancelled) {
           setAffectedSessions(data as AffectedSession[]);
@@ -77,7 +80,9 @@ export function LeaveRequestForm() {
         if (!isCancelled) {
           setAffectedSessions([]);
           console.error('Failed to load affected sessions', err);
-        }
+        } 
+      } finally {
+        setIsAffectedSessionsLoading(false);
       }
     };
     fetchAffected();
@@ -237,6 +242,7 @@ export function LeaveRequestForm() {
                             id="startDate"
                             type="date"
                             value={startDate}
+                            min={new Date().toISOString().split('T')[0]}
                             onChange={(e) => setStartDate(e.target.value)}
                             className="border"
                           />
@@ -253,6 +259,7 @@ export function LeaveRequestForm() {
                             id="endDate"
                             type="date"
                             value={endDate}
+                            min={startDate || new Date().toISOString().split('T')[0]}
                             onChange={(e) => setEndDate(e.target.value)}
                             className="border"
                           />
@@ -379,7 +386,9 @@ export function LeaveRequestForm() {
                 </CardHeader>
 
                 <CardContent className="p-6">
-                  {affectedSessions.length > 0 ? (
+                  {isAffectedSessionsLoading ? (
+                    <Loading />
+                  ) : affectedSessions.length > 0 ? (
                     <div className="space-y-4">
                       <AffectedSessionsTable
                         sessions={affectedSessions}

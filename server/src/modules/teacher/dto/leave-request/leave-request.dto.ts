@@ -60,3 +60,49 @@ export class AffectedSessionItemDto {
   @ApiPropertyOptional({ description: 'ID giáo viên dạy thay (nếu có)' })
   replacementTeacherId?: string;
 }
+
+export class ReplacementTeachersQueryDto {
+  @ApiProperty({ description: 'ID buổi học', example: 'uuid-string' })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @ApiProperty({ description: 'Ngày học (YYYY-MM-DD)', example: '2025-10-10' })
+  @IsDateString()
+  @IsNotEmpty()
+  date: string;
+
+  @ApiProperty({ description: 'Khung giờ (HH:MM-HH:MM)', example: '08:00-10:00' })
+  @IsString()
+  @IsNotEmpty()
+  time: string;
+}
+
+export class ReplacementTeacherDto {
+  @ApiProperty({ description: 'ID giáo viên' })
+  id: string;
+
+  @ApiProperty({ description: 'Họ và tên giáo viên' })
+  fullName: string;
+
+  @ApiProperty({ description: 'Email giáo viên' })
+  email: string;
+
+  @ApiPropertyOptional({ description: 'Số điện thoại' })
+  phone?: string;
+
+  @ApiProperty({ description: 'Các môn học có thể dạy', type: [String] })
+  subjects: string[];
+
+  @ApiProperty({ description: 'Mức độ phù hợp (1-5)', example: 4 })
+  compatibilityScore: number;
+
+  @ApiProperty({ description: 'Lý do phù hợp', example: 'Cùng dạy môn Toán, có kinh nghiệm lớp 12' })
+  compatibilityReason: string;
+
+  @ApiProperty({ description: 'Có sẵn sàng dạy thay không', example: true })
+  isAvailable: boolean;
+
+  @ApiPropertyOptional({ description: 'Ghi chú về lịch trình', example: 'Có thể dạy thay vào buổi sáng' })
+  availabilityNote?: string;
+}

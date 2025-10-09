@@ -13,3 +13,21 @@ export interface AffectedSessionsParams {
   endDate: string
 }
 
+export interface ReplacementTeacher {
+  id: string
+  fullName: string
+  email: string
+  phone?: string
+  subjects: string[]
+  compatibilityScore: number
+  compatibilityReason: string
+  isAvailable: boolean
+  availabilityNote?: string
+}
+
+export interface ReplacementTeachersParams {
+  sessionId: string
+  date: string
+  time: string
+}
+

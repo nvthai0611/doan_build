@@ -1,7 +1,7 @@
 import { Controller, Get, HttpException, HttpStatus, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LeaveRequestService } from '../services/leave-request.service';
-import { AffectedSessionsQueryDto, AffectedSessionItemDto } from '../dto/leave-request/leave-request.dto';
+import { AffectedSessionsQueryDto, AffectedSessionItemDto, ReplacementTeachersQueryDto, ReplacementTeacherDto } from '../dto/leave-request/leave-request.dto';
 
 @ApiTags('Teacher - Leave Requests')
 @Controller('leave-request')
@@ -28,6 +28,51 @@ export class LeaveRequestController {
         {
           success: false,
           message: 'Có lỗi xảy ra khi lấy danh sách buổi học bị ảnh hưởng bởi khoảng thời gian nghỉ',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('replacement-teachers')
+  @ApiOperation({ 
+    summary: 'Lấy danh sách giáo viên có thể thay thế cho buổi học',
+    description: 'API lấy danh sách giáo viên có thể dạy thay cho một buổi học cụ thể'
+  })
+  @ApiQuery({ name: 'sessionId', required: true, description: 'ID buổi học' })
+  @ApiQuery({ name: 'date', required: true, description: 'Ngày học (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'time', required: true, description: 'Khung giờ (HH:MM-HH:MM)' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Danh sách giáo viên thay thế', 
+    type: ReplacementTeacherDto, 
+    isArray: true 
+  })
+  @ApiResponse({ status: 400, description: 'Thiếu hoặc sai tham số' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy buổi học' })
+  async getReplacementTeachers(
+    @Req() req: any, 
+    @Query() query: ReplacementTeachersQueryDto
+  ) {
+    try {
+      const teacherId = req.user?.teacherId;
+      const data = await this.leaveRequestService.getReplacementTeachers(
+        teacherId, 
+        query.sessionId, 
+        query.date, 
+        query.time
+      );
+      return {
+        success: true,
+        data: data,
+        message: 'Lấy danh sách giáo viên thay thế thành công',
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách giáo viên thay thế',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
