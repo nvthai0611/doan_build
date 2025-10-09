@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -9,115 +10,99 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Search, TrendingUp, TrendingDown, Minus, BarChart3, Users, BookOpen } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  BarChart3,
+  Users,
+  BookOpen,
+  LineChart,
+  Edit,
+  Save,
+  X,
+  Loader2,
+  AlertCircle,
+} from "lucide-react"
+import { teacherPointService } from "../../../services/teacher/point-management/point.service"
+import type { StudentGradeDetail, SubjectStats, GradeViewFilters, GradeEntry } from "../../../services/teacher/point-management/point.types"
+import LoadingPage from "../../../components/Loading/LoadingPage"
 
-const mockGrades = [
-  {
-    id: 1,
-    studentId: 1,
-    studentName: "Nguyễn Văn An",
-    studentCode: "HS001",
-    avatar: "/diverse-avatars.png",
-    subject: "Toán",
-    class: "10A",
-    grades: [
-      { type: "Kiểm tra 15 phút", score: 8.5, date: "2024-09-15", weight: 1 },
-      { type: "Kiểm tra giữa kỳ", score: 9.0, date: "2024-10-15", weight: 2 },
-      { type: "Kiểm tra cuối kỳ", score: 8.0, date: "2024-11-20", weight: 3 },
-    ],
-    average: 8.4,
-    trend: "up",
-  },
-  {
-    id: 2,
-    studentId: 2,
-    studentName: "Trần Thị Bình",
-    studentCode: "HS002",
-    avatar: "/diverse-avatars.png",
-    subject: "Toán",
-    class: "10A",
-    grades: [
-      { type: "Kiểm tra 15 phút", score: 9.5, date: "2024-09-15", weight: 1 },
-      { type: "Kiểm tra giữa kỳ", score: 9.0, date: "2024-10-15", weight: 2 },
-      { type: "Kiểm tra cuối kỳ", score: 9.5, date: "2024-11-20", weight: 3 },
-    ],
-    average: 9.2,
-    trend: "up",
-  },
-  {
-    id: 3,
-    studentId: 3,
-    studentName: "Lê Văn Cường",
-    studentCode: "HS003",
-    avatar: "/diverse-avatars.png",
-    subject: "Hóa",
-    class: "11A",
-    grades: [
-      { type: "Kiểm tra 15 phút", score: 7.0, date: "2024-09-15", weight: 1 },
-      { type: "Kiểm tra giữa kỳ", score: 7.5, date: "2024-10-15", weight: 2 },
-      { type: "Kiểm tra cuối kỳ", score: 6.5, date: "2024-11-20", weight: 3 },
-    ],
-    average: 7.0,
-    trend: "down",
-  },
-  {
-    id: 4,
-    studentId: 4,
-    studentName: "Phạm Thị Dung",
-    studentCode: "HS004",
-    avatar: "/diverse-avatars.png",
-    subject: "Văn",
-    class: "12A",
-    grades: [
-      { type: "Kiểm tra 15 phút", score: 8.0, date: "2024-09-15", weight: 1 },
-      { type: "Kiểm tra giữa kỳ", score: 9.0, date: "2024-10-15", weight: 2 },
-      { type: "Kiểm tra cuối kỳ", score: 8.5, date: "2024-11-20", weight: 3 },
-    ],
-    average: 8.5,
-    trend: "up",
-  },
-  {
-    id: 5,
-    studentId: 5,
-    studentName: "Hoàng Văn Em",
-    studentCode: "HS005",
-    avatar: "/diverse-avatars.png",
-    subject: "Anh",
-    class: "11B",
-    grades: [
-      { type: "Kiểm tra 15 phút", score: 6.0, date: "2024-09-15", weight: 1 },
-      { type: "Kiểm tra giữa kỳ", score: 6.5, date: "2024-10-15", weight: 2 },
-      { type: "Kiểm tra cuối kỳ", score: 7.0, date: "2024-11-20", weight: 3 },
-    ],
-    average: 6.5,
-    trend: "up",
-  },
-]
-
-const subjectStats = [
-  { subject: "Toán", totalStudents: 45, averageGrade: 8.2, passRate: 92 },
-  { subject: "Lý", totalStudents: 38, averageGrade: 7.8, passRate: 87 },
-  { subject: "Hóa", totalStudents: 32, averageGrade: 7.5, passRate: 84 },
-  { subject: "Văn", totalStudents: 50, averageGrade: 8.0, passRate: 90 },
-  { subject: "Anh", totalStudents: 42, averageGrade: 7.3, passRate: 81 },
-]
+// Mock data đã được thay thế bằng API calls
 
 export default function StudentGradesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
-  const [grades] = useState(mockGrades)
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [detailStudent, setDetailStudent] = useState<StudentGradeDetail | null>(null)
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null)
+  const [editedScore, setEditedScore] = useState<number>(0)
+  const [testTypeFilter, setTestTypeFilter] = useState("all")
 
-  const filteredGrades = grades.filter((grade) => {
-    const matchesSearch =
-      grade.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grade.studentCode.toLowerCase().includes(searchTerm.toLowerCase())
+  // Tạo filters object cho API
+  const filters: GradeViewFilters = {
+    searchTerm: searchTerm || undefined,
+    subjectFilter: subjectFilter !== "all" ? subjectFilter : undefined,
+    classFilter: classFilter !== "all" ? classFilter : undefined,
+    testTypeFilter: testTypeFilter !== "all" ? testTypeFilter : undefined,
+  }
 
-    const matchesSubject = subjectFilter === "all" || grade.subject === subjectFilter
-    const matchesClass = classFilter === "all" || grade.class === classFilter
-
-    return matchesSearch && matchesSubject && matchesClass
+  // Fetch danh sách lớp học của giáo viên (sử dụng service)
+  const { 
+    data: teacherClasses 
+  } = useQuery({
+    queryKey: ['teacherActiveClasses'],
+    queryFn: () => teacherPointService.getTeacherActiveClasses(),
+    staleTime: 30000, // 5 minutes
+    refetchOnWindowFocus: false
   })
+
+  // Fetch data từ API
+  const { 
+    data: gradeViewData, 
+    isLoading, 
+    isError, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['gradeViewData', filters],
+    queryFn: () => teacherPointService.getGradeViewData(filters),
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false
+  })
+
+  const grades = gradeViewData?.students || []
+  const subjectStats = gradeViewData?.subjectStats || []
+  const totalStudents = gradeViewData?.totalStudents || 0
+  const overallAverage = gradeViewData?.overallAverage || 0
+  const passRate = gradeViewData?.passRate || 0
+  
+  // Extract classes từ service response
+  const classes = teacherClasses || []
+  
+  // Extract unique subjects từ các lớp của giáo viên
+  // subject có thể là string hoặc object {id, code, name, description}
+  const subjectsMap = new Map()
+  classes.forEach((cls: any) => {
+    if (cls.subject) {
+      // Nếu subject là object, lấy name; nếu là string thì giữ nguyên
+      const subjectName = typeof cls.subject === 'string' ? cls.subject : cls.subject.name
+      const subjectId = typeof cls.subject === 'string' ? cls.subject : cls.subject.id
+      
+      if (!subjectsMap.has(subjectId)) {
+        subjectsMap.set(subjectId, {
+          id: subjectId,
+          name: subjectName
+        })
+      }
+    }
+  })
+  const subjects = Array.from(subjectsMap.values())
 
   const getGradeColor = (score: number) => {
     if (score >= 8) return "text-green-600"
@@ -134,15 +119,123 @@ export default function StudentGradesPage() {
     return { label: "Kém", variant: "destructive" as const }
   }
 
-  const getTrendIcon = (trend: string) => {
+  const getTrendIcon = (trend: string, value?: number) => {
     switch (trend) {
       case "up":
-        return <TrendingUp className="w-4 h-4 text-green-600" />
+        return (
+          <div className="flex items-center gap-1 text-green-600">
+            <TrendingUp className="w-4 h-4" />
+            {value && <span className="text-xs">+{value}</span>}
+          </div>
+        )
       case "down":
-        return <TrendingDown className="w-4 h-4 text-red-600" />
+        return (
+          <div className="flex items-center gap-1 text-red-600">
+            <TrendingDown className="w-4 h-4" />
+            {value && <span className="text-xs">{value}</span>}
+          </div>
+        )
       default:
-        return <Minus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+        return <Minus className="w-4 h-4 text-gray-600" />
     }
+  }
+
+  const openDetailDialog = (grade: StudentGradeDetail) => {
+    setDetailStudent(grade)
+    setDetailDialogOpen(true)
+    setEditingRowIndex(null)
+    setTestTypeFilter("all")
+  }
+
+  const handleEditRow = (index: number, currentScore: number) => {
+    setEditingRowIndex(index)
+    setEditedScore(currentScore)
+  }
+
+  const handleSaveRow = async (index: number) => {
+    if (detailStudent && editedScore >= 0 && editedScore <= 10) {
+      try {
+        const gradeToUpdate = detailStudent.grades[index] as GradeEntry
+        // Tìm assessmentId từ grade data
+        const assessmentId = gradeToUpdate.assessmentId || gradeToUpdate.testName
+        
+        await teacherPointService.updateStudentGrade(
+          detailStudent.studentId,
+          assessmentId,
+          editedScore
+        )
+
+        // Cập nhật local state
+        const updatedGrades = [...detailStudent.grades]
+        updatedGrades[index] = { ...updatedGrades[index], score: editedScore }
+
+        const totalWeight = updatedGrades.reduce((sum, g) => sum + (g as GradeEntry).weight, 0)
+        const weightedSum = updatedGrades.reduce((sum, g) => sum + ((g as GradeEntry).score || 0) * (g as GradeEntry).weight, 0)
+        const newAverage = Number.parseFloat((weightedSum / totalWeight).toFixed(1))
+
+        const updatedStudent = {
+          ...detailStudent,
+          grades: updatedGrades,
+          average: newAverage,
+        }
+        setDetailStudent(updatedStudent)
+        setEditingRowIndex(null)
+
+        // Refetch data để đồng bộ với server
+        refetch()
+
+        console.log("[v0] Saved updated grade for row:", index, "New score:", editedScore)
+      } catch (error) {
+        console.error("Error updating grade:", error)
+        // Có thể thêm toast notification ở đây
+      }
+    }
+  }
+
+  const handleCancelRow = () => {
+    setEditingRowIndex(null)
+  }
+
+  const getFilteredDetailGrades = () => {
+    if (!detailStudent) return []
+    if (testTypeFilter === "all") return detailStudent.grades
+    return detailStudent.grades.filter((g: any) => g.type === testTypeFilter)
+  }
+
+  const getTestTypes = () => {
+    if (!detailStudent) return []
+    const types = new Set(detailStudent.grades.map((g: any) => g.type))
+    return Array.from(types)
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance">Điểm số học sinh</h1>
+            <p className="text-muted-foreground">Theo dõi và phân tích kết quả học tập với xu hướng chi tiết</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Có lỗi xảy ra</h3>
+                <p className="text-muted-foreground mb-4">
+                  {error?.message || "Không thể tải dữ liệu điểm số"}
+                </p>
+                <Button onClick={() => refetch()} variant="outline">
+                  Thử lại
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -150,7 +243,7 @@ export default function StudentGradesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-balance">Điểm số học sinh</h1>
-            <p className="text-muted-foreground">Theo dõi và phân tích kết quả học tập</p>
+            <p className="text-muted-foreground">Theo dõi và phân tích kết quả học tập với xu hướng chi tiết</p>
           </div>
         </div>
 
@@ -161,7 +254,6 @@ export default function StudentGradesPage() {
           </TabsList>
 
           <TabsContent value="grades" className="space-y-6">
-            {/* Filters */}
             <Card>
               <CardHeader>
                 <CardTitle>Tìm kiếm và lọc</CardTitle>
@@ -182,11 +274,11 @@ export default function StudentGradesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả môn</SelectItem>
-                        <SelectItem value="Toán">Toán</SelectItem>
-                        <SelectItem value="Lý">Lý</SelectItem>
-                        <SelectItem value="Hóa">Hóa</SelectItem>
-                        <SelectItem value="Văn">Văn</SelectItem>
-                        <SelectItem value="Anh">Anh</SelectItem>
+                        {subjects.map((subject: any) => (
+                          <SelectItem key={subject.id} value={subject.name}>
+                            {subject.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Select value={classFilter} onValueChange={setClassFilter}>
@@ -195,11 +287,11 @@ export default function StudentGradesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả lớp</SelectItem>
-                        <SelectItem value="10A">Lớp 10A</SelectItem>
-                        <SelectItem value="10B">Lớp 10B</SelectItem>
-                        <SelectItem value="11A">Lớp 11A</SelectItem>
-                        <SelectItem value="11B">Lớp 11B</SelectItem>
-                        <SelectItem value="12A">Lớp 12A</SelectItem>
+                        {classes.map((cls: any) => (
+                          <SelectItem key={cls.id} value={cls.name}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -207,7 +299,7 @@ export default function StudentGradesPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-sm text-muted-foreground mb-4">
-                  Hiển thị {filteredGrades.length} / {grades.length} bản ghi điểm
+                  Hiển thị {grades.length} bản ghi điểm
                 </div>
                 <Table>
                   <TableHeader>
@@ -217,11 +309,10 @@ export default function StudentGradesPage() {
                       <TableHead>Điểm chi tiết</TableHead>
                       <TableHead>Điểm TB</TableHead>
                       <TableHead>Xếp loại</TableHead>
-                      <TableHead>Xu hướng</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredGrades.map((grade) => {
+                    {grades.map((grade: StudentGradeDetail) => {
                       const classification = getGradeClassification(grade.average)
                       return (
                         <TableRow key={grade.id}>
@@ -232,7 +323,7 @@ export default function StudentGradesPage() {
                                 <AvatarFallback>
                                   {grade.studentName
                                     .split(" ")
-                                    .map((n) => n[0])
+                                    .map((n: string) => n[0])
                                     .join("")}
                                 </AvatarFallback>
                               </Avatar>
@@ -249,28 +340,15 @@ export default function StudentGradesPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-1">
-                              {grade.grades.map((g, index) => (
-                                <div key={index} className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-foreground">{g.type}:</span>
-                                  <span className={`font-medium ${getGradeColor(g.score)}`}>{g.score}</span>
-                                </div>
-                              ))}
-                            </div>
+                            <Button variant="outline" size="sm" onClick={() => openDetailDialog(grade)}>
+                              Detail
+                            </Button>
                           </TableCell>
                           <TableCell>
                             <div className={`text-lg font-bold ${getGradeColor(grade.average)}`}>{grade.average}</div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={classification.variant}>{classification.label}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getTrendIcon(grade.trend)}
-                              <span className="text-sm text-muted-foreground">
-                                {grade.trend === "up" ? "Tăng" : grade.trend === "down" ? "Giảm" : "Ổn định"}
-                              </span>
-                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -282,7 +360,6 @@ export default function StudentGradesPage() {
           </TabsContent>
 
           <TabsContent value="statistics" className="space-y-6">
-            {/* Subject Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -290,7 +367,7 @@ export default function StudentGradesPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{grades.length}</div>
+                  <div className="text-2xl font-bold">{totalStudents}</div>
                   <p className="text-xs text-muted-foreground">Có điểm số</p>
                 </CardContent>
               </Card>
@@ -301,7 +378,7 @@ export default function StudentGradesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {(grades.reduce((sum, g) => sum + g.average, 0) / grades.length).toFixed(1)}
+                    {overallAverage.toFixed(1)}
                   </div>
                   <p className="text-xs text-muted-foreground">Trên tất cả môn học</p>
                 </CardContent>
@@ -313,14 +390,13 @@ export default function StudentGradesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {Math.round((grades.filter((g) => g.average >= 5).length / grades.length) * 100)}%
+                    {passRate}%
                   </div>
                   <p className="text-xs text-muted-foreground">Điểm ≥ 5.0</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Subject Performance */}
             <Card>
               <CardHeader>
                 <CardTitle>Thống kê theo môn học</CardTitle>
@@ -328,28 +404,39 @@ export default function StudentGradesPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {subjectStats.map((stat) => (
-                    <div key={stat.subject} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline">{stat.subject}</Badge>
-                          <span className="text-sm text-muted-foreground">{stat.totalStudents} học sinh</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm font-medium">Điểm TB: {stat.averageGrade}</div>
-                            <div className="text-xs text-muted-foreground">Tỷ lệ đạt: {stat.passRate}%</div>
+                  {subjectStats.length > 0 ? (
+                    subjectStats.map((stat: SubjectStats) => (
+                      <div key={stat.subject} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline">{stat.subject}</Badge>
+                            <span className="text-sm text-muted-foreground">{stat.totalStudents} học sinh</span>
+                          </div>
+                          <div className="flex-1">
+                            <Progress value={stat.passRate} className="h-2" />
                           </div>
                         </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Kỳ trước: {stat.previousAverage}</span>
+                          <span className={`font-medium ${getGradeColor(stat.averageGrade)}`}>
+                            Hiện tại: {stat.averageGrade}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Tỷ lệ đạt: {stat.passRate}%
+                          {stat.trend === "up" ? " (↗️ Cải thiện)" : stat.trend === "down" ? " (↘️ Giảm)" : " (→ Ổn định)"}
+                        </div>
                       </div>
-                      <Progress value={stat.passRate} className="h-2" />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Chưa có dữ liệu thống kê môn học
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Grade Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle>Phân bố điểm số</CardTitle>
@@ -361,34 +448,34 @@ export default function StudentGradesPage() {
                     {
                       label: "Giỏi",
                       range: "≥ 9.0",
-                      count: grades.filter((g) => g.average >= 9).length,
+                      count: grades.filter((g: StudentGradeDetail) => g.average >= 9).length,
                       color: "bg-green-100 text-green-800",
                     },
                     {
                       label: "Khá",
                       range: "8.0-8.9",
-                      count: grades.filter((g) => g.average >= 8 && g.average < 9).length,
+                      count: grades.filter((g: StudentGradeDetail) => g.average >= 8 && g.average < 9).length,
                       color: "bg-blue-100 text-blue-800",
                     },
                     {
                       label: "TB",
                       range: "6.5-7.9",
-                      count: grades.filter((g) => g.average >= 6.5 && g.average < 8).length,
+                      count: grades.filter((g: StudentGradeDetail) => g.average >= 6.5 && g.average < 8).length,
                       color: "bg-yellow-100 text-yellow-800",
                     },
                     {
                       label: "Yếu",
                       range: "5.0-6.4",
-                      count: grades.filter((g) => g.average >= 5 && g.average < 6.5).length,
+                      count: grades.filter((g: StudentGradeDetail) => g.average >= 5 && g.average < 6.5).length,
                       color: "bg-orange-100 text-orange-800",
                     },
                     {
                       label: "Kém",
                       range: "< 5.0",
-                      count: grades.filter((g) => g.average < 5).length,
+                      count: grades.filter((g: StudentGradeDetail) => g.average < 5).length,
                       color: "bg-red-100 text-red-800",
                     },
-                  ].map((item) => (
+                  ].map((item: any) => (
                     <Card key={item.label}>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold">{item.count}</div>
@@ -402,6 +489,146 @@ export default function StudentGradesPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Chi tiết điểm số học sinh</DialogTitle>
+              <DialogDescription>Xem thông tin chi tiết và phân tích xu hướng học tập</DialogDescription>
+            </DialogHeader>
+
+            {detailStudent && (
+              <div className="space-y-6 mt-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-16 h-16">
+                        <AvatarImage src={detailStudent.avatar || "/placeholder.svg"} />
+                        <AvatarFallback>
+                          {detailStudent.studentName
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold">{detailStudent.studentName}</h3>
+                        <p className="text-muted-foreground">
+                          {detailStudent.studentCode} • {detailStudent.subject} • Lớp {detailStudent.class}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-primary">{detailStudent.average}</div>
+                        <Badge variant={getGradeClassification(detailStudent.average).variant}>
+                          {getGradeClassification(detailStudent.average).label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Điểm chi tiết các bài kiểm tra</CardTitle>
+                        <CardDescription>Danh sách điểm số theo từng loại kiểm tra</CardDescription>
+                      </div>
+                      <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Lọc theo loại" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả loại kiểm tra</SelectItem>
+                          {getTestTypes().map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Loại kiểm tra</TableHead>
+                          <TableHead>Tên bài kiểm tra</TableHead>
+                          <TableHead>Ngày kiểm tra</TableHead>
+                          <TableHead className="text-right">Điểm số</TableHead>
+                          <TableHead className="text-right">Thao tác</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getFilteredDetailGrades().map((g: any, index: number) => {
+                          const isEditing = editingRowIndex === index
+                          return (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{g.type}</TableCell>
+                              <TableCell>{g.testName}</TableCell>
+                              <TableCell>{new Date(g.date).toLocaleDateString("vi-VN")}</TableCell>
+                              <TableCell className="text-right">
+                                {isEditing ? (
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    step="0.1"
+                                    value={editedScore}
+                                    onChange={(e) => setEditedScore(Number.parseFloat(e.target.value))}
+                                    className="w-20 ml-auto text-right"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span className={`text-lg font-bold ${getGradeColor(g.score)}`}>{g.score}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isEditing ? (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button onClick={() => handleSaveRow(index)} size="sm" variant="default">
+                                      <Save className="w-4 h-4" />
+                                    </Button>
+                                    <Button onClick={handleCancelRow} size="sm" variant="outline">
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    onClick={() => handleEditRow(index, g.score)}
+                                    size="sm"
+                                    variant="ghost"
+                                    className="gap-2"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                        {testTypeFilter === "all" && (
+                          <TableRow className="bg-muted/50">
+                            <TableCell colSpan={3} className="font-bold">
+                              Điểm trung bình
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={`text-xl font-bold ${getGradeColor(detailStudent.average)}`}>
+                                {detailStudent.average}
+                              </span>
+                            </TableCell>
+                            <TableCell />
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
   )
 }
