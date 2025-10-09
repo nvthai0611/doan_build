@@ -77,8 +77,9 @@ const centerOwnerMenuItems = [
     {
         title: "Lớp học & Khóa học",
         icon: BookOpen,
-        href: "/courses",
+        href: "/center-qn/classes",
         children: [
+            { title: "Quản lý lớp học", href: "/center-qn/classes" },
             { title: "Tạo khóa học mới", href: "/courses/create" },
             { title: "Quản lý khóa học", href: "/courses" },
             { title: "Thời khóa biểu", href: "/courses/timetable" },

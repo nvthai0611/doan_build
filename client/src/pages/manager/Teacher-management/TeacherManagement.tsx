@@ -34,9 +34,10 @@ import {
 } from "lucide-react"
 import type { Teacher, Tab, FilterState } from "./types/teacher"
 import { toast } from "sonner"
-import { centerOwnerTeacherService } from "../../../services/center-owner/teacher-management/teacher.service"
 import { DataTable, Column, PaginationConfig } from "../../../components/common/Table"
 import { usePagination } from "../../../hooks/usePagination"
+import ExcelImportDialog from "../../../components/common/ExcelImportDialog"
+import { centerOwnerTeacherService } from "../../../services/center-owner"
 
 
 export default function TeacherQnmsManagement() {
@@ -49,6 +50,7 @@ export default function TeacherQnmsManagement() {
   const [activeTab, setActiveTab] = useState<string>("all")
   const [collectData, setCollectData] = useState<boolean>(true)
   const [filterState, setFilterState] = useState<FilterState>({})
+  const [excelImportOpen, setExcelImportOpen] = useState<boolean>(false)
   
   // Pagination hook
   const pagination = usePagination({
@@ -175,7 +177,7 @@ export default function TeacherQnmsManagement() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      console.log("[v0] Downloaded employee template")
+      console.log("Downloaded teachers template")
     } catch (error) {
       console.error("Error downloading template:", error)
       alert("Có lỗi xảy ra khi tải xuống mẫu")
@@ -183,24 +185,12 @@ export default function TeacherQnmsManagement() {
   }
 
   const handleUploadFile = (): void => {
-    const input = document.createElement("input")
-    input.type = "file"
-    input.accept = ".xlsx,.xls,.csv"
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        try {
-          const result = await centerOwnerTeacherService.uploadTeachers(file)
-          alert(`Tải lên thành công: ${result.successCount} giáo viên, ${result.errorCount} lỗi`)
-          queryClient.invalidateQueries({ queryKey: ['teachers'] }) // Reload data
-          console.log(`[v0] Uploaded file: ${file.name}`)
-        } catch (error) {
-          console.error("Error uploading file:", error)
-          alert("Có lỗi xảy ra khi tải lên file")
-        }
-      }
-    }
-    input.click()
+    setExcelImportOpen(true)
+  }
+
+  const handleImportSuccess = (): void => {
+    queryClient.invalidateQueries({ queryKey: ['teachers'] })
+    setExcelImportOpen(false)
   }
 
   const handleRefreshPage = (): void => {
@@ -388,12 +378,12 @@ export default function TeacherQnmsManagement() {
             </Breadcrumb>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-transparent" onClick={handleInviteEmployee}>
-              Mời nhân viên
-            </Button>
-            <Button  onClick={handleAddEmployee}>
+          <Button  onClick={handleAddEmployee}>
               <Plus className="w-4 h-4 mr-2" />
-              Nhân viên
+              Giáo Viên
+            </Button>
+            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-transparent" onClick={handleInviteEmployee}>
+              Mời Giáo Viên
             </Button>
           </div>
         </div>
@@ -599,6 +589,15 @@ export default function TeacherQnmsManagement() {
           </div>
         </div>
       </div>
+
+      {/* Excel Import Dialog */}
+      <ExcelImportDialog
+        open={excelImportOpen}
+        onOpenChange={setExcelImportOpen}
+        onImportSuccess={handleImportSuccess}
+        downloadTemplate={handleDownloadTemplate}
+        uploadFile={centerOwnerTeacherService.uploadTeachers}
+      />
     </div>
   )
 }

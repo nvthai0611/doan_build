@@ -25,7 +25,7 @@ import { centerOwnerTeacherService } from "../../../../services/center-owner/tea
 
 export default function AddEmployee() {
   const navigate = useNavigate()
-  
+
   const [formData, setFormData] = useState({
     name: "",
     gender: "",
@@ -121,7 +121,15 @@ export default function AddEmployee() {
       newErrors.phone = 'Số điện thoại phải có 10-11 chữ số'
     }
 
-    // School không bắt buộc - bỏ validation
+    // Validate school
+    if (!validateRequired(formData.school)) {
+      newErrors.school = 'Trường học là bắt buộc'
+    }
+
+    // Validate contract image
+    if (!formData.contractImage) {
+      newErrors.contractImage = 'Ảnh hợp đồng là bắt buộc'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -147,10 +155,10 @@ export default function AddEmployee() {
   ]
 
   // TanStack Query for fetching schools
-  const { 
-    data: schoolsData, 
-    isLoading: schoolsLoading, 
-    error: schoolsError 
+  const {
+    data: schoolsData,
+    isLoading: schoolsLoading,
+    error: schoolsError
   } = useQuery({
     queryKey: ['schools'],
     queryFn: async () => {
@@ -184,10 +192,10 @@ export default function AddEmployee() {
       label: name,
       description: address || ''
     }
-    
+
     // Thêm vào danh sách localSchools
     setLocalSchools(prev => [...prev, newSchool])
-    
+
     // Cập nhật form data
     setFormData(prev => ({
       ...prev,
@@ -195,7 +203,7 @@ export default function AddEmployee() {
       schoolName: name,
       schoolAddress: address || ''
     }))
-    
+
     toast.success(`Đã thêm trường học "${name}" vào danh sách`)
   }
 
@@ -205,7 +213,7 @@ export default function AddEmployee() {
         ...prev,
         [field]: value
       }
-      
+
       // Nếu chọn trường từ dropdown, cập nhật thêm schoolName và schoolAddress
       if (field === 'school' && value) {
         const selectedSchool = schools.find((school: any) => school.value === value)
@@ -214,7 +222,7 @@ export default function AddEmployee() {
           newData.schoolAddress = selectedSchool.description || ''
         }
       }
-      
+
       return newData
     })
 
@@ -226,7 +234,7 @@ export default function AddEmployee() {
       }))
     }
   }
-  
+
 
   // Test function để kiểm tra kết nối
   const testConnection = async () => {
@@ -244,13 +252,13 @@ export default function AddEmployee() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate form trước khi submit
     if (!validateForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin đã nhập")
       return
     }
-    
+
     try {
       // Validate required fields trước khi gửi
       if (!formData.email || !formData.name || !formData.username) {
@@ -263,45 +271,35 @@ export default function AddEmployee() {
         fullName: formData.name.trim(),
         username: formData.username.trim(),
         phone: formData.phone?.trim() || "",
+        gender: formData.gender,
+        birthDate: formData.birthDate,
         role: formData.role as "teacher" | "admin" | "center_owner",
-        isActive: formData.status,
-        // Thêm thông tin trường học nếu có
-        ...(formData.schoolName && {
-          schoolName: formData.schoolName.trim(),
-          schoolAddress: formData.schoolAddress?.trim() || ""
-        }),
-        // Thêm ghi chú nếu có
-        ...(formData.notes && {
-          notes: formData.notes.trim()
-        })
+        isActive: formData.status,  
+        schoolName: formData.schoolName.trim(),
+        schoolAddress: formData.schoolAddress?.trim(),
+        notes: formData.notes.trim()
       }
       let response
       // Gửi FormData với ảnh hợp đồng
       if (formData.contractImage) {
         const formDataToSend = new FormData()
-        
+
         // Thêm các field text
         formDataToSend.append('email', teacherData.email)
         formDataToSend.append('fullName', teacherData.fullName)
         formDataToSend.append('username', teacherData.username)
         formDataToSend.append('phone', teacherData.phone)
+        formDataToSend.append('gender', teacherData.gender)
+        formDataToSend.append('birthDate', teacherData.birthDate)
         formDataToSend.append('role', teacherData.role)
         formDataToSend.append('isActive', teacherData.isActive.toString()) // Convert boolean to string
-        
-        // Thêm optional fields nếu có
-        if (teacherData.schoolName) {
-          formDataToSend.append('schoolName', teacherData.schoolName)
-        }
-        if (teacherData.schoolAddress) {
-          formDataToSend.append('schoolAddress', teacherData.schoolAddress)
-        }
+        formDataToSend.append('schoolName', teacherData.schoolName)
+        formDataToSend.append('schoolAddress', teacherData.schoolAddress)
         if (teacherData.notes) {
           formDataToSend.append('notes', teacherData.notes)
         }
-        
         // Thêm file ảnh
         formDataToSend.append('contractImage', formData.contractImage)
-        
         console.log("Sending FormData with image")
         response = await centerOwnerTeacherService.createTeacher(formDataToSend as any)
       } else {
@@ -333,19 +331,27 @@ export default function AddEmployee() {
         toast.error('Chỉ được upload file ảnh (JPG, PNG, GIF)')
         return
       }
-      
+
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024 // 5MB
       if (file.size > maxSize) {
         toast.error('Kích thước file không được vượt quá 5MB')
         return
       }
-      
+
       setFormData(prev => ({
         ...prev,
         contractImage: file
       }))
-      
+
+      // Clear error khi upload thành công
+      if (errors.contractImage) {
+        setErrors(prev => ({
+          ...prev,
+          contractImage: ''
+        }))
+      }
+
       toast.success('Upload ảnh hợp đồng thành công')
     }
   }
@@ -358,7 +364,7 @@ export default function AddEmployee() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 ">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -455,7 +461,7 @@ export default function AddEmployee() {
 
                 {/* Role */}
                 <div className="space-y-2 mb-4">
-                  <Label htmlFor="role">Nhóm quyền</Label>
+                  <Label htmlFor="role">Nhóm quyền <span className="text-red-500">*</span></Label>
                   <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
                     <SelectTrigger className={errors.role ? "border-red-500" : ""}>
                       <SelectValue placeholder="Chọn nhóm quyền" />
@@ -471,7 +477,7 @@ export default function AddEmployee() {
                 {/* Login Account Section */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-foreground">Tài khoản đăng nhập</h3>
-                  
+
                   {/* Username */}
                   <div className="space-y-2">
                     <Label htmlFor="username">Tên đăng nhập <span className="text-red-500">*</span></Label>
@@ -485,7 +491,7 @@ export default function AddEmployee() {
                         className={errors.username ? "border-red-500" : ""}
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                        @centerup
+                        @qn.edu.vn
                       </span>
                     </div>
                     <ErrorMessage field="username" />
@@ -522,7 +528,8 @@ export default function AddEmployee() {
 
                   {/* School */}
                   <div className="space-y-2">
-                    <Label htmlFor="school">Trường học</Label>
+                    <Label htmlFor="school">Trường học <span className="text-red-500">*</span></Label>
+                    
                     <div className="relative">
                       <Combobox
                         options={schools}
@@ -552,61 +559,62 @@ export default function AddEmployee() {
                     )}
                   </div>
 
-                 
+
                 </div>
               </div>
             </div>
 
             {/* Right Column - Status and Notes */}
             <div className="space-y-6">
-               {/* Contract Image Upload */}
-               <div className="space-y-2">
-                    <Label htmlFor="contractImage">Ảnh hợp đồng</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                      {formData.contractImage ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-center space-x-2">
-                            <Upload className="w-5 h-5 text-green-500" />
-                            <span className="text-sm text-green-600 font-medium">
-                              {formData.contractImage.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, contractImage: null }))}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            {(formData.contractImage.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Upload className="w-8 h-8 text-gray-400 mx-auto" />
-                          <div>
-                            <label
-                              htmlFor="contractImage"
-                              className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              Chọn ảnh hợp đồng
-                            </label>
-                            <input
-                              id="contractImage"
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileUpload}
-                              className="hidden"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            JPG, PNG, GIF (tối đa 5MB)
-                          </p>
-                        </div>
-                      )}
+              {/* Contract Image Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="contractImage">Ảnh hợp đồng <span className="text-red-500">*</span></Label> 
+                <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${errors.contractImage ? 'border-red-500' : 'border-gray-300 hover:border-gray-400'}`}>
+                  {formData.contractImage ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Upload className="w-5 h-5 text-green-500" />
+                        <span className="text-sm text-green-600 font-medium">
+                          {formData.contractImage.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, contractImage: null }))}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {(formData.contractImage.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto" />
+                      <div>
+                        <label
+                          htmlFor="contractImage"
+                          className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Chọn ảnh hợp đồng
+                        </label>
+                        <input
+                          id="contractImage"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG, GIF (tối đa 5MB)
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <ErrorMessage field="contractImage" />
+              </div>
               {/* Active Status */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Trạng thái hoạt động</h2>
@@ -634,8 +642,8 @@ export default function AddEmployee() {
                       toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
                         ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        [{ 'indent': '-1' }, { 'indent': '+1' }],
                         [{ 'align': [] }],
                         ['link', 'image'],
                         ['clean']
