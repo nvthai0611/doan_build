@@ -27,7 +27,8 @@ export class DataTransformer {
                 startDate: ta.startDate,
                 endDate: ta.endDate,
                 semester: ta.semester,
-                academicYear: ta.academicYear
+                academicYear: ta.academicYear,
+                recurringSchedule: ta.recurringSchedule
             })) || [],
             createdAt: cls.createdAt,
             updatedAt: cls.updatedAt

@@ -4,7 +4,6 @@ import { PrismaService } from '../../../db/prisma.service';
 @Injectable()
 export class ClassManagementService {
     constructor(private prisma: PrismaService) {}
-    
     // Lấy danh sách tất cả lớp học với filters và pagination
     async findAll(query: any) {
         try {
@@ -13,50 +12,170 @@ export class ClassManagementService {
                 grade, 
                 subjectId, 
                 teacherId, 
-                search, 
+                roomId,
+                search,
+                // Advanced search filters
+                dayOfWeek,
+                shift,
+                // academicYear,
+                // semester,
+                // startDate,
+                // endDate,
+                // rating,
                 page = 1, 
-                limit = 10 
+                limit = Math.min(parseInt(query.limit) || 10, 50), // Max 50 items per page
+                sortBy = 'createdAt',
+                sortOrder = 'desc'
             } = query;
-
+            console.log(query);
+            
+            
             const skip = (parseInt(page) - 1) * parseInt(limit);
             const take = parseInt(limit);
-
             // Build where clause
             const where: any = {};
             
-            if (status) where.status = status;
+            if (status && status !== 'all') where.status = status;
             if (grade) where.grade = grade;
             if (subjectId) where.subjectId = subjectId;
+            if (roomId) where.roomId = roomId;
+            
+            // Enhanced search - search in name, description, grade, subject name, teacher name
             if (search) {
-                where.name = { contains: search, mode: 'insensitive' };
+                where.OR = [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } },
+                    { grade: { contains: search, mode: 'insensitive' } },
+                    { 
+                        subject: {
+                            name: { contains: search, mode: 'insensitive' }
+                        }
+                    },
+                    {
+                        teacherClassAssignments: {
+                            some: {
+                                teacher: {
+                                    user: {
+                                        fullName: { contains: search, mode: 'insensitive' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        room: {
+                            name: { contains: search, mode: 'insensitive' }
+                        }
+                    }
+                ];
             }
 
             // Filter by teacher
             let classIds: string[] | undefined;
-            if (teacherId) {
-                const assignments = await this.prisma.teacherClassAssignment.findMany({
-                    where: { teacherId },
-                    select: { classId: true }
-                });
-                classIds = assignments.map(a => a.classId);
-                where.id = { in: classIds };
+            // if (teacherId) {
+            //     const assignments = await this.prisma.teacherClassAssignment.findMany({
+            //         where: { teacherId },
+            //         select: { classId: true }
+            //     });
+            //     classIds = assignments.map(a => a.classId);
+            //     where.id = { in: classIds };
+            // }
+            
+            // // Filter by day of week
+            if (dayOfWeek && dayOfWeek !== 'all') {
+                where.teacherClassAssignments = {
+                    some: {
+                        recurringSchedule: {
+                            path: ['dayOfWeek'],
+                            equals: dayOfWeek
+                        }
+                    }
+                };
             }
+
+            // Filter by shift (morning, afternoon, evening)
+            if (shift && shift !== 'all') {
+                const timeRanges = {
+                    morning: { start: '00:00', end: '11:59' },
+                    afternoon: { start: '12:00', end: '16:59' },
+                    evening: { start: '17:00', end: '23:59' }
+                };
+                
+                const timeRange = timeRanges[shift];
+                if (timeRange) {
+                    where.teacherClassAssignments = {
+                        some: {
+                            recurringSchedule: {
+                                path: ['startTime'],
+                                gte: timeRange.start,
+                                lte: timeRange.end
+                            }
+                        }
+                    };
+                }
+            }
+
+            // // Filter by academic year and semester
+            // if (academicYear || semester) {
+            //     const assignmentFilter: any = {};
+            //     if (academicYear) assignmentFilter.academicYear = academicYear;
+            //     if (semester) assignmentFilter.semester = semester;
+                
+            //     where.teacherClassAssignments = {
+            //         some: assignmentFilter
+            //     };
+            // }
+
+            // // Filter by date range
+            // if (startDate || endDate) {
+            //     const dateFilter: any = {};
+            //     if (startDate) dateFilter.gte = new Date(startDate);
+            //     if (endDate) dateFilter.lte = new Date(endDate);
+                
+            //     where.startDate = dateFilter;
+            // }
+
+            // // Filter by rating (if rating system exists)
+            // if (rating) {
+            //     where.averageRating = { gte: parseFloat(rating) };
+            // }
 
             // Get total count
             const total = await this.prisma.class.count({ where });
 
-            // Get data with relations
+            // Build orderBy clause
+            const orderBy: any = {};
+            if (sortBy && sortOrder) {
+                orderBy[sortBy] = sortOrder;
+            } else {
+                orderBy.createdAt = 'desc'; // Default ordering
+            }
+             console.log(where);
+                    
+            // Get data with relations - optimized for performance
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
                 take,
+                orderBy,
                 include: {
                     subject: true,
                     room: true,
                     teacherClassAssignments: {
-                        include: {
+                        where: {
+                            // academicYear: currentAcademicYear, 
+                        },
+                        select: {
+                            id: true,
+                            startDate: true,
+                            endDate: true,
+                            semester: true,
+                            academicYear: true,
+                            recurringSchedule: true,
                             teacher: {
-                                include: {
+                                select: {
+                                    id: true,
+                                    userId: true,
                                     user: {
                                         select: {
                                             id: true,
@@ -66,13 +185,14 @@ export class ClassManagementService {
                                     }
                                 }
                             }
-                        }
+                        },
+                        take: 1, // Chỉ lấy 1 assignment (teacher đầu tiên)
+                        orderBy: orderBy
                     },
                     _count: {
                         select: { enrollments: true }
                     }
-                },
-                orderBy: { createdAt: 'desc' }
+                }
             });
 
             // Transform data
@@ -98,12 +218,14 @@ export class ClassManagementService {
                     startDate: ta.startDate,
                     endDate: ta.endDate,
                     semester: ta.semester,
-                    academicYear: ta.academicYear
+                    academicYear: ta.academicYear,
+                    recurringSchedule: ta.recurringSchedule
                 })),
                 createdAt: cls.createdAt,
                 updatedAt: cls.updatedAt
             }));
-
+            console.log(transformedClasses);
+            
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
@@ -141,6 +263,8 @@ export class ClassManagementService {
                 );
             }
 
+            // Lấy thông tin năm học và semester hiện tại
+
             const classItem = await this.prisma.class.findUnique({
                 where: { id },
                 include: {
@@ -148,6 +272,11 @@ export class ClassManagementService {
                     room: true,
                     feeStructure: true,
                     teacherClassAssignments: {
+                        where: {
+                            // academicYear: currentAcademicYear,
+                            // semester: currentSemester,
+                            status: 'active'
+                        },
                         include: {
                             teacher: {
                                 include: {
@@ -751,10 +880,12 @@ export class ClassManagementService {
     }
 
     // Legacy methods (keep for backward compatibility)
-    async getClassByTeacherId(query: any) {
-        const { teacherId, status, page, limit, search } = query?.params;
+    async getClassByTeacherId(query: any, teacherId: string) {
+        const { status, page, limit, search } = query?.params;
         const assignments = await this.prisma.teacherClassAssignment.findMany({
             where: { teacherId: teacherId },
+            skip: (parseInt(page) - 1) * parseInt(limit),
+            take: parseInt(limit),
             include: { 
                 class: {
                     include: { 
@@ -770,6 +901,7 @@ export class ClassManagementService {
             }
         });
 
+        // Transform the data to match frontend expectations
         const classes = assignments.map(assignment => ({
             id: assignment.class.id,
             name: assignment.class.name,
@@ -794,9 +926,10 @@ export class ClassManagementService {
                 limit: parseInt(query.limit) || 10,
                 totalPages: Math.ceil(classes.length / (parseInt(query.limit) || 10))
             },
-            message: 'Lấy danh sách lớp học thành công'
+            message: 'Lấy danh sách lớp học thành công '
         };
     }
+
     
     async getClassDetail(id: string) {
         const assignment = await this.prisma.teacherClassAssignment.findFirst({
