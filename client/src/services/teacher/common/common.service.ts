@@ -80,5 +80,13 @@ export const teacherCommonService = {
     return enrollments.map(enrollment => 
       teacherCommonService.transformEnrollmentToStudentSummary(enrollment)
     )
+  },
+
+  /**
+   * Lấy thông tin giáo viên
+   */
+  getTeacherInfo: async (): Promise<any> => {
+    const response = await apiClient.get('/teacher/common/teacher-info')
+    return response.data as any
   }
 }

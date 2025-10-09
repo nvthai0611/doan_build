@@ -344,4 +344,54 @@ export class CommonService {
     //         throw new Error(`Lỗi khi lấy thống kê lớp học: ${error.message}`);
     //     }
     // }
+
+    async getTeacherInfo(teacherId: string) {
+        try {
+          if (!teacherId) {
+            throw new Error('ID giáo viên không hợp lệ');
+          }
+
+          const teacher = await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+              teacherClassAssignments: {
+                include: {
+                  class: {
+                    include: {
+                      subject: {
+                        select: {
+                          id: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (!teacher) {
+            return {
+              success: false,
+              message: 'Không tìm thấy giáo viên',
+            };
+          }
+
+          return {
+            success: true,
+            data: teacher,
+            message: 'Lấy thông tin giáo viên thành công',
+          };
+        } catch (error) {
+            throw new Error(`Lỗi khi lấy thông tin giáo viên: ${error.message}`);
+        }
+    }
+    
 }

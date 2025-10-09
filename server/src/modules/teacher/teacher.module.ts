@@ -22,6 +22,7 @@ import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middl
 import { CommonController } from './controllers/common.controller';
 import { CommonService } from './services/common.service';
 
+
 @Module({
   imports: [RouterModule.register([
     {
@@ -39,6 +40,7 @@ import { CommonService } from './services/common.service';
     ScheduleController,
     StudentManagementController,
     CommonController,
+    LeaveRequestController,
   ],
   providers: [
     PrismaService,
@@ -52,6 +54,7 @@ import { CommonService } from './services/common.service';
     ScheduleService,
     StudentManagementService,
     CommonService,
+    LeaveRequestService,
   ],
 })
 export class TeacherModule implements NestModule {

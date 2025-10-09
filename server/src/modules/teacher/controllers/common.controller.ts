@@ -1,14 +1,12 @@
-import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CommonService } from "../services/common.service";
-import { JwtAuthGuard } from "src/common/guards/jwt-auth.guard";
 import { StudentListResponseDto } from '../dto/common/student-list-response.dto';
 import { StudentDetailResponseDto } from '../dto/common/student-detail-response.dto';
 import { ClassStatisticsResponseDto } from '../dto/common/class-statistics-response.dto';
 
 @ApiTags('Common - Quản lý chung')
 @Controller('common')
-@UseGuards(JwtAuthGuard)
 export class CommonController {
     constructor(private readonly commonService: CommonService) {}
 
@@ -172,4 +170,23 @@ export class CommonController {
     //         };
     //     }
     // }
+
+
+    @Get('teacher-info')
+    @ApiOperation({ 
+        summary: 'Lấy thông tin giáo viên',
+        description: 'Lấy thông tin giáo viên'
+    })
+    async getTeacherInfo(@Req() req: any) {
+        try {
+            const result = await this.commonService.getTeacherInfo(req.user?.teacherId);
+            return result;
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                data: null
+            };
+        }
+    }
 }
