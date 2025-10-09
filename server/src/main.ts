@@ -51,6 +51,14 @@ async function bootstrap() {
     .setTitle('API COMMON')
     .setDescription('The API description')
     .setVersion('1.0')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'Bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description: 'Enter JWT token',
+      in: 'header',
+    })
     .addTag('API ALL')
     .build();
 

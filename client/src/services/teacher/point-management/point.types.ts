@@ -24,11 +24,7 @@ export type Assessment = {
   description?: string | null;
 };
 
-export type GradeEntry = {
-  studentId: string;
-  score?: number | null;
-  feedback?: string | null;
-};
+// GradeEntry đã được định nghĩa lại ở dưới
 
 export type RecordGradesPayload = {
   classId: string;
@@ -53,5 +49,60 @@ export type AssessmentGradeView = {
   score: number | null;
   feedback?: string | null;
   gradedAt?: string | null;
+};
+
+// Types cho Score_view component
+export type StudentGradeDetail = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentCode: string;
+  avatar?: string;
+  subject: string;
+  class: string;
+  grades: GradeEntry[];
+  historicalGrades: HistoricalGrade[];
+  average: number;
+  previousAverage: number;
+  trend: 'up' | 'down' | 'stable';
+  trendValue: number;
+};
+
+export type GradeEntry = {
+  type: string;
+  testName: string;
+  score: number;
+  date: string;
+  weight: number;
+  assessmentId?: string; // Thêm assessmentId để có thể update
+};
+
+export type HistoricalGrade = {
+  month: string;
+  average: number;
+};
+
+export type SubjectStats = {
+  subject: string;
+  totalStudents: number;
+  averageGrade: number;
+  previousAverage: number;
+  passRate: number;
+  trend: 'up' | 'down' | 'stable';
+};
+
+export type GradeViewFilters = {
+  searchTerm?: string;
+  subjectFilter?: string;
+  classFilter?: string;
+  testTypeFilter?: string;
+};
+
+export type GradeViewResponse = {
+  students: StudentGradeDetail[];
+  subjectStats: SubjectStats[];
+  totalStudents: number;
+  overallAverage: number;
+  passRate: number;
 };
 

@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ClassManagementService } from '../services/class-management.service';
 
 @ApiTags('Admin Center - Class Management')
@@ -91,11 +91,12 @@ export class ClassManagementController {
 
     // ============ LEGACY ENDPOINTS (Backward Compatibility) ============
 
-    @Get('/class-by-teacher')
+    @Get('/:teacherId/teacher')
+    @ApiParam({ name: 'teacherId', description: 'ID của giáo viên (UUID)' })
     @ApiOperation({ summary: '[LEGACY] Lấy danh sách lớp học theo ID giáo viên' })
     @ApiResponse({ status: 200, description: 'Danh sách lớp học' })
-    async getClassByTeacher(@Query() query: any) {
-        return this.classManagementService.getClassByTeacherId(query);
+    async getClassByTeacher(@Query() query: any, @Param('teacherId') teacherId: string) {
+        return this.classManagementService.getClassByTeacherId(query, teacherId);
     }
 
     @Get('class-by-teacher/:id')

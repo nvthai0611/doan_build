@@ -19,7 +19,8 @@ import {
   School,
   BookOpen,
   GraduationCap,
-  UserCheck
+  UserCheck,
+  Loader2
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
@@ -37,15 +38,32 @@ interface HocVienTabProps {
 interface StudentDetailModalProps {
   isOpen: boolean
   onClose: () => void
-  student: any
+  studentId: string | null
+  teacherClassAssignmentId: string
 }
 
-function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProps) {
-  if (!student) return null
+function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignmentId }: StudentDetailModalProps) {
+  // Sử dụng TanStack Query để fetch student detail
+  const { 
+    data: student, 
+    isLoading: isLoadingDetail, 
+    error: errorDetail 
+  } = useQuery({
+    queryKey: ['student-detail', studentId, teacherClassAssignmentId],
+    queryFn: async () => {
+      if (!studentId) return null
+      return await teacherCommonService.getDetailStudentOfClass(studentId, teacherClassAssignmentId)
+    },
+    enabled: !!studentId && !!teacherClassAssignmentId && isOpen,
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    gcTime: 10 * 60 * 1000, // Giữ cache 10 phút
+    refetchOnWindowFocus: false,
+    retry: 1
+  })
 
   const formatDate = (dateString: string) => {
     try {
-      return formatDate(dateString)
+      return new Date(dateString).toLocaleDateString('vi-VN')
     } catch {
       return "N/A"
     }
@@ -53,7 +71,7 @@ function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProp
 
   const formatDateTime = (dateString: string) => {
     try {
-      return formatDate(dateString)
+      return new Date(dateString).toLocaleString('vi-VN')
     } catch {
       return "N/A"
     }
@@ -85,6 +103,11 @@ function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProp
     }
   }
 
+  // Show error toast when error occurs
+  if (errorDetail) {
+    toast.error("Không thể tải thông tin chi tiết học viên", { duration: 3000 })
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -94,235 +117,230 @@ function StudentDetailModal({ isOpen, onClose, student }: StudentDetailModalProp
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Basic Info Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Thông tin cơ bản
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-start gap-6">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage 
-                    src={student.student?.user?.avatar} 
-                    alt={student.student?.user?.fullName}
-                  />
-                  <AvatarFallback className="text-lg">
-                    {student.student?.user?.fullName?.charAt(0) || 'S'}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
-                    <p className="text-lg font-semibold">{student.student?.user?.fullName || 'N/A'}</p>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Mã học viên</label>
-                    <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                      {student.student?.studentCode || 'N/A'}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Email</label>
-                      <p>{student.student?.user?.email || 'N/A'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
-                      <p>{student.student?.user?.phone || 'N/A'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Ngày sinh</label>
-                      <p>{student.student?.user?.birthDate ? formatDate(student.student.user.birthDate) : 'N/A'}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Giới tính</label>
-                    <p>{student.student?.user?.gender === 'male' ? 'Nam' : student.student?.user?.gender === 'female' ? 'Nữ' : 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Loading State */}
+        {isLoadingDetail && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Đang tải thông tin học viên...</span>
+          </div>
+        )}
 
-          {/* Address & School Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Error State */}
+        {errorDetail && (
+          <div className="text-center py-8">
+            <p className="text-red-500 mb-4">Có lỗi xảy ra khi tải thông tin học viên</p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Thử lại
+            </Button>
+          </div>
+        )}
+
+        {/* Success State - Show student data */}
+        {student && !isLoadingDetail && !errorDetail && (
+          <div className="space-y-6">
+            {/* Basic Info Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Thông tin địa chỉ
+                  <User className="h-5 w-5" />
+                  Thông tin cơ bản
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p>{student.student?.address || 'Chưa cập nhật'}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <School className="h-5 w-5" />
-                  Trường học
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tên trường</label>
-                  <p>{student.student?.school?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Địa chỉ trường</label>
-                  <p className="text-sm">{student.student?.school?.address || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">SĐT trường</label>
-                  <p className="text-sm">{student.student?.school?.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Khối lớp</label>
-                  <p>{student.student?.grade || 'N/A'}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Parent Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Thông tin phụ huynh
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
-                  <p>{student.student?.parent?.user?.fullName || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p>{student.student?.parent?.user?.email || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
-                  <p>{student.student?.parent?.user?.phone || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Class & Enrollment Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  Thông tin lớp học
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tên lớp</label>
-                  <p className="font-medium">{student.class?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Môn học</label>
-                  <p>{student.class?.subject?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Mã môn</label>
-                  <p className="font-mono text-sm">{student.class?.subject?.code || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Khối</label>
-                  <p>{student.class?.grade || 'N/A'}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5" />
-                  Thông tin ghi danh
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Trạng thái</label>
-                  <div className="mt-1">
-                    <Badge className={getStatusColor(student.status)}>
-                      {getStatusText(student.status)}
-                    </Badge>
+                <div className="flex items-start gap-6">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage 
+                      src={student.student?.user?.avatar} 
+                      alt={student.student?.user?.fullName}
+                    />
+                    <AvatarFallback className="text-lg">
+                      {student.student?.user?.fullName?.charAt(0) || 'S'}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
+                      <p className="text-lg font-semibold">{student.student?.user?.fullName || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Mã học viên</label>
+                      <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {student.student?.studentCode || 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p>{student.student?.user?.email || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
+                        <p>{student.student?.user?.phone || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Ngày sinh</label>
+                        <p>{student.student?.user?.birthDate ? formatDate(student.student.user.birthDate) : 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Giới tính</label>
+                      <p>{student.student?.user?.gender === 'male' ? 'Nam' : student.student?.user?.gender === 'female' ? 'Nữ' : 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Ngày ghi danh</label>
-                  <p>{formatDateTime(student.enrolledAt)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Học kỳ</label>
-                  <p>{student.semester || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Năm học</label>
-                  <p>{student.teacherClassAssignment?.academicYear || 'N/A'}</p>
+              </CardContent>
+            </Card>
+
+            {/* Address & School Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Thông tin địa chỉ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>{student.student?.address || 'Chưa cập nhật'}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <School className="h-5 w-5" />
+                    Trường học
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Tên trường</label>
+                    <p>{student.student?.school?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Địa chỉ trường</label>
+                    <p className="text-sm">{student.student?.school?.address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">SĐT trường</label>
+                    <p className="text-sm">{student.student?.school?.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Khối lớp</label>
+                    <p>{student.student?.grade || 'N/A'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Parent Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Thông tin phụ huynh
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
+                    <p>{student.student?.parent?.user?.fullName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                    <p>{student.student?.parent?.user?.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
+                    <p>{student.student?.parent?.user?.phone || 'N/A'}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Teacher Info */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                Thông tin giáo viên
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
-                  <p>{student.teacherClassAssignment?.teacher?.user?.fullName || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p>{student.teacherClassAssignment?.teacher?.user?.email || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
-                  <p>{student.teacherClassAssignment?.teacher?.user?.phone || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card> */}
-        </div>
+            {/* Class & Enrollment Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Thông tin lớp học
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Tên lớp</label>
+                    <p className="font-medium">{student.class?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Môn học</label>
+                    <p>{student.class?.subject?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Mã môn</label>
+                    <p className="font-mono text-sm">{student.class?.subject?.code || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Khối</label>
+                    <p>{student.class?.grade || 'N/A'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Thông tin ghi danh
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Trạng thái</label>
+                    <div className="mt-1">
+                      <Badge className={getStatusColor(student.status)}>
+                        {getStatusText(student.status)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Ngày ghi danh</label>
+                    <p>{formatDateTime(student.enrolledAt)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Học kỳ</label>
+                    <p>{student.semester || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Năm học</label>
+                    <p>{student.teacherClassAssignment?.academicYear || 'N/A'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
 export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teacherClassAssignmentId }: HocVienTabProps) {
-  const [selectedStudent, setSelectedStudent] = useState<any>(null)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
   const { data: listStudents, isLoading, error } = useQuery({
@@ -336,21 +354,15 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
     refetchOnWindowFocus: false
   })
 
-  const handleStudentClick = async (studentId: string) => {
-    try {
-      const response = await teacherCommonService.getDetailStudentOfClass(studentId, teacherClassAssignmentId)
-      setSelectedStudent(response)
-      setIsModalOpen(true)
-
-    } catch (error) {
-      console.error('Error fetching student detail:', error)
-      toast.error("Không thể tải thông tin chi tiết học viên", { duration: 3000 })
-    }
+  // Thay đổi handleStudentClick để sử dụng TanStack Query
+  const handleStudentClick = (studentId: string) => {
+    setSelectedStudentId(studentId)
+    setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
-    setSelectedStudent(null)
+    setSelectedStudentId(null)
   }
 
   if (isLoading) {
@@ -370,10 +382,6 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
             <Users className="h-5 w-5" />
             Danh sách học viên ({listStudents?.length || 0})
           </CardTitle>
-          {/* <Button onClick={onAddStudent}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm học viên
-          </Button> */}
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -431,7 +439,8 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
       <StudentDetailModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        student={selectedStudent}
+        studentId={selectedStudentId}
+        teacherClassAssignmentId={teacherClassAssignmentId}
       />
     </div>
   )

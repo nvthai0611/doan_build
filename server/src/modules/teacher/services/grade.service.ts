@@ -8,18 +8,20 @@ import { UpdateGradeDto } from '../dto/grade/update-grade.dto';
 export class GradeService {
     constructor(private prisma: PrismaService) {}
 
-    private async ensureTeacherCanAccessClass(teacherId: string, classId: string) {
-        if(!checkId(teacherId) || !checkId(classId)){
+    private async ensureTeacherCanAccessClass(userId: string, classId: string) {
+        if(!checkId(userId) || !checkId(classId)){
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
         }
 
-        // Kiểm tra teacher có tồn tại không
-        const teacher = await this.prisma.teacher.findUnique({
-            where: { id: teacherId }
+        // Kiểm tra user có teacher record không
+        const teacher = await this.prisma.teacher.findFirst({
+            where: { userId: userId }
         });
         if (!teacher) {
             throw new HttpException('Giáo viên không tồn tại', HttpStatus.NOT_FOUND);
         }
+        
+        const teacherId = teacher.id;
 
         // Kiểm tra class có tồn tại không
         const classExists = await this.prisma.class.findUnique({
@@ -50,10 +52,10 @@ export class GradeService {
         }
     }
 
-    async getStudentsOfClass(teacherId: string, classId: string) {
-        console.log(`🎓 Getting students for class ${classId} by teacher ${teacherId}`);
+    async getStudentsOfClass(userId: string, classId: string) {
+        console.log(`🎓 Getting students for class ${classId} by user ${userId}`);
         
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+        await this.ensureTeacherCanAccessClass(userId, classId);
 
         // Lấy danh sách học sinh đã đăng ký vào lớp với status active
         const enrollments = await this.prisma.enrollment.findMany({
@@ -126,8 +128,8 @@ export class GradeService {
         return result;
     }
 
-    async listAssessments(teacherId: string, classId: string) {
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+    async listAssessments(userId: string, classId: string) {
+        await this.ensureTeacherCanAccessClass(userId, classId);
 
         const assessments = await this.prisma.assessment.findMany({
             where: { classId },
@@ -155,11 +157,20 @@ export class GradeService {
         return assessments;
     }
 
-    async listAssessmentTypes(teacherId: string, classId?: string) {
+    async listAssessmentTypes(userId: string, classId?: string) {
         // Bỏ kiểm tra strict để tránh lỗi 400
         // if (classId) {
-        //     await this.ensureTeacherCanAccessClass(teacherId, classId);
+        //     await this.ensureTeacherCanAccessClass(userId, classId);
         // }
+
+        // Lấy teacherId từ userId
+        const teacher = await this.prisma.teacher.findFirst({
+            where: { userId: userId }
+        });
+        if (!teacher) {
+            return [] as string[];
+        }
+        const teacherId = teacher.id;
 
         let where: any = {};
         if (classId) {
@@ -193,38 +204,66 @@ export class GradeService {
         if (types.length === 0) {
             return [
                 'Kiểm tra 15 phút',
-                'Kiểm tra giữa kỳ', 
-                'Kiểm tra cuối kỳ',
-                'Bài tập về nhà',
-                'Kiểm tra miệng'
+                'Kiểm tra 45 phút', 
+                'Kiểm tra 60 phút',
+                'Kiểm tra 90 phút'
             ];
         }
         
         return types;
     }
 
-    async recordGrades(teacherId: string, payload: RecordGradesDto) {
+    async recordGrades(userId: string, payload: RecordGradesDto) {
         const { classId, assessmentName, assessmentType, maxScore, date, description, grades } = payload;
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+        await this.ensureTeacherCanAccessClass(userId, classId);
+
+        // Validate max score = 10
+        if (maxScore && maxScore !== 10) {
+            throw new HttpException('Max score phải là 10 điểm', HttpStatus.BAD_REQUEST);
+        }
 
         // Kiểm tra xem có học sinh nào trong danh sách không
         if (!grades || grades.length === 0) {
             throw new HttpException('Không có học sinh nào để ghi điểm', HttpStatus.BAD_REQUEST);
         }
 
+        // Validate individual scores
+        const invalidScores = grades.filter(g => g.score !== undefined && g.score !== null && (g.score < 0 || g.score > 10));
+        if (invalidScores.length > 0) {
+            throw new HttpException('Điểm số phải từ 0 đến 10', HttpStatus.BAD_REQUEST);
+        }
+
         // Kiểm tra tất cả học sinh có thuộc lớp này không
         const studentIds = grades.map(g => g.studentId);
+        console.log(`🔍 Checking students for class ${classId}:`, studentIds);
+        
         const enrollments = await this.prisma.enrollment.findMany({
             where: {
                 classId,
                 studentId: { in: studentIds },
                 status: 'active'
             },
-            select: { studentId: true }
+            select: { studentId: true, status: true }
         });
+        
+        console.log(`🔍 Found enrollments:`, enrollments);
+        
+        // Kiểm tra tất cả enrollments của class này (không filter theo studentIds)
+        const allEnrollments = await this.prisma.enrollment.findMany({
+            where: {
+                classId,
+                status: 'active'
+            },
+            select: { studentId: true, status: true }
+        });
+        
+        console.log(`🔍 All active enrollments for class ${classId}:`, allEnrollments);
         
         const validStudentIds = enrollments.map(e => e.studentId);
         const invalidStudents = studentIds.filter(id => !validStudentIds.includes(id));
+        
+        console.log(`🔍 Valid student IDs:`, validStudentIds);
+        console.log(`🔍 Invalid student IDs:`, invalidStudents);
         
         if (invalidStudents.length > 0) {
             throw new HttpException(
@@ -234,43 +273,86 @@ export class GradeService {
         }
 
         // Tạo assessment mới
-        const assessment = await this.prisma.assessment.create({
-            data: {
-                classId,
-                name: assessmentName,
-                type: assessmentType,
-                maxScore: maxScore as any,
-                date: new Date(date),
-                description
-            }
+        console.log('🎯 Creating assessment with data:', {
+            classId,
+            name: assessmentName,
+            type: assessmentType,
+            maxScore: maxScore,
+            date: new Date(date),
+            description
         });
+        
+        let assessment;
+        try {
+            assessment = await this.prisma.assessment.create({
+                data: {
+                    classId,
+                    name: assessmentName,
+                    type: assessmentType,
+                    maxScore: Number(maxScore), // Convert to number
+                    date: new Date(date),
+                    description
+                }
+            });
+            
+            console.log('✅ Assessment created successfully:', assessment.id);
+        } catch (error) {
+            console.error('❌ Error creating assessment:', error);
+            throw new HttpException(`Lỗi tạo assessment: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
         // Ghi điểm cho từng học sinh (upsert theo unique [assessmentId, studentId])
+        console.log('🎯 Processing grades:', grades);
+        console.log('🎯 Assessment ID:', assessment.id);
+        console.log('🎯 User ID:', userId);
+        
         const gradeRecords = [];
         for(const g of grades){
             if (g.score !== undefined && g.score !== null) {
-                const gradeRecord = await this.prisma.studentAssessmentGrade.upsert({
-                    where: {
-                        assessmentId_studentId: {
-                            assessmentId: assessment.id,
-                            studentId: g.studentId
-                        }
-                    },
-                    update: {
-                        score: g.score as any,
-                        feedback: g.feedback,
-                        gradedBy: teacherId,
-                        gradedAt: new Date()
-                    },
-                    create: {
-                        assessmentId: assessment.id,
-                        studentId: g.studentId,
-                        score: g.score as any,
-                        feedback: g.feedback,
-                        gradedBy: teacherId
-                    }
+                console.log(`🎯 Creating grade for student ${g.studentId} with score ${g.score}`);
+                console.log(`🎯 Grade data:`, {
+                    assessmentId: assessment.id,
+                    studentId: g.studentId,
+                    score: Number(g.score),
+                    feedback: g.feedback,
+                    gradedBy: userId
                 });
-                gradeRecords.push(gradeRecord);
+                
+                try {
+                    const gradeRecord = await this.prisma.studentAssessmentGrade.upsert({
+                        where: {
+                            assessmentId_studentId: {
+                                assessmentId: assessment.id,
+                                studentId: g.studentId
+                            }
+                        },
+                        update: {
+                            score: Number(g.score), // Convert to number
+                            feedback: g.feedback,
+                            gradedBy: userId,
+                            gradedAt: new Date()
+                        },
+                        create: {
+                            assessmentId: assessment.id,
+                            studentId: g.studentId,
+                            score: Number(g.score), // Convert to number
+                            feedback: g.feedback,
+                            gradedBy: userId
+                        }
+                    });
+                    console.log(`✅ Grade created/updated for student ${g.studentId}:`, gradeRecord.id);
+                    gradeRecords.push(gradeRecord);
+                } catch (error) {
+                    console.error(`❌ Error creating grade for student ${g.studentId}:`, error);
+                    console.error(`❌ Error details:`, {
+                        code: error.code,
+                        message: error.message,
+                        meta: error.meta
+                    });
+                    throw new HttpException(`Lỗi ghi điểm cho học sinh ${g.studentId}: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+                }
+            } else {
+                console.log(`⚠️ Skipping student ${g.studentId} - no score provided`);
             }
         }
 
@@ -281,7 +363,7 @@ export class GradeService {
         };
     }
 
-    async updateGrade(teacherId: string, payload: UpdateGradeDto) {
+    async updateGrade(userId: string, payload: UpdateGradeDto) {
         const { assessmentId, studentId, score, feedback } = payload;
         if(!checkId(assessmentId) || !checkId(studentId)){
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
@@ -292,7 +374,7 @@ export class GradeService {
         if(!assessment){
             throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
         }
-        await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+        await this.ensureTeacherCanAccessClass(userId, assessment.classId);
 
         const updated = await this.prisma.studentAssessmentGrade.update({
             where: {
@@ -301,7 +383,7 @@ export class GradeService {
             data: {
                 score: (score ?? null) as any,
                 feedback,
-                gradedBy: teacherId,
+                gradedBy: userId,
                 gradedAt: new Date()
             }
         }).catch(async (e) => {
@@ -312,7 +394,7 @@ export class GradeService {
                     studentId,
                     score: (score ?? null) as any,
                     feedback,
-                    gradedBy: teacherId
+                    gradedBy: userId
                 }
             });
             return created;
@@ -321,7 +403,7 @@ export class GradeService {
         return updated;
     }
 
-    async getAssessmentGrades(teacherId: string, assessmentId: string) {
+    async getAssessmentGrades(userId: string, assessmentId: string) {
         if (!checkId(assessmentId)) {
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
         }
@@ -331,7 +413,7 @@ export class GradeService {
             throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
         }
 
-        await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+        await this.ensureTeacherCanAccessClass(userId, assessment.classId);
 
         const grades = await this.prisma.studentAssessmentGrade.findMany({
             where: { assessmentId },
@@ -352,5 +434,405 @@ export class GradeService {
             feedback: g.feedback,
             gradedAt: g.gradedAt
         }));
+    }
+
+    async getTeacherIdFromUserId(userId: string): Promise<string | null> {
+        console.log('🔍 Getting teacherId from userId:', userId);
+        
+        if (!checkId(userId)) {
+            console.log('❌ Invalid userId');
+            return null;
+        }
+
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { userId: userId }
+        });
+
+        console.log('👨‍🏫 Teacher found:', teacher ? teacher.id : 'null');
+        return teacher ? teacher.id : null;
+    }
+
+    async getGradeViewData(teacherId: string, filters: any) {
+        console.log('📚 getGradeViewData called with teacherId:', teacherId);
+        
+        if (!teacherId || !checkId(teacherId)) {
+            console.log('❌ Invalid teacherId:', teacherId);
+            return {
+                students: [],
+                subjectStats: [],
+                totalStudents: 0,
+                overallAverage: 0,
+                passRate: 0
+            };
+        }
+
+        // Lấy tất cả lớp học mà giáo viên đang dạy
+        const teacherAssignments = await this.prisma.teacherClassAssignment.findMany({
+            where: { 
+                teacherId
+                // Bỏ filter status để lấy tất cả assignments
+            },
+            include: {
+                class: {
+                    include: {
+                        subject: true,
+                        enrollments: {
+                            include: {
+                                student: {
+                                    include: {
+                                        user: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const classIds = teacherAssignments.map(a => a.classId);
+        
+        console.log('📚 Found assignments:', teacherAssignments.length);
+        console.log('📚 Class IDs:', classIds);
+        
+        if (classIds.length === 0) {
+            console.log('⚠️ No classes found for teacher');
+            return {
+                students: [],
+                subjectStats: [],
+                totalStudents: 0,
+                overallAverage: 0,
+                passRate: 0
+            };
+        }
+        
+        // Lấy tất cả assessments của các lớp này
+        const assessments = await this.prisma.assessment.findMany({
+            where: { classId: { in: classIds } },
+            include: {
+                grades: {
+                    include: {
+                        student: {
+                            include: {
+                                user: true
+                            }
+                        }
+                    }
+                },
+                class: {
+                    include: {
+                        subject: true
+                    }
+                }
+            },
+            orderBy: { date: 'desc' }
+        });
+
+        console.log('📚 Found assessments:', assessments.length);
+        
+        // Nếu không có assessments, thử lấy danh sách học sinh từ enrollments
+        if (assessments.length === 0) {
+            console.log('⚠️ No assessments found, trying to get students from enrollments');
+            
+            // Lấy tất cả học sinh từ các lớp
+            const allStudents = new Set();
+            teacherAssignments.forEach(assignment => {
+                assignment.class.enrollments.forEach(enrollment => {
+                    if (enrollment.student && enrollment.student.user) {
+                        allStudents.add(JSON.stringify({
+                            id: enrollment.student.id,
+                            studentId: enrollment.student.id,
+                            studentName: enrollment.student.user.fullName || 'N/A',
+                            studentCode: enrollment.student.studentCode || 'N/A',
+                            avatar: enrollment.student.user.avatar,
+                            subject: assignment.class.subject.name,
+                            class: assignment.class.name,
+                            grades: [],
+                            historicalGrades: [],
+                            average: 0,
+                            previousAverage: 0,
+                            trend: 'stable' as const,
+                            trendValue: 0
+                        }));
+                    }
+                });
+            });
+            
+            const students = Array.from(allStudents).map(s => JSON.parse(s as string));
+            console.log('📚 Found students from enrollments:', students.length);
+            
+            return {
+                students,
+                subjectStats: await this.getSubjectStats(teacherId),
+                totalStudents: students.length,
+                overallAverage: 0,
+                passRate: 0
+            };
+        }
+        
+        // Xử lý dữ liệu để tạo StudentGradeDetail
+        const studentMap = new Map();
+        
+        assessments.forEach(assessment => {
+            assessment.grades.forEach(grade => {
+                const studentId = grade.studentId;
+                if (!studentMap.has(studentId)) {
+                    studentMap.set(studentId, {
+                        id: studentId,
+                        studentId: studentId,
+                        studentName: grade.student.user.fullName || 'N/A',
+                        studentCode: grade.student.studentCode || 'N/A',
+                        avatar: grade.student.user.avatar,
+                        subject: assessment.class.subject.name,
+                        class: assessment.class.name,
+                        grades: [],
+                        historicalGrades: [],
+                        average: 0,
+                        previousAverage: 0,
+                        trend: 'stable' as const,
+                        trendValue: 0
+                    });
+                }
+                
+                const student = studentMap.get(studentId);
+                student.grades.push({
+                    type: assessment.type,
+                    testName: assessment.name,
+                    score: Number(grade.score) || 0,
+                    date: assessment.date.toISOString().split('T')[0],
+                    weight: this.getWeightByType(assessment.type),
+                    assessmentId: assessment.id
+                });
+            });
+        });
+
+        // Tính điểm trung bình cho mỗi học sinh
+        const students = Array.from(studentMap.values()).map(student => {
+            if (student.grades.length > 0) {
+                const totalWeight = student.grades.reduce((sum: number, g: any) => sum + g.weight, 0);
+                const weightedSum = student.grades.reduce((sum: number, g: any) => sum + g.score * g.weight, 0);
+                student.average = Number((weightedSum / totalWeight).toFixed(1));
+            }
+            return student;
+        });
+
+        // Lọc theo filters
+        let filteredStudents = students;
+        if (filters.searchTerm) {
+            const searchTerm = filters.searchTerm.toLowerCase();
+            filteredStudents = students.filter(s => 
+                s.studentName.toLowerCase().includes(searchTerm) ||
+                s.studentCode.toLowerCase().includes(searchTerm)
+            );
+        }
+        if (filters.subjectFilter && filters.subjectFilter !== 'all') {
+            filteredStudents = filteredStudents.filter(s => s.subject === filters.subjectFilter);
+        }
+        if (filters.classFilter && filters.classFilter !== 'all') {
+            filteredStudents = filteredStudents.filter(s => s.class === filters.classFilter);
+        }
+
+        // Tính thống kê theo môn học
+        const subjectStats = await this.getSubjectStats(teacherId);
+
+        // Tính tổng quan
+        const totalStudents = filteredStudents.length;
+        const overallAverage = totalStudents > 0 
+            ? Number((filteredStudents.reduce((sum, s) => sum + s.average, 0) / totalStudents).toFixed(1))
+            : 0;
+        const passRate = totalStudents > 0
+            ? Math.round((filteredStudents.filter(s => s.average >= 5).length / totalStudents) * 100)
+            : 0;
+
+        console.log('✅ Returning grade view data:');
+        console.log('   - Total students:', totalStudents);
+        console.log('   - Overall average:', overallAverage);
+        console.log('   - Pass rate:', passRate);
+        console.log('   - Subject stats:', subjectStats.length);
+
+        return {
+            students: filteredStudents,
+            subjectStats,
+            totalStudents,
+            overallAverage,
+            passRate
+        };
+    }
+
+    async getStudentGrades(teacherId: string, filters: any) {
+        const gradeViewData = await this.getGradeViewData(teacherId, filters);
+        return gradeViewData.students;
+    }
+
+    async getSubjectStats(teacherId: string) {
+        console.log('📊 getSubjectStats called with teacherId:', teacherId);
+        
+        if (!teacherId || !checkId(teacherId)) {
+            console.log('❌ Invalid teacherId');
+            return [];
+        }
+
+        // Lấy tất cả lớp học mà giáo viên đang dạy
+        const teacherAssignments = await this.prisma.teacherClassAssignment.findMany({
+            where: { 
+                teacherId
+                // Bỏ filter status
+            },
+            include: {
+                class: {
+                    include: {
+                        subject: true,
+                        enrollments: {
+                            include: {
+                                student: {
+                                    include: {
+                                        user: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const classIds = teacherAssignments.map(a => a.classId);
+        
+        // Lấy assessments và grades
+        const assessments = await this.prisma.assessment.findMany({
+            where: { classId: { in: classIds } },
+            include: {
+                grades: {
+                    include: {
+                        student: {
+                            include: {
+                                user: true
+                            }
+                        }
+                    }
+                },
+                class: {
+                    include: {
+                        subject: true
+                    }
+                }
+            }
+        });
+
+        // Nhóm theo môn học
+        const subjectMap = new Map();
+        
+        assessments.forEach(assessment => {
+            const subjectName = assessment.class.subject.name;
+            if (!subjectMap.has(subjectName)) {
+                subjectMap.set(subjectName, {
+                    subject: subjectName,
+                    totalStudents: 0,
+                    grades: [],
+                    averageGrade: 0,
+                    previousAverage: 0,
+                    passRate: 0,
+                    trend: 'stable' as const
+                });
+            }
+            
+            const subject = subjectMap.get(subjectName);
+            assessment.grades.forEach(grade => {
+                subject.grades.push(Number(grade.score) || 0);
+            });
+        });
+
+        // Tính toán thống kê cho mỗi môn
+        const subjectStats = Array.from(subjectMap.values()).map(subject => {
+            const uniqueStudents = new Set();
+            assessments.forEach(assessment => {
+                if (assessment.class.subject.name === subject.subject) {
+                    assessment.grades.forEach(grade => {
+                        uniqueStudents.add(grade.studentId);
+                    });
+                }
+            });
+            
+            subject.totalStudents = uniqueStudents.size;
+            subject.averageGrade = subject.grades.length > 0 
+                ? Number((subject.grades.reduce((sum: number, g: number) => sum + g, 0) / subject.grades.length).toFixed(1))
+                : 0;
+            subject.passRate = subject.grades.length > 0
+                ? Math.round((subject.grades.filter((g: number) => g >= 5).length / subject.grades.length) * 100)
+                : 0;
+            
+            return subject;
+        });
+
+        return subjectStats;
+    }
+
+    async updateStudentGrade(teacherId: string, payload: { studentId: string; assessmentId: string; score: number }) {
+        console.log('💾 updateStudentGrade called:', { teacherId, payload });
+        
+        const { studentId, assessmentId, score } = payload;
+        
+        if (!teacherId || !checkId(teacherId)) {
+            throw new HttpException('Teacher ID không hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+        
+        if (!checkId(studentId) || !checkId(assessmentId)) {
+            throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+
+        if (score < 0 || score > 10) {
+            throw new HttpException('Điểm số phải từ 0 đến 10', HttpStatus.BAD_REQUEST);
+        }
+
+        // Kiểm tra assessment có tồn tại không
+        const assessment = await this.prisma.assessment.findUnique({
+            where: { id: assessmentId },
+            include: { class: true }
+        });
+
+        if (!assessment) {
+            throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
+        }
+
+        // Kiểm tra teacher có quyền truy cập lớp này không (optional - có thể bỏ qua nếu gây lỗi)
+        try {
+            await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+        } catch (error) {
+            console.log('⚠️ Warning: Teacher access check failed, continuing anyway');
+        }
+
+        // Cập nhật hoặc tạo grade
+        await this.prisma.studentAssessmentGrade.upsert({
+            where: {
+                assessmentId_studentId: {
+                    assessmentId,
+                    studentId
+                }
+            },
+            update: {
+                score: score,
+                gradedAt: new Date()
+            },
+            create: {
+                assessmentId,
+                studentId,
+                score: score,
+                gradedBy: teacherId,
+                gradedAt: new Date()
+            }
+        });
+    }
+
+    private getWeightByType(type: string): number {
+        switch (type.toLowerCase()) {
+            case 'kiểm tra 15 phút':
+                return 1;
+            case 'kiểm tra giữa kỳ':
+                return 2;
+            case 'kiểm tra cuối kỳ':
+                return 3;
+            default:
+                return 1;
+        }
     }
 }

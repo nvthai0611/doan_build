@@ -123,4 +123,24 @@ export class ClassManagementController {
         };
     }
 
+
+    @ApiOperation({summary:'Lấy lịch sử điểm danh của lớp học theo ID phân công lớp học của giáo viên'})
+    @ApiParam({name:'teacherClassAssignmentId', description:'Đây là Id phân công lớp học của giáo viên'})
+    @ApiResponse({
+        status:200,
+        description:'Lấy lịch sử điểm danh thành công',
+        // type: HistoryAttendanceResponseDto
+    })
+    @Get('classes/:teacherClassAssignmentId/attendance-history')
+    async getHistoryAttendanceOfClass(@Param('teacherClassAssignmentId') teacherClassAssignmentId: string, @Req() req: any){
+        const teacherId = req.user?.teacherId;
+        const historyAttendance = await this.classManagementService.getHistoryAttendanceOfClass(teacherClassAssignmentId, teacherId)
+        return {
+            success: true,
+            message: 'Lấy lịch sử điểm danh thành công',
+            status: HttpStatus.OK,
+            data: historyAttendance,
+        }
+    }
+
 }
