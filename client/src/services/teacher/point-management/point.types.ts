@@ -11,6 +11,7 @@ export type TeacherClassItem = {
   name: string;
   subject?: { id?: string; code?: string; name: string } | null;
   studentCount?: number | null;
+  assignmentId?: string; // Thêm assignmentId
 };
 
 export type Assessment = {

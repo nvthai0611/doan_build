@@ -11,10 +11,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Target, Save, Users, Search, CheckCircle, AlertCircle, BookOpen } from "lucide-react"
-import { pointService } from "../../../services/teacher/point-management/point.service"
+import { teacherPointService } from "../../../services/teacher/point-management/point.service"
 import { GradeEntry, TeacherClassItem, TeacherStudentSummary } from "../../../services/teacher/point-management/point.types"
+import { teacherCommonService } from "../../../services/teacher/common/common.service"
 import { teacherClassService } from "../../../services/teacher/class-management/class.service"
-
+import { apiClient } from "../../../utils/clientAxios"
 // classes sẽ fetch từ API teacher/class-management/classes
 
 // students sẽ fetch theo classId
@@ -24,6 +25,7 @@ export default function GradeInputPage() {
   const [classes, setClasses] = useState<TeacherClassItem[]>([])
   const [students, setStudents] = useState<TeacherStudentSummary[]>([])
   const [selectedClass, setSelectedClass] = useState("")
+  const [selectedAssignment, setSelectedAssignment] = useState("")
   const [selectedExamType, setSelectedExamType] = useState("")
   const [examTypes, setExamTypes] = useState<string[]>([])
   const [examDate, setExamDate] = useState("")
@@ -37,15 +39,7 @@ export default function GradeInputPage() {
       try {
         setLoading(true)
         console.log('🔍 Starting to fetch classes...')
-        
-        // Debug: Kiểm tra token
-        const token = localStorage.getItem('accessToken')
-        console.log('🔑 Token exists:', !!token)
-        if (token) {
-          console.log('🔑 Token length:', token.length)
-          console.log('🔑 Token preview:', token.substring(0, 50) + '...')
-        }
-        
+                
         const response = await teacherClassService.getClasses()
         console.log('📦 Classes response:', response)
         
@@ -58,12 +52,12 @@ export default function GradeInputPage() {
         }
         
         const items = ((response as any) || []).map((c: any) => {
-          console.log('🔍 Mapping class item:', c)
           return {
             id: c.id, 
             name: c.name, 
             subject: { name: c.subject?.name || 'N/A' }, 
-            studentCount: c.studentCount || 0
+            studentCount: c.studentCount || 0,
+            assignmentId: c.assignmentId // Thêm assignmentId vào mapping
           }
         }) as TeacherClassItem[]
         console.log('📋 Mapped classes:', items)
@@ -83,63 +77,92 @@ export default function GradeInputPage() {
   }, [])
 
   // Khi chọn lớp: lấy danh sách học sinh ngay lập tức
-  useEffect(() => {
-    const run = async () => {
-      if (!selectedClass) {
-        console.log('🎓 No class selected, clearing students')
-        setStudents([])
-        return
-      }
-      
-      console.log('🎓 Selected class:', selectedClass)
-      console.log('🎓 Fetching students for class:', selectedClass)
-      
+useEffect(() => {
+  const run = async () => {
+    if (!selectedClass) {
+      console.log('🎓 No class selected, clearing students')
+      setStudents([])
+      setSelectedAssignment("")
+      return
+    }
+    
+    // Tìm lớp được chọn để lấy assignmentId
+    const classData = classes.find(c => c.id === selectedClass)
+    const assignmentId = classData?.assignmentId
+    
+    console.log('🎓 Selected class:', selectedClass)
+    console.log('🎓 Assignment ID:', assignmentId)
+    
+    if (!assignmentId) {
+      console.error('⚠️ Không tìm thấy assignmentId cho lớp này')
+      // Fallback về API cũ nếu không có assignmentId
       try {
         setLoading(true)
-        console.log('🎓 Calling pointService.getClassStudents...')
-        const data = await pointService.getClassStudents(selectedClass)
-        console.log('🎓 Students response:', data)
-        console.log('🎓 Students data:', data.data)
-        console.log('🎓 Students count:', data.data?.length || 0)
-        
-        if (data.data && data.data.length > 0) {
-          console.log('🎓 First student:', data.data[0])
-          console.log('🎓 All students:', data.data)
-        } else {
-          console.log('⚠️ No students found for class:', selectedClass)
-        }
-        
-        setStudents(data.data || [])
-        setGrades({})
-        setSavedGrades(new Set())
+        const data = await teacherPointService.getClassStudents(selectedClass)
+        setStudents(data || [])
       } catch (e: any) {
         console.error('❌ Fetch students error', e)
-        console.error('❌ Error details:', {
-          status: e?.status,
-          message: e?.message,
-          response: e?.response,
-          stack: e?.stack
-        })
-        // Vẫn set students = [] để clear UI
         setStudents([])
       } finally {
         setLoading(false)
       }
+      return
     }
-    run()
-  }, [selectedClass])
+    
+    setSelectedAssignment(assignmentId)
+    
+    try {
+      setLoading(true)
+      
+      const response = await teacherCommonService.getListStudentOfClass(assignmentId)
+      
+      // Kiểm tra response structure
+      let studentsArray = null
+      if (Array.isArray(response)) {
+        // Response trực tiếp là array
+        studentsArray = response
+      } else if (response && response.data && Array.isArray(response.data)) {
+        // Response có structure {success, data, message}
+        studentsArray = response.data
+      }
+      
+      if (studentsArray && Array.isArray(studentsArray)) {
+        console.log('🎓 Found', studentsArray.length, 'students')
+        // Sử dụng helper method từ service để transform data
+        const studentsData = teacherCommonService.processStudentsData(studentsArray)
+        setStudents(studentsData)
+      } else {
+        console.log('⚠️ No students found')
+        setStudents([])
+      }
+      
+      setGrades({})
+      setSavedGrades(new Set())
+    } catch (e: any) {
+      console.error('❌ Fetch students error', e)
+      console.error('❌ Error details:', {
+        status: e?.status,
+        message: e?.message,
+        response: e?.response,
+        stack: e?.stack
+      })
+      setStudents([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  run()
+}, [selectedClass, classes])
 
   // Khi chọn lớp: cũng lấy danh sách loại kiểm tra để hiển thị trong dropdown
   useEffect(() => {
     const run = async () => {
       if (!selectedClass) return
       try {
-        const types = await pointService.getAssessmentTypes(selectedClass)
-        console.log('Assessment types response:', types)
-        console.log('Assessment types data:', types.data)
+        const types = await teacherPointService.getAssessmentTypes(selectedClass)
         
         // Backend trả về trực tiếp array, không cần .data
-        const apiTypes = types.data || types
+        const apiTypes = types || []
         console.log('API types:', apiTypes)
         
         // Nếu không có loại kiểm tra nào, thêm một số loại mặc định
@@ -201,7 +224,7 @@ export default function GradeInputPage() {
     }))
     try {
       setLoading(true)
-      await pointService.recordGrades({
+      await teacherPointService.recordGrades({
         classId: selectedClass,
         assessmentName: examTitle || `${selectedExamType} - ${examDate}`,
         assessmentType: selectedExamType,

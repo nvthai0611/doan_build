@@ -15,8 +15,9 @@ import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-c
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
-import { AttendanceTable } from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import ClassManagement from "../pages/manager/Class-management/ClassManagement";
+import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
+import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 
 export const privateRoutes = (
   <>
@@ -46,7 +47,11 @@ export const privateRoutes = (
         <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
-        <Route path="attendance" element={<AttendanceTable students={[]} />} />
+        <Route path="attendance" element={<AttendanceTable />} />
+
+        {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
+        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable  />} />
+        <Route path="schedule/leave" element={<LeaveRequestPage />} />
       </Route>
 
       {/* Học sinh */}

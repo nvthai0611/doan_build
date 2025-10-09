@@ -33,8 +33,10 @@ export class ClassManagementService {
                 );
             }
 
-            if(status == 'all' || status == '' || !status){
-                status = undefined;
+            // Xử lý status parameter
+            let assignmentStatus = undefined;
+            if (status && status !== 'all' && status.trim() !== '') {
+                assignmentStatus = status;
             }
 
             // Tính offset cho phân trang
@@ -43,19 +45,24 @@ export class ClassManagementService {
             // Xây dựng điều kiện where cho TeacherAssignment
             const whereCondition: any = {
                 teacherId,
-                ...(status && { status })
+                ...(assignmentStatus && { status: assignmentStatus }),
+                class: {
+                    // Chỉ filter class theo 'active' khi KHÔNG có status hoặc status khác 'all'
+                    ...((!status || (status !== 'all' && !assignmentStatus)) && { status: 'active' }),
+                    ...(search && search.trim() !== '' && {
+                        name: {
+                            contains: search.trim(),
+                            mode: 'insensitive'
+                        }
+                    })
+                }
             };
 
-            // Thêm điều kiện search cho tên lớp học
-            if (search && search.trim() !== '') {
-                const searchTerm = search.trim();
-                whereCondition.class = {
-                    name: {
-                        contains: searchTerm,
-                        mode: 'insensitive'
-                    }
-                };
+            // Nếu không có status parameter, mặc định lấy assignment active
+            if (!status) {
+                whereCondition.status = 'active';
             }
+            // Nếu status là 'all', không filter theo assignment status (bỏ điều kiện status)
 
             // Validate page và limit
             if (page < 1) page = 1;
@@ -111,8 +118,32 @@ export class ClassManagementService {
                 );
             }
 
+            // Tính toán số lượng học sinh active cho mỗi assignment
+            const assignmentsWithActiveStudents = await Promise.all(
+                assignments.map(async (assignment) => {
+                    const activeStudentCount = await this.prisma.enrollment.count({
+                        where: {
+                            teacherClassAssignmentId: assignment.id,
+                            status: 'active',
+                            completedAt: null,
+                            student: {
+                                user: {
+                                    isActive: true
+                                }
+                            }
+                        }
+                    });
+                
+                    
+                    return {
+                        ...assignment,
+                        activeStudentCount
+                    };
+                })
+            );
+
             // Transform data để trả về format phù hợp
-            const transformedClasses = assignments.map(assignment => ({
+            const transformedClasses = assignmentsWithActiveStudents.map(assignment => ({
                 // Assignment info
                 assignmentId: assignment.id,
                 assignmentStatus: assignment.status,
@@ -144,8 +175,8 @@ export class ClassManagementService {
                 room: assignment.class.room,
                 roomId: assignment.class.roomId,
                 
-                // Student count
-                studentCount: assignment._count.enrollments,
+                // Student count (chỉ học sinh active)
+                studentCount: assignment.activeStudentCount,
                 
                 // Fee structure
                 feeStructure: assignment.class.feeStructure,
@@ -157,16 +188,16 @@ export class ClassManagementService {
                         JSON.parse(assignment.recurringSchedule) : 
                         assignment.recurringSchedule) : null,
 
-                // Enrollment info
+                // Enrollment info (chỉ học sinh active)
                 enrollmentStatus: {
-                    current: assignment._count.enrollments,
+                    current: assignment.activeStudentCount,
                     max: assignment.class.maxStudents,
                     percentage: assignment.class.maxStudents > 0 ? 
-                        Math.round((assignment._count.enrollments / assignment.class.maxStudents) * 100) : 0,
-                    available: Math.max(0, assignment.class.maxStudents - assignment._count.enrollments),
-                    isFull: assignment._count.enrollments >= assignment.class.maxStudents,
-                    status: assignment._count.enrollments >= assignment.class.maxStudents ? 'full' : 
-                            assignment._count.enrollments >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
+                        Math.round((assignment.activeStudentCount / assignment.class.maxStudents) * 100) : 0,
+                    available: Math.max(0, assignment.class.maxStudents - assignment.activeStudentCount),
+                    isFull: assignment.activeStudentCount >= assignment.class.maxStudents,
+                    status: assignment.activeStudentCount >= assignment.class.maxStudents ? 'full' : 
+                            assignment.activeStudentCount >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
                 },
             }));
             
@@ -209,41 +240,74 @@ export class ClassManagementService {
         }
     }
 
-    async getCountByStatus(teacherId: string){
+    async getCountByStatus(teacherId: string) {
         try {
-            if(checkId(teacherId) === false){
+            if (checkId(teacherId) === false) {
                 throw new HttpException(
                     'ID giáo viên không hợp lệ',
                     HttpStatus.BAD_REQUEST
                 );
             }
 
-            // Đếm theo status của TeacherAssignment
-            const countByStatus = await this.prisma.teacherClassAssignment.groupBy({
+            // Validate teacher existence
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { id: teacherId }
+            });
+
+            if (!teacher) {
+                throw new HttpException(
+                    'Giáo viên không tồn tại',
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Đếm theo status của TeacherAssignment với class active
+            const activeAssignmentCounts = await this.prisma.teacherClassAssignment.groupBy({
                 by: ['status'],
-                where: { teacherId },
+                where: { 
+                    teacherId
+                },
+                _count: {
+                    status: true
+                }
+            });
+
+            // Đếm tổng tất cả assignment (không filter class status)
+            const totalAssignmentCounts = await this.prisma.teacherClassAssignment.groupBy({
+                by: ['status'],
+                where: { 
+                    teacherId
+                    // Không filter class status để có tổng thực tế
+                },
                 _count: {
                     status: true
                 }
             });
             
-            if (!countByStatus.length) {
+            if (!activeAssignmentCounts.length && !totalAssignmentCounts.length) {
                 throw new HttpException(
                     'Không tìm thấy lớp học nào cho giáo viên này',
                     HttpStatus.NOT_FOUND
                 );
             }
-            
+
             // Khởi tạo object với tất cả trạng thái = 0
             const result = {
                 total: 0,
                 active: 0,
                 completed: 0,
-                cancelled: 0
+                cancelled: 0,
+                // Thêm thông tin về class status
+                activeClassOnly: {
+                    total: 0,
+                    active: 0,
+                    completed: 0,
+                    cancelled: 0
+                }
             };
 
-            // Tính tổng và phân loại theo status của assignment
-            countByStatus.forEach(item => {
+            // Tính tổng từ tất cả assignment (bao gồm cả class inactive)
+            totalAssignmentCounts.forEach(item => {
                 const count = item._count.status;
                 result.total += count;
                 
@@ -253,6 +317,20 @@ export class ClassManagementService {
                     result.completed = count;
                 } else if (item.status === 'cancelled') {
                     result.cancelled = count;
+                }
+            });
+
+            // Tính từ assignment với class active only
+            activeAssignmentCounts.forEach(item => {
+                const count = item._count.status;
+                result.activeClassOnly.total += count;
+                
+                if (item.status === 'active') {
+                    result.activeClassOnly.active = count;
+                } else if (item.status === 'completed') {
+                    result.activeClassOnly.completed = count;
+                } else if (item.status === 'cancelled') {
+                    result.activeClassOnly.cancelled = count;
                 }
             });
 
@@ -315,6 +393,26 @@ export class ClassManagementService {
                 }
             });
 
+            // Tính toán số lượng học sinh active
+            const activeStudentCount = await this.prisma.enrollment.count({
+                where: {
+                    teacherClassAssignmentId: assignment.id,
+                    status: 'active',
+                    completedAt: null,
+                    student: {
+                        user: {
+                            isActive: true
+                        }
+                    }
+                }
+            });
+
+            // Thêm activeStudentCount vào assignment object
+            const assignmentWithActiveCount = {
+                ...assignment,
+                activeStudentCount
+            };
+
             const classSessionInfo = await this.prisma.classSession.findMany({
                 where: {
                     classId: assignment?.classId,
@@ -335,7 +433,7 @@ export class ClassManagementService {
             let totalSessions = classSessionInfo.length;
             
             if (totalSessions > 0) {
-                const totalStudents = assignment._count.enrollments;
+                const totalStudents = assignmentWithActiveCount.activeStudentCount;
                 
                 if (totalStudents > 0) {
                     let totalPresentCount = 0;
@@ -403,8 +501,8 @@ export class ClassManagementService {
                 room: assignment.class.room,
                 subject: assignment.class.subject,
                 
-                // Counts
-                studentCount: assignment._count.enrollments,
+                // Counts (chỉ học sinh active)
+                studentCount: assignmentWithActiveCount.activeStudentCount,
 
                 // Class sessions với tỷ lệ tham gia
                 classSession:{
@@ -412,7 +510,7 @@ export class ClassManagementService {
                     completed: classSessionInfo.filter(session => session.status === 'completed').length,
                     upcoming: classSessionInfo.filter(session => session.status === 'scheduled' && new Date(session.sessionDate) > new Date()).length,
                     attendanceRate: totalAttendanceRate, // Tỷ lệ tham gia tổng thể (%)
-                    averageAttendancePerSession: totalSessions > 0 && assignment._count.enrollments > 0 ? 
+                    averageAttendancePerSession: totalSessions > 0 && assignmentWithActiveCount.activeStudentCount > 0 ? 
                         Math.round((classSessionInfo.reduce((sum, session) => {
                             return sum + session.attendances.filter(att => att.status === 'present').length;
                         }, 0) / totalSessions)) : 0,

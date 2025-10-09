@@ -230,6 +230,8 @@ export default function ClassManagement() {
     setCurrentPage(1);
   };
 
+  console.log(classesToRender);
+  
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -394,7 +396,7 @@ export default function ClassManagement() {
                   Ngày kết thúc
                 </TableHead>
                 <TableHead>Số học sinh trong lớp</TableHead>
-                <TableHead>Thao tác</TableHead>
+                {/* <TableHead>Thao tác</TableHead> */}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -416,10 +418,12 @@ export default function ClassManagement() {
               ) : (
                 classesToRender.map((classItem: any, index: number) => (
                 <TableRow
-                  key={classItem.id}
+                  key={classItem.assignmentId}
                   className="hover:bg-muted/50 transition-colors duration-200"
                 >
-                  <TableCell className="font-medium">{index + 1}</TableCell>
+                  <TableCell className="font-medium">
+                    {(currentPage - 1) * pageSize + index + 1}
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div onClick={() => navigate(`/teacher/classes/${classItem.assignmentId}`)} className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200">
@@ -458,38 +462,6 @@ export default function ClassManagement() {
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{classItem.enrollmentStatus.current}/{classItem.enrollmentStatus.max}</span>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-2 h-6 w-6 p-0 hover:bg-muted transition-colors duration-200"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 transition-colors duration-200">
-                          <Eye className="mr-2 h-4 w-4" />
-                          Xem chi tiết
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 transition-colors duration-200">
-                          <Edit className="mr-2 h-4 w-4" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer hover:bg-blue-50 transition-colors duration-200">
-                          <Copy className="mr-2 h-4 w-4" />
-                          Sao chép
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer hover:bg-red-50 text-red-600 transition-colors duration-200">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa lớp học
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )))}
