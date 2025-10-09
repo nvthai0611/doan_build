@@ -15,9 +15,11 @@ import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-c
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
-import ClassManagement from "../pages/manager/Class-management/ClassManagement";
+import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
+import CreateClass from "../pages/manager/Class-management/CreateClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
+
 
 export const privateRoutes = (
   <>
@@ -32,6 +34,7 @@ export const privateRoutes = (
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
+        <Route path="classes/create" element={<CreateClass />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />

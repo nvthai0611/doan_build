@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 
 export const useClassesQuery = (filters: any) => {
-    return useQuery({
+    const data = useQuery({
         queryKey: ['classes', filters],
         queryFn: () => classService.getClasses(filters),
-        staleTime: 30000,
-        refetchOnWindowFocus: false
+        staleTime: 0, // Cache for 30 seconds
+        refetchOnWindowFocus: false, // Disable refetch on window focus to reduce API calls
+        retry: 1 // Only retry once on failure
     });
+    return data;
 };
 
 export const useClassQuery = (classId: string) => {
