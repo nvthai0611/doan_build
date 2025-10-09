@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BookOpen, BarChart3, Users, GraduationCap, Calendar, CheckSquare, UserCheck } from "lucide-react"
+import { BookOpen, BarChart3, Users, GraduationCap, Calendar, CheckSquare, UserCheck, CalendarCheck2 } from "lucide-react"
 
 interface ClassNavigationProps {
   activeTab: string
@@ -19,7 +19,7 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
     // { id: "giao-vien", label: "Giáo viên", icon: GraduationCap },
     // { id: "buoi-hoc", label: "Buổi học", icon: Calendar },
     // { id: "cong-viec", label: "Công việc", icon: CheckSquare },
-    { id: "danh-gia", label: "Đánh giá", icon: UserCheck },
+    { id: "history-attendance-class", label: "Lịch sử điểm danh", icon: CalendarCheck2 },
   ]
 
   useEffect(() => {
