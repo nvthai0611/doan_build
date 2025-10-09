@@ -580,6 +580,47 @@ export class ClassManagementService {
         }
     }
 
-   
-    
+    async getHistoryAttendanceOfClass(teacherClassAssignmentId: string, teacherId: string){
+        try{
+        if(!checkId(teacherClassAssignmentId)){
+            throw new HttpException('Id không hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+        // Lấy Id của class và academicYear của teacherClassAssignmentId
+        const findTeacherClassAssignment = await this.prisma.teacherClassAssignment.findUnique({
+            where: {id: teacherClassAssignmentId, teacherId: teacherId},
+        })
+        if(!findTeacherClassAssignment){
+            throw new HttpException('Không tìm lấy lớp học theo teacherClassAssignmentId', HttpStatus.NOT_FOUND);
+        }
+        // Từ Id của class và academicYear lấy danh sách của classSessions
+        const classSessions = await this.prisma.classSession.findMany({
+            where:{
+                classId: findTeacherClassAssignment.classId,
+                academicYear: findTeacherClassAssignment.academicYear
+            },
+            include:{
+                attendances:{ // lấy attendance của từng buổi học
+                    include:{
+                        student:{ // lấy thông tin của học sinh
+                            select:{ 
+                                user:true // nối đến bằng user để lấy thông tin chi tiết                           
+                        }
+                    }
+                }
+            }
+        }})
+
+        if(classSessions.length == 0){
+            throw new HttpException('Không tìm thấy buổi học nào của lớp này', HttpStatus.NOT_FOUND);
+        }
+        return classSessions;
+        }catch(error){
+            if(error instanceof HttpException) throw error;
+
+            throw new HttpException(
+                'Có lỗi xảy ra khi lấy lịch sử điểm danh',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }

@@ -94,9 +94,25 @@ const fetchClassData = async (
   return res;
 };
 
+const getAttendanceHistoryOfClass = async (teacherClassAssignment: string): Promise<any> => {
+  try {
+    const result = await apiClient.get(`teacher/class-management/classes/${teacherClassAssignment}/attendance-history`);
+    
+    if (result.status >= 200 && result.status < 300) {
+      return result.data;
+    } else {
+      throw new Error('Lỗi khi lấy lịch sử điểm danh');
+    }
+  } catch (error: any) {
+    console.error('Error fetching attendance history:', error);
+    throw new Error(error?.response?.data?.message || error?.message || 'Lỗi khi lấy lịch sử điểm danh');
+  }
+}
+
 export {
     getClassByTeacherId,
     getCountByStatus,
     getClassDetail,
-    fetchClassData
+    fetchClassData,
+    getAttendanceHistoryOfClass
 }
