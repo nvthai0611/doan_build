@@ -28,6 +28,7 @@ export class CloudinaryController {
     }
 
     try {
+      // Upload vào folder QNEduManagementSystem                    
       const result = await this.cloudinaryService.uploadImage(file, 'teachers');
       return {
         success: true,

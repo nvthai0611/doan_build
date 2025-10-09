@@ -2,14 +2,14 @@ import { ApiService } from "../../common/api/api-client"
 import type { TeacherProfile, UpdateProfileRequest, ChangePasswordRequest } from "./profile.types"
 
 export const teacherProfileService = {
-  getProfile: async (): Promise<TeacherProfile> => {
+    getProfile: async (): Promise<TeacherProfile> => {
     const response = await ApiService.get<TeacherProfile>("/teacher/profile")
     return response.data
   },
 
   updateProfile: async (data: UpdateProfileRequest): Promise<TeacherProfile> => {
     const response = await ApiService.patch<TeacherProfile>("/teacher/profile", data)
-    return response.data
+    return response.data      
   },
 
   changePassword: async (data: ChangePasswordRequest): Promise<void> => {

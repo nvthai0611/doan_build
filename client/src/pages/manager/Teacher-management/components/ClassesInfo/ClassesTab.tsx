@@ -319,29 +319,8 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         </div>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="p-8 text-center">
-          <div className="text-gray-500">Đang tải dữ liệu...</div>
-        </div>
-      ) : isError ? (
-        <div className="p-8 text-center">
-          <div className="text-red-500">Có lỗi xảy ra khi tải dữ liệu</div>
-          <button 
-            onClick={() => refetch()} 
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Thử lại
-          </button>
-        </div>
-      ) : transformedData.length === 0 ? (
-        <div className="p-8 text-center">
-          <div className="text-gray-500">Không có dữ liệu lớp học</div>
-          <div className="text-sm text-gray-400 mt-2">
-            Giáo viên này chưa có lớp học nào được gán
-          </div>
-        </div>
-      ) : (
+     
+   
         <DataTable
           data={transformedData}
           columns={columns}
@@ -358,7 +337,6 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
             showPageInfo: true,
           }}
         />
-      )}
 
       {/* Footer with toggle */}
       <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900 flex items-center justify-between">

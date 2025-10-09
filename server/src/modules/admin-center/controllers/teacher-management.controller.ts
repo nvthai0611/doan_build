@@ -80,4 +80,19 @@ export class TeacherManagementController {
     
     return this.teacherManagementService.getTeacherSchedule(id, yearNum, monthNum);
   }
+
+  @Post('bulk-import-validate')
+  @HttpCode(HttpStatus.OK)
+  async validateBulkImport(@Body() body: { teachers: any[] }) {
+    console.log("Validating teachers:", body.teachers.length);
+    return this.teacherManagementService.validateTeachersData(body.teachers);
+  }
+
+  @Post('bulk-import')
+  @HttpCode(HttpStatus.OK)
+  bulkImport(@Body() body: { teachers: any[] }) {
+    console.log("Creating teachers:", body.teachers.length);
+    
+    return this.teacherManagementService.bulkImportTeachers(body.teachers);
+  }
 }

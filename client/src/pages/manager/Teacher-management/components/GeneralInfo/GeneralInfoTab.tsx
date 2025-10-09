@@ -223,7 +223,7 @@ export default function GeneralInfoTab({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="teacher">Giáo viên</SelectItem>
-                    <SelectItem value="admin">Giáo vụ</SelectItem>
+                    {/* <SelectItem value="admin">Giáo vụ</SelectItem> */}
                     <SelectItem value="center_owner">Chủ trung tâm</SelectItem>
                   </SelectContent>
                 </Select>

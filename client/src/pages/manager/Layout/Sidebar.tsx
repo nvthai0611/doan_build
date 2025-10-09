@@ -47,9 +47,9 @@ const centerOwnerMenuItems = [
   {
     title: "Quản lý học sinh",
     icon: Users,
-    href: "/students",
+    href: "/center-qn/students",
     children: [
-      { title: "Danh sách học sinh", href: "/students" },
+      { title: "Danh sách học sinh", href: "/center-qn/students" },
       { title: "Thông tin phụ huynh", href: "/students/parents" },
       { title: "Phân lớp tự động", href: "/students/auto-assign" },
       { title: "Học bạ nội bộ", href: "/students/records" },
@@ -60,11 +60,11 @@ const centerOwnerMenuItems = [
   {
     title: "Quản lý giáo viên",
     icon: GraduationCap,
-    href: "teachers",
+    href: "/center-qn/teachers",
     children: [
-      { title: "Danh sách giáo viên", href: "/teachers" },
+      { title: "Danh sách giáo viên", href: "/center-qn/teachers" },
       { title: "Thông tin chuyên môn", href: "/teachers/expertise" },
-      { title: "Lịch dạy", href: "/teachers/schedule" },
+      { title: "Lịch dạy", href: "/center-qn/teachers/schedule" },
       { title: "Hợp đồng & Nhân sự", href: "/teachers/contracts" },
       { title: "Quản lý lương", href: "/teachers/salary" },
       { title: "Đánh giá từ PH/HS", href: "/teachers/reviews" },
@@ -74,8 +74,9 @@ const centerOwnerMenuItems = [
   {
     title: "Lớp học & Khóa học",
     icon: BookOpen,
-    href: "/courses",
+    href: "/center-qn/classes",
     children: [
+      { title: "Quản lý lớp học", href: "/center-qn/classes" },
       { title: "Tạo khóa học mới", href: "/courses/create" },
       { title: "Quản lý khóa học", href: "/courses" },
       { title: "Thời khóa biểu", href: "/courses/timetable" },
