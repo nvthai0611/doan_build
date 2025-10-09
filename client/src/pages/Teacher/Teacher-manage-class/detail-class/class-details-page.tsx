@@ -20,7 +20,7 @@ import { HocVienTab } from "./tabs/hoc-vien-tab"
 import { GiaoVienTab } from "./tabs/giao-vien-tab"
 import { BuoiHocTab } from "./tabs/buoi-hoc-tab"
 import { CongViecTab } from "./tabs/cong-viec-tab"
-import { DanhGiaTab } from "./tabs/danh-gia-tab"
+import ClassAttendancePage from "./tabs/lich-su-diem-danh"
 import { ClassModals } from "./modals/class-modals"
 import { useLocation, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
@@ -160,11 +160,7 @@ export function ClassDetailsPage() {
         )
       case "history-attendance-class":
         return (
-          <DanhGiaTab
-            onAddAssessment={() => setAddAssessmentOpen(true)}
-            onEditAssessment={(assessment) => handleEdit("assessment", assessment)}
-            onDeleteAssessment={(assessment) => handleDelete("assessment", assessment)}
-          />
+          <ClassAttendancePage teacherClassAssignmentId={teacherClassAssignmentId as string} />
         )
       default:
         return (
@@ -221,7 +217,7 @@ export function ClassDetailsPage() {
       />
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      {/* <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
@@ -254,7 +250,7 @@ export function ClassDetailsPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </div>
   )
 }
