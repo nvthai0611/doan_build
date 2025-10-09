@@ -141,35 +141,35 @@ export class CommonController {
      * Lấy thống kê tổng quan về lớp học
      * GET /common/statistics/:assignmentId
      */
-    // @Get('statistics/:assignmentId')
-    // @ApiOperation({ 
-    //     summary: 'Lấy thống kê lớp học',
-    //     description: 'Lấy thống kê tổng quan về lớp học bao gồm số lượng học sinh, thống kê điểm danh, điểm số'
-    // })
-    // @ApiParam({ 
-    //     name: 'assignmentId', 
-    //     description: 'ID phân công giáo viên - lớp học',
-    //     example: 'uuid-string'
-    // })
-    // @ApiResponse({ 
-    //     status: 200, 
-    //     description: 'Lấy thống kê lớp học thành công',
-    //     type: ClassStatisticsResponseDto
-    // })
-    // @ApiResponse({ 
-    //     status: 400, 
-    //     description: 'Lỗi request không hợp lệ'
-    // })
-    // async getClassStatistics(@Param('assignmentId') assignmentId: string) {
-    //     try {
-    //         const result = await this.commonService.getClassStatistics(assignmentId);
-    //         return result;
-    //     } catch (error) {
-    //         return {
-    //             success: false,
-    //             message: error.message,
-    //             data: null
-    //         };
-    //     }
-    // }
+    @Get('statistics/:assignmentId')
+    @ApiOperation({ 
+        summary: 'Lấy thống kê lớp học',
+        description: 'Lấy thống kê tổng quan về lớp học bao gồm số lượng học sinh, thống kê điểm danh, điểm số'
+    })
+    @ApiParam({ 
+        name: 'assignmentId', 
+        description: 'ID phân công giáo viên - lớp học',
+        example: 'uuid-string'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Lấy thống kê lớp học thành công',
+        type: ClassStatisticsResponseDto
+    })
+    @ApiResponse({ 
+        status: 400, 
+        description: 'Lỗi request không hợp lệ'
+    })
+    async getClassStatistics(@Param('assignmentId') assignmentId: string) {
+        try {
+            const result = await this.commonService.getClassStatistics(assignmentId);
+            return result;
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                data: null
+            };
+        }
+    }
 }

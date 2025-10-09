@@ -8,18 +8,20 @@ import { UpdateGradeDto } from '../dto/grade/update-grade.dto';
 export class GradeService {
     constructor(private prisma: PrismaService) {}
 
-    private async ensureTeacherCanAccessClass(teacherId: string, classId: string) {
-        if(!checkId(teacherId) || !checkId(classId)){
+    private async ensureTeacherCanAccessClass(userId: string, classId: string) {
+        if(!checkId(userId) || !checkId(classId)){
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
         }
 
-        // Kiểm tra teacher có tồn tại không
-        const teacher = await this.prisma.teacher.findUnique({
-            where: { id: teacherId }
+        // Kiểm tra user có teacher record không
+        const teacher = await this.prisma.teacher.findFirst({
+            where: { userId: userId }
         });
         if (!teacher) {
             throw new HttpException('Giáo viên không tồn tại', HttpStatus.NOT_FOUND);
         }
+        
+        const teacherId = teacher.id;
 
         // Kiểm tra class có tồn tại không
         const classExists = await this.prisma.class.findUnique({
@@ -50,10 +52,10 @@ export class GradeService {
         }
     }
 
-    async getStudentsOfClass(teacherId: string, classId: string) {
-        console.log(`🎓 Getting students for class ${classId} by teacher ${teacherId}`);
+    async getStudentsOfClass(userId: string, classId: string) {
+        console.log(`🎓 Getting students for class ${classId} by user ${userId}`);
         
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+        await this.ensureTeacherCanAccessClass(userId, classId);
 
         // Lấy danh sách học sinh đã đăng ký vào lớp với status active
         const enrollments = await this.prisma.enrollment.findMany({
@@ -126,8 +128,8 @@ export class GradeService {
         return result;
     }
 
-    async listAssessments(teacherId: string, classId: string) {
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+    async listAssessments(userId: string, classId: string) {
+        await this.ensureTeacherCanAccessClass(userId, classId);
 
         const assessments = await this.prisma.assessment.findMany({
             where: { classId },
@@ -155,11 +157,20 @@ export class GradeService {
         return assessments;
     }
 
-    async listAssessmentTypes(teacherId: string, classId?: string) {
+    async listAssessmentTypes(userId: string, classId?: string) {
         // Bỏ kiểm tra strict để tránh lỗi 400
         // if (classId) {
-        //     await this.ensureTeacherCanAccessClass(teacherId, classId);
+        //     await this.ensureTeacherCanAccessClass(userId, classId);
         // }
+
+        // Lấy teacherId từ userId
+        const teacher = await this.prisma.teacher.findFirst({
+            where: { userId: userId }
+        });
+        if (!teacher) {
+            return [] as string[];
+        }
+        const teacherId = teacher.id;
 
         let where: any = {};
         if (classId) {
@@ -193,39 +204,51 @@ export class GradeService {
         if (types.length === 0) {
             return [
                 'Kiểm tra 15 phút',
-                'Kiểm tra giữa kỳ', 
-                'Kiểm tra cuối kỳ',
-                'Bài tập về nhà',
-                'Kiểm tra miệng'
+                'Kiểm tra 45 phút', 
+                'Kiểm tra 60 phút',
+                'Kiểm tra 90 phút'
             ];
         }
         
         return types;
     }
 
-    async recordGrades(teacherId: string, payload: RecordGradesDto) {
+    async recordGrades(userId: string, payload: RecordGradesDto) {
         const { classId, assessmentName, assessmentType, maxScore, date, description, grades } = payload;
-        await this.ensureTeacherCanAccessClass(teacherId, classId);
+        await this.ensureTeacherCanAccessClass(userId, classId);
+
+        // Validate max score = 10
+        if (maxScore && maxScore !== 10) {
+            throw new HttpException('Max score phải là 10 điểm', HttpStatus.BAD_REQUEST);
+        }
 
         // Kiểm tra xem có học sinh nào trong danh sách không
         if (!grades || grades.length === 0) {
             throw new HttpException('Không có học sinh nào để ghi điểm', HttpStatus.BAD_REQUEST);
         }
 
+        // Validate individual scores
+        const invalidScores = grades.filter(g => g.score !== undefined && g.score !== null && (g.score < 0 || g.score > 10));
+        if (invalidScores.length > 0) {
+            throw new HttpException('Điểm số phải từ 0 đến 10', HttpStatus.BAD_REQUEST);
+        }
+
         // Kiểm tra tất cả học sinh có thuộc lớp này không
         const studentIds = grades.map(g => g.studentId);
+        console.log(`🔍 Checking students for class ${classId}:`, studentIds);
+        
         const enrollments = await this.prisma.enrollment.findMany({
             where: {
                 classId,
                 studentId: { in: studentIds },
                 status: 'active'
             },
-            select: { studentId: true }
-        });
+            select: { studentId: true, status: true }
+        });        
         
         const validStudentIds = enrollments.map(e => e.studentId);
         const invalidStudents = studentIds.filter(id => !validStudentIds.includes(id));
-        
+              
         if (invalidStudents.length > 0) {
             throw new HttpException(
                 `Một số học sinh không thuộc lớp này: ${invalidStudents.join(', ')}`, 
@@ -234,43 +257,86 @@ export class GradeService {
         }
 
         // Tạo assessment mới
-        const assessment = await this.prisma.assessment.create({
-            data: {
-                classId,
-                name: assessmentName,
-                type: assessmentType,
-                maxScore: maxScore as any,
-                date: new Date(date),
-                description
-            }
+        console.log('🎯 Creating assessment with data:', {
+            classId,
+            name: assessmentName,
+            type: assessmentType,
+            maxScore: maxScore,
+            date: new Date(date),
+            description
         });
+        
+        let assessment;
+        try {
+            assessment = await this.prisma.assessment.create({
+                data: {
+                    classId,
+                    name: assessmentName,
+                    type: assessmentType,
+                    maxScore: Number(maxScore), // Convert to number
+                    date: new Date(date),
+                    description
+                }
+            });
+            
+            console.log('✅ Assessment created successfully:', assessment.id);
+        } catch (error) {
+            console.error('❌ Error creating assessment:', error);
+            throw new HttpException(`Lỗi tạo assessment: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
         // Ghi điểm cho từng học sinh (upsert theo unique [assessmentId, studentId])
+        console.log('🎯 Processing grades:', grades);
+        console.log('🎯 Assessment ID:', assessment.id);
+        console.log('🎯 User ID:', userId);
+        
         const gradeRecords = [];
         for(const g of grades){
             if (g.score !== undefined && g.score !== null) {
-                const gradeRecord = await this.prisma.studentAssessmentGrade.upsert({
-                    where: {
-                        assessmentId_studentId: {
-                            assessmentId: assessment.id,
-                            studentId: g.studentId
-                        }
-                    },
-                    update: {
-                        score: g.score as any,
-                        feedback: g.feedback,
-                        gradedBy: teacherId,
-                        gradedAt: new Date()
-                    },
-                    create: {
-                        assessmentId: assessment.id,
-                        studentId: g.studentId,
-                        score: g.score as any,
-                        feedback: g.feedback,
-                        gradedBy: teacherId
-                    }
+                console.log(`🎯 Creating grade for student ${g.studentId} with score ${g.score}`);
+                console.log(`🎯 Grade data:`, {
+                    assessmentId: assessment.id,
+                    studentId: g.studentId,
+                    score: Number(g.score),
+                    feedback: g.feedback,
+                    gradedBy: userId
                 });
-                gradeRecords.push(gradeRecord);
+                
+                try {
+                    const gradeRecord = await this.prisma.studentAssessmentGrade.upsert({
+                        where: {
+                            assessmentId_studentId: {
+                                assessmentId: assessment.id,
+                                studentId: g.studentId
+                            }
+                        },
+                        update: {
+                            score: Number(g.score), // Convert to number
+                            feedback: g.feedback,
+                            gradedBy: userId,
+                            gradedAt: new Date()
+                        },
+                        create: {
+                            assessmentId: assessment.id,
+                            studentId: g.studentId,
+                            score: Number(g.score), // Convert to number
+                            feedback: g.feedback,
+                            gradedBy: userId
+                        }
+                    });
+                    console.log(`✅ Grade created/updated for student ${g.studentId}:`, gradeRecord.id);
+                    gradeRecords.push(gradeRecord);
+                } catch (error) {
+                    console.error(`❌ Error creating grade for student ${g.studentId}:`, error);
+                    console.error(`❌ Error details:`, {
+                        code: error.code,
+                        message: error.message,
+                        meta: error.meta
+                    });
+                    throw new HttpException(`Lỗi ghi điểm cho học sinh ${g.studentId}: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+                }
+            } else {
+                console.log(`⚠️ Skipping student ${g.studentId} - no score provided`);
             }
         }
 
@@ -281,7 +347,7 @@ export class GradeService {
         };
     }
 
-    async updateGrade(teacherId: string, payload: UpdateGradeDto) {
+    async updateGrade(userId: string, payload: UpdateGradeDto) {
         const { assessmentId, studentId, score, feedback } = payload;
         if(!checkId(assessmentId) || !checkId(studentId)){
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
@@ -292,7 +358,7 @@ export class GradeService {
         if(!assessment){
             throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
         }
-        await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+        await this.ensureTeacherCanAccessClass(userId, assessment.classId);
 
         const updated = await this.prisma.studentAssessmentGrade.update({
             where: {
@@ -301,7 +367,7 @@ export class GradeService {
             data: {
                 score: (score ?? null) as any,
                 feedback,
-                gradedBy: teacherId,
+                gradedBy: userId,
                 gradedAt: new Date()
             }
         }).catch(async (e) => {
@@ -312,7 +378,7 @@ export class GradeService {
                     studentId,
                     score: (score ?? null) as any,
                     feedback,
-                    gradedBy: teacherId
+                    gradedBy: userId
                 }
             });
             return created;
@@ -321,7 +387,7 @@ export class GradeService {
         return updated;
     }
 
-    async getAssessmentGrades(teacherId: string, assessmentId: string) {
+    async getAssessmentGrades(userId: string, assessmentId: string) {
         if (!checkId(assessmentId)) {
             throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
         }
@@ -331,7 +397,7 @@ export class GradeService {
             throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
         }
 
-        await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+        await this.ensureTeacherCanAccessClass(userId, assessment.classId);
 
         const grades = await this.prisma.studentAssessmentGrade.findMany({
             where: { assessmentId },
