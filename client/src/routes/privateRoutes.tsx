@@ -19,6 +19,7 @@ import { ClassManagement } from "../pages/manager/Class-management/ClassManageme
 import CreateClass from "../pages/manager/Class-management/CreateClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
+import MyRequests from "../pages/Teacher/My-request/MyRequests";
 
 
 export const privateRoutes = (
@@ -55,6 +56,7 @@ export const privateRoutes = (
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
         <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable  />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
+        <Route path="schedule/my-requests" element={<MyRequests />} />
       </Route>
 
       {/* Học sinh */}

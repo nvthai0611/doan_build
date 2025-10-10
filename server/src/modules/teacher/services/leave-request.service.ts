@@ -309,4 +309,86 @@ export class LeaveRequestService {
 
     return leaveRequest;
   }
+
+  async getMyLeaveRequests(
+    teacherId: string,
+    options: {
+      page: number;
+      limit: number;
+      status?: string;
+      requestType?: string;
+    }
+  ) {
+    const { page, limit, status, requestType } = options;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {
+      teacherId,
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (requestType) {
+      where.requestType = requestType;
+    }
+
+    // Get total count
+    const total = await this.prisma.leaveRequest.count({ where });
+
+    // Get leave requests with pagination
+    const leaveRequests = await this.prisma.leaveRequest.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        affectedSessions: {
+          include: {
+            session: {
+              include: {
+                class: {
+                  include: {
+                    subject: true,
+                  },
+                },
+                room: true,
+              },
+            },
+            replacementTeacher: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+        createdByUser: {
+          select: {
+            fullName: true,
+            email: true,
+          },
+        },
+        approvedByUser: {
+          select: {
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      data: leaveRequests,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

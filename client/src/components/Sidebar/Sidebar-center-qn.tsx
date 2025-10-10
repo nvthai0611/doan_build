@@ -187,6 +187,7 @@ const teacherMenuItems = [
             { title: "Xem lịch dạy", href: "/teacher/schedule" },
             { title: "Đổi ca dạy", href: "/teacher/schedule/change" },
             { title: "Đơn xin nghỉ", href: "/teacher/schedule/leave" },
+            { title: "Đơn của tôi", href: "/teacher/schedule/my-requests" },
         ],
     },
     {
