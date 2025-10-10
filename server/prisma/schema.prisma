@@ -267,6 +267,8 @@ model Material {
   id             BigInt   @id @default(autoincrement())
   classId        String   @map("class_id") @db.Uuid
   title          String
+  fileName       String   @map("file_name")
+  category       String?  @default("Other")
   uploadedBy     String   @map("uploaded_by") @db.Uuid
   uploadedAt     DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
   description    String?
