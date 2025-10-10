@@ -1,5 +1,5 @@
 import { apiClient } from '../../../utils/clientAxios'
-import type { AffectedSessionItem, AffectedSessionsParams, ReplacementTeacher, ReplacementTeachersParams } from './leave.types'
+import type { AffectedSessionItem, AffectedSessionsParams, CreateLeaveRequestDto, LeaveRequest, ReplacementTeacher, ReplacementTeachersParams } from './leave.types'
 
 class TeacherLeaveRequestService {
   async getAffectedSessions(params: AffectedSessionsParams): Promise<AffectedSessionItem[]> {
@@ -23,6 +23,20 @@ class TeacherLeaveRequestService {
     const payload: any = response as any
     const serverData = payload?.data?.data ?? payload?.data
     return serverData as ReplacementTeacher[]
+  }
+
+  async createLeaveRequest(params: CreateLeaveRequestDto): Promise<LeaveRequest> {
+    const response = await apiClient.post<{ data: LeaveRequest }>(
+      '/teacher/leave-request/create-leave-request',
+      params,
+      {
+        contentType: 'multipart/form-data',
+      }
+    )
+
+    const payload: any = response as any
+    const serverData = payload?.data?.data ?? payload?.data
+    return serverData as LeaveRequest
   }
 }
 

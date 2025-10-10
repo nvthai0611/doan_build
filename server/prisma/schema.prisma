@@ -69,6 +69,7 @@ model Teacher {
   documents                   TeacherDocument[]
   school                      School?                      @relation(fields: [schoolId], references: [id])
   user                        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacementSessions         LeaveRequestAffectedSession[]
 
   @@map("teachers")
 }
@@ -161,6 +162,7 @@ model ClassSession {
   class        Class                      @relation(fields: [classId], references: [id], onDelete: Cascade)
   room         Room?                      @relation(fields: [roomId], references: [id])
   attendances  StudentSessionAttendance[]
+  leaveRequestAffectedSessions LeaveRequestAffectedSession[]
 
   @@map("class_sessions")
 }
@@ -370,11 +372,13 @@ model LeaveRequest {
   approvedBy     String?   @map("approved_by") @db.Uuid
   approvedAt     DateTime? @map("approved_at") @db.Timestamptz(6)
   notes          String?
+  imageUrl       String?   @map("image_url")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   approvedByUser User?     @relation("ApprovedBy", fields: [approvedBy], references: [id])
   createdByUser  User      @relation("CreatedBy", fields: [createdBy], references: [id])
   student        Student?  @relation(fields: [studentId], references: [id])
   teacher        Teacher?  @relation(fields: [teacherId], references: [id])
+  affectedSessions LeaveRequestAffectedSession[]
 
   @@map("leave_requests")
 }
@@ -650,4 +654,20 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+
+model LeaveRequestAffectedSession {
+  id                String       @id @default(uuid()) @db.Uuid
+  leaveRequestId    String       @map("leave_request_id") @db.Uuid
+  sessionId         String       @map("session_id") @db.Uuid
+  replacementTeacherId String?   @map("replacement_teacher_id") @db.Uuid
+  notes             String?
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  leaveRequest      LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  session           ClassSession @relation(fields: [sessionId], references: [id])
+  replacementTeacher Teacher?    @relation(fields: [replacementTeacherId], references: [id])
+  
+  @@map("leave_request_affected_sessions")
 }

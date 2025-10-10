@@ -31,3 +31,22 @@ export interface ReplacementTeachersParams {
   time: string
 }
 
+export interface CreateLeaveRequestDto {
+  leaveType: string
+  startDate: string
+  endDate: string
+  reason: string
+  image?: File
+  affectedSessions: AffectedSessionItem[]
+}
+
+export interface LeaveRequest {
+  id: string
+  teacherId: string
+  leaveType: string
+  startDate: string
+  endDate: string
+  reason: string
+  image?: File
+  affectedSessions: AffectedSessionItem[]
+}

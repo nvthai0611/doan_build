@@ -23,12 +23,13 @@ import {
 } from '@/components/ui/select';
 import { AffectedSessionsTable } from './affected-sessions-table';
 import { ConfirmationModal } from './confirmation-modal';
-import { Calendar, Upload, X, FileText } from 'lucide-react';
+import { Calendar, Upload, X, FileText, Loader2 } from 'lucide-react';
 import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
 import { teacherCommonService } from '../../../services/teacher/common/common.service';
 import Loading from '../../../components/Loading/LoadingPage';
+import { toast } from 'sonner';
 
-export interface AffectedSession {
+export interface AffectedSessionItem {
   id: string;
   date: string;
   time: string;
@@ -44,11 +45,11 @@ export function LeaveRequestForm() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
     null,
   );
-  const [affectedSessions, setAffectedSessions] = useState<AffectedSession[]>(
+  const [affectedSessions, setAffectedSessions] = useState<AffectedSessionItem[]>(
     [],
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +75,7 @@ export function LeaveRequestForm() {
         setIsAffectedSessionsLoading(true);
         const data = await teacherLeaveRequestService.getAffectedSessions({ startDate, endDate });
         if (!isCancelled) {
-          setAffectedSessions(data as AffectedSession[]);
+          setAffectedSessions(data as unknown as AffectedSessionItem[]);
         }
       } catch (err) {
         if (!isCancelled) {
@@ -94,24 +95,24 @@ export function LeaveRequestForm() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setAttachment(file);
+      setImage(file);
 
       // Create preview for images
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setAttachmentPreview(reader.result as string);
+          setImagePreview(reader.result as string);
         };
         reader.readAsDataURL(file);
       } else {
-        setAttachmentPreview(null);
+        setImagePreview(null);
       }
     }
   };
 
   const removeAttachment = () => {
-    setAttachment(null);
-    setAttachmentPreview(null);
+    setImage(null);
+    setImagePreview(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -119,12 +120,18 @@ export function LeaveRequestForm() {
 
     // Validation
     if (!leaveType || !startDate || !endDate || !reason) {
-      alert('Vui lòng điền đầy đủ các trường bắt buộc');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
+      return;
+    }
+
+    //check if selected session is not select a replacement teacher
+    if (affectedSessions.some((s) => !s.replacementTeacherId)) {
+      toast.error('Vui lòng chọn giáo viên thay thế cho tất cả các buổi học');
       return;
     }
 
     if (new Date(endDate) < new Date(startDate)) {
-      alert('Ngày kết thúc không được trước ngày bắt đầu');
+      toast.error('Ngày kết thúc không được trước ngày bắt đầu');
       return;
     }
 
@@ -132,24 +139,37 @@ export function LeaveRequestForm() {
   };
 
   const confirmSubmit = async () => {
-    setIsSubmitting(true);
-    setShowConfirmModal(false);
+    try {
+      setIsSubmitting(true);
+      setShowConfirmModal(false);
 
-    // TODO: Implement API call to create LeaveRequest
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+      // TODO: Implement API call to create LeaveRequest
 
-    console.log({
-      teacherName,
-      leaveType,
-      startDate,
-      endDate,
-      reason,
-      attachment: attachment?.name,
-      affectedSessions: affectedSessions.filter((s) => s.selected),
-    });
+      await teacherLeaveRequestService.createLeaveRequest({
+        leaveType,
+        startDate,
+        endDate,
+        reason,
+        image: image as File,
+        affectedSessions: affectedSessions.filter((s) => s.selected) as AffectedSessionItem[],
+      });
 
-    setIsSubmitting(false);
-    alert('Đơn xin nghỉ của bạn đã được gửi thành công!');
+      // console.log({
+      //   leaveType,
+      //   startDate,
+      //   endDate,
+      //   reason,
+      //   image: image as File,
+      //   affectedSessions: affectedSessions.filter((s) => s.selected) as AffectedSessionItem[],
+      // });
+
+      toast.success('Đơn xin nghỉ của bạn đã được gửi thành công!');
+      resetForm();
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi gửi đơn xin nghỉ');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -157,8 +177,8 @@ export function LeaveRequestForm() {
     setStartDate('');
     setEndDate('');
     setReason('');
-    setAttachment(null);
-    setAttachmentPreview(null);
+    setImage(null);
+    setImagePreview(null);
     setAffectedSessions([]);
   };
 
@@ -187,7 +207,7 @@ export function LeaveRequestForm() {
                 </CardHeader>
 
                 <CardContent className="p-8">
-                  <form onSubmit={handleSubmit} className="space-y-8">
+                  <form onSubmit={handleSubmit} className="space-y-8" encType="multipart/form-data">
                     <div className="grid grid-cols-1  gap-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-foreground">
@@ -285,15 +305,15 @@ export function LeaveRequestForm() {
 
                       <div className="space-y-2">
                         <Label
-                          htmlFor="attachment"
+                          htmlFor="image"
                           className="text-sm font-medium text-foreground"
                         >
                           Tệp đính kèm
                         </Label>
                         <div className="space-y-3">
-                          {!attachment ? (
+                          {!image ? (
                             <label
-                              htmlFor="attachment"
+                              htmlFor="image"
                               className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-primary hover:bg-accent transition-colors"
                             >
                               <Upload className="w-5 h-5 text-muted-foreground" />
@@ -301,7 +321,7 @@ export function LeaveRequestForm() {
                                 Chọn tệp để tải lên
                               </span>
                               <Input
-                                id="attachment"
+                                id="image"
                                 type="file"
                                 onChange={handleFileChange}
                                 className="hidden"
@@ -315,10 +335,10 @@ export function LeaveRequestForm() {
                                   <FileText className="w-5 h-5 text-primary" />
                                   <div>
                                     <p className="text-sm font-medium text-foreground">
-                                      {attachment.name}
+                                      {image.name}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {(attachment.size / 1024).toFixed(2)} KB
+                                      {(image.size / 1024).toFixed(2)} KB
                                     </p>
                                   </div>
                                 </div>
@@ -332,11 +352,11 @@ export function LeaveRequestForm() {
                                   <X className="w-4 h-4" />
                                 </Button>
                               </div>
-                              {attachmentPreview && (
+                              {imagePreview && (
                                 <div className="relative rounded-lg border">
                                   <img
                                     src={
-                                      attachmentPreview || '/placeholder.svg'
+                                      imagePreview || '/placeholder.svg'
                                     }
                                     alt="Preview"
                                     className="w-full h-auto max-h-64 object-contain bg-muted"
@@ -363,7 +383,7 @@ export function LeaveRequestForm() {
                         disabled={isSubmitting}
                         className="flex-1 h-12 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground font-semibold shadow-lg"
                       >
-                        {isSubmitting ? 'Đang gửi...' : 'Gửi đơn'}
+                        {isSubmitting ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</span> : 'Gửi đơn'}
                       </Button>
                     </div>
                   </form>

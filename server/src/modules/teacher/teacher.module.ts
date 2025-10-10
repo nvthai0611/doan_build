@@ -21,6 +21,7 @@ import { RouterModule } from '@nestjs/core';
 import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middleware';
 import { CommonController } from './controllers/common.controller';
 import { CommonService } from './services/common.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 
 @Module({
@@ -55,6 +56,7 @@ import { CommonService } from './services/common.service';
     StudentManagementService,
     CommonService,
     LeaveRequestService,
+    CloudinaryService,
   ],
 })
 export class TeacherModule implements NestModule {

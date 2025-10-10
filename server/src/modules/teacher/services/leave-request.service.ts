@@ -1,10 +1,13 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
 import { checkId } from 'src/utils/validate.util';
+import { AffectedSessionCreateDto, LeaveRequestDto } from '../dto/leave-request/leave-request.dto';
+import { CloudinaryService } from 'src/modules/cloudinary/cloudinary.service';
 
 @Injectable()
 export class LeaveRequestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, 
+    private readonly cloudinaryService: CloudinaryService) {}
 
   async getAffectedSessions(
     teacherId: string,
@@ -247,5 +250,63 @@ export class LeaveRequestService {
     }
     
     return reasons.join(', ') || 'Có thể dạy thay';
+  }
+
+
+  async createLeaveRequest(teacherId: string, body: LeaveRequestDto, image?: Express.Multer.File, affectedSessions?: AffectedSessionCreateDto[], createdBy?: string) {
+    let imageUrl: string | undefined;
+
+    // 1. Upload image nếu có
+    if (image) {
+      try {
+        const uploadResult = await this.cloudinaryService.uploadImage(
+          image,
+          'leave-requests',
+        );
+        imageUrl = uploadResult.secure_url;
+      } catch (error) {
+        throw new Error('Lỗi khi upload ảnh: ' + error.message);
+      }
+    }
+
+    // 2. Tạo leave request với affected sessions
+    const leaveRequest = await this.prisma.leaveRequest.create({
+      data: {
+        teacherId,
+        requestType: body.leaveType,
+        reason: body.reason,
+        startDate: new Date(body.startDate),
+        endDate: new Date(body.endDate),
+        status: 'pending',
+        createdBy: createdBy,
+        createdAt: new Date(),
+        imageUrl: imageUrl || null,
+        affectedSessions: {
+          create:
+            affectedSessions.map((session) => ({
+              sessionId: session.id,
+              replacementTeacherId: session.replacementTeacherId,
+              notes: session.notes,
+            })) || [],
+        },
+      },
+      include: {
+        affectedSessions: {
+          include: {
+            session: {
+              include: {
+                class: { include: { subject: true } },
+                room: true,
+              },
+            },
+            replacementTeacher: {
+              include: { user: true },
+            },
+          },
+        },
+      },
+    });
+
+    return leaveRequest;
   }
 }
