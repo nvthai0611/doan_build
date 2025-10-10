@@ -38,6 +38,45 @@ class TeacherLeaveRequestService {
     const serverData = payload?.data?.data ?? payload?.data
     return serverData as LeaveRequest
   }
+
+  async getMyLeaveRequests(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    requestType?: string;
+  }): Promise<{
+    data: LeaveRequest[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        data: LeaveRequest[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+      };
+    }>('/teacher/leave-request/my-requests', params)
+
+    const payload: any = response as any
+    // Response structure: { success: true, data: { data: [...], meta: {...} } }
+    // We need to return the inner data object, not just the array
+    const serverData = payload?.data?.data || payload?.data
+    const serverMeta = payload?.data?.meta || payload?.meta
+    
+    return {
+      data: serverData || [],
+      meta: serverMeta || { total: 0, page: 1, limit: 10, totalPages: 0 }
+    }
+  }
 }
 
 export const teacherLeaveRequestService = new TeacherLeaveRequestService()

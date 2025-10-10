@@ -106,6 +106,48 @@ export class LeaveRequestController {
     }
   }
 
+  @Get('my-requests')
+  @ApiOperation({ summary: 'Lấy danh sách đơn của giáo viên' })
+  @ApiQuery({ name: 'page', required: false, description: 'Trang hiện tại' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Số lượng mỗi trang' })
+  @ApiQuery({ name: 'status', required: false, description: 'Trạng thái đơn' })
+  @ApiQuery({ name: 'requestType', required: false, description: 'Loại đơn' })
+  @ApiResponse({ status: 200, description: 'Danh sách đơn của giáo viên' })
+  async getMyLeaveRequests(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('requestType') requestType?: string,
+  ) {
+    try {
+      const teacherId = req.user?.teacherId;
+      const data = await this.leaveRequestService.getMyLeaveRequests(
+        teacherId,
+        {
+          page: page ? parseInt(page) : 1,
+          limit: limit ? parseInt(limit) : 10,
+          status,
+          requestType,
+        }
+      );
+      return {
+        success: true,
+        data: data,
+        message: 'Lấy danh sách đơn thành công',
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách đơn',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Post('create-leave-request')
   @UseInterceptors(FileInterceptor('image'))
   @ApiOperation({ summary: 'Tạo yêu cầu nghỉ' })

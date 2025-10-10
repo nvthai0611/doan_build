@@ -42,11 +42,58 @@ export interface CreateLeaveRequestDto {
 
 export interface LeaveRequest {
   id: string
+  requestType: string
   teacherId: string
-  leaveType: string
   startDate: string
   endDate: string
   reason: string
-  image?: File
-  affectedSessions: AffectedSessionItem[]
+  status: string
+  imageUrl?: string
+  notes?: string
+  createdAt: string
+  approvedAt?: string
+  createdBy: string
+  approvedBy?: string
+  affectedSessions: AffectedSessionDetail[]
+  createdByUser?: {
+    fullName: string
+    email: string
+  }
+  approvedByUser?: {
+    fullName: string
+    email: string
+  }
+}
+
+export interface AffectedSessionDetail {
+  id: string
+  sessionId: string
+  replacementTeacherId?: string
+  notes?: string
+  createdAt: string
+  session: {
+    id: string
+    sessionDate: string
+    startTime: string
+    endTime: string
+    class: {
+      id: string
+      name: string
+      subject: {
+        id: string
+        name: string
+      }
+    }
+    room?: {
+      id: string
+      name: string
+    }
+  }
+  replacementTeacher?: {
+    id: string
+    user: {
+      fullName: string
+      email: string
+    }
+  }
 }
