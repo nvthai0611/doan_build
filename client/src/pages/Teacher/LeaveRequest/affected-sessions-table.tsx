@@ -10,8 +10,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Users, MapPin, UserCheck } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, Clock, Users, MapPin, UserCheck, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
+import type { ReplacementTeacher } from '../../../services/teacher/leave-request/leave.types';
 
 interface AffectedSession {
   id: string;
@@ -28,19 +30,15 @@ interface AffectedSessionsTableProps {
   setSessions: (sessions: AffectedSession[]) => void;
 }
 
-// Mock replacement teachers
-const replacementTeachers = [
-  { id: '1', name: 'Nguyễn Thị B' },
-  { id: '2', name: 'Trần Văn C' },
-  { id: '3', name: 'Lê Thị D' },
-];
-
 export function AffectedSessionsTable({
   sessions,
   setSessions,
 }: AffectedSessionsTableProps) {
   const [bulkReplacementTeacherId, setBulkReplacementTeacherId] =
     useState<string>('');
+  const [replacementTeachers, setReplacementTeachers] = useState<ReplacementTeacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState<string | null>(null);
+  const [teachersCache, setTeachersCache] = useState<Map<string, ReplacementTeacher[]>>(new Map());
 
   const handleCheckboxChange = (sessionId: string, checked: boolean) => {
     setSessions(
@@ -73,6 +71,42 @@ export function AffectedSessionsTable({
     setSessions(sessions.map((s) => ({ ...s, selected: true })));
   };
 
+  // Function để lấy danh sách giáo viên thay thế
+  const fetchReplacementTeachers = async (sessionId: string, date: string, time: string) => {
+    const cacheKey = `${sessionId}-${date}-${time}`;
+    
+    // Kiểm tra cache trước
+    if (teachersCache.has(cacheKey)) {
+      setReplacementTeachers(teachersCache.get(cacheKey)!);
+      return;
+    }
+
+    setLoadingTeachers(sessionId);
+    try {
+      const teachers = await teacherLeaveRequestService.getReplacementTeachers({
+        sessionId,
+        date,
+        time: time.replace(' - ', '-') // Convert "08:00 - 10:00" to "08:00-10:00"
+      });
+      
+      setReplacementTeachers(teachers);
+      // Cache kết quả
+      setTeachersCache(prev => new Map(prev).set(cacheKey, teachers));
+    } catch (error) {
+      console.error('Failed to load replacement teachers:', error);
+      setReplacementTeachers([]);
+    } finally {
+      setLoadingTeachers(null);
+    }
+  };
+
+  // Function để handle khi user click vào dropdown
+  const handleSelectOpen = (sessionId: string, date: string, time: string) => {
+    if (replacementTeachers.length === 0) {
+      fetchReplacementTeachers(sessionId, date, time);
+    }
+  };
+
   if (sessions.length === 0) {
     return (
       <div className="text-center py-12 bg-muted rounded-xl border-2 border-dashed border-border overflow-hidden">
@@ -89,9 +123,6 @@ export function AffectedSessionsTable({
   return (
     <div className="space-y-4 overflow-hidden">
       <div>
-        <h3 className="text-xl font-bold text-foreground mb-1">
-          Các buổi học bị ảnh hưởng
-        </h3>
         <p className="text-sm text-muted-foreground">
           Hệ thống tự động liệt kê các buổi bạn có trong thời gian nghỉ. Bạn có
           thể chọn người dạy thay cho từng buổi.
@@ -103,21 +134,53 @@ export function AffectedSessionsTable({
           <UserCheck className="w-5 h-5" />
           <h4 className="font-semibold">Thay thế hàng loạt</h4>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-col gap-3">
           <div className="flex-1">
             <Select
               value={bulkReplacementTeacherId}
               onValueChange={setBulkReplacementTeacherId}
+              onOpenChange={(open) => {
+                if (
+                  open &&
+                  replacementTeachers.length === 0 &&
+                  sessions.length > 0
+                ) {
+                  // Lấy giáo viên thay thế cho buổi học đầu tiên được chọn
+                  const firstSelectedSession = sessions.find((s) => s.selected);
+                  if (firstSelectedSession) {
+                    fetchReplacementTeachers(
+                      firstSelectedSession.id,
+                      firstSelectedSession.date,
+                      firstSelectedSession.time,
+                    );
+                  }
+                }
+              }}
             >
               <SelectTrigger className="bg-background border">
                 <SelectValue placeholder="Chọn giáo viên thay thế cho tất cả" />
               </SelectTrigger>
               <SelectContent>
-                {replacementTeachers.map((teacher) => (
-                  <SelectItem key={teacher.id} value={teacher.id}>
-                    {teacher.name}
-                  </SelectItem>
-                ))}
+                {replacementTeachers.length > 0 ? (
+                  replacementTeachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{teacher.fullName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {teacher.compatibilityReason} (Điểm:{' '}
+                          {teacher.compatibilityScore}/5)
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />{' '}
+                    <span className="text-sm text-muted-foreground">
+                      Đang tải giáo viên thay thế...
+                    </span>
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -205,19 +268,55 @@ export function AffectedSessionsTable({
                       onValueChange={(value) =>
                         handleReplacementChange(session.id, value)
                       }
+                      onOpenChange={(open) => {
+                        if (open) {
+                          handleSelectOpen(
+                            session.id,
+                            session.date,
+                            session.time,
+                          );
+                        }
+                      }}
                     >
                       <SelectTrigger
                         id={`replacement-${session.id}`}
                         className="border"
                       >
-                        <SelectValue placeholder="Chọn giáo viên thay thế" />
+                        <SelectValue
+                          placeholder={
+                            loadingTeachers === session.id
+                              ? 'Đang tải...'
+                              : 'Chọn giáo viên thay thế'
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {replacementTeachers.map((teacher) => (
-                          <SelectItem key={teacher.id} value={teacher.id}>
-                            {teacher.name}
-                          </SelectItem>
-                        ))}
+                        {loadingTeachers === session.id ? (
+                          <div className="flex items-center justify-center p-4">
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            <span className="text-sm text-muted-foreground">
+                              Đang tải...
+                            </span>
+                          </div>
+                        ) : replacementTeachers.length > 0 ? (
+                          replacementTeachers.map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {teacher.fullName}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {teacher.compatibilityReason} (Điểm:{' '}
+                                  {teacher.compatibilityScore}/5)
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            Không có giáo viên thay thế phù hợp
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
