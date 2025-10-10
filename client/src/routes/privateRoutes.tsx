@@ -20,6 +20,8 @@ import CreateClass from "../pages/manager/Class-management/CreateClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/Teacher/My-request/MyRequests";
+import FileUpload from "../pages/Teacher/FileManagement/File_upload";
+import FileManage from "../pages/Teacher/FileManagement/File_management";
 
 
 export const privateRoutes = (
@@ -52,9 +54,11 @@ export const privateRoutes = (
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
         <Route path="attendance" element={<AttendanceTable />} />
+        <Route path="documents/upload" element={<FileUpload />} />
+        <Route path="documents/manage" element={<FileManage />} />
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
-        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable  />} />
+        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
       </Route>
