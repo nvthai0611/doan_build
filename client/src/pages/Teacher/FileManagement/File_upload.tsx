@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Upload, FileText, ImageIcon, File, X, CheckCircle, AlertCircle } from "lucide-react"
+import { teacherFileManagementService } from "../../../services/teacher/file-management/file.service"
+import type { TeacherClass, UploadMaterialParams } from "../../../services/teacher/file-management/file.types"
 
-// Fallback local useToast hook when '@/hooks/use-toast' module is not available.
-// This provides the same API used in this file: const { toast } = useToast()
+// Fallback toast hook - hiển thị thông báo trong console
 const useToast = () => {
   const toast = ({
     title,
@@ -25,11 +27,13 @@ const useToast = () => {
     description?: string
     variant?: "default" | "destructive" | string
   } = {}) => {
-    // Basic fallback: log to console; replace with real toast UI if available
+    // Hiển thị toast notification (hiện tại là console.log, có thể thay bằng UI toast library)
     if (variant === "destructive") {
-      console.error("[toast][destructive]", { title, description })
+      console.error("❌ [TOAST ERROR]", title, "-", description)
+      alert(`❌ ${title}\n${description}`) // Tạm dùng alert để user thấy rõ
     } else {
-      console.info("[toast]", { title, description })
+      console.info("✅ [TOAST SUCCESS]", title, "-", description)
+      alert(`✅ ${title}\n${description}`) // Tạm dùng alert để user thấy rõ
     }
   }
 
@@ -41,6 +45,7 @@ interface UploadedFile {
   name: string
   size: number
   type: string
+  file: File
   progress: number
   status: "uploading" | "success" | "error"
 }
@@ -52,6 +57,25 @@ export default function DocumentUploadPage() {
   const [targetClass, setTargetClass] = useState("")
   const [description, setDescription] = useState("")
   const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  // Fetch danh sách lớp học của giáo viên
+  const { data: classes = [], isLoading: isLoadingClasses } = useQuery({
+    queryKey: ['teacher-classes'],
+    queryFn: () => teacherFileManagementService.getTeacherClasses(),
+    staleTime: 5 * 60 * 1000, // 5 phút
+  })
+
+  // Mutation để upload file
+  const uploadMutation = useMutation({
+    mutationFn: async (params: UploadMaterialParams) => {
+      return await teacherFileManagementService.uploadMaterial(params)
+    },
+    onSuccess: () => {
+      // Invalidate queries để refresh data
+      queryClient.invalidateQueries({ queryKey: ['teacher-materials'] })
+    },
+  })
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -83,6 +107,7 @@ export default function DocumentUploadPage() {
       name: file.name,
       size: file.size,
       type: file.type,
+      file: file,
       progress: 0,
       status: "uploading" as const,
     }))
@@ -121,7 +146,7 @@ export default function DocumentUploadPage() {
     setFiles((prev) => prev.filter((f) => f.id !== fileId))
   }
 
-  const handleUploadAll = () => {
+  const handleUploadAll = async () => {
     if (!category || !targetClass) {
       toast({
         title: "Thiếu thông tin",
@@ -140,18 +165,68 @@ export default function DocumentUploadPage() {
       return
     }
 
-    toast({
-      title: "Upload thành công",
-      description: `Đã upload ${files.length} tài liệu`,
-    })
+    // Upload từng file
+    let successCount = 0
+    let errorCount = 0
 
-    // Reset form
-    setTimeout(() => {
-      setFiles([])
-      setCategory("")
-      setTargetClass("")
-      setDescription("")
-    }, 1500)
+    for (const file of files) {
+      if (file.status !== "success") continue
+
+      try {
+        // Upload file lên server
+        await uploadMutation.mutateAsync({
+          classId: targetClass,
+          title: file.name.split('.').slice(0, -1).join('.'), // Remove extension from name
+          category: category as any,
+          description: description,
+          file: file.file,
+        })
+
+        successCount++
+
+        // Update file status
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === file.id
+              ? { ...f, status: "success" as const }
+              : f
+          )
+        )
+      } catch (error) {
+        errorCount++
+        console.error('Upload error:', error)
+
+        // Update file status to error
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === file.id
+              ? { ...f, status: "error" as const }
+              : f
+          )
+        )
+      }
+    }
+
+    if (errorCount === 0) {
+      toast({
+        title: "Upload thành công",
+        description: `Đã upload ${successCount} tài liệu`,
+      })
+
+      // Reset form
+      setTimeout(() => {
+        setFiles([])
+        setCategory("")
+        setTargetClass("")
+        setDescription("")
+      }, 500)
+    } else {
+      toast({
+        title: "Upload hoàn tất",
+        description: `Thành công: ${successCount}, Thất bại: ${errorCount}`,
+        variant: errorCount > 0 ? "destructive" : "default",
+      })
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -166,6 +241,17 @@ export default function DocumentUploadPage() {
     if (type.startsWith("image/")) return <ImageIcon className="w-5 h-5" />
     if (type.includes("pdf")) return <FileText className="w-5 h-5" />
     return <File className="w-5 h-5" />
+  }
+
+  const getCategoryLabel = (value: string) => {
+    const labels: any = {
+      lesson: "Giáo án",
+      exercise: "Bài tập",
+      exam: "Đề thi",
+      material: "Tài liệu học tập",
+      reference: "Tài liệu tham khảo",
+    }
+    return labels[value] || value
   }
 
   return (   
@@ -282,15 +368,20 @@ export default function DocumentUploadPage() {
                     <Label htmlFor="class" className="text-[rgb(25,40,80)] font-bold">
                       LỚP HỌC:
                     </Label>
-                    <Select value={targetClass} onValueChange={setTargetClass}>
+                    <Select 
+                      value={targetClass} 
+                      onValueChange={setTargetClass}
+                      disabled={isLoadingClasses}
+                    >
                       <SelectTrigger className="border-[3px] border-[rgb(25,40,80)] bg-white">
-                        <SelectValue placeholder="Chọn lớp học..." />
+                        <SelectValue placeholder={isLoadingClasses ? "Đang tải..." : "Chọn lớp học..."} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="10a">Lớp 10A - Toán</SelectItem>
-                        <SelectItem value="11b">Lớp 11B - Toán</SelectItem>
-                        <SelectItem value="12a">Lớp 12A - Toán</SelectItem>
-                        <SelectItem value="all">Tất cả lớp</SelectItem>
+                        {classes.map((cls: TeacherClass) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name} - {cls.subject} {cls.grade ? `(Khối ${cls.grade})` : ''}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -303,7 +394,7 @@ export default function DocumentUploadPage() {
                   <Textarea
                     id="description"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                     placeholder="Mô tả ngắn về tài liệu..."
                     className="border-[3px] border-[rgb(25,40,80)] bg-white min-h-[100px]"
                   />
@@ -312,10 +403,10 @@ export default function DocumentUploadPage() {
                 <Button
                   onClick={handleUploadAll}
                   className="w-full bg-[rgb(255,127,80)] hover:bg-[rgb(255,107,60)] text-white font-bold py-6 text-lg border-[3px] border-[rgb(25,40,80)]"
-                  disabled={files.length === 0 || files.some((f) => f.status === "uploading")}
+                  disabled={files.length === 0 || files.some((f) => f.status === "uploading") || uploadMutation.isPending}
                 >
                   <Upload className="w-5 h-5 mr-2" />
-                  Upload tất cả
+                  {uploadMutation.isPending ? "Đang upload..." : "Upload tất cả"}
                 </Button>
               </CardContent>
             </Card>

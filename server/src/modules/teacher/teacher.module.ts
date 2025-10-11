@@ -22,6 +22,8 @@ import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middl
 import { CommonController } from './controllers/common.controller';
 import { CommonService } from './services/common.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { FileManagementController } from './controllers/file-management.controller';
+import { FileManagementService } from './services/file-management.service';
 
 
 @Module({
@@ -42,6 +44,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     StudentManagementController,
     CommonController,
     LeaveRequestController,
+    FileManagementController,
   ],
   providers: [
     PrismaService,
@@ -57,6 +60,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     CommonService,
     LeaveRequestService,
     CloudinaryService,
+    FileManagementService,
   ],
 })
 export class TeacherModule implements NestModule {
