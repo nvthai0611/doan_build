@@ -202,179 +202,232 @@ export default function AttendanceTable() {
     }
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                    Điểm danh học sinh
-                </h1>
-                <div className="flex items-center gap-2 mt-4">
-                    <span 
-                        onClick={() => navigate("/teacher/schedule")} 
-                        className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
-                    >
-                        Lịch dạy
-                    </span>
-                    <span className="text-gray-400"> &gt; </span>
-                    <span className="text-gray-900 font-medium">Quản lý điểm danh</span>
-                </div>
+      <div>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            Điểm danh học sinh
+          </h1>
+          <div className="flex items-center gap-2 mt-4">
+            <span
+              onClick={() => navigate('/teacher/schedule')}
+              className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
+            >
+              Lịch dạy
+            </span>
+            <span className="text-gray-400"> &gt; </span>
+            <span
+              onClick={() => navigate(`/teacher/session-details/${attendanceData?.[0]?.session?.id}`)}
+              className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
+            >
+              Chi tiết buổi học
+            </span>
+            <span className="text-gray-400"> &gt; </span>
+            <span className="text-gray-900 font-medium">Quản lý điểm danh</span>
+          </div>
+        </div>
+
+        <Card className="shadow-xl border-slate-200">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-2xl text-slate-900">
+                  Danh sách điểm danh
+                  <br />
+                  <span className="text-sm font-normal text-slate-500">
+                    Buổi học:{' '}
+                    {attendanceData?.[0]?.session?.class?.name || 'N/A'} | Ngày:{' '}
+                    {attendanceData?.[0]?.session?.sessionDate
+                      ? new Date(
+                          attendanceData[0].session.sessionDate,
+                        ).toLocaleDateString()
+                      : 'N/A'}{' '}
+                    | Thời gian:{' '}
+                    {attendanceData?.[0]?.session?.startTime || 'N/A'} -{' '}
+                    {attendanceData?.[0]?.session?.endTime || 'N/A'} | Tổng số
+                    học sinh: {attendanceData?.length || 0}
+                  </span>
+                </CardTitle>
+                {hasChanges && (
+                  <Badge
+                    variant="outline"
+                    className="bg-amber-50 text-amber-700 border-amber-300"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    Có thay đổi chưa lưu
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
+                  <Check className="h-4 w-4 mr-1" />
+                  Có mặt: {getStatusCount('present')}
+                </Badge>
+                <Badge className="bg-rose-100 text-rose-700 border-rose-300 px-4 py-2">
+                  <X className="h-4 w-4 mr-1" />
+                  Vắng: {getStatusCount('absent')}
+                </Badge>
+                <Badge className="bg-sky-100 text-sky-700 border-sky-300 px-4 py-2">
+                  <Check className="h-4 w-4 mr-1" />
+                  Có phép: {getStatusCount('excused')}
+                </Badge>
+              </div>
             </div>
+          </CardHeader>
 
-            <Card className="shadow-xl border-slate-200">
-                <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                            <CardTitle className="text-2xl text-slate-900">
-                                Danh sách điểm danh
-                                <br/>
-                                <span className="text-sm font-normal text-slate-500">
-                                    Buổi học: {attendanceData?.[0]?.session?.class?.name || 'N/A'} | Ngày: {attendanceData?.[0]?.session?.sessionDate ? new Date(attendanceData[0].session.sessionDate).toLocaleDateString() : 'N/A'} | Thời gian: {attendanceData?.[0]?.session?.startTime || 'N/A'} - {attendanceData?.[0]?.session?.endTime || 'N/A' } | Tổng số học sinh: {attendanceData?.length || 0}
-                                </span>
-                            </CardTitle>
-                            {hasChanges && (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-                                    <AlertCircle className="h-4 w-4 mr-1" />
-                                    Có thay đổi chưa lưu
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="flex gap-3">
-                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
-                                <Check className="h-4 w-4 mr-1" />
-                                Có mặt: {getStatusCount('present')}
-                            </Badge>
-                            <Badge className="bg-rose-100 text-rose-700 border-rose-300 px-4 py-2">
-                                <X className="h-4 w-4 mr-1" />
-                                Vắng: {getStatusCount('absent')}
-                            </Badge>
-                            <Badge className="bg-sky-100 text-sky-700 border-sky-300 px-4 py-2">
-                                <Check className="h-4 w-4 mr-1" />
-                                Có phép: {getStatusCount('excused')}
-                            </Badge>
-                        </div>
-                    </div>
-                </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
+                <div>Học sinh</div>
+                <div className="text-center">Có mặt</div>
+                <div className="text-center">Vắng</div>
+                <div className="text-center">Có phép</div>
+              </div>
 
-                <CardContent className="p-6">
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
-                            <div>Học sinh</div>
-                            <div className="text-center">Có mặt</div>
-                            <div className="text-center">Vắng</div>
-                            <div className="text-center">Có phép</div>
-                        </div>
+              {attendanceData?.length > 0 ? (
+                attendanceData?.map((record: any) => {
+                  const studentId = record.studentId || record.student?.id;
+                  const currentStatus = getStudentCurrentStatus(studentId);
 
-                        {attendanceData?.length > 0 ? (
-                            attendanceData?.map((record: any) => {
-                                const studentId = record.studentId || record.student?.id;
-                                const currentStatus = getStudentCurrentStatus(studentId);
-                                
-                                return (
-                                    <div
-                                        key={studentId}
-                                        className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 items-center py-4 px-3 rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="h-12 w-12 border-2 border-slate-200 shadow-sm">
-                                                <AvatarImage
-                                                    src={record.student?.user?.avatar || "https://picsum.photos/200/300"}
-                                                    alt={record.student?.user?.fullName || 'Student'}
-                                                />
-                                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
-                                                    {record.student?.user?.fullName?.charAt(0) || 'S'}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-semibold text-slate-900 text-base">
-                                                    {record.student?.user?.fullName || 'Chưa có tên'}
-                                                </span>
-                                                <span className="text-sm text-slate-500">
-                                                    {record.student?.studentCode || 'N/A'} • {record.student?.grade || 'N/A'}
-                                                </span>
-                                                {/* <span className="text-xs text-blue-500">
+                  return (
+                    <div
+                      key={studentId}
+                      className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 items-center py-4 px-3 rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12 border-2 border-slate-200 shadow-sm">
+                          <AvatarImage
+                            src={
+                              record.student?.user?.avatar ||
+                              'https://picsum.photos/200/300'
+                            }
+                            alt={record.student?.user?.fullName || 'Student'}
+                          />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                            {record.student?.user?.fullName?.charAt(0) || 'S'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900 text-base">
+                            {record.student?.user?.fullName || 'Chưa có tên'}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            {record.student?.studentCode || 'N/A'} •{' '}
+                            {record.student?.grade || 'N/A'}
+                          </span>
+                          {/* <span className="text-xs text-blue-500">
                                                     ID: {studentId} | Current: {currentStatus || 'null'}
                                                 </span> */}
-                                            </div>
-                                        </div>
+                        </div>
+                      </div>
 
-                                        {(['present', 'absent', 'excused'] as AttendanceStatus[]).map((status) => {
-                                            const currentStatus = getStudentCurrentStatus(studentId);
-                                            const serverRecord = attendanceData?.data?.find((r: any) => 
-                                                (r.studentId || r.student?.id) === studentId
-                                            );
-                                            const dbStatus = serverRecord?.status || null;
-                                            const isChanged = localAttendance[studentId] !== undefined && localAttendance[studentId] !== dbStatus;
-                                            
-                                            return (
-                                                <div key={status} className="flex justify-center">
-                                                    <Button
-                                                        variant={currentStatus === status ? 'default' : 'outline'}
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            handleStatusChange(studentId, status);
-                                                        }}
-                                                        className={cn(
-                                                            'w-24 h-10 font-medium transition-all relative',
-                                                            currentStatus === status && {
-                                                                'present': 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md',
-                                                                'absent': 'bg-rose-600 hover:bg-rose-700 text-white shadow-md',
-                                                                'excused': 'bg-sky-600 hover:bg-sky-700 text-white shadow-md'
-                                                            }[status],
-                                                            currentStatus !== status && {
-                                                                'present': 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300',
-                                                                'absent': 'hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300',
-                                                                'excused': 'hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300'
-                                                            }[status],
-                                                            // Thêm border cho button đã thay đổi
-                                                            isChanged && currentStatus === status && 'ring-2 ring-amber-400 ring-offset-1'
-                                                        )}
-                                                    >
-                                                        {status === 'present' && <Check className="h-4 w-4 mr-1" />}
-                                                        {status === 'absent' && <X className="h-4 w-4 mr-1" />}
-                                                        {status === 'excused' && <Check className="h-4 w-4 mr-1" />}
-                                                        
-                                                        {currentStatus === status && {
-                                                            'present': 'Có mặt',
-                                                            'absent': 'Vắng',
-                                                            'excused': 'Có phép'
-                                                        }[status]}
-                                                        
-                                                        {/* Hiển thị indicator nếu có thay đổi */}
-                                                        {isChanged && currentStatus === status && (
-                                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full"></div>
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div className="flex items-center justify-center py-12">
-                                <p className="text-slate-500">Không có dữ liệu học sinh</p>
-                            </div>
-                        )}
-                    </div>
+                      {(
+                        ['present', 'absent', 'excused'] as AttendanceStatus[]
+                      ).map((status) => {
+                        const currentStatus =
+                          getStudentCurrentStatus(studentId);
+                        const serverRecord = attendanceData?.data?.find(
+                          (r: any) =>
+                            (r.studentId || r.student?.id) === studentId,
+                        );
+                        const dbStatus = serverRecord?.status || null;
+                        const isChanged =
+                          localAttendance[studentId] !== undefined &&
+                          localAttendance[studentId] !== dbStatus;
 
-                    <div className="flex justify-end mt-8 pt-6 border-t-2 border-slate-200">
-                        <Button
-                            onClick={handleSave}
-                            size="lg"
-                            disabled={!hasChanges || saveMutation.isPending}
-                            className={cn(
-                                "min-w-40 h-12 text-base font-semibold shadow-lg transition-all",
-                                hasChanges 
-                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" 
-                                    : "bg-gray-400 cursor-not-allowed"
-                            )}
-                            style={isAttendanceDisabled() ? { display: 'none' } : {}}
-                        >
-                            <Save className="h-5 w-5 mr-2" />
-                            {saveMutation.isPending ? 'Đang lưu...' : hasChanges ? 'Lưu điểm danh' : 'Không có thay đổi'}
-                        </Button>
+                        return (
+                          <div key={status} className="flex justify-center">
+                            <Button
+                              variant={
+                                currentStatus === status ? 'default' : 'outline'
+                              }
+                              size="sm"
+                              onClick={() => {
+                                handleStatusChange(studentId, status);
+                              }}
+                              className={cn(
+                                'w-24 h-10 font-medium transition-all relative',
+                                currentStatus === status &&
+                                  {
+                                    present:
+                                      'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md',
+                                    absent:
+                                      'bg-rose-600 hover:bg-rose-700 text-white shadow-md',
+                                    excused:
+                                      'bg-sky-600 hover:bg-sky-700 text-white shadow-md',
+                                  }[status],
+                                currentStatus !== status &&
+                                  {
+                                    present:
+                                      'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300',
+                                    absent:
+                                      'hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300',
+                                    excused:
+                                      'hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300',
+                                  }[status],
+                                // Thêm border cho button đã thay đổi
+                                isChanged &&
+                                  currentStatus === status &&
+                                  'ring-2 ring-amber-400 ring-offset-1',
+                              )}
+                            >
+                              {status === 'present' && (
+                                <Check className="h-4 w-4 mr-1" />
+                              )}
+                              {status === 'absent' && (
+                                <X className="h-4 w-4 mr-1" />
+                              )}
+                              {status === 'excused' && (
+                                <Check className="h-4 w-4 mr-1" />
+                              )}
+
+                              {currentStatus === status &&
+                                {
+                                  present: 'Có mặt',
+                                  absent: 'Vắng',
+                                  excused: 'Có phép',
+                                }[status]}
+
+                              {/* Hiển thị indicator nếu có thay đổi */}
+                              {isChanged && currentStatus === status && (
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full"></div>
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
-                </CardContent>
-            </Card>
-        </div>
+                  );
+                })
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-500">Không có dữ liệu học sinh</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-8 pt-6 border-t-2 border-slate-200">
+              <Button
+                onClick={handleSave}
+                size="lg"
+                disabled={!hasChanges || saveMutation.isPending}
+                className={cn(
+                  'min-w-40 h-12 text-base font-semibold shadow-lg transition-all',
+                  hasChanges
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    : 'bg-gray-400 cursor-not-allowed',
+                )}
+                style={isAttendanceDisabled() ? { display: 'none' } : {}}
+              >
+                <Save className="h-5 w-5 mr-2" />
+                {saveMutation.isPending
+                  ? 'Đang lưu...'
+                  : hasChanges
+                  ? 'Lưu điểm danh'
+                  : 'Không có thay đổi'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
 }

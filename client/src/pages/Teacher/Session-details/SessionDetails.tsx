@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { 
   Calendar, 
   Clock, 
@@ -19,7 +20,9 @@ import {
   User,
   ArrowLeft,
   CheckCircle,
-  CalendarDays
+  CalendarDays,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react"
 import Loading from "../../../components/Loading/LoadingPage"
 import { teacherScheduleService } from "../../../services/teacherScheduleService"
@@ -61,6 +64,7 @@ export default function SessionDetails() {
     reason: '',
     notes: ''
   })
+  const [isStudentsListOpen, setIsStudentsListOpen] = useState(false)
 
   useEffect(() => {
     const fetchSessionDetails = async () => {
@@ -187,17 +191,25 @@ export default function SessionDetails() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <>
+      <div>
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mt-4">
+            <span
+              onClick={() => navigate('/teacher/schedule')}
+              className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
+            >
+              Lịch dạy
+            </span>
+            <span className="text-gray-400"> &gt; </span>
+            <span className="text-gray-900 font-medium">Chi tiết buổi học</span>
+          </div>
+        </div>
+      </div>
+      </>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button 
-            onClick={() => navigate("/teacher/schedule")} 
-            variant="outline" 
-            size="sm"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
-          </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{session?.className}</h1>
             <p className="text-gray-600">{session?.subject}</p>
@@ -268,42 +280,55 @@ export default function SessionDetails() {
           {/* Students List */}
           {session?.students && session?.students.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Danh sách học viên ({session?.students.length || 0})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {session?.students.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={student.avatar || ""} />
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
-                            {student.name?.split(" ").map((n: string) => n[0]).join("").slice(0,2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{student.name}</p>
-                        </div>
+              <Collapsible open={isStudentsListOpen} onOpenChange={setIsStudentsListOpen}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Users className="w-5 h-5 mr-2" />
+                        Danh sách học viên ({session?.students.length || 0})
                       </div>
-                      {student.attendanceStatus && (
-                        <Badge 
-                          className={`${
-                            student.attendanceStatus === 'present' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {student.attendanceStatus === 'present' ? 'Có mặt' : 'Vắng mặt'}
-                        </Badge>
+                      {isStudentsListOpen ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
                       )}
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {session?.students.map((student) => (
+                        <div key={student.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src={student.avatar || ""} />
+                              <AvatarFallback className="bg-blue-100 text-blue-600">
+                                {student.name?.split(" ").map((n: string) => n[0]).join("").slice(0,2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{student.name}</p>
+                            </div>
+                          </div>
+                          {student.attendanceStatus && (
+                            <Badge 
+                              className={`${
+                                student.attendanceStatus === 'present' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {student.attendanceStatus === 'present' ? 'Có mặt' : 'Vắng mặt'}
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
             </Card>
           )}
         </div>
