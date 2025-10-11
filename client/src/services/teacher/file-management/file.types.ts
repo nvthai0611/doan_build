@@ -46,6 +46,9 @@ export interface MaterialsResponse {
     page: number;
     limit: number;
     totalPages: number;
+    totalSize?: number; // Tổng dung lượng của tất cả tài liệu
+    totalDownloads?: number; // Tổng lượt tải của tất cả tài liệu
+    recentUploads?: number; // Số tài liệu upload trong 7 ngày qua
   };
 }
 
