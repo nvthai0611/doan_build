@@ -33,3 +33,78 @@ npx prisma migrate deploy
 npx prisma migrate dev
 
 
+============= Prompt để vẽ sequence diagram cho các UC bằng cursor và plantuml =============
+
+* copy paste prompt + cho UC nào + folder frontend của UC đấy
+
+Vẽ sequence diagram bằng PlantUML cho use case [TÊN_USE_CASE] với các yêu cầu sau:
+
+## Cấu trúc participants:
+- Sử dụng cú pháp: actor, boundary, control, entity, database
+- Không dùng participant với stereotype
+- Bao gồm: Actor (user), Boundary (UI components), Control (controllers/services), Entity (domain entities), Database
+
+## Flow requirements:
+- Bắt đầu từ user interaction, không cần phần load page
+- Theo đúng flow thực tế của use case
+- Có lifetime (activate/deactivate) cho mỗi component
+- Có error handling
+- Có notes cho SQL queries và business logic
+
+## Chia phần:
+- Nếu flow ngắn: 1 part duy nhất
+- Nếu flow dài: chia thành 2-3 parts theo logic nhóm chức năng
+- Mỗi part có title riêng và tập trung vào một nhóm chức năng
+
+## Format:
+- Title: "[Use Case Name] - [Part X if applicable]"
+- Sử dụng == để chia sections
+- Có alt/else cho validation và error cases
+- Có loop cho repeated operations
+- Notes cho SQL queries và business logic
+
+## Example structure:
+```plantuml
+@startuml [Use Case Name] - [Part X]
+
+title [Use Case Name] - [Part X]
+
+actor "User" as User
+boundary "Component1" as Comp1
+control "Controller1" as Ctrl1
+control "Service1" as Svc1
+entity "Entity1" as Ent1
+database "Database" as DB
+
+== 1. Section Name ==
+User -> Comp1: Action
+activate Comp1
+Comp1 -> Ctrl1: API call
+activate Ctrl1
+Ctrl1 -> Svc1: business logic
+activate Svc1
+Svc1 -> Ent1: domain operation
+activate Ent1
+Ent1 -> DB: SQL query
+note right: SELECT * FROM table WHERE condition
+DB --> Ent1: result
+Ent1 --> Svc1: data
+deactivate Ent1
+Svc1 --> Ctrl1: response
+deactivate Svc1
+Ctrl1 --> Comp1: response
+deactivate Ctrl1
+Comp1 --> User: display result
+deactivate Comp1
+
+@enduml
+```
+
+Hãy phân tích code trong thư mục [THƯ_MỤC] và tạo sequence diagram theo template này.
+
+hoặc thay bằng tay
+
+## Cách sử dụng:
+1. Thay **[TÊN_USE_CASE]** bằng tên use case cụ thể
+2. Thay **[THƯ_MỤC]** bằng đường dẫn thư mục chứa code
+3. Copy paste prompt này và sử dụng cho mọi use case khác

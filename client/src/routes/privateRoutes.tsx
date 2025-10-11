@@ -22,6 +22,7 @@ import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/Teacher/My-request/MyRequests";
 import FileUpload from "../pages/Teacher/FileManagement/File_upload";
 import FileManage from "../pages/Teacher/FileManagement/File_management";
+import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
 
 
 export const privateRoutes = (
@@ -59,6 +60,7 @@ export const privateRoutes = (
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
         <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
+        <Route path="session-details/:sessionId" element={<SessionDetails />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
       </Route>
