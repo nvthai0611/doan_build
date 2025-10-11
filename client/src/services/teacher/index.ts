@@ -40,3 +40,12 @@ export type {
   UpdateProfileRequest,
   ChangePasswordRequest
 } from './profile/profile.types'
+
+// File Management
+export { teacherFileManagementService } from './file-management/file.service'
+export type {
+  Material,
+  UploadMaterialParams,
+  GetMaterialsParams,
+  MaterialsResponse
+} from './file-management/file.types'
