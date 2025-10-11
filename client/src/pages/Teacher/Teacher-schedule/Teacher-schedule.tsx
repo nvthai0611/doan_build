@@ -121,7 +121,7 @@ export default function TeacherSchedule() {
   }
 
   const openDetail = (s: ScheduleData) => {
-    navigate(`/teacher/schedule/attendance/${s.id}`);
+    navigate(`/teacher/session-details/${s.id}`);
     return;
   }
   
