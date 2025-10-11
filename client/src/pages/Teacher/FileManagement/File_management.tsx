@@ -4,25 +4,22 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DataTable, type Column } from "../../../components/common/Table/DataTable"
 import {
   FileText,
   ImageIcon,
   File,
-  Search,
   MoreHorizontal,
   Download,
   Eye,
   Trash2,
-  Edit,
   FolderOpen,
   Calendar,
-  Loader2,
+  Search,
 } from "lucide-react"
 import { teacherFileManagementService } from "../../../services/teacher/file-management/file.service"
 import type { Material } from "../../../services/teacher/file-management/file.types"
@@ -41,24 +38,25 @@ const useToast = () => {
 }
 
 export default function DocumentManagePage() {
-  const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   // Fetch materials from API
   const { data: materialsData, isLoading, isError } = useQuery({
-    queryKey: ['teacher-materials', { search: searchTerm, category: categoryFilter, classId: classFilter, page }],
+    queryKey: ['teacher-materials', { category: categoryFilter, classId: classFilter, page, pageSize }],
     queryFn: () => teacherFileManagementService.getMaterials({
-      search: searchTerm || undefined,
       category: categoryFilter !== "all" ? categoryFilter : undefined,
       classId: classFilter !== "all" ? classFilter : undefined,
       page,
-      limit: 100, // Load nhiều để không phải phân trang
+      limit: pageSize,
     }),
-    staleTime: 30000, // Cache 30 giây
+    staleTime: 30000, // Cache 30 seconds
+    refetchOnWindowFocus: false,
   })
 
   // Delete mutation
@@ -80,8 +78,18 @@ export default function DocumentManagePage() {
     },
   })
 
-  const documents = materialsData?.data || []
+  const allDocuments = materialsData?.data || []
   const meta = materialsData?.meta
+
+  // Filter documents by search term (search trong cả title và fileName)
+  const documents = allDocuments.filter((doc) => {
+    if (!searchTerm.trim()) return true
+    const search = searchTerm.toLowerCase()
+    return (
+      doc.title.toLowerCase().includes(search) ||
+      doc.fileName.toLowerCase().includes(search)
+    )
+  })
 
   // Handlers
   const handleDownload = async (material: Material) => {
@@ -158,11 +166,22 @@ export default function DocumentManagePage() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
   }
 
-  const getFileIcon = (type?: string) => {
-    if (!type) return <File className="w-5 h-5 text-gray-600" />
-    if (type.startsWith("image/")) return <ImageIcon className="w-5 h-5 text-blue-600" />
-    if (type.includes("pdf")) return <FileText className="w-5 h-5 text-red-600" />
-    return <File className="w-5 h-5 text-gray-600" />
+  const getFileIcon = (type?: string, fileName?: string) => {
+    // Check by file extension first
+    if (fileName) {
+      const ext = fileName.split('.').pop()?.toLowerCase()
+      if (ext === 'pdf') return <FileText className="w-5 h-5 text-red-500" />
+      if (['doc', 'docx'].includes(ext || '')) return <FileText className="w-5 h-5 text-blue-500" />
+      if (['xls', 'xlsx'].includes(ext || '')) return <FileText className="w-5 h-5 text-green-500" />
+      if (['ppt', 'pptx'].includes(ext || '')) return <FileText className="w-5 h-5 text-orange-500" />
+      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) {
+        return <ImageIcon className="w-5 h-5 text-purple-500" />
+      }
+    }
+    // Fallback to MIME type
+    if (type?.startsWith("image/")) return <ImageIcon className="w-5 h-5 text-purple-500" />
+    if (type?.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />
+    return <File className="w-5 h-5 text-gray-500" />
   }
 
   const getCategoryLabel = (category: string) => {
@@ -187,33 +206,149 @@ export default function DocumentManagePage() {
     return colors[category] || "bg-gray-100 text-gray-800 border-gray-300"
   }
 
-  const totalSize = documents.reduce((sum, doc) => sum + (doc.fileSize || 0), 0)
-  const totalDownloads = documents.reduce((sum, doc) => sum + doc.downloads, 0)
+  // Get stats from meta (tổng của tất cả tài liệu, không chỉ trang hiện tại)
+  const totalSize = meta?.totalSize || allDocuments.reduce((sum, doc) => sum + (doc.fileSize || 0), 0)
+  const totalDownloads = meta?.totalDownloads || allDocuments.reduce((sum, doc) => sum + doc.downloads, 0)
+  const recentUploadsCount = meta?.recentUploads
 
-  // // Loading state
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen">
-  //       <Loader2 className="w-8 h-8 animate-spin text-[rgb(255,127,80)]" />
-  //       <span className="ml-2">Đang tải dữ liệu...</span>
-  //     </div>
-  //   )
-  // }
-
-  // Error state
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-600 font-bold mb-2">Có lỗi xảy ra khi tải dữ liệu</p>
-          <Button onClick={() => window.location.reload()}>Thử lại</Button>
+  // Table columns
+  const columns: Column<Material>[] = [
+    {
+      key: 'title',
+      header: 'File name',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0">
+            {getFileIcon(item.fileType, item.fileName)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm break-words">{item.title}</p>
+            {item.description && (
+              <p className="text-xs text-muted-foreground break-words mt-0.5">{item.description}</p>
+            )}
+          </div>
         </div>
-      </div>
-    )
-  }
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Danh mục',
+      render: (item) => (
+        <Badge variant="outline" className={getCategoryColor(item.category)}>
+          {getCategoryLabel(item.category)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'className',
+      header: 'Lớp học',
+      render: (item) => <Badge variant="secondary">{item.className}</Badge>,
+    },
+    {
+      key: 'fileSize',
+      header: 'Kích thước',
+      render: (item) => <span className="text-sm">{formatFileSize(item.fileSize)}</span>,
+    },
+    {
+      key: 'uploadedAt',
+      header: 'Ngày upload',
+      render: (item) => (
+        <span className="text-sm">{new Date(item.uploadedAt).toLocaleDateString("vi-VN")}</span>
+      ),
+    },
+    {
+      key: 'downloads',
+      header: 'Lượt tải',
+      align: 'center',
+      render: (item) => <Badge variant="outline">{item.downloads}</Badge>,
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'center',
+      render: (item) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDownload(item)}>
+              <Download className="w-4 h-4 mr-2" />
+              Tải xuống
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-red-600"
+              onClick={() => handleDelete(item.id)}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {deleteMutation.isPending ? "Đang xóa..." : "Xóa"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ]
 
   return (
-      <div className="space-y-6 p-6">      
+    <>
+      <style>{`
+        /* Override DataTable default overflow and set fixed layout for document management */
+        .document-management-page .overflow-x-auto {
+          overflow-x: visible !important;
+        }
+        
+        .document-management-page .overflow-x-auto table {
+          table-layout: fixed !important;
+          width: 100% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th,
+        .document-management-page .overflow-x-auto td {
+          white-space: normal !important;
+          word-wrap: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        
+        /* Specific column widths for document management table */
+        .document-management-page .overflow-x-auto th:nth-child(1),
+        .document-management-page .overflow-x-auto td:nth-child(1) {
+          width: 35% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(2),
+        .document-management-page .overflow-x-auto td:nth-child(2) {
+          width: 12% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(3),
+        .document-management-page .overflow-x-auto td:nth-child(3) {
+          width: 15% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(4),
+        .document-management-page .overflow-x-auto td:nth-child(4) {
+          width: 8% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(5),
+        .document-management-page .overflow-x-auto td:nth-child(5) {
+          width: 12% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(6),
+        .document-management-page .overflow-x-auto td:nth-child(6) {
+          width: 8% !important;
+        }
+        
+        .document-management-page .overflow-x-auto th:nth-child(7),
+        .document-management-page .overflow-x-auto td:nth-child(7) {
+          width: 8% !important;
+        }
+      `}</style>
+      <div className="space-y-6 p-6 document-management-page">
 
         <div className="flex items-center justify-between">
           <div>
@@ -236,7 +371,7 @@ export default function DocumentManagePage() {
               <FolderOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{meta?.total || documents.length}</div>
+              <div className="text-2xl font-bold">{meta?.total || allDocuments.length}</div>
               <p className="text-xs text-muted-foreground">Tất cả file</p>
             </CardContent>
           </Card>
@@ -266,12 +401,14 @@ export default function DocumentManagePage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{documents.filter(d => {
-                const uploadDate = new Date(d.uploadedAt)
-                const weekAgo = new Date()
-                weekAgo.setDate(weekAgo.getDate() - 7)
-                return uploadDate >= weekAgo
-              }).length}</div>
+              <div className="text-2xl font-bold">
+                {recentUploadsCount !== undefined ? recentUploadsCount : allDocuments.filter(d => {
+                  const uploadDate = new Date(d.uploadedAt)
+                  const weekAgo = new Date()
+                  weekAgo.setDate(weekAgo.getDate() - 7)
+                  return uploadDate >= weekAgo
+                }).length}
+              </div>
               <p className="text-xs text-muted-foreground">Trong 7 ngày qua</p>
             </CardContent>
           </Card>
@@ -284,9 +421,10 @@ export default function DocumentManagePage() {
             <CardDescription>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
-                    placeholder="Tìm kiếm tài liệu..."
+                    type="text"
+                    placeholder="Tìm kiếm theo tên file..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -311,9 +449,8 @@ export default function DocumentManagePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả lớp</SelectItem>
-                    {/* Unique class list from documents */}
-                    {Array.from(new Set(documents.map(d => d.classId))).map((classId) => {
-                      const doc = documents.find(d => d.classId === classId)
+                    {Array.from(new Set(allDocuments.map(d => d.classId))).map((classId) => {
+                      const doc = allDocuments.find(d => d.classId === classId)
                       return (
                         <SelectItem key={classId} value={classId}>
                           {doc?.className || classId}
@@ -322,95 +459,40 @@ export default function DocumentManagePage() {
                     })}
                   </SelectContent>
                 </Select>
+                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 / trang</SelectItem>
+                    <SelectItem value="10">10 / trang</SelectItem>
+                    <SelectItem value="20">20 / trang</SelectItem>
+                    <SelectItem value="50">50 / trang</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground mb-4">
-              Hiển thị {documents.length} tài liệu {meta?.total && `(Tổng: ${meta.total})`}
-            </div>
-            {documents.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Chưa có tài liệu nào</p>
-                <p className="text-sm">Upload tài liệu đầu tiên của bạn ngay!</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tên file</TableHead>
-                    <TableHead>Danh mục</TableHead>
-                    <TableHead>Lớp học</TableHead>
-                    <TableHead>Kích thước</TableHead>
-                    <TableHead>Ngày upload</TableHead>
-                    <TableHead>Lượt tải</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-10 h-10 rounded-md">
-                            <AvatarFallback className="rounded-md bg-muted">{getFileIcon(doc.fileType)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{doc.fileName}</p>
-                            {doc.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-1">{doc.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getCategoryColor(doc.category)}>
-                          {getCategoryLabel(doc.category)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{doc.className}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">{formatFileSize(doc.fileSize)}</TableCell>
-                      <TableCell className="text-sm">{new Date(doc.uploadedAt).toLocaleDateString("vi-VN")}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{doc.downloads}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleView(doc)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Xem
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownload(doc)}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Tải xuống
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDelete(doc.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              {deleteMutation.isPending ? "Đang xóa..." : "Xóa"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <DataTable
+              columns={columns}
+              data={documents}
+              pagination={{
+                currentPage: page,
+                totalPages: meta?.totalPages || 0,
+                totalItems: meta?.total || 0,
+                itemsPerPage: pageSize,
+                onPageChange: setPage,
+                onItemsPerPageChange: setPageSize,
+              }}
+              loading={isLoading}
+              error={isError ? 'Có lỗi xảy ra khi tải dữ liệu' : null}
+              emptyMessage="Chưa có tài liệu nào. Upload tài liệu đầu tiên của bạn ngay!"
+              enableSearch={false}
+            />
           </CardContent>
         </Card>
       </div>
+    </>
   )
 }
