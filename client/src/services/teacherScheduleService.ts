@@ -24,6 +24,17 @@ class TeacherScheduleService {
     }
   }
 
+  // Lấy chi tiết session từ endpoint mới
+  async getSessionDetail(sessionId: string): Promise<any> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: ScheduleData; message: string }>(`/teacher/session/${sessionId}`)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching session detail:', error)
+      throw error
+    }
+  }
+
   // Cập nhật trạng thái buổi dạy (hoàn thành/hủy)
   async updateScheduleStatus(scheduleId: string, status: 'completed' | 'cancelled', notes?: string): Promise<{ success: boolean; data: ScheduleData; message: string }> {
     try {
@@ -88,6 +99,24 @@ class TeacherScheduleService {
       return response.data
     } catch (error) {
       console.error('Error fetching monthly schedule:', error)
+      throw error
+    }
+  }
+
+  // Dời lịch buổi học
+  async rescheduleSession(sessionId: string, rescheduleData: {
+    newDate: string;
+    newStartTime: string;
+    newEndTime: string;
+    newRoomId?: string;
+    reason: string;
+    notes?: string;
+  }): Promise<{ success: boolean; data: ScheduleData; message: string }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: ScheduleData; message: string }>(`/teacher/session/${sessionId}/reschedule`, rescheduleData)
+      return response.data
+    } catch (error) {
+      console.error('Error rescheduling session:', error)
       throw error
     }
   }
