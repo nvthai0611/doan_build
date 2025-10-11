@@ -15,9 +15,9 @@ class StudentService {
   /**
    * Lấy danh sách học sinh với phân trang và filter
    */
-  async getStudents(params?: StudentQueryParams): Promise<StudentResponse> {
-    const response = await ApiService.get<StudentResponse>("/admin-center/student-management", params)
-    return response.data as StudentResponse
+  async getStudents(params?: any): Promise<any> {
+    const response = await ApiService.get<any>("/admin-center/student-management", params)
+    return response.data as any
   };
 
   /**
@@ -219,6 +219,11 @@ class StudentService {
     const response = await ApiService.get(`/admin-center/student-management/${studentId}/report`, { period })
     return response.data as any
   };
+
+  async getSubject():Promise<any>{
+    const response = await ApiService.get<any>("/subjects")
+    return response.data as any
+  }
 }
 
 export const centerOwnerStudentService = new StudentService()
