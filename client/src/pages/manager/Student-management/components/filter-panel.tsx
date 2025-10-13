@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2 } from "lucide-react"
@@ -10,6 +10,7 @@ interface FilterPanelProps {
   onClose: () => void
   onFilterChange: (filters: FilterOptions) => void
   currentFilters: FilterOptions
+  onClearAll?: () => void // Thêm prop để clear tất cả
 }
 
 export interface FilterOptions {
@@ -18,8 +19,13 @@ export interface FilterOptions {
   customerConnection?: string
 }
 
-export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters }: FilterPanelProps) {
+export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters, onClearAll }: FilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterOptions>(currentFilters)
+
+  // Sync local filters with current filters
+  useEffect(() => {
+    setLocalFilters(currentFilters)
+  }, [currentFilters])
 
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
     const newFilters = { ...localFilters, [key]: value === "all" ? undefined : value }
@@ -28,9 +34,15 @@ export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters }:
   }
 
   const handleClearFilters = () => {
-    const clearedFilters: FilterOptions = {}
-    setLocalFilters(clearedFilters)
-    onFilterChange(clearedFilters)
+    if (onClearAll) {
+      // Clear tất cả bao gồm cả filters khác
+      onClearAll()
+    } else {
+      // Chỉ clear advanced filters
+      const clearedFilters: FilterOptions = {}
+      setLocalFilters(clearedFilters)
+      onFilterChange(clearedFilters)
+    }
   }
 
   if (!isOpen) return null
@@ -40,12 +52,13 @@ export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters }:
       <div className="p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">Bộ lọc</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white">Bộ lọc nâng cao</h3>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClearFilters}
-            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-300"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            title="Xóa tất cả bộ lọc"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -55,58 +68,82 @@ export function FilterPanel({ isOpen, onClose, onFilterChange, currentFilters }:
         <div className="space-y-4">
           {/* Gender Filter */}
           <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Giới tính
+            </label>
             <Select value={localFilters.gender || "all"} onValueChange={(value) => handleFilterChange("gender", value)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Giới tính" />
+                <SelectValue placeholder="Chọn giới tính" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả giới tính</SelectItem>
-                <SelectItem value="Nam">Nam</SelectItem>
-                <SelectItem value="Nữ">Nữ</SelectItem>
-                <SelectItem value="Khác">Khác</SelectItem>
+                <SelectItem value="MALE">Nam</SelectItem>
+                <SelectItem value="FEMALE">Nữ</SelectItem>
+                <SelectItem value="OTHER">Khác</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Account Status Filter */}
           <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Trạng thái tài khoản
+            </label>
             <Select
               value={localFilters.accountStatus || "all"}
               onValueChange={(value) => handleFilterChange("accountStatus", value)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Trạng thái tài khoản" />
+                <SelectValue placeholder="Chọn trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="Đang học">Đang học</SelectItem>
-                <SelectItem value="Chờ xếp lớp">Chờ xếp lớp</SelectItem>
-                <SelectItem value="Dừng học">Dừng học</SelectItem>
-                <SelectItem value="Chưa cập nhật lịch học">Chưa cập nhật lịch học</SelectItem>
-                <SelectItem value="Sắp học">Sắp học</SelectItem>
-                <SelectItem value="Bảo lưu">Bảo lưu</SelectItem>
-                <SelectItem value="Tốt nghiệp">Tốt nghiệp</SelectItem>
+                <SelectItem value="active">Tài khoản hoạt động</SelectItem>
+                <SelectItem value="inactive">Tài khoản bị khóa</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Customer Connection Filter */}
-          <div>
+          {/* <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Liên kết phụ huynh
+            </label>
             <Select
               value={localFilters.customerConnection || "all"}
               onValueChange={(value) => handleFilterChange("customerConnection", value)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Liên kết khách hàng" />
+                <SelectValue placeholder="Chọn liên kết" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả liên kết</SelectItem>
-                <SelectItem value="linked">Đã liên kết</SelectItem>
-                <SelectItem value="not-linked">Chưa liên kết</SelectItem>
-                <SelectItem value="pending">Đang chờ xác nhận</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="with_parent">Có phụ huynh</SelectItem>
+                <SelectItem value="without_parent">Chưa có phụ huynh</SelectItem>
               </SelectContent>
             </Select>
+          </div> */}
+        </div>
+
+        {/* Show active filters count */}
+        {Object.keys(localFilters).filter(key => localFilters[key as keyof FilterOptions]).length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Đã áp dụng {Object.keys(localFilters).filter(key => localFilters[key as keyof FilterOptions]).length} bộ lọc
+            </div>
           </div>
+        )}
+
+        {/* Clear all button */}
+        <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearFilters}
+            className="w-full text-xs"
+          >
+            Xóa tất cả bộ lọc
+          </Button>
         </div>
       </div>
     </div>

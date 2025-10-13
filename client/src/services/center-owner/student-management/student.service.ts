@@ -224,6 +224,16 @@ class StudentService {
     const response = await ApiService.get<any>("/subjects")
     return response.data as any
   }
+
+  async getCountByStatus():Promise<any>{
+    const response = await ApiService.get<any>("/admin-center/student-management/count-status")
+    return response.data as any
+  }
+
+  async getDetailStudent(id: string): Promise<any>{
+    const response = await ApiService.get(`/shared/students/${id}`)
+    return response.data as any 
+  }
 }
 
 export const centerOwnerStudentService = new StudentService()
