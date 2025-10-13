@@ -1,5 +1,3 @@
-"use client"
-
 // Authentication context and utilities
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authService } from "../services/common/auth/auth.service"
