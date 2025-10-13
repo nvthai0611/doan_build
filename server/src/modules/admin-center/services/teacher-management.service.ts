@@ -120,20 +120,16 @@ export class TeacherManagementService {
       birthYear
     } = queryDto;
     
-    // Convert string parameters to numbers
     const pageNum = parseInt(page.toString());
     const limitNum = parseInt(limit.toString());
     const skip = (pageNum - 1) * limitNum;
-    // Build where clause
     const where: any = {};
     const userWhere: any = {};
 
-    // Add role filter
     if (role) {
       userWhere.role = role;
     }
 
-    // Add search filter
     if (search) {
       userWhere.OR = [
         { fullName: { contains: search, mode: 'insensitive' } },
@@ -148,20 +144,24 @@ export class TeacherManagementService {
       userWhere.isActive = status === 'active';
     }
 
-    if (Object.keys(userWhere).length > 0) {
-      where.user = userWhere;
-    }
+    // Add gender filter to userWhere
     if (gender) {
-      where.gender = gender;
+      userWhere.gender = gender;
     }
+    
+    // Add birthYear filter to userWhere
     if (birthYear) {
       const year = parseInt(birthYear);
       if (!isNaN(year)) {
-        where.birthDate = {
+        userWhere.birthDate = {
           gte: new Date(year, 0, 1), // Start of year
           lt: new Date(year + 1, 0, 1) // Start of next year
         };
       }
+    }
+
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
     }
    
     // hireDate field has been removed from Teacher model

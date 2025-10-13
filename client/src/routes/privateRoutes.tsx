@@ -16,13 +16,15 @@ import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule"
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
-import CreateClass from "../pages/manager/Class-management/CreateClass";
+import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+
 import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
-import MyRequests from "../pages/Teacher/My-request/MyRequests";
-import FileUpload from "../pages/Teacher/FileManagement/File_upload";
-import FileManage from "../pages/Teacher/FileManagement/File_management";
-import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
+import MyRequests from "../pages/teacher/My-request/MyRequests";
+import FileUpload from "../pages/teacher/FileManagement/File_upload";
+import FileManage from "../pages/teacher/FileManagement/File_management";
+import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
+import CreateClass from "../pages/manager/Class-management/AddClass";
 
 
 export const privateRoutes = (
@@ -39,6 +41,7 @@ export const privateRoutes = (
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/create" element={<CreateClass />} />
+        <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />

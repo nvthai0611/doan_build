@@ -15,9 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 // Components
 import { DataTable, Column } from '../../../components/common/Table/DataTable';
 import { Badge } from '@/components/ui/badge';
-// import { EditClassDialog } from './components/EditClassDialog';
-import { ClassDetailDialog } from './components/ClassDetailDialog';
-import { AssignTeacherDialog } from './components/AssignTeacherDialog';
+
 import { EditScheduleSheet } from './components/EditScheduleSheet';
 // import { EnrollStudentDialog } from './components/EnrollStudentDialog';
 
@@ -76,7 +74,7 @@ export const ClassManagement = () => {
     // Debounce search term
     useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
+            setDebouncedSearchTerm(searchTerm.trim());
             if (searchTerm !== debouncedSearchTerm) {
                 pagination.setCurrentPage(1);
             }
@@ -91,7 +89,7 @@ export const ClassManagement = () => {
     const completeFilters = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        search: debouncedSearchTerm,
+        search: debouncedSearchTerm.trim()  ,
         status: selectedStatus !== 'all' ? selectedStatus : undefined,
         // Add other filters as needed
         dayOfWeek: selectedDay !== 'all' ? selectedDay : undefined,
@@ -311,12 +309,12 @@ export const ClassManagement = () => {
             searchPlaceholder: 'Tìm tên lớp...',
             render: (item: any) => (
                 <div className="space-y-1">
-                    <div className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleView(item)}>
+                    <div className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => navigate(`/center-qn/classes/${item.id}`)}>
                         {item.name}
                     </div>
-                    {item.teachers && item.teachers.length > 0 && item.teachers[0]?.semester && (
+                    {item.academicYear && (
                         <div className="text-xs text-gray-600 dark:text-gray-300">
-                            {item.teachers[0].academicYear}
+                            {item.academicYear}
                         </div>
                     )}
                 </div>
@@ -327,15 +325,29 @@ export const ClassManagement = () => {
             header: 'Lịch học',
             width: '250px',
             render: (item: any) => {
-                // Extract schedule từ teachers assignments
+                // Extract schedule từ Classes table với cấu trúc mới
                 const schedules: string[] = [];
-                if (item.teachers && item.teachers.length > 0) {
-                    item.teachers.forEach((teacher: any) => {
-                        if (teacher.recurringSchedule) {
-                            const formattedSchedule = formatSchedule(teacher.recurringSchedule);
-                            schedules.push(...formattedSchedule);
-                        }
-                    });
+                if (item.recurringSchedule) {
+                    // Cấu trúc mới: { schedules: [{ day, startTime, endTime }] }
+                    if (item.recurringSchedule.schedules && Array.isArray(item.recurringSchedule.schedules)) {
+                        item.recurringSchedule.schedules.forEach((schedule: any) => {
+                            const dayNames: { [key: string]: string } = {
+                                'monday': 'Thứ 2',
+                                'tuesday': 'Thứ 3', 
+                                'wednesday': 'Thứ 4',
+                                'thursday': 'Thứ 5',
+                                'friday': 'Thứ 6',
+                                'saturday': 'Thứ 7',
+                                'sunday': 'CN'
+                            };
+                            const dayName = dayNames[schedule.day] || schedule.day;
+                            schedules.push(`${dayName}: ${schedule.startTime}-${schedule.endTime}`);
+                        });
+                    } else {
+                        // Fallback cho cấu trúc cũ
+                        const formattedSchedule = formatSchedule(item.recurringSchedule);
+                        schedules.push(...formattedSchedule);
+                    }
                 }
                 
                 return (
@@ -362,12 +374,12 @@ export const ClassManagement = () => {
             searchPlaceholder: 'Tìm môn học...',
             render: (item: any) => <span className="font-medium">{item.subjectName}</span>
         },
-        {
-            key: 'grade',
-            header: 'Khối',
-            sortable: true,
-            render: (item: any) => item.grade ? `Lớp ${item.grade}` : '-'
-        },
+        // {
+        //     key: 'grade',
+        //     header: 'Khối',
+        //     sortable: true,
+        //     render: (item: any) => item.grade ? `Lớp ${item.grade}` : '-'
+        // },
         {
             key: 'teachers',
             header: 'Giáo viên',
@@ -378,16 +390,16 @@ export const ClassManagement = () => {
             header: 'Phòng',
             render: (item: any) => item.roomName || '-'
         },
-        {
-            key: 'students',
-            header: 'Sĩ số',
-            align: 'center',
-            render: (item: any) => (
-                <span className={item.currentStudents >= (item.maxStudents || 0) ? 'text-red-600 font-semibold' : ''}>
-                    {item.currentStudents}/{item.maxStudents || '∞'}
-                </span>
-            )
-        },
+        // {
+        //     key: 'students',
+        //     header: 'Sĩ số',
+        //     align: 'center',
+        //     render: (item: any) => (
+        //         <span className={item.currentStudents >= (item.maxStudents || 0) ? 'text-red-600 font-semibold' : ''}>
+        //             {item.currentStudents}/{item.maxStudents || '∞'}
+        //         </span>
+        //     )
+        // },
         {
             key: 'status',
             header: 'Trạng thái',
@@ -526,7 +538,7 @@ export const ClassManagement = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
                                 placeholder="Tìm kiếm theo tên lớp, môn học"
-                                value={searchTerm}
+                                value={searchTerm}  
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
                             />

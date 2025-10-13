@@ -134,6 +134,8 @@ model Class {
   name                    String
   status                  String                   @default("draft")
   subjectId               String                   @map("subject_id") @db.Uuid
+  recurringSchedule       Json?                    @map("recurring_schedule")
+  academicYear            String?                  @map("academic_year")
   assessments             Assessment[]
   sessions                ClassSession[]
   feeStructure            FeeStructure?            @relation(fields: [feeStructureId], references: [id])
