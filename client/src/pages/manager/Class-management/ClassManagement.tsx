@@ -35,7 +35,7 @@ import { usePagination } from '../../../hooks/usePagination';
 // Helper function to get status badge
 const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-        draft: { variant: 'secondary', label: 'Nháp' },
+        draft: { variant: 'secondary', label: 'Đang chiêu sinh' },
         active: { variant: 'default', label: 'Hoạt động' },
         completed: { variant: 'outline', label: 'Hoàn thành' },
         deleted: { variant: 'destructive', label: 'Đã xóa' }

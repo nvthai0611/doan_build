@@ -308,7 +308,7 @@ export function LeaveRequestForm() {
                           htmlFor="image"
                           className="text-sm font-medium text-foreground"
                         >
-                          Tệp đính kèm
+                          Tệp đính kèm (nên bỏ đi)
                         </Label>
                         <div className="space-y-3">
                           {!image ? (

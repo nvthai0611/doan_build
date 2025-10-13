@@ -126,10 +126,10 @@ export default function AddEmployee() {
       newErrors.school = 'Trường học là bắt buộc'
     }
 
-    // Validate contract image
-    if (!formData.contractImage) {
-      newErrors.contractImage = 'Ảnh hợp đồng là bắt buộc'
-    }
+    // // Validate contract image
+    // if (!formData.contractImage) {
+    //   newErrors.contractImage = 'Ảnh hợp đồng là bắt buộc'
+    // }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
