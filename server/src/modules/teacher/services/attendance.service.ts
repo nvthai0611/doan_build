@@ -72,12 +72,12 @@ export class AttendanceService {
         //     );
         // }
 
-        if(findSession.sessionDate < new Date()){
-            throw new HttpException(
-                'Không thể cập nhật điểm danh cho buổi học nếu đã qua ngày học',
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        // if(findSession.sessionDate < new Date()){
+        //     throw new HttpException(
+        //         'Không thể cập nhật điểm danh cho buổi học nếu đã qua ngày học',
+        //         HttpStatus.BAD_REQUEST
+        //     );
+        // }
 
         // Đây là cho trường hợp lớp chưa đến lịch
     const sessionDate = new Date(findSession.sessionDate);
