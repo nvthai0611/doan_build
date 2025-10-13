@@ -26,6 +26,8 @@ import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
 import StudentHomepage from "../pages/Student/Student-homepage";
 import StudentSchedule from "../pages/Student/My-schedule/Student-schedule";
 
+import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+
 
 export const privateRoutes = (
   <>
@@ -41,6 +43,7 @@ export const privateRoutes = (
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/create" element={<CreateClass />} />
+        <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
@@ -50,7 +53,7 @@ export const privateRoutes = (
 
       {/* Giáo viên */}
       <Route path="/teacher" element={<AuthMiddleware allowedRoles={['teacher']} />}>
-        <Route path="profile" element={<TeacherProfilePage />} />
+        {/* <Route path="profile" element={<TeacherProfilePage />} /> */}
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />

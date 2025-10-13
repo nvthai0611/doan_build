@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 
 import { useState } from "react"
@@ -82,6 +80,15 @@ export function LoginForm() {
               </p>
               <p>
                 <strong>Giáo viên:</strong> teacher@qne.edu.vn / 123456
+              </p>
+              <p>
+                <strong>Học sinh:</strong> student@qne.edu.vn / 123456
+              </p>
+              <p>
+                <strong>Phụ huynh:</strong> parent@qne.edu.vn / 123456
+              </p>
+              <p>
+                <strong>Quản trị viên:</strong> admin@qne.edu.vn / 123456
               </p>
             </div>
           </div>
