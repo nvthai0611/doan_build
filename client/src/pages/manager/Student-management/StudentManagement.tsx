@@ -37,6 +37,11 @@ import type { Student, Tab, FilterState } from "./types/student"
 import { toast } from "sonner"
 import { centerOwnerStudentService } from "../../../services/center-owner/student-management/student.service"
 import { useQuery } from "@tanstack/react-query"
+import { DataTable } from "../../../components/common/Table/DataTable"
+import { StudentDetailModal } from "./components/student-detail-modal"
+import { CreateStudentModal } from "./components/CreateStudentModal"
+import { useNavigate } from "react-router-dom"
+import { useUpdateStudentStatus, useToggleStudentStatus } from "./hooks/useStudents"
 
 const fetchData = async (params: any) => {
   const resDataStudent = await centerOwnerStudentService.getStudents(params)
@@ -64,19 +69,34 @@ export default function StudentManagement() {
   const [filterState, setFilterState] = useState<FilterState>({})
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false)
 
   const tabs: Tab[] = [
     { key: "all", label: "Tất cả", count: 120 },
+    { key: "active", label: "Đang học", count: 26 },
     { key: "dropped", label: "Chờ xếp lớp", count: 44 },
     { key: "no-schedule", label: "Chưa cập nhật lịch học", count: 30 },
-    { key: "active", label: "Đang học", count: 26 },
+    { key: "completed", label: "Hoàn thành", count: 44 },
     { key: "stopped", label: "Dừng học", count: 43 },
   ]
+  const navigate = useNavigate()
+  
+  // Mutations for status change
+  const updateStudentStatusMutation = useUpdateStudentStatus()
+  const toggleStudentStatusMutation = useToggleStudentStatus()
 
   const status: any = {
     active: "Đang học",
-    completed: "Tốt nghiệp",
+    completed: "Hoàn thành",
     dropped: "Dừng học",
+  }
+
+  const gender: any ={
+    MALE: "Nam",
+    FEMALE: "Nữ",
+    OTHER: "Khác"
   }
 
   // Use searchQuery (triggered by Enter) instead of searchTerm
@@ -118,6 +138,8 @@ export default function StudentManagement() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
   })
+
+  
   // Get student data from API response with optional chaining
   const studentData = data?.students || []
   
@@ -165,8 +187,8 @@ export default function StudentManagement() {
         const month = (birthDate.getMonth() + 1).toString()
         const year = birthDate.getFullYear().toString()
 
-        if (filterState.birthMonth && filterState.birthMonth !== "Tháng sinh" && month !== filterState.birthMonth) return false
-        if (filterState.birthYear && filterState.birthYear !== "Năm sinh" && year !== filterState.birthYear) return false
+        if (filterState.birthMonth && filterState.birthMonth !== "all" && month !== filterState.birthMonth) return false
+        if (filterState.birthYear && filterState.birthYear !== "all" && year !== filterState.birthYear) return false
 
         return true
       })
@@ -193,7 +215,6 @@ export default function StudentManagement() {
       e.preventDefault()
       setSearchQuery(searchTerm) // Set the actual search query
       setCurrentPage(1) // Reset to first page when searching
-      console.log('Searching for:', searchTerm)
     }
   }, [searchTerm])
 
@@ -201,21 +222,21 @@ export default function StudentManagement() {
   const handleSearchSubmit = useCallback(() => {
     setSearchQuery(searchTerm)
     setCurrentPage(1)
-    console.log('Searching for:', searchTerm)
   }, [searchTerm])
 
   const handleViewStudent = (studentId: string): void => {
-    const student = studentData?.find((std: any) => std?.id === studentId)
-    if (student) {
-      toast.info(`Xem thông tin chi tiết của ${student?.user?.fullName}`)
-    }
-    console.log(`[v0] Viewing student ${studentId}`)
+    setSelectedStudentId(studentId)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = (): void => {
+    setIsModalOpen(false)
+    setSelectedStudentId(null)
   }
 
   const handleCopyCode = (code: string): void => {
     navigator.clipboard.writeText(code)
     toast.success(`Đã sao chép mã: ${code}`)
-    console.log(`Copied code: ${code}`)
   }
 
   const handleDownloadTemplate = (): void => {
@@ -230,35 +251,67 @@ export default function StudentManagement() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
         toast.info(`Đang tải lên file: ${file.name}`)
-        console.log(`Uploading file: ${file.name}`)
       }
     }
     input.click()
   }
 
   const handleRefreshPage = (): void => {
+    // Reset tất cả về giá trị mặc định
     setSearchTerm("")
     setSearchQuery("")
     setSelectedCourse("Tất cả khóa học")
+    setFilterState({
+      birthMonth: undefined,
+      birthYear: undefined
+    })
+    setAdvancedFilters({
+      gender: undefined,
+      accountStatus: undefined,
+      customerConnection: undefined
+    })
+    setActiveTab("all")
+    setCurrentPage(1)
+    setItemsPerPage(10)
+    
+    // Close filter panel if open
+    setFilterOpen(false)
+    
+    toast.success("Đã làm mới tất cả bộ lọc")
+  }
+
+  // Thêm hàm handleClearAllFilters để dùng chung cho cả refresh và clear filters
+  const handleClearAllFilters = (): void => {
+    // Reset tất cả state về giá trị mặc định
+    setSearchTerm("")
+    setSearchQuery("")
+    setSelectedCourse("Tất cả khóa học") 
     setFilterState({})
     setAdvancedFilters({})
-    setCurrentPage(1) 
-    toast.success("Đã làm mới dữ liệu")
+    setActiveTab("all")
+    setCurrentPage(1)
+    setItemsPerPage(10)
+    
+    // Close filter panel
+    setFilterOpen(false)
+    
   }
 
   const handleDownloadAll = (): void => {
     toast.info("Đang tải xuống tất cả dữ liệu học viên...")
-    console.log("Downloading all student data")
   }
 
   const handleInviteStudent = (): void => {
     toast.info("Mở form mời học viên...")
-    console.log("Opening invite student form")
   }
 
   const handleAddStudent = (): void => {
-    toast.info("Mở form thêm học viên mới...")
-    console.log("Opening add student form")
+    setIsCreateModalOpen(true)
+  }
+
+  const handleCreateStudentSuccess = (): void => {
+    // Refresh data after successful creation
+    // The modal will handle query invalidation via TanStack Query
   }
 
   const handlePageChange = (page: number): void => {
@@ -273,7 +326,6 @@ export default function StudentManagement() {
   const handleAdvancedFilterChange = (filters: FilterOptions) => {
     setAdvancedFilters(filters)
     setCurrentPage(1)
-    console.log("Advanced filters changed:", filters)
   }
 
   const handleToggleFilter = () => {
@@ -291,51 +343,57 @@ export default function StudentManagement() {
   }
 
   const handleMonthChange = (month: string) => {
-    setFilterState(prev => ({ ...prev, birthMonth: month }))
+    setFilterState(prev => ({ ...prev, birthMonth: month != "all" ? month : undefined }))
     setCurrentPage(1)
   }
 
   const handleYearChange = (year: string) => {
-    setFilterState(prev => ({ ...prev, birthYear: year }))
+    setFilterState(prev => ({ ...prev, birthYear: year != "all" ? year : undefined }))
     setCurrentPage(1)
   }
 
+  // Handle status change functions
+  const handleToggleAccountStatus = async (studentId: string, currentStatus: boolean) => {
+    try {
+      await updateStudentStatusMutation.mutateAsync({
+        studentId,
+        isActive: !currentStatus
+      })
+    } catch (error) {
+      console.error('Error toggling account status:', error)
+    }
+  }
+
+  const handleChangeAccountStatus = async (studentId: string, isActive: boolean) => {
+    try {
+      await updateStudentStatusMutation.mutateAsync({
+        studentId,
+        isActive
+      })
+    } catch (error) {
+      console.error('Error changing account status:', error)
+    }
+  }
+
   const getTabCount = (tabKey: string): number => {
-    if (tabKey === "all") return totalCount
+    if (tabKey === "all") return statusData?.total  
+    const findCountByKey = statusData?.counts?.[tabKey] || 0
 
-    const statusMap: Record<string, string[]> = {
-      pending: ["active"],
-      "no-schedule": ["active"],
-      upcoming: ["active"],
-      active: ["active"],
-      reserved: ["withdrawn"],
-      stopped: ["withdrawn"],
-      graduated: ["completed"],
-    }
-
-    if (statusMap[tabKey]) {
-      return studentData?.filter((student: any) => 
-        student?.enrollments?.some((enrollment: any) => 
-          statusMap[tabKey]?.includes(enrollment?.status)
-        )
-      )?.length || 0
-    }
-
-    return 0
+    return findCountByKey ? findCountByKey : 0
   }
 
   const getStatusBadgeColor = (status: string): string => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       case "completed":
-        return "bg-emerald-100 text-emerald-800"
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 border border-purple-200 dark:border-purple-800"
       case "dropped":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
       case "suspended":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
       default:
-        return "bg-gray-100 dark:bg-gray-800 text-gray-800"
+        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
     }
   }
 
@@ -356,6 +414,175 @@ export default function StudentManagement() {
     
     return "Chờ xếp lớp"
   }
+
+  // Define columns for DataTable
+  const columns = useMemo(() => [
+    // STT Column
+    {
+      key: "stt",
+      header: "STT",
+      width: "80px",
+      render: (student: any, index: number) => (
+        <span className="text-sm text-gray-900 dark:text-white">
+          {(currentPage - 1) * itemsPerPage + index + 1}
+        </span>
+      )
+    },
+    // Student Account Column
+    {
+      key: "account",
+      header: "Tài khoản học viên",
+      width: "300px",
+      render: (student: any) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-gray-200">
+              <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
+                <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+              </div>
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div onClick={() => navigate(`/center-qn/students/${student?.id}`)} className="text-sm font-medium dark:text-white text-blue-600">
+              {student?.user?.fullName || "N/A"}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {student?.user?.email || "N/A"}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <span>{student?.studentCode || "N/A"}</span>
+              <Copy
+                className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
+                onClick={() => handleCopyCode(student?.studentCode || "")}
+              />
+            </div>
+          </div>
+        </div>
+      )
+    },
+    // Contact Info Column
+    {
+      key: "contact",
+      header: "Thông tin liên hệ",
+      width: "250px",
+      render: (student: any) => (
+        <div className="space-y-1">
+          {student?.user?.phone && (
+            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+              <Phone className="w-3 h-3" />
+              {student.user.phone}
+            </div>
+          )}
+          {!student?.user?.phone && <div className="text-sm text-gray-400">-</div>}
+          {student?.user?.birthDate && (
+            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+              <Calendar className="w-3 h-3" />
+              {new Date(student.user.birthDate).toLocaleDateString('vi-VN')} - {gender[student?.user?.gender] || "N/A"}
+            </div>
+          )}
+          {!student?.user?.birthDate && (
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              {gender[student?.user?.gender] || "N/A"}
+            </div>
+          )}
+        </div>
+      )
+    },
+    // Status Column
+    {
+      key: "status",
+      header: "Trạng thái",
+      width: "200px",
+      render: (student: any) => (
+        <div className="space-y-1">
+          {student?.enrollments?.map((enrollment: any, idx: number) => (
+            <Badge key={idx} variant="secondary" className={getStatusBadgeColor(enrollment?.status)}>
+              {status[enrollment?.status] || "N/A"}
+            </Badge>
+          ))}
+          {(!student?.enrollments || student?.enrollments?.length === 0) && (
+            <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+              Chưa có lớp
+            </Badge>
+          )}
+        </div>
+      )
+    },
+    // Course Column
+    {
+      key: "course",
+      header: "Khóa học",
+      width: "200px",
+      render: (student: any) => (
+        <span className="text-sm text-gray-900 dark:text-white">
+          {student?.enrollments?.map((enrollment: any) => enrollment?.class?.subject?.name)?.join(", ") || "-"}
+        </span>
+      )
+    },
+    // Class Column
+    {
+      key: "class",
+      header: "Lớp học",
+      width: "200px",
+      render: (student: any) => (
+        <span className="text-sm text-gray-900 dark:text-white">
+          {student?.enrollments?.map((enrollment: any) => enrollment?.class?.name)?.join(", ") || "-"}
+        </span>
+      )
+    },
+    // Account Status Column (moved to last)
+    {
+      key: "accountStatus",
+      header: "Tài khoản",
+      width: "250px",
+      align: "right" as const,
+      render: (student: any) => (
+        <div className="flex items-center justify-end gap-3">
+          <Switch
+            checked={student?.user?.isActive || false}
+            onCheckedChange={() => handleToggleAccountStatus(student?.id, student?.user?.isActive)}
+            disabled={updateStudentStatusMutation.isPending}
+            className="data-[state=checked]:bg-green-600"
+          />
+          <span className={`text-sm font-medium ${
+            student?.user?.isActive 
+              ? "text-green-700 dark:text-green-400" 
+              : "text-red-700 dark:text-red-400"
+          }`}>
+            {student?.user?.isActive ? "Hoạt động" : "Vô hiệu hóa"}
+          </span>
+          {/* <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleChangeAccountStatus(student?.id, !student?.user?.isActive)}
+            disabled={updateStudentStatusMutation.isPending}
+            className={`text-xs px-3 py-1 ml-2 ${
+              student?.user?.isActive
+                ? "text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                : "text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300"
+            }`}
+          >
+            {student?.user?.isActive ? "Vô hiệu hóa" : "Kích hoạt"}
+          </Button> */}
+        </div>
+      )
+    }
+  ], [currentPage, itemsPerPage, status, handleCopyCode, handleViewStudent, getStatusBadgeColor, handleToggleAccountStatus, handleChangeAccountStatus, updateStudentStatusMutation.isPending])
+
+  // Pagination config for DataTable
+  const paginationConfig = useMemo(() => ({
+    currentPage,
+    totalPages,
+    totalItems: totalCount,
+    itemsPerPage,
+    onPageChange: handlePageChange,
+    onItemsPerPageChange: (value: number) => {
+      setItemsPerPage(value)
+      setCurrentPage(1)
+    },
+    showItemsPerPage: true,
+    showPageInfo: true
+  }), [currentPage, totalPages, totalCount, itemsPerPage, handlePageChange])
 
   // Show loading state
   if (isLoading) {
@@ -391,7 +618,7 @@ export default function StudentManagement() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                  <BreadcrumbLink onClick={() => navigate('/center-qn')} className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </BreadcrumbLink>
                 </BreadcrumbItem>
@@ -411,9 +638,9 @@ export default function StudentManagement() {
               <Plus className="w-4 h-4 mr-2" />
               Tài khoản học viên
             </Button>
-            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800" onClick={handleInviteStudent}>
+            {/* <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800" onClick={handleInviteStudent}>
               Mời tài khoản học viên
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
@@ -436,12 +663,12 @@ export default function StudentManagement() {
               </SelectContent>
             </Select>
 
-            <Select value={filterState?.birthMonth || "Tháng sinh"} onValueChange={handleMonthChange}>
+            <Select value={filterState?.birthMonth || "all"} onValueChange={handleMonthChange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Tháng sinh">Tháng sinh</SelectItem>
+                <SelectItem value="all">Tháng sinh</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                   <SelectItem key={month} value={month.toString()}>
                     Tháng {month}
@@ -450,12 +677,12 @@ export default function StudentManagement() {
               </SelectContent>
             </Select>
 
-            <Select value={filterState?.birthYear || "Năm sinh"} onValueChange={handleYearChange}>
+            <Select value={filterState?.birthYear || "all"} onValueChange={handleYearChange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Năm sinh">Năm sinh</SelectItem>
+                <SelectItem value="all">Năm sinh</SelectItem>
                 {Array.from({ length: 25 }, (_, i) => 2000 + i).map((year) => (
                   <SelectItem key={year} value={year.toString()}>
                     {year}
@@ -494,9 +721,21 @@ export default function StudentManagement() {
           </div>
 
           <div className="flex items-center gap-2 relative">
-            <Button variant="outline" className="gap-2 bg-white dark:bg-gray-800" onClick={handleToggleFilter}>
+            <Button 
+              variant="outline" 
+              className={`gap-2 ${Object.keys(advancedFilters).filter(key => advancedFilters[key as keyof FilterOptions]).length > 0 
+                ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                : 'bg-white dark:bg-gray-800'
+              }`} 
+              onClick={handleToggleFilter}
+            >
               <Filter className="w-4 h-4" />
               Bộ lọc
+              {Object.keys(advancedFilters).filter(key => advancedFilters[key as keyof FilterOptions]).length > 0 && (
+                <span className="ml-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {Object.keys(advancedFilters).filter(key => advancedFilters[key as keyof FilterOptions]).length}
+                </span>
+              )}
             </Button>
 
             <FilterPanel
@@ -504,9 +743,10 @@ export default function StudentManagement() {
               onClose={() => setFilterOpen(false)}
               onFilterChange={handleAdvancedFilterChange}
               currentFilters={advancedFilters}
+              onClearAll={handleClearAllFilters} // Pass hàm clear all
             />
 
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <MoreHorizontal className="w-4 h-4" />
@@ -530,7 +770,7 @@ export default function StudentManagement() {
                   Tải tất cả
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
           </div>
         </div>
       </div>
@@ -554,167 +794,36 @@ export default function StudentManagement() {
             ))}
           </div>
         </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">STT</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tài khoản học viên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Thông tin liên hệ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Khóa học
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Lớp học
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200">
-              {paginatedStudents?.map((student: any, index: number) => (
-                <tr key={student?.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-gray-200">
-                          <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                          </div>
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{student?.user?.fullName || "N/A"}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{student?.user?.email || "N/A"}</div>
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>{student?.studentCode || "N/A"}</span>
-                          <Copy
-                            className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
-                            onClick={() => handleCopyCode(student?.studentCode || "")}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {student?.user?.phone && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
-                          <Phone className="w-3 h-3" />
-                          {student.user.phone}
-                        </div>
-                      )}
-                      {!student?.user?.phone && <div className="text-sm text-gray-400">-</div>}
-                      {student?.user?.birthDate && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(student.user.birthDate).toLocaleDateString('vi-VN')} - {student?.user?.gender || "N/A"}
-                        </div>
-                      )}
-                      {!student?.user?.birthDate && <div className="text-sm text-gray-600 dark:text-gray-300">{student?.user?.gender || "N/A"}</div>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {student?.enrollments?.map((enrollment: any, idx: number) => (
-                        <Badge key={idx} variant="secondary" className={getStatusBadgeColor(enrollment?.status)}>
-                          {status[enrollment?.status] || "N/A"}
-                        </Badge>
-                      ))}
-                      {(!student?.enrollments || student?.enrollments?.length === 0) && (
-                        <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-                          Chưa có lớp
-                        </Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {student?.enrollments?.map((enrollment: any) => enrollment?.class?.subject?.name)?.join(", ") || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {student?.enrollments?.map((enrollment: any) => enrollment?.class?.name)?.join(", ") || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2" onClick={() => handleViewStudent(student?.id)}>
-                          <Eye className="w-4 h-4" />
-                          Xem
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={collectData} onCheckedChange={setCollectData} />
-                <span className="text-sm text-gray-600 dark:text-gray-300">Thu gọn</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <span>Số hàng mỗi trang:</span>
-                <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                  <SelectTrigger className="w-16 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">
-                {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)}{" "}
-                trong {totalCount}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  <ChevronRightIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          data={paginatedStudents}
+          columns={columns}
+          loading={isLoading}
+          error={isError ? "Có lỗi xảy ra khi tải dữ liệu" : null}
+          onRetry={() => window.location.reload()}
+          emptyMessage="Không có học viên nào"
+          pagination={paginationConfig}
+          rowKey="id"
+          onRowClick={(student) => console.log("Clicked student:", student)}
+          hoverable={true}
+          striped={false}
+          enableSearch={false} // Disable built-in search vì đã có search bar ở trên
+          enableSort={false}   // Disable built-in sort vì API handle sort
+        />
       </div>
+
+      {/* Student Detail Modal */}
+      <StudentDetailModal
+        studentId={selectedStudentId}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
+
+      {/* Create Student Modal */}
+      <CreateStudentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateStudentSuccess}
+      />
     </div>
   )
 }

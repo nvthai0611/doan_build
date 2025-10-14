@@ -25,6 +25,7 @@ import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
 import CreateClass from "../pages/manager/Class-management/AddClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/AttendanceTable";
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/TeacherSchedule";
+import { StudentDetailPage } from "../../src/pages/manager/Student-management/components/StudentDetail/student-detail-page";
 
 
 export const privateRoutes = (
@@ -47,6 +48,7 @@ export const privateRoutes = (
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
       </Route>
 
       {/* Giáo viên */}

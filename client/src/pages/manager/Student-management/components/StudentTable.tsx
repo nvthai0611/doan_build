@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { MoreHorizontal, Mail, Phone, Eye, Download, Copy } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { MoreHorizontal, Mail, Phone, Eye, Download, Copy, Settings } from "lucide-react"
 import type { StudentWithDetails, StudentFilters } from "../types/database"
 import { cn } from "@/lib/utils"
 
@@ -14,9 +15,17 @@ interface StudentTableProps {
   students: StudentWithDetails[]
   filters: StudentFilters
   onFilterChange: (key: keyof StudentFilters, value: any) => void
+  onStatusChange?: (studentId: string, newStatus: boolean) => void
+  onNavigateToDetail?: (studentId: string) => void
 }
 
-export function StudentTable({ students, filters }: StudentTableProps) {
+export function StudentTable({ 
+  students, 
+  filters, 
+  onFilterChange, 
+  onStatusChange,
+  onNavigateToDetail 
+}: StudentTableProps) {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
 
   const getStatusBadge = (status: string, count?: number) => {
@@ -71,6 +80,7 @@ export function StudentTable({ students, filters }: StudentTableProps) {
             <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Khóa học</TableHead>
             <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Lớp học</TableHead>
             <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Điểm trung bình</TableHead>
+            <TableHead className="text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Tài khoản</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>
@@ -142,24 +152,56 @@ export function StudentTable({ students, filters }: StudentTableProps) {
                 </div>
               </TableCell>
 
+              <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <Switch
+                    checked={student.user.isActive}
+                    onCheckedChange={(checked) => onStatusChange?.(student.id, checked)}
+                    className="data-[state=checked]:bg-green-600"
+                  />
+                  <span className="text-xs text-muted-foreground min-w-[60px]">
+                    {student.user.isActive ? 'Hoạt động' : 'Không hoạt động'}
+                  </span>
+                </div>
+              </TableCell>
+
               <TableCell className="px-6 py-4 whitespace-nowrap text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem className="gap-2">
-                      <Eye className="w-4 h-4" />
-                      Xem
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2">
-                      <Download className="w-4 h-4" />
-                      Tải xuống
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onStatusChange?.(student.id, !student.user.isActive)}
+                    className={cn(
+                      "text-xs px-3 py-1 h-7 transition-colors",
+                      student.user.isActive 
+                        ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                        : "border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
+                    )}
+                  >
+                    {student.user.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem 
+                        className="gap-2 cursor-pointer"
+                        onClick={() => onNavigateToDetail?.(student.id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                        Xem chi tiết
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 cursor-pointer">
+                        <Download className="w-4 h-4" />
+                        Tải xuống
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </TableCell>
             </TableRow>
           ))}
