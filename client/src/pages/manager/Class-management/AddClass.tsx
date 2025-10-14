@@ -56,6 +56,9 @@ export const CreateClass = () => {
 
   const [useTemplate, setUseTemplate] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  
+  // State để quản lý validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch subjects and rooms
   const { data: subjectsData } = useQuery({
@@ -111,7 +114,65 @@ export const CreateClass = () => {
     );
   };
 
+  // Validation functions
+  const validateRequired = (value: string): boolean => {
+    return value.trim().length > 0;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Validate name
+    if (!validateRequired(formData.name)) {
+      newErrors.name = 'Tên lớp là bắt buộc';
+    }
+
+    // Validate subject
+    if (!formData.subjectId || formData.subjectId === 'none') {
+      newErrors.subjectId = 'Khoá học là bắt buộc';
+    }
+
+    // Validate start date
+    if (!validateRequired(formData.startDate)) {
+      newErrors.startDate = 'Ngày khai giảng là bắt buộc';
+    }
+
+    // Validate room
+    if (!formData.roomId || formData.roomId === 'none') {
+      newErrors.roomId = 'Chọn phòng học là bắt buộc';
+    }
+
+    // Validate academic year
+    if (!validateRequired(formData.academicYear)) {
+      newErrors.academicYear = 'Năm học là bắt buộc';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Clear error khi user nhập
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
   const handleSubmit = () => {
+    // Validate form trước khi submit
+    if (!validateForm()) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
+
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const currentAcademicYear =
@@ -152,13 +213,21 @@ export const CreateClass = () => {
         navigate('/center-qn/classes');
       },
       onError: (error: any) => {
-        toast.error(error?.message || 'Có lỗi xảy ra khi tạo lớp học');
+        const errorMessage = error?.message || error?.error || 'Có lỗi xảy ra khi tạo lớp học';
+        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Có lỗi xảy ra khi tạo lớp học');
       },
     });
   };
 
   const handleCancel = () => {
     navigate('/center-qn/classes');
+  };
+
+  // Helper component để hiển thị error message
+  const ErrorMessage = ({ field }: { field: string }) => {
+    return errors[field] ? (
+      <p className="text-sm text-red-500 mt-1">{errors[field]}</p>
+    ) : null;
   };
 
   return (
@@ -231,13 +300,12 @@ export const CreateClass = () => {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Nhập tên lớp học"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${errors.name ? "border-red-500" : ""}`}
                   required
                 />
+                <ErrorMessage field="name" />
               </div>
 
               {/* Mã lớp & Khoá học */}
@@ -249,9 +317,7 @@ export const CreateClass = () => {
                   <Input
                     id="code"
                     value={formData.code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
-                    }
+                    onChange={(e) => handleInputChange("code", e.target.value)}
                     placeholder="Mã lớp"
                     className="mt-1.5"
                   />
@@ -262,11 +328,9 @@ export const CreateClass = () => {
                   </Label>
                   <Select
                     value={formData.subjectId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, subjectId: value })
-                    }
+                    onValueChange={(value) => handleInputChange("subjectId", value)}
                   >
-                    <SelectTrigger className="mt-1.5">
+                    <SelectTrigger className={`mt-1.5 ${errors.subjectId ? "border-red-500" : ""}`}>
                       <SelectValue placeholder="Chọn khoá học" />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,6 +344,7 @@ export const CreateClass = () => {
                         ))}
                     </SelectContent>
                   </Select>
+                  <ErrorMessage field="subjectId" />
                 </div>
               </div>
 
@@ -287,29 +352,27 @@ export const CreateClass = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startDate" className="text-sm font-medium">
-                    Ngày khai giảng (dự kiến)
+                    Ngày khai giảng (dự kiến) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="startDate"
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, startDate: e.target.value })
-                    }
-                    className="mt-1.5"
+                    onChange={(e) => handleInputChange("startDate", e.target.value)}
+                    className={`mt-1.5 ${errors.startDate ? "border-red-500" : ""}`}
+                    required
                   />
+                  <ErrorMessage field="startDate" />
                 </div>
                 <div>
                   <Label htmlFor="roomId" className="text-sm font-medium">
-                    Chọn phòng học
+                    Chọn phòng học <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.roomId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, roomId: value })
-                    }
+                    onValueChange={(value) => handleInputChange("roomId", value)}
                   >
-                    <SelectTrigger className="mt-1.5">
+                    <SelectTrigger className={`mt-1.5 ${errors.roomId ? "border-red-500" : ""}`}>
                       <SelectValue placeholder="Chọn phòng học" />
                     </SelectTrigger>
                     <SelectContent>
@@ -323,34 +386,64 @@ export const CreateClass = () => {
                         ))}
                     </SelectContent>
                   </Select>
+                  <ErrorMessage field="roomId" />
                 </div>
               </div>
 
               {/* Năm học */}
               <div>
                 <Label htmlFor="academicYear" className="text-sm font-medium">
-                  Năm học
+                  Năm học <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.academicYear}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, academicYear: value })
-                  }
+                  onValueChange={(value) => handleInputChange("academicYear", value)}
                 >
-                  <SelectTrigger className="mt-1.5">
+                  <SelectTrigger className={`mt-1.5 ${errors.academicYear ? "border-red-500" : ""}`}>
                     <SelectValue placeholder="Chọn năm học" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2024-2025">2024-2025</SelectItem>
-                    <SelectItem value="2025-2026">2025-2026</SelectItem>
-                    <SelectItem value="2026-2027">2026-2027</SelectItem>
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const academicYears = [
+                        `${currentYear - 1}-${currentYear}`,
+                        `${currentYear}-${currentYear + 1}`,
+                        ];
+                      return academicYears.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
+                <ErrorMessage field="academicYear" />
               </div>
             </div>
 
-            {/* Lịch học hàng tuần */}
+            
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Use Template Switch */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="useTemplate"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Sử dụng chương trình học theo khoá học mẫu
+                </Label>
+                <Switch
+                  id="useTemplate"
+                  checked={useTemplate}
+                  onCheckedChange={setUseTemplate}
+                />
+              </div>
+            </div>
+{/* Lịch học hàng tuần */}
+<div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
               <div className="flex items-center justify-between mb-4">
                 <Label className="text-base font-semibold">
                   Lịch học hàng tuần
@@ -466,71 +559,7 @@ export const CreateClass = () => {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Use Template Switch */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="useTemplate"
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  Sử dụng chương trình học theo khoá học mẫu
-                </Label>
-                <Switch
-                  id="useTemplate"
-                  checked={useTemplate}
-                  onCheckedChange={setUseTemplate}
-                />
-              </div>
-            </div>
-
-            {/* Mô tả */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
-              <Label htmlFor="description" className="text-sm font-medium">
-                Mô tả
-              </Label>
-              <div className="border rounded-lg overflow-hidden mt-3">
-                <ReactQuill
-                  value={formData.description}
-                  onChange={(value) =>
-                    setFormData({ ...formData, description: value })
-                  }
-                  placeholder="Nhập mô tả về lớp học..."
-                  style={{ height: '200px' }}
-                  modules={{
-                    toolbar: [
-                      [{ header: [1, 2, 3, false] }],
-                      ['bold', 'italic', 'underline', 'strike'],
-                      [{ list: 'ordered' }, { list: 'bullet' }],
-                      [{ indent: '-1' }, { indent: '+1' }],
-                      [{ align: [] }],
-                      ['link', 'image'],
-                      ['clean'],
-                    ],
-                  }}
-                  formats={[
-                    'header',
-                    'bold',
-                    'italic',
-                    'underline',
-                    'strike',
-                    'list',
-                    'bullet',
-                    'indent',
-                    'align',
-                    'link',
-                    'image',
-                  ]}
-                  theme="snow"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Sử dụng các công cụ định dạng văn bản để làm đẹp nội dung
-              </p>
-            </div>
+           
           </div>
         </div>
       </div>

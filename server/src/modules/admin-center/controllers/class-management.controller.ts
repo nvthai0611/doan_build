@@ -40,14 +40,8 @@ export class ClassManagementController {
     @ApiOperation({ summary: 'Cập nhật thông tin lớp học' })
     @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
-<<<<<<< Updated upstream
     async update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
         return this.classManagementService.update(id, updateClassDto);
-=======
-    async update(@Param('id') id: string, @Body() body: any) {
-        console.log(id, body);
-        return this.classManagementService.update(id, body);
->>>>>>> Stashed changes
     }
 
     @Patch(':id/schedules')

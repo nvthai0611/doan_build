@@ -1,12 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
-<<<<<<< Updated upstream
 import { CreateClassDto } from '../dto/class/create-class.dto';
 import { UpdateClassDto } from '../dto/class/update-class.dto';
 import { QueryClassDto } from '../dto/class/query-class.dto';
-=======
-import { timeRanges } from '../../../const/time_ranges';
->>>>>>> Stashed changes
 
 @Injectable()
 export class ClassManagementService {
@@ -14,30 +10,20 @@ export class ClassManagementService {
     // Lấy danh sách tất cả lớp học với filters và pagination
     async findAll(queryDto: QueryClassDto) {
         try {
-<<<<<<< Updated upstream
             const { 
                 status, 
                 grade, 
                 subjectId, 
-=======
-            const {
-                status,
-                grade,
-                subjectId,
-                teacherId, // Đã có sẵn
->>>>>>> Stashed changes
                 roomId,
                 search,
                 dayOfWeek,
                 shift,
-<<<<<<< Updated upstream
                 academicYear,
                 page = 1, 
                 limit = 10,
                 sortBy = 'createdAt',
                 sortOrder = 'desc'
             } = queryDto;
-            console.log('Query DTO:', queryDto);
             
             const skip = (page - 1) * limit;
             const take = limit;
@@ -56,134 +42,53 @@ export class ClassManagementService {
                 currentAcademicYear = `${currentYear - 1}-${currentYear}`;
             }
             
-            console.log('Current academic year:', currentAcademicYear);
-            
-=======
-                page = 1,
-                limit = Math.min(parseInt(query.limit) || 10, 50),
-                sortBy = 'createdAt',
-                sortOrder = 'desc'
-            } = query;
-    
-            const skip = (parseInt(page) - 1) * parseInt(limit);
-            const take = parseInt(limit);
-    
->>>>>>> Stashed changes
-            // Build where clause
             const where: any = {};
-            if (status) where.status = status;
+            
+            if (status && status !== 'all') where.status = status;
             if (grade) where.grade = grade;
             if (subjectId) where.subjectId = subjectId;
             if (roomId) where.roomId = roomId;
-    
+            
+            // Enhanced search - search in name, description, grade, subject name, teacher name
             if (search) {
                 where.OR = [
                     { name: { contains: search, mode: 'insensitive' } },
                     { description: { contains: search, mode: 'insensitive' } },
                     { grade: { contains: search, mode: 'insensitive' } },
-                    { subject: { name: { contains: search, mode: 'insensitive' } } },
+                    { 
+                        subject: {
+                            name: { contains: search, mode: 'insensitive' }
+                        }
+                    },
                     {
                         teacherClassAssignments: {
                             some: {
                                 teacher: {
-                                    user: { fullName: { contains: search, mode: 'insensitive' } }
+                                    user: {
+                                        fullName: { contains: search, mode: 'insensitive' }
+                                    }
                                 }
                             }
                         }
                     },
-                    { room: { name: { contains: search, mode: 'insensitive' } } }
+                    {
+                        room: {
+                            name: { contains: search, mode: 'insensitive' }
+                        }
+                    }
                 ];
             }
-<<<<<<< Updated upstream
 
             // Filter by teacher
             let classIds: string[] | undefined;
-            // if (teacherId) {
-            //     const assignments = await this.prisma.teacherClassAssignment.findMany({
-            //         where: { teacherId },
-            //         select: { classId: true }
-            //     });
-            //     classIds = assignments.map(a => a.classId);
-            //     where.id = { in: classIds };
-            // }
-            
-            // Note: We'll filter by dayOfWeek and shift after getting the data
-            // because Prisma's array_contains with complex objects is limited
-
-            // Note: We don't filter by academic year to show all classes
-            // We'll sort by academic year instead
-
-            // // Filter by date range
-            // if (startDate || endDate) {
-            //     const dateFilter: any = {};
-            //     if (startDate) dateFilter.gte = new Date(startDate);
-            //     if (endDate) dateFilter.lte = new Date(endDate);
-                
-            //     where.startDate = dateFilter;
-            // }
-
-            // // Filter by rating (if rating system exists)
-            // if (rating) {
-            //     where.averageRating = { gte: parseFloat(rating) };
-            // }
-
-            // Get total count (before post-filtering)
             const totalBeforeFilter = await this.prisma.class.count({ where });
-
-=======
-    
-            // --- PHẦN SỬA LỖI LOGIC LỌC NÂNG CAO ---
-    
-            // 1. Tạo một mảng để chứa tất cả các điều kiện liên quan đến TeacherClassAssignment
-            const assignmentConditions = [];
-    
-            // 2. Thêm điều kiện cho teacherId (phần bị thiếu)
-            if (teacherId) {
-                assignmentConditions.push({ teacherId: teacherId });
+            const orderBy: any = {};
+            if (sortBy && sortOrder) {
+                orderBy[sortBy] = sortOrder;
+            } else {
+                orderBy.createdAt = 'desc'; 
             }
-    
-            // 3. Thêm điều kiện cho dayOfWeek
-            if (dayOfWeek && dayOfWeek !== 'all') {
-                assignmentConditions.push({
-                    recurringSchedule: {
-                        path: ['days'],
-                        array_contains: dayOfWeek.toLowerCase() // Chuyển sang chữ thường để đảm bảo khớp dữ liệu
-                    }
-                });
-            }
-    
-            // 4. Thêm điều kiện cho shift
-            if (shift && shift !== 'all') {
-                const timeRange = timeRanges[shift]; // Giả sử bạn có biến timeRanges
-                if (timeRange) {
-                    assignmentConditions.push({
-                        recurringSchedule: {
-                            path: ['startTime'],
-                            gte: timeRange.start,
-                            lte: timeRange.end
-                        }
-                    });
-                }
-            }
-            
-            if (assignmentConditions.length > 0) {
-                where.teacherClassAssignments = {
-                    some: {
-                        AND: assignmentConditions
-                    }
-                };
-            }
-    
-            console.log(JSON.stringify(where, null, 2)); // In ra để debug dễ hơn
-    
-            // Get total count
-            const total = await this.prisma.class.count({ where });
-    
->>>>>>> Stashed changes
-            // Build orderBy clause
-            const orderBy: any = { [sortBy]: sortOrder };
-    
-            // Get data with relations
+             console.log(where);
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
@@ -193,12 +98,9 @@ export class ClassManagementService {
                     subject: true,
                     room: true,
                     teacherClassAssignments: {
-<<<<<<< Updated upstream
                         where: {
                             status: 'active'
                         },
-=======
->>>>>>> Stashed changes
                         select: {
                             id: true,
                             startDate: true,
@@ -214,44 +116,23 @@ export class ClassManagementService {
                                         select: {
                                             id: true,
                                             fullName: true,
-                                            email: true,
-                                            avatar: true
+                                            email: true
                                         }
                                     }
                                 }
                             }
                         },
-<<<<<<< Updated upstream
                         take: 1, // Chỉ lấy 1 assignment (teacher đầu tiên)
                         orderBy: { createdAt: 'desc' }
-=======
-                        take: 1,
-                        orderBy: {
-                            createdAt: 'desc' // Sắp xếp để lấy teacher đầu tiên một cách nhất quán
-                        }
->>>>>>> Stashed changes
                     },
                     _count: {
                         select: { enrollments: true }
                     }
                 }
             });
-<<<<<<< Updated upstream
-
-            // Debug: Log actual data
-            classes.forEach(cls => {
-                cls.teacherClassAssignments.forEach(ta => {
-                    console.log('Class:', cls.name, 'Schedule:', ta.recurringSchedule);
-                });
-            });
 
             // Transform data
             let transformedClasses = classes.map(cls => ({
-=======
-    
-            // ... (phần transform data và return giữ nguyên)
-            const transformedClasses = classes.map(cls => ({
->>>>>>> Stashed changes
                 id: cls.id,
                 name: cls.name,
                 subjectId: cls.subjectId,
@@ -270,7 +151,6 @@ export class ClassManagementService {
                 teachers: cls.teacherClassAssignments.map(ta => ({
                     id: ta.teacher.id,
                     userId: ta.teacher.userId,
-                    avatar: ta.teacher.user.avatar,
                     name: ta.teacher.user.fullName,
                     email: ta.teacher.user.email,
                     assignmentId: ta.id,
@@ -283,9 +163,7 @@ export class ClassManagementService {
                 createdAt: cls.createdAt,
                 updatedAt: cls.updatedAt
             }));
-<<<<<<< Updated upstream
 
-            // Filter by dayOfWeek and shift after getting data
             if (dayOfWeek && dayOfWeek !== 'all') {
                 transformedClasses = transformedClasses.filter(cls => {
                     if (!cls.recurringSchedule || !cls.recurringSchedule.schedules) return false;
@@ -312,23 +190,14 @@ export class ClassManagementService {
                     });
                 }
             }
-            
-            // Sort by academic year: current year first, then others
             const sortedClasses = transformedClasses.sort((a, b) => {
                 const aIsCurrentYear = a.academicYear === currentAcademicYear;
                 const bIsCurrentYear = b.academicYear === currentAcademicYear;
-                
                 if (aIsCurrentYear && !bIsCurrentYear) return -1;
                 if (!aIsCurrentYear && bIsCurrentYear) return 1;
-                return 0; // Keep original order if both have same priority
+                return 0; 
             });
-            
-            // Update total count after post-filtering
             const totalAfterFilter = sortedClasses.length;
-            
-=======
-    
->>>>>>> Stashed changes
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
@@ -340,7 +209,6 @@ export class ClassManagementService {
                     totalPages: Math.ceil(totalAfterFilter / limit)
                 }
             };
-    
         } catch (error) {
             throw new HttpException(
                 {
@@ -356,7 +224,6 @@ export class ClassManagementService {
     // Lấy chi tiết 1 lớp học
     async findOne(id: string) {
         try {
-            // Validate UUID
             if (!this.isValidUUID(id)) {
                 throw new HttpException(
                     {
@@ -629,7 +496,6 @@ export class ClassManagementService {
             const updatedClass = await this.prisma.class.update({
                 where: { id },
                 data: {
-<<<<<<< Updated upstream
                     ...(updateClassDto.name && { name: updateClassDto.name }),
                     ...(updateClassDto.subjectId && { subjectId: updateClassDto.subjectId }),
                     ...(updateClassDto.grade !== undefined && { grade: updateClassDto.grade }),
@@ -640,18 +506,6 @@ export class ClassManagementService {
                     ...(updateClassDto.recurringSchedule !== undefined && { recurringSchedule: updateClassDto.recurringSchedule }),
                     ...(updateClassDto.academicYear !== undefined && { academicYear: updateClassDto.academicYear })
                 } as any,
-=======
-                    ...(body.name && { name: body.name }),
-                    ...(body.subjectId && { subjectId: body.subjectId }),
-                    ...(body.grade !== undefined && { grade: body.grade }),
-                    ...(body.maxStudents !== undefined && { maxStudents: body.maxStudents }),
-                    ...(body.roomId !== undefined && { roomId: body.roomId }),
-                    ...(body.feeStructureId !== undefined && { feeStructureId: body.feeStructureId }),
-                    ...(body.description !== undefined && { description: body.description }),
-                    ...(body.status && { status: body.status }),
-                    ...(body.schedules !== undefined && { recurringSchedule: body.schedules })
-                },
->>>>>>> Stashed changes
                 include: {
                     subject: true,
                     room: true
