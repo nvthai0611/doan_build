@@ -28,6 +28,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
 import { StudentModule } from './modules/student/student.module';
 import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { SharedModule } from './modules/shared/shared.module';
 // ...existing code...
 
 @Module({
@@ -45,6 +46,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     RoomsModule,
     AdminCenterModule,
     CloudinaryModule,
+    SharedModule
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService],

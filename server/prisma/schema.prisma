@@ -137,6 +137,9 @@ model Class {
   subjectId               String                   @map("subject_id") @db.Uuid
   recurringSchedule       Json?                    @map("recurring_schedule")
   academicYear            String?                  @map("academic_year")
+  expectedStartDate       DateTime?                @map("expected_start_date") @db.Date
+  actualStartDate         DateTime?                @map("actual_start_date") @db.Date
+  actualEndDate           DateTime?                @map("actual_end_date") @db.Date
   assessments             Assessment[]
   sessions                ClassSession[]
   feeStructure            FeeStructure?            @relation(fields: [feeStructureId], references: [id])
@@ -550,7 +553,7 @@ model RolePermission {
 
 model TeacherClassAssignment {
   id                String       @id @default(uuid()) @db.Uuid
-  teacherId         String       @map("teacher_id") @db.Uuid
+  teacherId         String       @map("teacher_id") @db.Uuid 
   classId           String       @map("class_id") @db.Uuid
   recurringSchedule Json?        @map("recurring_schedule")
   startDate         DateTime     @map("start_date") @db.Date

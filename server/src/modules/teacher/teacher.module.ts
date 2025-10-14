@@ -26,7 +26,8 @@ import { CommonService } from './services/common.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { FileManagementController } from './controllers/file-management.controller';
 import { FileManagementService } from './services/file-management.service';
-
+import { IncidentReportController } from './controllers/incident-report.controller';
+import { IncidentReportService } from './services/incident-report.service';
 
 @Module({
   imports: [RouterModule.register([
@@ -48,6 +49,7 @@ import { FileManagementService } from './services/file-management.service';
     CommonController,
     LeaveRequestController,
     FileManagementController,
+    IncidentReportController,
   ],
   providers: [
     PrismaService,
@@ -65,6 +67,7 @@ import { FileManagementService } from './services/file-management.service';
     LeaveRequestService,
     CloudinaryService,
     FileManagementService,
+    IncidentReportService,
   ],
 })
 export class TeacherModule implements NestModule {

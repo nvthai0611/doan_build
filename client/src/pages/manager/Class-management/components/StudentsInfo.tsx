@@ -1,209 +1,199 @@
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, MoreHorizontal, UserPlus } from "lucide-react"
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Users, Plus, Search, MoreHorizontal, Mail, Phone, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface StudentsInfoProps {
-  classId: string
+  classId: string;
+  classData?: any;
 }
 
-export default function StudentsInfo({ classId }: StudentsInfoProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeTab, setActiveTab] = useState<"all" | "active" | "inactive">("all")
-
-  // Mock data - sẽ được thay thế bằng data thật từ API
-  const students = [
+export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Sử dụng data thật từ props hoặc mock data
+  const students = classData?.students || [
     {
-      id: "1",
-      name: "Nguyễn Văn An",
-      email: "an.nguyen@email.com",
-      phone: "0123456789",
-      avatar: "",
-      status: "active",
-      enrollmentDate: "2024-01-15",
-      attendance: 85
+      enrollmentId: '1',
+      studentId: '1',
+      id: '1',
+      fullName: 'Nguyễn Văn An',
+      email: 'an.nguyen@email.com',
+      phone: '0123456789',
+      avatar: 'https://picsum.photos/200/300',
+      enrolledAt: '2024-01-15',
+      status: 'active'
     },
     {
-      id: "2", 
-      name: "Trần Thị Bình",
-      email: "binh.tran@email.com",
-      phone: "0987654321",
-      avatar: "",
-      status: "active",
-      enrollmentDate: "2024-01-20",
-      attendance: 92
+      enrollmentId: '2',
+      studentId: '2',
+      id: '2',
+      fullName: 'Trần Thị Bình',
+      email: 'binh.tran@email.com',
+      phone: '0987654321',
+      avatar: 'https://picsum.photos/200/300',
+      enrolledAt: '2024-01-20',
+      status: 'active'
     },
     {
-      id: "3",
-      name: "Lê Văn Cường",
-      email: "cuong.le@email.com", 
-      phone: "0111222333",
-      avatar: "",
-      status: "inactive",
-      enrollmentDate: "2024-02-01",
-      attendance: 78
+      enrollmentId: '3',
+      studentId: '3',
+      id: '3',
+      fullName: 'Lê Văn Cường',
+      email: 'cuong.le@email.com',
+      phone: '0369852147',
+      avatar: 'https://picsum.photos/200/300',
+      enrolledAt: '2024-02-01',
+      status: 'paused'
     }
-  ]
+  ];
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    if (activeTab === "all") return matchesSearch
-    if (activeTab === "active") return matchesSearch && student.status === "active"
-    if (activeTab === "inactive") return matchesSearch && student.status === "inactive"
-    
-    return matchesSearch
-  })
+  const filteredStudents = students.filter((student: any) =>
+    student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
+      active: { variant: 'default', label: 'Đang học', className: 'bg-green-100 text-green-800 border-green-200' },
+      paused: { variant: 'secondary', label: 'Tạm nghỉ' },
+      completed: { variant: 'outline', label: 'Hoàn thành' },
+      dropped: { variant: 'destructive', label: 'Bỏ học' }
+    };
+    const config = variants[status] || variants.active;
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
+  };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase()
-  }
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Học viên</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Quản lý danh sách học viên trong lớp
-          </p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <UserPlus className="h-4 w-4 mr-2" />
-          Thêm học viên
-        </Button>
-      </div>
-
-      {/* Filters */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Danh sách học viên ({filteredStudents.length})
+            </CardTitle>
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Tìm kiếm học viên..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 w-64"
                 />
               </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab("all")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "all"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Tất cả ({students.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("active")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "active"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Đang học ({students.filter(s => s.status === "active").length})
-              </button>
-              <button
-                onClick={() => setActiveTab("inactive")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "inactive"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Tạm nghỉ ({students.filter(s => s.status === "inactive").length})
-              </button>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm học viên
+              </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Students List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách học viên ({filteredStudents.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredStudents.map((student) => (
-              <div
-                key={student.id}
-                className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={student.avatar} alt={student.name} />
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {getInitials(student.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {student.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {student.email}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      {student.phone}
-                    </p>
-                  </div>
-                </div>
+      </Card>
 
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Điểm danh: {student.attendance}%
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      Ghi danh: {new Date(student.enrollmentDate).toLocaleDateString('vi-VN')}
-                    </p>
-                  </div>
-
-                  <Badge 
-                    variant={student.status === "active" ? "default" : "secondary"}
-                    className={student.status === "active" ? "bg-green-100 text-green-800" : ""}
-                  >
-                    {student.status === "active" ? "Đang học" : "Tạm nghỉ"}
-                  </Badge>
-
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {filteredStudents.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 dark:text-gray-500">
-                  <UserPlus className="h-12 w-12 mx-auto mb-4" />
-                  <p className="text-lg font-medium">Không có học viên nào</p>
-                  <p className="text-sm">Thêm học viên đầu tiên vào lớp học</p>
-                </div>
-              </div>
-            )}
-          </div>
+      {/* Students Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Học viên</TableHead>
+                <TableHead>Liên hệ</TableHead>
+                <TableHead>Ngày ghi danh</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStudents.map((student: any) => (
+                <TableRow key={student.enrollmentId}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={student.avatar} alt={student.fullName} />
+                        <AvatarFallback>{getInitials(student.fullName)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{student.fullName}</p>
+                        <p className="text-sm text-gray-500">ID: {student.studentId}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3 w-3 text-gray-400" />
+                        <span>{student.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-3 w-3 text-gray-400" />
+                        <span>{student.phone}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-3 w-3 text-gray-400" />
+                      <span>{format(new Date(student.enrolledAt), 'dd/MM/yyyy')}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(student.status)}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Xem hồ sơ</DropdownMenuItem>
+                        <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
+                        <DropdownMenuItem>Điểm danh</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">Xóa khỏi lớp</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* Empty State */}
+      {filteredStudents.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {searchTerm ? 'Không tìm thấy học viên' : 'Chưa có học viên nào'}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm ? 'Thử thay đổi từ khóa tìm kiếm' : 'Hãy thêm học viên vào lớp học này'}
+            </p>
+            {!searchTerm && (
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm học viên đầu tiên
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
-  )
-}
+  );
+};

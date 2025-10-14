@@ -42,7 +42,7 @@ interface StudentDetailModalProps {
   teacherClassAssignmentId: string
 }
 
-function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignmentId }: StudentDetailModalProps) {
+function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignmentId }: any) {
   // Sử dụng TanStack Query để fetch student detail
   const { 
     data: student, 
@@ -251,7 +251,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Thông tin phụ huynh
+                  Thông tin người dám hộ
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -339,7 +339,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
   )
 }
 
-export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teacherClassAssignmentId }: HocVienTabProps) {
+export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teacherClassAssignmentId }: any) {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 

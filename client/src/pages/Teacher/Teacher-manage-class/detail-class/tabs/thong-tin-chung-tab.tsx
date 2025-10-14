@@ -85,14 +85,14 @@ export function ThongTinChungTab({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {classData?.recurringSchedule.days.map((item: any, index: number) => (
+              {classData?.recurringSchedule?.schedules?.map((item: any, index: number) => (
                 <div
                   key={index}
                   className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500"
                 >
                   <Clock className="h-4 w-4 text-blue-600" />
                   <span className="font-medium text-blue-900">
-                    {allDays.find((day: any) => day.value === item)?.label} {classData.recurringSchedule.startTime} <ArrowRight className="inline-block" size={14} /> {classData.recurringSchedule.endTime}
+                    {allDays.find((day: any) => day.value === item.day)?.label} {item.startTime} <ArrowRight className="inline-block" size={14} /> {item.endTime}
                   </span>
                 </div>
               ))}

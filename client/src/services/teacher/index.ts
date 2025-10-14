@@ -49,3 +49,11 @@ export type {
   GetMaterialsParams,
   MaterialsResponse
 } from './file-management/file.types'
+
+// Incident Report
+export { teacherIncidentReportService } from './incident-report/incident.service'
+export type {
+  IncidentReportCreateRequest,
+  IncidentReportItem,
+  IncidentReportListResponse,
+} from './incident-report/incident.types'

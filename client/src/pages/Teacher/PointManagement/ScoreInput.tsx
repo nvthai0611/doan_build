@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { DashboardLayout } from "../../manager/Layout/Dashboard-layout";
+import { DashboardLayout } from "../../manager/Layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -279,7 +279,7 @@ export default function GradeInputPage() {
       return
     }
     
-    const payload: GradeEntry[] = Object.keys(grades).map((sid) => ({
+    const payload: any = Object.keys(grades).map((sid) => ({
       studentId: sid,
       score: grades[sid]?.score ? Number.parseFloat(grades[sid].score) : undefined,
       feedback: grades[sid]?.comment,

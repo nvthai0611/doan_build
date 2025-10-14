@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { AlertTriangle, Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, User } from "lucide-react"
 import Loading from "../../../components/Loading/LoadingPage"
 import { teacherScheduleService } from "../../../services/teacherScheduleService"
-import { formatDate, ScheduleData } from "./utils"
 import { useNavigate } from "react-router-dom"
+import { ScheduleData } from "./utils"
 
 type ViewType = "month" | "week" | "list"
 

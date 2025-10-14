@@ -1,315 +1,185 @@
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Edit, Clock, ExternalLink } from "lucide-react"
-
-interface ClassData {
-  id: string
-  name: string
-  code: string
-  course: string
-  room: string
-  startDate: string
-  endDate: string
-  status: string
-  description: string
-  schedule: Array<{
-    day: string
-    time: string
-  }>
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, Users, BookOpen, MapPin, Edit, Calendar as CalendarIcon } from 'lucide-react';
+import { formatSchedule } from '../../../../utils/format';
+import { getStatusBadge } from '../const/statusBadge';
 
 interface GeneralInfoProps {
-  classData: ClassData
+  classData: any;
 }
 
-export default function GeneralInfo({ classData }: GeneralInfoProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [isEditingSchedule, setIsEditingSchedule] = useState(false)
-  const [formData, setFormData] = useState({
-    name: classData.name,
-    code: classData.code,
-    course: classData.course,
-    room: classData.room,
-    startDate: classData.startDate,
-    endDate: classData.endDate,
-    description: classData.description,
-  })
+export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
-  const handleSave = () => {
-    // Logic lưu dữ liệu sẽ được thêm sau
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setFormData({
-      name: classData.name,
-      code: classData.code,
-      course: classData.course,
-      room: classData.room,
-      startDate: classData.startDate,
-      endDate: classData.endDate,
-      description: classData.description,
-    })
-    setIsEditing(false)
-  }
 
   return (
     <div className="space-y-6">
-      {/* Chi tiết lớp học */}
+      {/* Thông tin cơ bản */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Chi tiết lớp học</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm">
-                <Clock className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-                className="text-purple-600 hover:text-purple-700"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Thông tin lớp học
+            </CardTitle>
+            <Button variant="outline" size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Chỉnh sửa
+            </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Cột trái */}
+            {/* Thông tin chính */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Tên lớp học
-                </label>
-                {isEditing ? (
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-                    {classData.name}
-                  </p>
-                )}
+                <label className="text-sm font-medium text-gray-500">Tên lớp</label>
+                <p className="text-lg font-semibold">{classData.name}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500">Môn học</label>
+                <p className="text-base">{classData.subjectName || 'Chưa xác định'}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Mã lớp học
-                </label>
-                {isEditing ? (
-                  <Input
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-                    {classData.code}
-                  </p>
-                )}
+                <label className="text-sm font-medium text-gray-500">Khối lớp</label>
+                <p className="text-base">{classData.grade ? `Khối ${classData.grade}` : 'Chưa xác định'}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Ngày bắt đầu
-                </label>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 text-gray-900 dark:text-white">
-                    {classData.startDate || "Chưa cập nhật"}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Phòng học
-                </label>
-                {isEditing ? (
-                  <Input
-                    value={formData.room}
-                    onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-                    {classData.room}
-                  </p>
-                )}
+                <label className="text-sm font-medium text-gray-500">Năm học</label>
+                <p className="text-base">{classData.academicYear || 'Chưa xác định'}</p>
               </div>
             </div>
 
-            {/* Cột phải */}
+            {/* Thông tin phụ */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Khoá học
-                </label>
-                {isEditing ? (
-                  <Input
-                    value={formData.course}
-                    onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-                    {classData.course}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Ngày kết thúc
-                </label>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="mt-1"
-                  />
-                ) : (
-                  <p className="mt-1 text-gray-900 dark:text-white">
-                    {classData.endDate || "Chưa cập nhật"}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Trạng thái hoạt động:
-                </label>
+                <label className="text-sm font-medium text-gray-500">Trạng thái</label>
                 <div className="mt-1">
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                    {classData.status}
-                  </Badge>
+                  {getStatusBadge(classData.status)}
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Mô tả
-                </label>
-                {isEditing ? (
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="mt-1"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="mt-1 text-gray-900 dark:text-white">
-                    {classData.description || "Chưa có mô tả"}
-                  </p>
-                )}
+                <label className="text-sm font-medium text-gray-500">Phòng học</label>
+                <p className="text-base flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {classData.roomName || 'Chưa phân công'}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-500">Sĩ số</label>
+                <p className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {classData.currentStudents || 0}/{classData?.room?.capacity || '∞'}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-500">Ngày khai giảng dự kiến</label>
+                <p className="text-base flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {classData.expectedStartDate ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN') : 'Chưa xác định'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Lịch học hàng tuần */}
-          <div className="mt-8 pt-6 border-t">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Lịch học hàng tuần
-              </h3>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setIsEditingSchedule(!isEditingSchedule)}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Chỉnh sửa
-              </Button>
-            </div>
-            
-            <div className="space-y-2">
-              {classData.schedule.map((schedule, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-900 dark:text-white">
-                    {schedule.day} {schedule.time}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Buttons for editing */}
-          {isEditing && (
-            <div className="flex justify-end space-x-2 mt-6 pt-6 border-t">
-              <Button variant="outline" onClick={handleCancel}>
-                Hủy
-              </Button>
-              <Button onClick={handleSave}>
-                Lưu thay đổi
-              </Button>
+          {/* Mô tả */}
+          {classData.description && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Mô tả</label>
+              <p className="text-base mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                {classData.description}
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Settings Cards */}
-      <div className="space-y-4">
+      {/* Lịch học */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Lịch học
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {classData.recurringSchedule ? (
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {formatSchedule(classData.recurringSchedule)}
+                </p>
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">Chưa có lịch học</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Thống kê */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">
-                Thiết lập điểm tiêu chí buổi học
-              </CardTitle>
-              <Button variant="ghost" size="sm">
-                <Edit className="h-4 w-4" />
-              </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Học viên</p>
+                <p className="text-2xl font-bold">{classData.currentStudents || 0}</p>
+              </div>
             </div>
-          </CardHeader>
+          </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">
-                Thiết lập điểm tiêu chí bài tập
-              </CardTitle>
-              <Button variant="ghost" size="sm">
-                <Edit className="h-4 w-4" />
-              </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Buổi học</p>
+                <p className="text-2xl font-bold">{classData.totalSessions || 0}</p>
+              </div>
             </div>
-          </CardHeader>
+          </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">
-                Thiết lập loại bài tập
-              </CardTitle>
-              <Button variant="ghost" size="sm">
-                <Edit className="h-4 w-4" />
-              </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <BookOpen className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Bài kiểm tra</p>
+                <p className="text-2xl font-bold">{classData.totalAssessments || 0}</p>
+              </div>
             </div>
-          </CardHeader>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tài liệu</p>
+                <p className="text-2xl font-bold">{classData.totalMaterials || 0}</p>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
-  )
-}
+  );
+};

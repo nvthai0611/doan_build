@@ -29,9 +29,17 @@ export const classService = {
 
     // Update class
     updateClass: async (id: string, data: any) => {
-        const response = await apiClient.put(`${BASE_URL}/${id}`, data);
+        console.log(id, data);
+        
+        const response = await apiClient.patch(`${BASE_URL}/${id}`, data.schedules);
         return response;
     },
+
+  // Lấy chi tiết lớp học
+  getClassDetail: async (id: string) => {
+    const response = await apiClient.get(`${BASE_URL}/${id}`);
+    return response;
+  },
 
     // Delete class
     deleteClass: async (id: string) => {
@@ -61,5 +69,12 @@ export const classService = {
     getClassStats: async (classId: string) => {
         const response = await apiClient.get(`${BASE_URL}/${classId}/stats`);
         return response;
-    }
+    },
+
+    // Cập nhật lịch học
+    updateClassSchedule: async (id: string, data: any) => {
+        const response = await apiClient.patch(`${BASE_URL}/${id}/schedules`, data);
+        return response;
+    },
+
 };

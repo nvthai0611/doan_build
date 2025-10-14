@@ -31,6 +31,7 @@ import {
     Target,
     Menu,
     ChevronLeft,
+    AlertTriangle,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -131,6 +132,12 @@ const centerOwnerMenuItems = [
         href: "/users",
     },
     {
+        title: "Báo cáo sự cố",
+        icon: AlertTriangle,
+        href: "/center-qn/incidents",
+
+    },
+    {
         title: "Cài đặt",
         icon: Settings,
         href: "/settings",
@@ -189,6 +196,15 @@ const teacherMenuItems = [
         ],
     },
     {
+        title: "Báo cáo sự cố",
+        icon: AlertTriangle,
+        href: "/teacher/incidents",
+        children: [
+            { title: "Báo cáo sự cố mới", href: "/teacher/incidents/report" },
+            { title: "Quản lý báo cáo", href: "/teacher/incidents/manage" },
+        ],
+    },
+    {
         title: "Thông tin cá nhân",
         icon: Settings,
         href: "/teacher/profile",
@@ -224,8 +240,6 @@ const studentMenuItems = [
         icon: Calendar,
         href: "/student/my-schedule",
     },
-
-    
 ]
 
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
