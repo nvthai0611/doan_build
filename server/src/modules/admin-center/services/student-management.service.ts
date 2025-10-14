@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
+import hash from 'src/utils/hasing.util';
 
 @Injectable()
 export class StudentManagementService {
@@ -7,32 +8,33 @@ export class StudentManagementService {
   
   async createStudent(createStudentData: {
     fullName: string;
-    email: string;
+    username: string;
     phone?: string;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     birthDate?: string;
     address?: string;
     grade?: string;
-    parentEmail?: string;
+    parentId?: string;
     schoolId: string; // Required field
     password?: string;
   }) {
     try {
-      // Check if user with email already exists
+      // Check if user with username already exists
       const existingUser = await this.prisma.user.findUnique({
-        where: { email: createStudentData.email }
+        where: { username: createStudentData.username }
       });
 
       if (existingUser) {
-        throw new Error('Email đã được sử dụng');
+        throw new Error('Username đã được sử dụng');
       }
 
-      // Find parent if parentEmail is provided
-      let parentId = null;
-      if (createStudentData.parentEmail) {
-        const parent = await this.findParentByEmail(createStudentData.parentEmail);
-        if (parent?.data?.id) {
-          parentId = parent.data.id;
+      // Validate parent if parentId is provided
+      if (createStudentData.parentId) {
+        const parent = await this.prisma.parent.findUnique({
+          where: { id: createStudentData.parentId }
+        });
+        if (!parent) {
+          throw new Error('Phụ huynh không tồn tại');
         }
       }
 
@@ -43,21 +45,18 @@ export class StudentManagementService {
       // Default password if not provided
       const defaultPassword = createStudentData.password || '123456';
 
-      // Generate unique username from email
-      const username = createStudentData.email.split('@')[0] + '_' + Date.now();
-
       // Create user first
       const newUser = await this.prisma.user.create({
         data: {
-          email: createStudentData.email,
-          username: username,
+          email: `${createStudentData.username}@qne.edu.vn`, // Generate email from username
+          username: createStudentData.username,
           fullName: createStudentData.fullName,
           phone: createStudentData.phone,
           gender: createStudentData.gender || 'OTHER',
           birthDate: createStudentData.birthDate ? new Date(createStudentData.birthDate) : null,
-          password: defaultPassword, // In production, hash this password
+          password: hash.make(defaultPassword) , // In production, hash this password
           isActive: true,
-          role: 'STUDENT'
+          role: 'student'
         }
       });
 
@@ -78,7 +77,7 @@ export class StudentManagementService {
           studentCode: studentCode,
           address: createStudentData.address,
           grade: createStudentData.grade,
-          parentId: parentId,
+          parentId: createStudentData.parentId,
           schoolId: createStudentData.schoolId
         },
         include: {

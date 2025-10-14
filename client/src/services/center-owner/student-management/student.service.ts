@@ -245,7 +245,7 @@ class StudentService {
     return response.data as any
   }
 
-  async createStudentAccount(data: { fullName: string; email: string; phone?: string; gender?: string; schoolId: string; address?: string; grade?: string; parentEmail?: string; password?: string }): Promise<any> {
+  async createStudentAccount(data: { fullName: string; username: string; phone?: string; gender?: string; schoolId: string; address?: string; grade?: string; parentId?: string; password?: string }): Promise<any> {
     const response = await ApiService.post("/admin-center/student-management", data)
     return response.data as any
   }

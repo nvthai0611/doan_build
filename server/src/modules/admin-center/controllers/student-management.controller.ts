@@ -57,18 +57,17 @@ export class StudentManagementController {
         description: 'Thông tin tạo tài khoản học sinh',
         schema: {
             type: 'object',
-            required: ['fullName', 'email', 'schoolId'],
+            required: ['fullName', 'username', 'schoolId'],
             properties: {
                 fullName: {
                     type: 'string',
                     description: 'Họ và tên học sinh',
                     example: 'Nguyễn Văn A'
                 },
-                email: {
+                username: {
                     type: 'string',
-                    format: 'email',
-                    description: 'Email học sinh',
-                    example: 'student@example.com'
+                    description: 'Tên đăng nhập học sinh',
+                    example: 'student001'
                 },
                 phone: {
                     type: 'string',
@@ -97,11 +96,10 @@ export class StudentManagementController {
                     description: 'Lớp học (tùy chọn)',
                     example: '10A1'
                 },
-                parentEmail: {
+                parentId: {
                     type: 'string',
-                    format: 'email',
-                    description: 'Email phụ huynh (tùy chọn)',
-                    example: 'parent@example.com'
+                    description: 'ID phụ huynh (tùy chọn)',
+                    example: 'uuid-parent-id'
                 },
                 schoolId: {
                     type: 'string',
@@ -123,17 +121,17 @@ export class StudentManagementController {
             if (!createStudentDto.fullName) {
                 throw new HttpException('Họ tên là bắt buộc', HttpStatus.BAD_REQUEST);
             }
-            if (!createStudentDto.email) {
-                throw new HttpException('Email là bắt buộc', HttpStatus.BAD_REQUEST);
+            if (!createStudentDto.username) {
+                throw new HttpException('Username là bắt buộc', HttpStatus.BAD_REQUEST);
             }
             if (!createStudentDto.schoolId) {
                 throw new HttpException('School ID là bắt buộc', HttpStatus.BAD_REQUEST);
             }
 
-            // Validate email format
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(createStudentDto.email)) {
-                throw new HttpException('Email không hợp lệ', HttpStatus.BAD_REQUEST);
+            // Validate username format (alphanumeric and underscore only)
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            if (!usernameRegex.test(createStudentDto.username)) {
+                throw new HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', HttpStatus.BAD_REQUEST);
             }
 
             return await this.studentManagementService.createStudent(createStudentDto);
@@ -141,8 +139,8 @@ export class StudentManagementController {
             if (error instanceof HttpException) {
                 throw error;
             }
-            if (error.message.includes('Email đã được sử dụng')) {
-                throw new HttpException('Email đã được sử dụng', HttpStatus.BAD_REQUEST);
+            if (error.message.includes('Username đã được sử dụng')) {
+                throw new HttpException('Username đã được sử dụng', HttpStatus.BAD_REQUEST);
             }
             if (error.message.includes('Trường học không tồn tại')) {
                 throw new HttpException('Trường học không tồn tại', HttpStatus.BAD_REQUEST);

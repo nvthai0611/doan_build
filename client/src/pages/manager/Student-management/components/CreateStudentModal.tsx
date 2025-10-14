@@ -22,13 +22,13 @@ interface CreateStudentModalProps {
 
 interface CreateStudentFormData {
   fullName: string
-  email: string
+  username: string
   phone: string
   gender: "MALE" | "FEMALE" | "OTHER" | ""
   birthDate: string
   address: string
   grade: string
-  parentEmail: string
+  parentEmail: string  // Keep this for form input (search field)
   schoolId: string
   password: string
 }
@@ -65,7 +65,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
   const [formData, setFormData] = useState<CreateStudentFormData>({
     fullName: "",
-    email: "",
+    username: "",
     phone: "",
     gender: "",
     birthDate: "",
@@ -144,12 +144,12 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       errors.fullName = "Họ tên là bắt buộc"
     }
 
-    if (!formData.email.trim()) {
-      errors.email = "Email là bắt buộc"
+    if (!formData.username.trim()) {
+      errors.username = "Username là bắt buộc"
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        errors.email = "Email không đúng định dạng"
+      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+      if (!usernameRegex.test(formData.username)) {
+        errors.username = "Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự"
       }
     }
 
@@ -182,7 +182,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       birthDate: formData.birthDate || undefined,
       address: formData.address || undefined,
       grade: formData.grade || undefined,
-      parentEmail: formData.parentEmail || undefined,
+      parentId: parentInfo?.id || undefined, // Use parentId instead of parentEmail
       password: formData.password || undefined
     }
 
@@ -193,7 +193,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
   const resetForm = () => {
     setFormData({
       fullName: "",
-      email: "",
+      username: "",
       phone: "",
       gender: "",
       birthDate: "",
@@ -271,23 +271,26 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-red-500">*</span>
+                <Label htmlFor="username">
+                  Username <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="email@example.com"
-                  className={formErrors.email ? "border-red-500" : ""}
+                  id="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => handleInputChange("username", e.target.value)}
+                  placeholder="student001"
+                  className={formErrors.username ? "border-red-500" : ""}
                 />
-                {formErrors.email && (
-                  <p className="text-sm text-red-500">{formErrors.email}</p>
+                {formErrors.username && (
+                  <p className="text-sm text-red-500">{formErrors.username}</p>
                 )}
+                <p className="text-xs text-gray-500">
+                  Chỉ sử dụng chữ cái, số và dấu gạch dưới, từ 3-20 ký tự
+                </p>
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="phone">Số điện thoại</Label>
                 <Input
                   id="phone"
@@ -299,7 +302,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
                 {formErrors.phone && (
                   <p className="text-sm text-red-500">{formErrors.phone}</p>
                 )}
-              </div>
+              </div> */}
 
               <div className="space-y-2">
                 <Label htmlFor="gender">Giới tính</Label>
