@@ -4,10 +4,10 @@ import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
 // import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
-import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
+import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
-import ScoreInputPage from "../pages/teacher/PointManagement/Score_input";
-import ViewStudentPage from "../pages/teacher/PointManagement/Score_view";
+import ScoreInputPage from "../pages/Teacher/PointManagement/ScoreInput";
+import ViewStudentPage from "../pages/teacher/PointManagement/ScoreView";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
@@ -19,13 +19,15 @@ import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/teacher/My-request/MyRequests";
-import FileUpload from "../pages/teacher/FileManagement/File_upload";
-import FileManage from "../pages/teacher/FileManagement/File_management";
+import FileUpload from "../pages/teacher/FileManagement/FileUpload";
+import FileManage from "../pages/teacher/FileManagement/FileManagement";
 import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
 import CreateClass from "../pages/manager/Class-management/AddClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/AttendanceTable";
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/TeacherSchedule";
 import { StudentDetailPage } from "../../src/pages/manager/Student-management/components/StudentDetail/student-detail-page";
+import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
+import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
 
 
 export const privateRoutes = (
@@ -61,7 +63,9 @@ export const privateRoutes = (
         <Route path="grades/view" element={<ViewStudentPage />} />
         <Route path="attendance" element={<AttendanceTable />} />
         <Route path="documents/upload" element={<FileUpload />} />
-        <Route path="documents/manage" element={<FileManage />} />
+        <Route path="documents/manage" element={<FileManage />} />        
+        <Route path="incidents/report" element={<IncidentReportPage />} />
+        <Route path="incidents/manage" element={<IncidentManagePage />} />
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
         <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
