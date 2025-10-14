@@ -50,6 +50,8 @@ export interface ApiError {
 }
 
 export interface ApiResponse<T = any> {
+  message: string;
+  success: any;
   data: T;
   status: number;
 }

@@ -35,25 +35,39 @@ export const EditScheduleSheet = ({
     
     // Load schedules from classData when component opens
     useEffect(() => {
-        if (open && classData?.teachers?.[0]?.recurringSchedule) {
-            const recurringSchedule = classData.teachers[0].recurringSchedule;
-            const loadedSchedules: ScheduleItem[] = recurringSchedule.days.map((day: string, index: number) => ({
-                id: `schedule-${index}`,
-                day: day,
-                startTime: recurringSchedule.startTime,
-                endTime: recurringSchedule.endTime,
-                duration: calculateDuration(recurringSchedule.startTime, recurringSchedule.endTime)
-            }));
-            setSchedules(loadedSchedules);
-        } else if (open) {
-            // Default empty schedule if no data
-            setSchedules([{
-                id: '1',
-                day: 'monday',
-                startTime: '08:00',
-                endTime: '09:30',
-                duration: 90
-            }]);
+        console.log(classData);
+        
+        if (open && classData) {
+            let scheduleData = null;
+            
+            // Try to get schedule from class level first
+            if (classData.recurringSchedule?.schedules) {
+                scheduleData = classData.recurringSchedule.schedules;
+            }
+            // If not available, try from teacher assignment
+            else if (classData.teachers?.[0]?.recurringSchedule?.schedules) {
+                scheduleData = classData.teachers[0].recurringSchedule.schedules;
+            }
+            
+            if (scheduleData && Array.isArray(scheduleData)) {
+                const loadedSchedules: ScheduleItem[] = scheduleData.map((schedule: any, index: number) => ({
+                    id: `schedule-${index}`,
+                    day: schedule.day || 'monday',
+                    startTime: schedule.startTime || '08:00',
+                    endTime: schedule.endTime || '09:30',
+                    duration: calculateDuration(schedule.startTime || '08:00', schedule.endTime || '09:30')
+                }));
+                setSchedules(loadedSchedules);
+            } else {
+                // Default empty schedule if no data
+                setSchedules([{
+                    id: '1',
+                    day: 'monday',
+                    startTime: '08:00',
+                    endTime: '09:30',
+                    duration: 90
+                }]);
+            }
         }
     }, [open, classData]);
 
@@ -137,7 +151,7 @@ export const EditScheduleSheet = ({
                             <Button 
                                 size="sm"
                                 onClick={handleSubmit}
-                                disabled={isLoading}
+                                disabled={isLoading || classData?.status === 'active'}
                                 className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
                             >
                                 <Check className="h-4 w-4" />
@@ -185,6 +199,15 @@ export const EditScheduleSheet = ({
                             Bạn nhớ kiểm tra lại lịch phân công giảng dạy của giáo viên trong lớp sau khi cập nhật lịch học nhé.
                         </AlertDescription>
                     </Alert>
+
+                    {/* Status Warning */}
+                    {classData?.status === 'active' && (
+                        <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+                            <AlertDescription className="text-sm text-red-800 dark:text-red-200">
+                                ⚠️ Lớp học đang ở trạng thái hoạt động. Không thể cập nhật lịch học. Vui lòng chuyển lớp sang trạng thái khác trước.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </SheetHeader>
 
                 <div className="mt-6 space-y-6">
@@ -197,6 +220,7 @@ export const EditScheduleSheet = ({
                                 size="sm"
                                 onClick={handleAddSchedule}
                                 className="text-blue-600 hover:text-blue-700"
+                                disabled={classData?.status === 'active'}
                             >
                                 <Plus className="w-4 h-4 mr-1" />
                                 Lịch học
@@ -213,6 +237,7 @@ export const EditScheduleSheet = ({
                                             <Select 
                                                 value={schedule.day} 
                                                 onValueChange={(value: string) => handleScheduleChange(schedule.id, 'day', value)}
+                                                disabled={classData?.status === 'active'}
                                             >
                                                 <SelectTrigger className="h-10">
                                                     <SelectValue placeholder="Chọn thứ" />
@@ -239,6 +264,7 @@ export const EditScheduleSheet = ({
                                                     value={schedule.startTime}
                                                     onChange={(e: any) => handleScheduleChange(schedule.id, 'startTime', e.target.value)}
                                                     className="pl-10 h-10"
+                                                    disabled={classData?.status === 'active'}
                                                 />
                                             </div>
                                         </div>
@@ -260,6 +286,7 @@ export const EditScheduleSheet = ({
                                                         handleScheduleChange(schedule.id, 'duration', newDuration);
                                                     }}
                                                     className="pl-10 h-10"
+                                                    disabled={classData?.status === 'active'}
                                                 />
                                             </div>
                                         </div>
@@ -281,6 +308,7 @@ export const EditScheduleSheet = ({
                                                 min={0}
                                                 step={15}
                                                 className="h-10"
+                                                disabled={classData?.status === 'active'}
                                             />
                                         </div>
 
@@ -291,7 +319,7 @@ export const EditScheduleSheet = ({
                                                 size="sm"
                                                 onClick={() => handleRemoveSchedule(schedule.id)}
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-10 w-10 p-0"
-                                                disabled={schedules.length === 1}
+                                                disabled={schedules.length === 1 || classData?.status === 'active'}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
