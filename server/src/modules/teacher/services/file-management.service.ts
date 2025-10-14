@@ -55,10 +55,6 @@ export class FileManagementService {
         `materials/${dto.classId}`,
       );
     } catch (error) {
-      // Fallback: Mock data nếu chưa cấu hình Cloudinary
-      console.warn('⚠️ Cloudinary upload failed:', error.message);
-      console.warn('📝 Vui lòng kiểm tra CLOUDINARY credentials trong file .env');
-      console.warn('📖 Xem hướng dẫn: server/CLOUDINARY_SETUP.md');
       
       uploadResult = {
         secure_url: `http://localhost:9999/uploads/mock-${file.originalname}`,
@@ -145,6 +141,27 @@ export class FileManagementService {
     // Get total count
     const total = await this.prisma.material.count({ where });
 
+    // Get aggregate statistics for all materials (không phân trang)
+    const stats = await this.prisma.material.aggregate({
+      where,
+      _sum: {
+        fileSize: true,
+        downloads: true,
+      },
+    });
+
+    // Count recent uploads (7 days ago)
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recentUploads = await this.prisma.material.count({
+      where: {
+        ...where,
+        uploadedAt: {
+          gte: weekAgo,
+        },
+      },
+    });
+
     // Get materials with pagination
     const materials = await this.prisma.material.findMany({
       where,
@@ -194,6 +211,9 @@ export class FileManagementService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        totalSize: stats._sum.fileSize ? Number(stats._sum.fileSize) : 0,
+        totalDownloads: stats._sum.downloads || 0,
+        recentUploads,
       },
     };
   }
