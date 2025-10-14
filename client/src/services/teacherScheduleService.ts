@@ -1,5 +1,5 @@
 import { apiClient } from '../utils/clientAxios'
-import { ScheduleData, ScheduleFilters } from '../pages/Teacher/Teacher-schedule/utils'
+import { ScheduleData, ScheduleFilters } from '../pages/teacher/Teacher-schedule/utils'
 
 export interface TeacherScheduleResponse {
   success: boolean

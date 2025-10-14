@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FilterPanel, type FilterOptions } from "./components/filter-panel"
+import { FilterPanel, type FilterOptions } from "./components/FilterPanel"
 import {
   ChevronRight,
   Search,
