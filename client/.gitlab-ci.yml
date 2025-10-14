@@ -1,0 +1,295 @@
+<<<<<<< Updated upstream
+# GitLab CI/CD Pipeline cho dự án SEP - Hệ thống quản lý trung tâm giáo dục
+# Frontend: React + TypeScript + Vite + Tailwind CSS
+# Backend: NestJS + TypeScript + Prisma + PostgreSQL
+
+stages:
+  - install
+  - test
+  - build
+  - deploy
+
+variables:
+  # Node.js version
+  NODE_VERSION: "18"
+  # Build directories
+  CLIENT_BUILD_DIR: "client/dist"
+  SERVER_BUILD_DIR: "server/dist"
+  # Cache directories
+  NODE_MODULES_CACHE: "node_modules"
+  CLIENT_NODE_MODULES: "client/node_modules"
+  SERVER_NODE_MODULES: "server/node_modules"
+
+# Cache configuration
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - client/node_modules/
+    - server/node_modules/
+    - .npm/
+
+# Install dependencies for client
+install_client:
+  stage: install
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - cd client
+    - npm ci --cache .npm --prefer-offline
+  artifacts:
+    paths:
+      - client/node_modules/
+    expire_in: 1 hour
+  cache:
+    key: client-${CI_COMMIT_REF_SLUG}
+    paths:
+      - client/node_modules/
+      - client/.npm/
+  only:
+    changes:
+      - client/package.json
+      - client/package-lock.json
+
+# Install dependencies for server
+install_server:
+  stage: install
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - cd server
+    - npm ci --cache .npm --prefer-offline
+  artifacts:
+    paths:
+      - server/node_modules/
+    expire_in: 1 hour
+  cache:
+    key: server-${CI_COMMIT_REF_SLUG}
+    paths:
+      - server/node_modules/
+      - server/.npm/
+  only:
+    changes:
+      - server/package.json
+      - server/package-lock.json
+
+# Lint and type check client
+lint_client:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_client
+  script:
+    - cd client
+    - npm run lint || true
+    - npm run type-check || true
+  artifacts:
+    reports:
+      junit: client/test-results.xml
+    when: always
+  allow_failure: true
+
+# Lint and type check server
+lint_server:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_server
+  script:
+    - cd server
+    - npm run lint || true
+    - npm run build || true
+  artifacts:
+    reports:
+      junit: server/test-results.xml
+    when: always
+  allow_failure: true
+
+# Test client (if test scripts exist)
+test_client:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_client
+  script:
+    - cd client
+    - npm run test:ci || echo "No test script found"
+  artifacts:
+    reports:
+      junit: client/test-results.xml
+    when: always
+  allow_failure: true
+
+# Test server (if test scripts exist)
+test_server:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_server
+  script:
+    - cd server
+    - npm run test:ci || echo "No test script found"
+  artifacts:
+    reports:
+      junit: server/test-results.xml
+    when: always
+  allow_failure: true
+
+# Build client
+build_client:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_client
+  script:
+    - cd client
+    - npm run build
+  artifacts:
+    paths:
+      - client/dist/
+    expire_in: 1 week
+  cache:
+    key: client-build-${CI_COMMIT_REF_SLUG}
+    paths:
+      - client/node_modules/
+      - client/.npm/
+
+# Build server
+build_server:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_server
+  script:
+    - cd server
+    - npm run build
+  artifacts:
+    paths:
+      - server/dist/
+    expire_in: 1 week
+  cache:
+    key: server-build-${CI_COMMIT_REF_SLUG}
+    paths:
+      - server/node_modules/
+      - server/.npm/
+
+# Deploy to staging (example)
+deploy_staging:
+  stage: deploy
+  image: alpine:latest
+  dependencies:
+    - build_client
+    - build_server
+  script:
+    - echo "Deploying to staging environment..."
+    - echo "Client build artifacts:"
+    - ls -la client/dist/
+    - echo "Server build artifacts:"
+    - ls -la server/dist/
+    # Add your deployment commands here
+    # Example: rsync, scp, docker build, etc.
+  environment:
+    name: staging
+    url: https://staging.your-domain.com
+  only:
+    - develop
+    - staging
+
+# Deploy to production
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  dependencies:
+    - build_client
+    - build_server
+  script:
+    - echo "Deploying to production environment..."
+    - echo "Client build artifacts:"
+    - ls -la client/dist/
+    - echo "Server build artifacts:"
+    - ls -la server/dist/
+    # Add your production deployment commands here
+  environment:
+    name: production
+    url: https://your-domain.com
+  only:
+    - main
+    - master
+  when: manual
+
+# Docker build (optional)
+build_docker_client:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies:
+    - build_client
+  script:
+    - cd client
+    - docker build -t $CI_REGISTRY_IMAGE/client:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE/client:$CI_COMMIT_SHA
+  only:
+    - main
+    - master
+    - develop
+
+build_docker_server:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies:
+    - build_server
+  script:
+    - cd server
+    - docker build -t $CI_REGISTRY_IMAGE/server:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE/server:$CI_COMMIT_SHA
+  only:
+    - main
+    - master
+    - develop
+
+# Security scanning (optional)
+security_scan:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - install_client
+    - install_server
+  script:
+    - cd client && npm audit --audit-level moderate || true
+    - cd ../server && npm audit --audit-level moderate || true
+  allow_failure: true
+
+# Performance testing (optional)
+performance_test:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - build_client
+  script:
+    - cd client
+    - npm install -g lighthouse
+    - lighthouse --chrome-flags="--headless" http://localhost:3000 --output=json --output-path=./lighthouse-report.json || true
+  artifacts:
+    reports:
+      performance: client/lighthouse-report.json
+    when: always
+  allow_failure: true
+  only:
+    - main
+    - master
+=======
+stages:
+  - deploy
+
+deploy_to_vercel:
+  stage: deploy
+  image: node:18
+  before_script:
+    - npm install -g vercel
+  script:
+    - vercel pull --yes --token=$VERCEL_TOKEN --environment=production
+    - vercel build --token=$VERCEL_TOKEN
+    - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+  only:
+    - main
+>>>>>>> Stashed changes

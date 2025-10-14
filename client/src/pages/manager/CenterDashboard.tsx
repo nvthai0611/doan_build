@@ -1,5 +1,3 @@
-"use client"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PermissionGuard } from "../Auth/Permission-guard"
 import { ProtectedButton } from "@/components/ui/protected-button"

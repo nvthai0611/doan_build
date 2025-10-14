@@ -55,10 +55,6 @@ export class FileManagementService {
         `materials/${dto.classId}`,
       );
     } catch (error) {
-      // Fallback: Mock data nếu chưa cấu hình Cloudinary
-      console.warn('⚠️ Cloudinary upload failed:', error.message);
-      console.warn('📝 Vui lòng kiểm tra CLOUDINARY credentials trong file .env');
-      console.warn('📖 Xem hướng dẫn: server/CLOUDINARY_SETUP.md');
       
       uploadResult = {
         secure_url: `http://localhost:9999/uploads/mock-${file.originalname}`,

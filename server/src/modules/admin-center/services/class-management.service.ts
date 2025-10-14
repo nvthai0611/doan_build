@@ -1,38 +1,47 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
+import { CreateClassDto } from '../dto/class/create-class.dto';
+import { UpdateClassDto } from '../dto/class/update-class.dto';
+import { QueryClassDto } from '../dto/class/query-class.dto';
 
 @Injectable()
 export class ClassManagementService {
     constructor(private prisma: PrismaService) {}
     // Lấy danh sách tất cả lớp học với filters và pagination
-    async findAll(query: any) {
+    async findAll(queryDto: QueryClassDto) {
         try {
             const { 
                 status, 
                 grade, 
                 subjectId, 
-                teacherId, 
                 roomId,
                 search,
-                // Advanced search filters
                 dayOfWeek,
                 shift,
-                // academicYear,
-                // semester,
-                // startDate,
-                // endDate,
-                // rating,
+                academicYear,
                 page = 1, 
-                limit = Math.min(parseInt(query.limit) || 10, 50), // Max 50 items per page
+                limit = 10,
                 sortBy = 'createdAt',
                 sortOrder = 'desc'
-            } = query;
-            console.log(query);
+            } = queryDto;
             
+            const skip = (page - 1) * limit;
+            const take = limit;
             
-            const skip = (parseInt(page) - 1) * parseInt(limit);
-            const take = parseInt(limit);
-            // Build where clause
+            // Determine current academic year
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1; // 1-12
+            
+            // Academic year logic: 
+            // - If current month is 9-12: current academic year is currentYear-currentYear+1
+            // - If current month is 1-8: current academic year is currentYear-1-currentYear
+            let currentAcademicYear: string;
+            if (currentMonth >= 9) {
+                currentAcademicYear = `${currentYear}-${currentYear + 1}`;
+            } else {
+                currentAcademicYear = `${currentYear - 1}-${currentYear}`;
+            }
+            
             const where: any = {};
             
             if (status && status !== 'all') where.status = status;
@@ -72,87 +81,14 @@ export class ClassManagementService {
 
             // Filter by teacher
             let classIds: string[] | undefined;
-            // if (teacherId) {
-            //     const assignments = await this.prisma.teacherClassAssignment.findMany({
-            //         where: { teacherId },
-            //         select: { classId: true }
-            //     });
-            //     classIds = assignments.map(a => a.classId);
-            //     where.id = { in: classIds };
-            // }
-            
-            // // Filter by day of week
-            if (dayOfWeek && dayOfWeek !== 'all') {
-                where.teacherClassAssignments = {
-                    some: {
-                        recurringSchedule: {
-                            path: ['dayOfWeek'],
-                            equals: dayOfWeek
-                        }
-                    }
-                };
-            }
-
-            // Filter by shift (morning, afternoon, evening)
-            if (shift && shift !== 'all') {
-                const timeRanges = {
-                    morning: { start: '00:00', end: '11:59' },
-                    afternoon: { start: '12:00', end: '16:59' },
-                    evening: { start: '17:00', end: '23:59' }
-                };
-                
-                const timeRange = timeRanges[shift];
-                if (timeRange) {
-                    where.teacherClassAssignments = {
-                        some: {
-                            recurringSchedule: {
-                                path: ['startTime'],
-                                gte: timeRange.start,
-                                lte: timeRange.end
-                            }
-                        }
-                    };
-                }
-            }
-
-            // // Filter by academic year and semester
-            // if (academicYear || semester) {
-            //     const assignmentFilter: any = {};
-            //     if (academicYear) assignmentFilter.academicYear = academicYear;
-            //     if (semester) assignmentFilter.semester = semester;
-                
-            //     where.teacherClassAssignments = {
-            //         some: assignmentFilter
-            //     };
-            // }
-
-            // // Filter by date range
-            // if (startDate || endDate) {
-            //     const dateFilter: any = {};
-            //     if (startDate) dateFilter.gte = new Date(startDate);
-            //     if (endDate) dateFilter.lte = new Date(endDate);
-                
-            //     where.startDate = dateFilter;
-            // }
-
-            // // Filter by rating (if rating system exists)
-            // if (rating) {
-            //     where.averageRating = { gte: parseFloat(rating) };
-            // }
-
-            // Get total count
-            const total = await this.prisma.class.count({ where });
-
-            // Build orderBy clause
+            const totalBeforeFilter = await this.prisma.class.count({ where });
             const orderBy: any = {};
             if (sortBy && sortOrder) {
                 orderBy[sortBy] = sortOrder;
             } else {
-                orderBy.createdAt = 'desc'; // Default ordering
+                orderBy.createdAt = 'desc'; 
             }
              console.log(where);
-                    
-            // Get data with relations - optimized for performance
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
@@ -163,7 +99,7 @@ export class ClassManagementService {
                     room: true,
                     teacherClassAssignments: {
                         where: {
-                            // academicYear: currentAcademicYear, 
+                            status: 'active'
                         },
                         select: {
                             id: true,
@@ -187,7 +123,7 @@ export class ClassManagementService {
                             }
                         },
                         take: 1, // Chỉ lấy 1 assignment (teacher đầu tiên)
-                        orderBy: orderBy
+                        orderBy: { createdAt: 'desc' }
                     },
                     _count: {
                         select: { enrollments: true }
@@ -196,7 +132,7 @@ export class ClassManagementService {
             });
 
             // Transform data
-            const transformedClasses = classes.map(cls => ({
+            let transformedClasses = classes.map(cls => ({
                 id: cls.id,
                 name: cls.name,
                 subjectId: cls.subjectId,
@@ -209,6 +145,9 @@ export class ClassManagementService {
                 roomName: cls.room?.name || 'Chưa xác định',
                 description: cls.description,
                 feeStructureId: cls.feeStructureId,
+                // Use schedule from Classes table directly
+                recurringSchedule: (cls as any).recurringSchedule,
+                academicYear: (cls as any).academicYear,
                 teachers: cls.teacherClassAssignments.map(ta => ({
                     id: ta.teacher.id,
                     userId: ta.teacher.userId,
@@ -224,17 +163,50 @@ export class ClassManagementService {
                 createdAt: cls.createdAt,
                 updatedAt: cls.updatedAt
             }));
-            console.log(transformedClasses);
-            
+
+            if (dayOfWeek && dayOfWeek !== 'all') {
+                transformedClasses = transformedClasses.filter(cls => {
+                    if (!cls.recurringSchedule || !cls.recurringSchedule.schedules) return false;
+                    return cls.recurringSchedule.schedules.some((schedule: any) => schedule.day === dayOfWeek);
+                });
+            }
+
+            if (shift && shift !== 'all') {
+                const timeRanges = {
+                    morning: { start: '00:00', end: '11:59' },
+                    afternoon: { start: '12:00', end: '16:59' },
+                    evening: { start: '17:00', end: '23:59' }
+                };
+                
+                const timeRange = timeRanges[shift];
+                
+                if (timeRange) {
+                    transformedClasses = transformedClasses.filter(cls => {
+                        if (!cls.recurringSchedule || !cls.recurringSchedule.schedules) return false;
+                        return cls.recurringSchedule.schedules.some((schedule: any) => {
+                            const startTime = schedule.startTime;
+                            return startTime >= timeRange.start && startTime <= timeRange.end;
+                        });
+                    });
+                }
+            }
+            const sortedClasses = transformedClasses.sort((a, b) => {
+                const aIsCurrentYear = a.academicYear === currentAcademicYear;
+                const bIsCurrentYear = b.academicYear === currentAcademicYear;
+                if (aIsCurrentYear && !bIsCurrentYear) return -1;
+                if (!aIsCurrentYear && bIsCurrentYear) return 1;
+                return 0; 
+            });
+            const totalAfterFilter = sortedClasses.length;
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
-                data: transformedClasses,
+                data: sortedClasses,
                 meta: {
-                    total,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(total / parseInt(limit))
+                    total: totalAfterFilter,
+                    page: page,
+                    limit: limit,
+                    totalPages: Math.ceil(totalAfterFilter / limit)
                 }
             };
         } catch (error) {
@@ -252,7 +224,6 @@ export class ClassManagementService {
     // Lấy chi tiết 1 lớp học
     async findOne(id: string) {
         try {
-            // Validate UUID
             if (!this.isValidUUID(id)) {
                 throw new HttpException(
                     {
@@ -368,38 +339,40 @@ export class ClassManagementService {
     }
 
     // Tạo lớp học mới
-    async create(body: any) {
+    async create(createClassDto: CreateClassDto) {
         try {
             // Validation
-            if (!body.name || !body.subjectId) {
+            if (!createClassDto.name) {
                 throw new HttpException(
                     {
                         success: false,
-                        message: 'Tên lớp và môn học là bắt buộc'
+                        message: 'Tên lớp là bắt buộc'
                     },
                     HttpStatus.BAD_REQUEST
                 );
             }
 
-            // Check subject exists
-            const subject = await this.prisma.subject.findUnique({
-                where: { id: body.subjectId }
-            });
+            // Check subject exists if provided
+            if (createClassDto.subjectId) {
+                const subject = await this.prisma.subject.findUnique({
+                    where: { id: createClassDto.subjectId }
+                });
 
-            if (!subject) {
-                throw new HttpException(
-                    {
-                        success: false,
-                        message: 'Môn học không tồn tại'
-                    },
-                    HttpStatus.NOT_FOUND
-                );
+                if (!subject) {
+                    throw new HttpException(
+                        {
+                            success: false,
+                            message: 'Môn học không tồn tại'
+                        },
+                        HttpStatus.NOT_FOUND
+                    );
+                }
             }
 
             // Check room exists if provided
-            if (body.roomId) {
+            if (createClassDto.roomId) {
                 const room = await this.prisma.room.findUnique({
-                    where: { id: body.roomId }
+                    where: { id: createClassDto.roomId }
                 });
 
                 if (!room) {
@@ -413,17 +386,25 @@ export class ClassManagementService {
                 }
             }
 
+            // Determine current academic year
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+            const currentAcademicYear = currentMonth >= 9 
+                ? `${currentYear}-${currentYear + 1}` 
+                : `${currentYear - 1}-${currentYear}`;
+
             const newClass = await this.prisma.class.create({
                 data: {
-                    name: body.name,
-                    subjectId: body.subjectId,
-                    grade: body.grade || null,
-                    maxStudents: body.maxStudents || null,
-                    roomId: body.roomId || null,
-                    feeStructureId: body.feeStructureId || null,
-                    description: body.description || null,
-                    status: body.status || 'draft'
-                },
+                    name: createClassDto.name,
+                    subjectId: createClassDto.subjectId || null,
+                    grade: createClassDto.grade || null,
+                    maxStudents: createClassDto.maxStudents || null,
+                    roomId: createClassDto.roomId || null,
+                    description: createClassDto.description || null,
+                    status: createClassDto.status || 'draft',
+                    recurringSchedule: createClassDto.recurringSchedule || null,
+                    academicYear: createClassDto.academicYear || currentAcademicYear
+                } as any,
                 include: {
                     subject: true,
                     room: true
@@ -450,7 +431,7 @@ export class ClassManagementService {
     }
 
     // Cập nhật lớp học
-    async update(id: string, body: any) {
+    async update(id: string, updateClassDto: UpdateClassDto) {
         try {
             // Validate UUID
             if (!this.isValidUUID(id)) {
@@ -479,9 +460,9 @@ export class ClassManagementService {
             }
 
             // Check subject exists if provided
-            if (body.subjectId) {
+            if (updateClassDto.subjectId) {
                 const subject = await this.prisma.subject.findUnique({
-                    where: { id: body.subjectId }
+                    where: { id: updateClassDto.subjectId }
                 });
 
                 if (!subject) {
@@ -496,9 +477,9 @@ export class ClassManagementService {
             }
 
             // Check room exists if provided
-            if (body.roomId) {
+            if (updateClassDto.roomId) {
                 const room = await this.prisma.room.findUnique({
-                    where: { id: body.roomId }
+                    where: { id: updateClassDto.roomId }
                 });
 
                 if (!room) {
@@ -515,15 +496,16 @@ export class ClassManagementService {
             const updatedClass = await this.prisma.class.update({
                 where: { id },
                 data: {
-                    ...(body.name && { name: body.name }),
-                    ...(body.subjectId && { subjectId: body.subjectId }),
-                    ...(body.grade !== undefined && { grade: body.grade }),
-                    ...(body.maxStudents !== undefined && { maxStudents: body.maxStudents }),
-                    ...(body.roomId !== undefined && { roomId: body.roomId }),
-                    ...(body.feeStructureId !== undefined && { feeStructureId: body.feeStructureId }),
-                    ...(body.description !== undefined && { description: body.description }),
-                    ...(body.status && { status: body.status })
-                },
+                    ...(updateClassDto.name && { name: updateClassDto.name }),
+                    ...(updateClassDto.subjectId && { subjectId: updateClassDto.subjectId }),
+                    ...(updateClassDto.grade !== undefined && { grade: updateClassDto.grade }),
+                    ...(updateClassDto.maxStudents !== undefined && { maxStudents: updateClassDto.maxStudents }),
+                    ...(updateClassDto.roomId !== undefined && { roomId: updateClassDto.roomId }),
+                    ...(updateClassDto.description !== undefined && { description: updateClassDto.description }),
+                    ...(updateClassDto.status && { status: updateClassDto.status }),
+                    ...(updateClassDto.recurringSchedule !== undefined && { recurringSchedule: updateClassDto.recurringSchedule }),
+                    ...(updateClassDto.academicYear !== undefined && { academicYear: updateClassDto.academicYear })
+                } as any,
                 include: {
                     subject: true,
                     room: true
@@ -549,6 +531,44 @@ export class ClassManagementService {
         }
     }
 
+    // Xóa lớp học (soft delete bằng cách đổi status)
+    async updateClassSchedules(id: string, body: any) {
+        console.log(id, body);
+        
+        // Tìm assignment trước
+        const assignment = await this.prisma.teacherClassAssignment.findFirst({
+            where: {
+                classId: id,
+                teacherId: body.teacherId,
+                // academicYear: body.academicYear,
+                // status: 'active'
+            }
+        });
+
+        if (!assignment) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không tìm thấy phân công giáo viên'
+                },
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Update bằng id
+        return this.prisma.teacherClassAssignment.update({
+            where: { id: assignment.id },
+            data: { 
+                recurringSchedule: {
+                    days: body.schedules.map((schedule: any) => schedule.day),
+                    startTime: body.schedules.map((schedule: any) => schedule.startTime),
+                    endTime: body.schedules.map((schedule: any) => schedule.endTime)
+                } 
+            }
+        });
+    }
+
+    
     // Xóa lớp học (soft delete bằng cách đổi status)
     async delete(id: string) {
         try {
@@ -690,7 +710,8 @@ export class ClassManagementService {
                     academicYear: body.academicYear,
                     startDate: new Date(body.startDate),
                     endDate: body.endDate ? new Date(body.endDate) : null,
-                    recurringSchedule: body.recurringSchedule || null,
+                    // Copy schedule from Classes table to teacherClassAssignments
+                    recurringSchedule: body.recurringSchedule || (classItem as any).recurringSchedule,
                     maxStudents: body.maxStudents || classItem.maxStudents,
                     status: body.status || 'active',
                     notes: body.notes || null

@@ -1,8 +1,8 @@
 import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
-import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-import TeacherProfilePage from "../pages/teacher/Teacher-profile";
+import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
+// import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
@@ -12,18 +12,20 @@ import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherMa
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
 import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
-import CreateClass from "../pages/manager/Class-management/CreateClass";
-import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
+import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
-import MyRequests from "../pages/Teacher/My-request/MyRequests";
-import FileUpload from "../pages/Teacher/FileManagement/File_upload";
-import FileManage from "../pages/Teacher/FileManagement/File_management";
-import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
-import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
+import MyRequests from "../pages/teacher/My-request/MyRequests";
+import FileUpload from "../pages/teacher/FileManagement/File_upload";
+import FileManage from "../pages/teacher/FileManagement/File_management";
+import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
+import CreateClass from "../pages/manager/Class-management/AddClass";
+import AttendanceTable from "../pages/teacher/Attendance-Manage/AttendanceTable";
+import TeacherSchedule from "../pages/teacher/Teacher-schedule/TeacherSchedule";
+import { StudentDetailPage } from "../../src/pages/manager/Student-management/components/StudentDetail/student-detail-page";
 
 
 export const privateRoutes = (
@@ -40,6 +42,7 @@ export const privateRoutes = (
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/create" element={<CreateClass />} />
+        <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
@@ -50,7 +53,7 @@ export const privateRoutes = (
 
       {/* Giáo viên */}
       <Route path="/teacher" element={<AuthMiddleware allowedRoles={['teacher']} />}>
-        <Route path="profile" element={<TeacherProfilePage />} />
+        {/* <Route path="profile" element={<TeacherProfilePage />} /> */}
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
