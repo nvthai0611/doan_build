@@ -146,9 +146,12 @@ export class ClassManagementService {
                 roomName: cls.room?.name || 'Chưa xác định',
                 description: cls.description,
                 feeStructureId: cls.feeStructureId,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
                 // Use schedule from Classes table directly
                 recurringSchedule: (cls as any).recurringSchedule,
                 academicYear: (cls as any).academicYear,
+                expectedStartDate: cls.expectedStartDate,
                 teachers: cls.teacherClassAssignments.map(ta => ({
                     id: ta.teacher.id,
                     userId: ta.teacher.userId,
@@ -349,7 +352,6 @@ export class ClassManagementService {
                     HttpStatus.BAD_REQUEST
                 );
             }
-
             // Check subject exists if provided
             if (createClassDto.subjectId) {
                 const subject = await this.prisma.subject.findUnique({
@@ -366,7 +368,6 @@ export class ClassManagementService {
                     );
                 }
             }
-
             // Check room exists if provided
             if (createClassDto.roomId) {
                 const room = await this.prisma.room.findUnique({
@@ -383,7 +384,6 @@ export class ClassManagementService {
                     );
                 }
             }
-
             // Determine current academic year
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth() + 1;
@@ -402,7 +402,9 @@ export class ClassManagementService {
                     status: createClassDto.status || 'draft',
                     recurringSchedule: createClassDto.recurringSchedule || null,
                     academicYear: createClassDto.academicYear || currentAcademicYear,
-                    expectedStartDate: createClassDto.expectedStartDate ? new Date(createClassDto.expectedStartDate) : null
+                    expectedStartDate: createClassDto.expectedStartDate ? new Date(createClassDto.expectedStartDate) : null,
+                    actualStartDate: createClassDto.actualStartDate ? new Date(createClassDto.actualStartDate) : null,
+                    actualEndDate: createClassDto.actualEndDate ? new Date(createClassDto.actualEndDate) : null
                 } as any,
                 include: {
                     subject: true,
