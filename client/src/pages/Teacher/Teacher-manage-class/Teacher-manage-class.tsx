@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search,
   MoreHorizontal,
@@ -20,17 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DataTable, type Column } from '../../../components/common/Table/DataTable';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +86,6 @@ export default function ClassManagement() {
   const [underlineStyle, setUnderlineStyle] = useState({ width: 0, left: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [goToPage, setGoToPage] = useState('');
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   
 
@@ -194,24 +186,81 @@ export default function ClassManagement() {
     return dayFormat ? dayFormat.label : dateStr;
   }
 
-  // Hàm xử lý nhảy đến trang cụ thể
-  const handleGoToPage = () => {
-    const pageNumber = parseInt(goToPage);
-    if (pageNumber && pageNumber > 0 && pagination?.totalPages && pageNumber <= pagination.totalPages) {
-      handlePageChange(pageNumber);
-      setGoToPage('');
-    } else {
-      // Hiển thị thông báo lỗi hoặc reset input
-      setGoToPage('');
-    }
-  };
-
-  // Hàm xử lý khi nhấn Enter trong input go to page
-  const handleGoToPageKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleGoToPage();
-    }
-  };
+  // Columns configuration cho DataTable
+  const columns: Column<any>[] = useMemo(() => [
+    {
+      key: 'index',
+      header: 'STT',
+      width: '80px',
+      align: 'center',
+      render: (item: any, index: number) => (currentPage - 1) * pageSize + index + 1,
+    },
+    {
+      key: 'name',
+      header: 'Tên lớp học',
+      sortable: true,
+      searchable: true,
+      searchPlaceholder: 'Tìm theo tên lớp...',
+      render: (item: any) => (
+        <div 
+          onClick={() => navigate(`/teacher/classes/${item.assignmentId}`)} 
+          className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200"
+        >
+          {item.name}
+        </div>
+      ),
+    },
+    {
+      key: 'schedule',
+      header: 'Lịch học',
+      render: (item: any) => (
+        <div className="space-y-1">
+          {item?.schedule?.schedules?.map((schedule: any, idx: number) => (
+            <div
+              key={idx}
+              className="flex items-center gap-1 text-sm"
+            >
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span>
+                {formatDayToVietnamese(schedule?.day)} - {schedule?.startTime} <ArrowRight className="inline-block" size={14} /> {schedule?.endTime}
+              </span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'assignmentStatus',
+      header: 'Trạng thái',
+      sortable: true,
+      render: (item: any) => (
+        <Badge
+          variant="secondary"
+          className={`${statusColors[item.assignmentStatus as keyof typeof statusColors]} hover:bg-red-200 transition-colors duration-200`}
+        >
+          {statusTabs.find(tab => tab.key === item.assignmentStatus)?.label || item.assignmentStatus}
+        </Badge>
+      ),
+    },
+    {
+      key: 'dates',
+      header: 'Ngày bắt đầu / Ngày kết thúc',
+      render: (item: any) => (
+        <div className="text-sm space-y-1">
+          <div>{formatDate(item.startDate)}</div>
+          <div>{formatDate(item.endDate)}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'enrollmentStatus',
+      header: 'Số học sinh trong lớp',
+      align: 'center',
+      render: (item: any) => (
+        <span className="font-medium">{item.enrollmentStatus.current}/{item.enrollmentStatus.max}</span>
+      ),
+    },
+  ], [currentPage, pageSize, navigate, statusTabs])
 
   // Hàm xử lý chuyển trang với smooth scroll
   const handlePageChange = (newPage: number) => {
@@ -379,96 +428,36 @@ export default function ClassManagement() {
         </div>
       </div>
 
-      <div className="border rounded-lg transition-all duration-200 hover:shadow-sm table-container">
-        <div className={`transition-opacity duration-200 ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-16">STT</TableHead>
-                <TableHead>Tên lớp học</TableHead>
-                <TableHead>Lịch học</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>
-                  Ngày bắt đầu
-                  <br />
-                  Ngày kết thúc
-                </TableHead>
-                <TableHead>Số học sinh trong lớp</TableHead>
-                {/* <TableHead>Thao tác</TableHead> */}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && classesToRender.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-muted-foreground">Đang tải...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : classesToRender.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {isError ? "Không thể tải dữ liệu lớp học" : "Không có lớp học nào"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                classesToRender.map((classItem: any, index: number) => (
-                <TableRow
-                  key={classItem.assignmentId}
-                  className="hover:bg-muted/50 transition-colors duration-200"
-                >
-                  <TableCell className="font-medium">
-                    {(currentPage - 1) * pageSize + index + 1}
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div onClick={() => navigate(`/teacher/classes/${classItem.assignmentId}`)} className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200">
-                        {classItem.name}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {classItem?.schedule?.days.map((schedule: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-1 text-sm"
-                        >
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                          <span>
-                            {formatDayToVietnamese(schedule)} - {classItem.schedule.startTime} <ArrowRight className="inline-block" size={14} /> {classItem.schedule.endTime}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={` ${statusColors[classItem.assignmentStatus as keyof typeof statusColors] } hover:bg-red-200 transition-colors duration-200`}
-                    >
-                      {statusTabs.find(tab => tab.key === classItem.assignmentStatus)?.label || classItem.assignmentStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm space-y-1">
-                      <div>{formatDate(classItem.startDate)}</div>
-                      <div>{formatDate(classItem.endDate)}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">{classItem.enrollmentStatus.current}/{classItem.enrollmentStatus.max}</span>
-                  </TableCell>
-                </TableRow>
-              )))}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="table-container">
+        <DataTable
+          data={classesToRender}
+          columns={columns}
+          loading={isLoading && classesToRender.length === 0}
+          error={isError ? "Không thể tải dữ liệu lớp học" : null}
+          emptyMessage="Không có lớp học nào"
+          rowKey="assignmentId"
+          hoverable={true}
+          striped={false}
+          enableSearch={false} // Disable built-in search vì đã có search riêng
+          enableSort={false} // Disable built-in sort vì đã có sort riêng
+          pagination={{
+            currentPage,
+            totalPages: pagination?.totalPages || 1,
+            totalItems: pagination?.totalCount || 0,
+            itemsPerPage: pageSize,
+            onPageChange: handlePageChange,
+            onItemsPerPageChange: (newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            },
+            showItemsPerPage: true,
+            showPageInfo: true,
+          }}
+          className={`transition-opacity duration-200 ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}
+        />
       </div>
 
-      {/* Pagination Section */}
+      {/* Additional Actions Section */}
       <div className="border-t pt-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -485,183 +474,14 @@ export default function ClassManagement() {
               Thu gọn
             </label>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Page size selector */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">
-                Số hàng mỗi trang:
-              </span>
-              <Select 
-                value={pageSize.toString()} 
-                onValueChange={(value) => {
-                  setPageSize(parseInt(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-20 h-8 border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
+          
+          {/* Loading indicator */}
+          {(isLoading || isFetching) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Đang tải...</span>
             </div>
-
-            {/* Results info */}
-            <div className="text-sm text-muted-foreground">
-              {pagination ? 
-                `Hiển thị ${((currentPage - 1) * pageSize) + 1}-${Math.min(currentPage * pageSize, pagination.totalCount)} trong tổng ${pagination.totalCount} kết quả` 
-                : 'Không có dữ liệu'
-              }
-            </div>
-
-            {/* Pagination controls */}
-            <div className="flex items-center space-x-2">
-              {/* First page button */}
-              <button
-                onClick={() => handlePageChange(1)}
-                disabled={currentPage === 1 || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
-                title="Trang đầu"
-              >
-                ««
-              </button>
-              
-              {/* Previous page button */}
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1 || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
-                title="Trang trước"
-              >
-                ‹
-              </button>
-
-              {/* Page numbers */}
-              <div className="flex items-center space-x-1">
-                {pagination && pagination.totalPages && (
-                  <>
-                    {/* Show first page if not visible */}
-                    {currentPage > 3 && (
-                      <>
-                        <button
-                          onClick={() => handlePageChange(1)}
-                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white dark:bg-gray-800"
-                        >
-                          1
-                        </button>
-                        {currentPage > 4 && (
-                          <span className="px-2 text-gray-400">...</span>
-                        )}
-                      </>
-                    )}
-
-                    {/* Show current page and surrounding pages */}
-                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (pagination.totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= pagination.totalPages - 2) {
-                        pageNum = pagination.totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      if (pageNum < 1 || pageNum > pagination.totalPages) return null;
-
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          disabled={isLoading}
-                          className={`min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border rounded-md transition-all duration-200 ${
-                            pageNum === currentPage
-                              ? 'bg-blue-500 border-blue-500 text-white hover:bg-blue-600'
-                              : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-
-                    {/* Show last page if not visible */}
-                    {currentPage < pagination.totalPages - 2 && (
-                      <>
-                        {currentPage < pagination.totalPages - 3 && (
-                          <span className="px-2 text-gray-400">...</span>
-                        )}
-                        <button
-                          onClick={() => handlePageChange(pagination.totalPages)}
-                          className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white dark:bg-gray-800"
-                        >
-                          {pagination.totalPages}
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Next page button */}
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={!pagination?.hasNextPage || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
-                title="Trang sau"
-              >
-                ›
-              </button>
-
-              {/* Last page button */}
-              <button
-                onClick={() => pagination?.totalPages && handlePageChange(pagination.totalPages)}
-                disabled={!pagination?.hasNextPage || isLoading}
-                className="min-w-[36px] h-9 px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white dark:bg-gray-800"
-                title="Trang cuối"
-              >
-                »»
-              </button>
-
-              {/* Loading indicator */}
-              {(isLoading || isFetching) && (
-                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin ml-2"></div>
-              )}
-            </div>
-
-            {/* Quick jump to page */}
-            {pagination && pagination.totalPages > 5 && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">Đi đến:</span>
-                <Input
-                  type="number"
-                  min="1"
-                  max={pagination.totalPages}
-                  value={goToPage}
-                  onChange={(e) => setGoToPage(e.target.value)}
-                  onKeyDown={handleGoToPageKeyPress}
-                  placeholder="Trang"
-                  className="w-16 h-8 text-sm border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500"
-                  disabled={isLoading}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGoToPage}
-                  disabled={!goToPage || isLoading}
-                  className="h-8 border-gray-300 dark:border-gray-600 hover:bg-blue-50 hover:border-blue-300"
-                >
-                  Đi
-                </Button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

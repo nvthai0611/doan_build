@@ -8,7 +8,7 @@ interface StudentAttendanceRowProps {
   summary: any
   sessions: any[]
 }
-const getAttendanceStatus = (status) => {
+const getAttendanceStatus = (status: string) => {
   switch (status) {
     case 'present':
       return 'Có mặt';
@@ -28,7 +28,7 @@ export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRow
   return (
     <div className="flex items-center gap-4 border-b border-border py-3 hover:bg-muted/50 transition-colors">
       {/* Student Info - Fixed Width */}
-      <div className="sticky left-0 z-10 bg-background flex items-center gap-3 w-64 flex-shrink-0">
+      <div className="flex items-center gap-3 w-64 flex-shrink-0">
         <Avatar className="h-10 w-10">
           <AvatarImage src={student.user.avatar || undefined} alt={student.user.fullName || ""} />
           <AvatarFallback>{student.user.fullName?.charAt(0).toUpperCase() || "S"}</AvatarFallback>
@@ -38,8 +38,33 @@ export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRow
           <p className="text-xs text-muted-foreground truncate">{student.studentCode || student.user.email}</p>
         </div>
       </div>
+      <div className="flex-1 min-w-0">
+        <div className="grid grid-cols-4 gap-1 sm:gap-2 md:gap-4 text-center">
+          {/* Số buổi điểm danh */}
+          <div className="min-w-0">
+            <div className="font-bold text-green-600 text-lg sm:text-xl truncate">{stats.present}</div>
+          </div>
+          
+          {/* Số buổi nghỉ */}
+          <div className="min-w-0">
+            <div className="font-bold text-red-600 text-lg sm:text-xl truncate">{stats.absent}</div>
+          </div>
+          
+          {/* Số buổi nghỉ có phép */}
+          <div className="min-w-0">
+            <div className="font-bold text-blue-600 text-lg sm:text-xl truncate">{stats.excused}</div>
+          </div>
+          
+          {/* Tỷ lệ tham dự */}
+          <div className="min-w-0">
+            <div className={`font-bold text-lg sm:text-xl truncate ${attendanceRate >= 80 ? 'text-green-600' : attendanceRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {attendanceRate}%
+            </div>
+          </div>
+        </div>
+      </div>
 {/* flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] overflow-x-auto */}
-      <div className="flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[800px]">
+      {/* <div className="flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[800px]">
         {sessions.map((session) => {
           const attendance = attendanceRecords.get(session.id)
           return (
@@ -73,22 +98,8 @@ export function StudentAttendanceRow({ summary, sessions }: StudentAttendanceRow
             </TooltipProvider>
           )
         })}
-      </div>
+      </div> */}
 
-      {/* Stats - Fixed Width */}
-      <div className="flex items-center gap-3 w-48 flex-shrink-0 justify-end">
-        <div className="flex gap-1.5">
-          <Badge variant="outline" className="text-xs">
-            {stats.present}/{stats.total}
-          </Badge>
-          <Badge
-            variant={attendanceRate >= 80 ? "default" : attendanceRate >= 60 ? "secondary" : "destructive"}
-            className="text-xs"
-          >
-            {attendanceRate}%
-          </Badge>
-        </div>
-      </div>
     </div>
   )
 }
