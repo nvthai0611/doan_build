@@ -39,6 +39,7 @@ import { centerOwnerStudentService } from "../../../services/center-owner/studen
 import { useQuery } from "@tanstack/react-query"
 import { DataTable } from "../../../components/common/Table/DataTable"
 import { StudentDetailModal } from "./components/student-detail-modal"
+import { useNavigate } from "react-router-dom"
 
 const fetchData = async (params: any) => {
   const resDataStudent = await centerOwnerStudentService.getStudents(params)
@@ -77,7 +78,7 @@ export default function StudentManagement() {
     { key: "completed", label: "Hoàn thành", count: 44 },
     { key: "stopped", label: "Dừng học", count: 43 },
   ]
-
+  const navigate = useNavigate()
   const status: any = {
     active: "Đang học",
     completed: "Hoàn thành",
@@ -406,7 +407,7 @@ export default function StudentManagement() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
+            <div onClick={() => navigate(`/center-qn/students/${student?.id}`)} className="text-sm font-medium dark:text-white text-blue-600">
               {student?.user?.fullName || "N/A"}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -469,6 +470,23 @@ export default function StudentManagement() {
             </Badge>
           )}
         </div>
+      )
+    },
+    // Account Status Column
+    {
+      key: "accountStatus",
+      header: "Trạng thái tài khoản",
+      width: "180px",
+      render: (student: any) => (
+        <Badge 
+          variant="secondary" 
+          className={student?.user?.isActive 
+            ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400" 
+            : "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
+          }
+        >
+          {student?.user?.isActive ? "Hoạt động" : "Không hoạt động"}
+        </Badge>
       )
     },
     // Course Column
@@ -566,7 +584,7 @@ export default function StudentManagement() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                  <BreadcrumbLink onClick={() => navigate('/center-qn')} className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </BreadcrumbLink>
                 </BreadcrumbItem>

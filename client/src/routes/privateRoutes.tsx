@@ -23,6 +23,7 @@ import MyRequests from "../pages/Teacher/My-request/MyRequests";
 import FileUpload from "../pages/Teacher/FileManagement/File_upload";
 import FileManage from "../pages/Teacher/FileManagement/File_management";
 import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
+import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
 
 
 export const privateRoutes = (
@@ -44,6 +45,7 @@ export const privateRoutes = (
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
       </Route>
 
       {/* Giáo viên */}

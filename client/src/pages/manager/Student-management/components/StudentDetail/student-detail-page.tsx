@@ -6,24 +6,86 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Edit, LinkIcon, Clock } from "lucide-react"
+import { User, Edit, LinkIcon, Clock, Phone, Mail, Calendar } from "lucide-react"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { useNavigate } from "react-router-dom"
 
+const student = {
+  user: {
+    fullName: "Nguyễn Văn A",
+    username: "ngan@centerup",
+    email: "ngan@centerup",
+    phone: "0321123321",
+  },
+  studentCode: "CST-75017FF5A611",
+  dateOfBirth: new Date("2004-08-25"),
+  gender: "Nam",
+  address: "Cần Thơ",
+  grade: "12",
+  className: "12B1",  
+}
 export function StudentDetailPage() {
   const [accountStatus, setAccountStatus] = useState(true)
+  const navigate = useNavigate()
 
+  const handleAccountStatusToggle = async (checked: boolean) => {
+    try {
+      setAccountStatus(checked)
+      
+      // TODO: Gọi API để cập nhật trạng thái tài khoản
+      // const response = await studentService.updateAccountStatus(student.id, checked)
+      
+      // Hiển thị thông báo thành công
+      console.log(`Tài khoản đã được ${checked ? 'kích hoạt' : 'vô hiệu hóa'}`)
+      
+      // Có thể thêm toast notification ở đây
+      // toast.success(`Tài khoản đã được ${checked ? 'kích hoạt' : 'vô hiệu hóa'}`)
+      
+    } catch (error) {
+      // Rollback state nếu có lỗi
+      setAccountStatus(!checked)
+      
+      console.error('Lỗi khi cập nhật trạng thái tài khoản:', error)
+      
+      // Hiển thị thông báo lỗi
+      // toast.error('Có lỗi xảy ra khi cập nhật trạng thái tài khoản')
+    }
+  }
+
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-3">Chi tiết học viên Raymond</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="text-indigo-600 hover:underline cursor-pointer">Dashboard</span>
-            <span>•</span>
-            <span className="text-indigo-600 hover:underline cursor-pointer">Danh sách học viên</span>
-            <span>•</span>
-            <span>Chi tiết học viên</span>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-3">
+            Chi tiết học viên {student?.user?.fullName || 'N/A'}
+          </h1>
+          <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink onClick={() => navigate('/center-qn')} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink onClick={() => navigate('/center-qn/students')} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                    Danh sách tài khoản học viên
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-foreground font-medium">Chi tiết học viên</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
         </div>
 
         {/* Tabs Navigation */}
@@ -88,9 +150,12 @@ export function StudentDetailPage() {
                     {/* Avatar */}
                     <div className="flex justify-center mb-6">
                       <Avatar className="h-32 w-32">
-                        <AvatarImage src="/placeholder.svg" />
+                        <AvatarImage src={student?.user?.avatar || "/placeholder.svg"} />
                         <AvatarFallback className="bg-gray-300">
-                          <User className="h-16 w-16 text-gray-500" />
+                          {student?.user?.fullName ? 
+                            student.user.fullName.charAt(0).toUpperCase() :
+                            <User className="h-16 w-16 text-gray-500" />
+                          }
                         </AvatarFallback>
                       </Avatar>
                     </div>
@@ -99,16 +164,31 @@ export function StudentDetailPage() {
                     <div className="flex items-center justify-center gap-3 mb-6">
                       <Switch
                         checked={accountStatus}
-                        onCheckedChange={setAccountStatus}
+                        onCheckedChange={handleAccountStatusToggle}
                         className="data-[state=checked]:bg-indigo-600"
                       />
-                      <span className="text-sm text-foreground">Trạng thái tài khoản</span>
+                      <span className="text-sm text-foreground">
+                        {accountStatus ? 'Hoạt động' : 'Không hoạt động'}
+                      </span>
                     </div>
 
-                    {/* Wallet Balance */}
-                    <div className="text-center mb-6">
-                      <p className="text-sm text-muted-foreground mb-1">Số dư ví:</p>
-                      <p className="text-2xl font-semibold text-green-600">0 đ</p>
+                    {/* Student Stats */}
+                    <div className="space-y-4 mb-6">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Tổng số lớp:</p>
+                        <p className="text-xl font-semibold text-blue-600">
+                          {student?.enrollments?.length || 0}
+                        </p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Công nợ:</p>
+                        <p className="text-xl font-semibold text-red-600">
+                          {student?.feeRecords?.reduce((total: number, fee: any) => 
+                            total + (fee.amount - (fee.paidAmount || 0)), 0
+                          ) || 0} đ
+                        </p>
+                      </div>
                     </div>
 
                     {/* Verify Button */}
@@ -127,17 +207,33 @@ export function StudentDetailPage() {
                       <div className="space-y-4">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Tên đăng nhập</p>
-                          <p className="text-sm text-indigo-600">raymond@centerup</p>
+                          <p className="text-sm text-indigo-600">{student?.user?.username || 'N/A'}</p>
                         </div>
 
                         <div>
-                          <p className="text-xs text-muted-foreground mb-1">Số điện thoại xác thực</p>
-                          <p className="text-sm text-indigo-600">0338899128</p>
+                          <p className="text-xs text-muted-foreground mb-1">Số điện thoại</p>
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            <p className="text-sm text-indigo-600">{student?.user?.phone || 'Chưa cập nhật'}</p>
+                          </div>
                         </div>
 
                         <div>
-                          <p className="text-xs text-muted-foreground mb-1">Email xác thực</p>
-                          <p className="text-sm text-indigo-600">ranblameray@gmail.com</p>
+                          <p className="text-xs text-muted-foreground mb-1">Email</p>
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-muted-foreground" />
+                            <p className="text-sm text-indigo-600">{student?.user?.email || 'Chưa cập nhật'}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Ngày tạo tài khoản</p>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                            <p className="text-sm text-gray-600">
+                              {student?.createdAt ? formatDate(student.createdAt) : 'N/A'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
