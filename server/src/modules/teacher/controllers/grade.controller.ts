@@ -11,6 +11,140 @@ import { UpdateGradeDto } from '../dto/grade/update-grade.dto';
 export class GradeController {
     constructor(private readonly gradeService: GradeService) {}
 
+    // ===== Grade View Management (Phải đặt trước các routes động) =====
+    
+    @Get('view')
+    @ApiOperation({ summary: 'Lấy dữ liệu điểm số cho trang Score_view' })
+    @ApiQuery({ name: 'searchTerm', required: false, description: 'Tìm kiếm theo tên hoặc mã học sinh' })
+    @ApiQuery({ name: 'subjectFilter', required: false, description: 'Lọc theo môn học' })
+    @ApiQuery({ name: 'classFilter', required: false, description: 'Lọc theo lớp học' })
+    @ApiQuery({ name: 'testTypeFilter', required: false, description: 'Lọc theo loại kiểm tra' })
+    async getGradeViewData(@Req() request: any, @Query() filters: any) {
+        console.log('🎯 API /teacher/grades/view called');
+        console.log('🎯 Request user:', request.user);
+        console.log('🎯 Filters:', filters);
+        
+        // Lấy teacherId từ userId hoặc từ request.user.teacherId
+        let teacherId = request.user?.teacherId;
+        
+        // Nếu không có teacherId, query từ userId
+        if (!teacherId && request.user?.userId) {
+            console.log('🔍 teacherId not in token, querying from userId:', request.user.userId);
+            teacherId = await this.gradeService.getTeacherIdFromUserId(request.user.userId);
+            console.log('📋 Found teacherId:', teacherId);
+        }
+        
+        if (!teacherId) {
+            console.log('❌ No teacher ID found');
+            return { 
+                success: false, 
+                status: HttpStatus.UNAUTHORIZED, 
+                data: {
+                    students: [],
+                    subjectStats: [],
+                    totalStudents: 0,
+                    overallAverage: 0,
+                    passRate: 0
+                }, 
+                message: 'Không tìm thấy thông tin giáo viên', 
+                meta: null 
+            };
+        }
+        
+        try {
+            const data = await this.gradeService.getGradeViewData(teacherId, filters);
+            console.log('✅ Service returned data');
+            return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+        } catch (error) {
+            console.error('❌ Error in getGradeViewData:', error);
+            return { 
+                success: false, 
+                status: HttpStatus.INTERNAL_SERVER_ERROR, 
+                data: {
+                    students: [],
+                    subjectStats: [],
+                    totalStudents: 0,
+                    overallAverage: 0,
+                    passRate: 0
+                }, 
+                message: error.message || 'Có lỗi xảy ra', 
+                meta: null 
+            };
+        }
+    }
+
+    @Get('students')
+    @ApiOperation({ summary: 'Lấy danh sách học sinh với điểm số chi tiết' })
+    @ApiQuery({ name: 'searchTerm', required: false })
+    @ApiQuery({ name: 'subjectFilter', required: false })
+    @ApiQuery({ name: 'classFilter', required: false })
+    @ApiQuery({ name: 'testTypeFilter', required: false })
+    async getStudentGrades(@Req() request: any, @Query() filters: any) {
+        let teacherId = request.user?.teacherId;
+        
+        if (!teacherId && request.user?.userId) {
+            teacherId = await this.gradeService.getTeacherIdFromUserId(request.user.userId);
+        }
+        
+        if (!teacherId) {
+            return { 
+                success: false, 
+                status: HttpStatus.UNAUTHORIZED, 
+                data: [], 
+                message: 'Không tìm thấy thông tin giáo viên', 
+                meta: null 
+            };
+        }
+        
+        try {
+            const data = await this.gradeService.getStudentGrades(teacherId, filters);
+            return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+        } catch (error) {
+            return { 
+                success: false, 
+                status: HttpStatus.INTERNAL_SERVER_ERROR, 
+                data: [], 
+                message: error.message || 'Có lỗi xảy ra', 
+                meta: null 
+            };
+        }
+    }
+
+    @Get('subject-stats')
+    @ApiOperation({ summary: 'Lấy thống kê theo môn học' })
+    async getSubjectStats(@Req() request: any) {
+        let teacherId = request.user?.teacherId;
+        
+        if (!teacherId && request.user?.userId) {
+            teacherId = await this.gradeService.getTeacherIdFromUserId(request.user.userId);
+        }
+        
+        if (!teacherId) {
+            return { 
+                success: false, 
+                status: HttpStatus.UNAUTHORIZED, 
+                data: [], 
+                message: 'Không tìm thấy thông tin giáo viên', 
+                meta: null 
+            };
+        }
+        
+        try {
+            const data = await this.gradeService.getSubjectStats(teacherId);
+            return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+        } catch (error) {
+            return { 
+                success: false, 
+                status: HttpStatus.INTERNAL_SERVER_ERROR, 
+                data: [], 
+                message: error.message || 'Có lỗi xảy ra', 
+                meta: null 
+            };
+        }
+    }
+
+    // ===== Original Grade Management =====
+    
     @Get('class-students')
     @ApiOperation({ summary: 'Lấy danh sách học sinh của lớp (kèm điểm TB hiện tại)' })
     @ApiQuery({ name: 'classId', required: true, description: 'ID lớp (UUID)' })
@@ -161,5 +295,38 @@ export class GradeController {
         const teacherId = request.user?.teacherId;
         const data = await this.gradeService.updateGrade(teacherId, payload);
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+    }
+
+    @Put('students/update')
+    @ApiOperation({ summary: 'Cập nhật điểm số của học sinh' })
+    async updateStudentGrade(@Req() request: any, @Body() payload: { studentId: string; assessmentId: string; score: number }) {
+        let teacherId = request.user?.teacherId;
+        
+        if (!teacherId && request.user?.userId) {
+            teacherId = await this.gradeService.getTeacherIdFromUserId(request.user.userId);
+        }
+        
+        if (!teacherId) {
+            return { 
+                success: false, 
+                status: HttpStatus.UNAUTHORIZED, 
+                data: null, 
+                message: 'Không tìm thấy thông tin giáo viên', 
+                meta: null 
+            };
+        }
+        
+        try {
+            await this.gradeService.updateStudentGrade(teacherId, payload);
+            return { success: true, status: HttpStatus.OK, data: null, message: 'Cập nhật điểm thành công', meta: null };
+        } catch (error) {
+            return { 
+                success: false, 
+                status: HttpStatus.INTERNAL_SERVER_ERROR, 
+                data: null, 
+                message: error.message || 'Có lỗi xảy ra', 
+                meta: null 
+            };
+        }
     }
 }

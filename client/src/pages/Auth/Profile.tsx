@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect } from "react"
 import { useAuth } from "../../lib/auth"
 import { authService } from "../../services/common/auth/auth.service"

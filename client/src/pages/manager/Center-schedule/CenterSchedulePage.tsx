@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ScheduleHeader } from './components/schedule-header';
-import { ScheduleFilters } from './components/schedule-filters';
-import { MonthlyView } from './components/views/monthly-view';
-import { DailyView } from './components/views/daily-view';
-import { WeeklyView } from './components/views/weekly-view';
-import { ClassView } from './components/views/class-view';
-import { TeacherView } from './components/views/teacher-view';
-import { SessionDetailModal } from './components/session-detail-modal';
-import { DaySessionsModal } from './components/day-sessions-modal';
+import { ScheduleHeader } from './components/ScheduleHeader';
+import { ScheduleFilters } from './components/ScheduleFilters';
+import { MonthlyView } from './components/views/MonthlyView';
+import { DailyView } from './components/views/DailyView';
+import { WeeklyView } from './components/views/WeeklyView';
+import { ClassView } from './components/views/ClassView';
+import { TeacherView } from './components/views/TeacherView';
+import { SessionDetailModal } from './components/SessionDetailModal';
+import { DaySessionsModal } from './components/DaySessionsModal';
 import { useMutation } from '@tanstack/react-query';
 import { scheduleService } from '../../../services/scheduleService';
 import type { ApiResponse } from '../../../utils/clientAxios';

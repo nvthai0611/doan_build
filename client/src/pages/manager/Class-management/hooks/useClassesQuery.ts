@@ -6,7 +6,7 @@ export const useClassesQuery = (filters: any) => {
         queryKey: ['classes', filters],
         queryFn: () => classService.getClasses(filters),
         staleTime: 0, // Cache for 30 seconds
-        refetchOnWindowFocus: false, // Disable refetch on window focus to reduce API calls
+        refetchOnWindowFocus: true, // Disable refetch on window focus to reduce API calls
         retry: 1 // Only retry once on failure
     });
     return data;

@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ClassManagementService } from '../services/class-management.service';
+import { CreateClassDto } from '../dto/class/create-class.dto';
+import { UpdateClassDto } from '../dto/class/update-class.dto';
+import { QueryClassDto } from '../dto/class/query-class.dto';
 
 @ApiTags('Admin Center - Class Management')
 @Controller('classes')
@@ -14,15 +17,15 @@ export class ClassManagementController {
     @ApiOperation({ summary: 'Tạo lớp học mới' })
     @ApiResponse({ status: 201, description: 'Tạo lớp học thành công' })
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
-    async create(@Body() body: any) {
-        return this.classManagementService.create(body);
+    async create(@Body() createClassDto: CreateClassDto) {
+        return this.classManagementService.create(createClassDto);
     }
 
     @Get()
     @ApiOperation({ summary: 'Lấy danh sách tất cả lớp học với filters' })
     @ApiResponse({ status: 200, description: 'Danh sách lớp học' })
-    async findAll(@Query() query: any) {
-        return this.classManagementService.findAll(query);
+    async findAll(@Query() queryDto: QueryClassDto) {
+        return this.classManagementService.findAll(queryDto);
     }
 
     @Get(':id')
@@ -33,12 +36,20 @@ export class ClassManagementController {
         return this.classManagementService.findOne(id);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @ApiOperation({ summary: 'Cập nhật thông tin lớp học' })
     @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
-    async update(@Param('id') id: string, @Body() body: any) {
-        return this.classManagementService.update(id, body);
+    async update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
+        return this.classManagementService.update(id, updateClassDto);
+    }
+
+    @Patch(':id/schedules')
+    @ApiOperation({ summary: 'Cập nhật lịch học' })
+    @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async updateClassSchedules(@Param('id') id: string, @Body() body: any) {
+        return this.classManagementService.updateClassSchedules(id, body);
     }
 
     @Delete(':id')

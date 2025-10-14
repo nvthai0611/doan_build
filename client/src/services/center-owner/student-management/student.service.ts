@@ -15,9 +15,9 @@ class StudentService {
   /**
    * Lấy danh sách học sinh với phân trang và filter
    */
-  async getStudents(params?: StudentQueryParams): Promise<StudentResponse> {
-    const response = await ApiService.get<StudentResponse>("/admin-center/student-management", params)
-    return response.data as StudentResponse
+  async getStudents(params?: any): Promise<any> {
+    const response = await ApiService.get<any>("/admin-center/student-management", params)
+    return response.data as any
   };
 
   /**
@@ -219,6 +219,41 @@ class StudentService {
     const response = await ApiService.get(`/admin-center/student-management/${studentId}/report`, { period })
     return response.data as any
   };
+
+  async getSubject():Promise<any>{
+    const response = await ApiService.get<any>("/subjects")
+    return response.data as any
+  }
+
+  async getCountByStatus():Promise<any>{
+    const response = await ApiService.get<any>("/admin-center/student-management/count-status")
+    return response.data as any
+  }
+
+  async getDetailStudent(id: string): Promise<any>{
+    const response = await ApiService.get(`/shared/students/${id}`)
+    return response.data as any 
+  }
+
+  async updateStudentStatus(id: string, isActive: boolean): Promise<any> {
+    const response = await ApiService.patch(`/admin-center/student-management/${id}/status`, { isActive })
+    return response.data as any
+  }
+
+  async findParentByEmail(email: string): Promise<any> {
+    const response = await ApiService.get(`/admin-center/student-management/search-parent`, { email })
+    return response.data as any
+  }
+
+  async createStudentAccount(data: { fullName: string; username: string; phone?: string; gender?: string; schoolId: string; address?: string; grade?: string; parentId?: string; password?: string }): Promise<any> {
+    const response = await ApiService.post("/admin-center/student-management", data)
+    return response.data as any
+  }
+
+  async getSchools(): Promise<any> {
+    const response = await ApiService.get("/schools")
+    return response.data as any
+  }
 }
 
 export const centerOwnerStudentService = new StudentService()

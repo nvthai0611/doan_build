@@ -65,19 +65,19 @@ export class AttendanceService {
             );
         }
 
-        if(findSession.status === 'completed'){
-            throw new HttpException(
-                'Không thể cập nhật điểm danh cho buổi học đã hoàn thành',
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        // if(findSession.status === 'completed'){
+        //     throw new HttpException(
+        //         'Không thể cập nhật điểm danh cho buổi học đã hoàn thành',
+        //         HttpStatus.BAD_REQUEST
+        //     );
+        // }
 
-        if(findSession.sessionDate < new Date()){
-            throw new HttpException(
-                'Không thể cập nhật điểm danh cho buổi học nếu đã qua ngày học',
-                HttpStatus.BAD_REQUEST
-            );
-        }
+        // if(findSession.sessionDate < new Date()){
+        //     throw new HttpException(
+        //         'Không thể cập nhật điểm danh cho buổi học nếu đã qua ngày học',
+        //         HttpStatus.BAD_REQUEST
+        //     );
+        // }
 
         // Đây là cho trường hợp lớp chưa đến lịch
     const sessionDate = new Date(findSession.sessionDate);
@@ -87,12 +87,15 @@ export class AttendanceService {
     const sessionDateOnly = new Date(sessionDate.toDateString());
     const currentDateOnly = new Date(currentDate.toDateString());
     
-    if (sessionDateOnly.getTime() !== currentDateOnly.getTime()) {
-        throw new HttpException(
-            'Chỉ có thể điểm danh vào đúng ngày học',
-            HttpStatus.BAD_REQUEST
-        );
-    }
+    if (currentDateOnly.getTime() === sessionDateOnly.getTime()) {
+            // cùng ngày — chỉ cho điểm danh khi lớp đã bắt đầu (hiện tại >= thời gian bắt đầu session)
+            if (currentDate.getTime() < sessionDate.getTime()) {
+                throw new HttpException(
+                    'Chưa đến giờ bắt đầu lớp, không thể điểm danh trước giờ',
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+        }
         try {
             const result = await this.prisma.$transaction(async (prisma) => {
                 const updatePromises = records.map(record => 

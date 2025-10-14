@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useAuth } from "../../lib/auth"
 import { cn } from "@/lib/utils"
@@ -185,8 +183,9 @@ const teacherMenuItems = [
         href: "/teacher/schedule",
         children: [
             { title: "Xem lịch dạy", href: "/teacher/schedule" },
-            { title: "Đổi ca dạy", href: "/teacher/schedule/change" },
+            // { title: "Đổi ca dạy", href: "/teacher/schedule/change" },
             { title: "Đơn xin nghỉ", href: "/teacher/schedule/leave" },
+            { title: "Đơn của tôi", href: "/teacher/schedule/my-requests" },
         ],
     },
     {
@@ -195,6 +194,39 @@ const teacherMenuItems = [
         href: "/teacher/profile",
     },
 ]
+const studentMenuItems = [
+    {
+        title: "Tổng quan",
+        icon: Home,
+        href: "/student/profile",
+    },
+    
+    {
+        title: "Lớp học của tôi",
+        icon: Users,
+        href: "/student/my-classes",
+    },
+    
+    {
+        title: "Điểm số",
+        icon: Target,
+        href: "/student/my-grades",
+    },
+    
+    {
+        title: "Tài liệu học tập",
+        icon: Upload,
+        href: "/student/my-documents",
+    },
+    
+    {
+        title: "Lịch học",
+        icon: Calendar,
+        href: "/student/my-schedule",
+    },
+
+    
+]
 
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
@@ -202,7 +234,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const navigate = useNavigate()
     const { pathname } = useLocation()
-    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : teacherMenuItems
+    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : studentMenuItems
 
     const toggleExpanded = (title: string) => {
         setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))

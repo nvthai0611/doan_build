@@ -126,10 +126,10 @@ export default function AddEmployee() {
       newErrors.school = 'Trường học là bắt buộc'
     }
 
-    // Validate contract image
-    if (!formData.contractImage) {
-      newErrors.contractImage = 'Ảnh hợp đồng là bắt buộc'
-    }
+    // // Validate contract image
+    // if (!formData.contractImage) {
+    //   newErrors.contractImage = 'Ảnh hợp đồng là bắt buộc'
+    // }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -568,7 +568,7 @@ export default function AddEmployee() {
             <div className="space-y-6">
               {/* Contract Image Upload */}
               <div className="space-y-2">
-                <Label htmlFor="contractImage">Ảnh hợp đồng <span className="text-red-500">*</span></Label> 
+                <Label htmlFor="contractImage">Ảnh hợp đồng</Label> 
                 <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${errors.contractImage ? 'border-red-500' : 'border-gray-300 hover:border-gray-400'}`}>
                   {formData.contractImage ? (
                     <div className="space-y-2">

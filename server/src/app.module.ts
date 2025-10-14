@@ -25,8 +25,10 @@ import { ClassSessionsModule } from './modules/school/class-sessions/class-sessi
 import { SubjectsModule } from './modules/school/subjects/subjects.module';
 import { RoomsModule } from './modules/school/rooms/rooms.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
+import { StudentModule } from './modules/student/student.module';
 import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { SharedModule } from './modules/shared/shared.module';
 // ...existing code...
 
 @Module({
@@ -34,6 +36,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
     TeacherModule,
+    StudentModule,
     StudentsModule,
     ParentModule,
     SchoolsModule,
@@ -43,6 +46,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     RoomsModule,
     AdminCenterModule,
     CloudinaryModule,
+    SharedModule
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService],
