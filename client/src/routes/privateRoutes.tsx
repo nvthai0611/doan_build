@@ -1,7 +1,7 @@
 import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
-import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
+import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
 // import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
@@ -12,19 +12,19 @@ import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherMa
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
 import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 
-import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/teacher/My-request/MyRequests";
 import FileUpload from "../pages/teacher/FileManagement/File_upload";
 import FileManage from "../pages/teacher/FileManagement/File_management";
 import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
 import CreateClass from "../pages/manager/Class-management/AddClass";
+import AttendanceTable from "../pages/teacher/Attendance-Manage/AttendanceTable";
+import TeacherSchedule from "../pages/teacher/Teacher-schedule/TeacherSchedule";
 
 
 export const privateRoutes = (
