@@ -2,29 +2,31 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-// import TeacherProfilePage from "../pages/teacher/Teacher-profile";
+import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
-import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
+import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
-import ScoreInputPage from "../pages/teacher/PointManagement/Score_input";
-import ViewStudentPage from "../pages/teacher/PointManagement/Score_view";
+import ScoreInputPage from "../pages/Teacher/PointManagement/Score_input";
+import ViewStudentPage from "../pages/Teacher/PointManagement/Score_view";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
-import { ClassDetailsPage } from "../pages/teacher/Teacher-manage-class/detail-class/class-details-page";
-import TeacherSchedule from "../pages/teacher/Teacher-schedule/Teacher-schedule";
+import { ClassDetailsPage } from "../pages/Teacher/Teacher-manage-class/detail-class/class-details-page";
+import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule";
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
-import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+import CreateClass from "../pages/manager/Class-management/CreateClass";
+import AttendanceTable from "../pages/Teacher/Attendance-Manage/Attendance-Table";
+import LeaveRequestPage from "../pages/Teacher/LeaveRequest/LeaveRequestPage";
+import MyRequests from "../pages/Teacher/My-request/MyRequests";
+import FileUpload from "../pages/Teacher/FileManagement/File_upload";
+import FileManage from "../pages/Teacher/FileManagement/File_management";
+import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
+import StudentHomepage from "../pages/Student/Student-homepage";
+import StudentSchedule from "../pages/Student/My-schedule/Student-schedule";
 
-import AttendanceTable from "../pages/teacher/Attendance-Manage/Attendance-Table";
-import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
-import MyRequests from "../pages/teacher/My-request/MyRequests";
-import FileUpload from "../pages/teacher/FileManagement/File_upload";
-import FileManage from "../pages/teacher/FileManagement/File_management";
-import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
-import CreateClass from "../pages/manager/Class-management/AddClass";
+import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 
 
 export const privateRoutes = (
@@ -70,8 +72,8 @@ export const privateRoutes = (
 
       {/* Học sinh */}
       <Route path="/student" element={<AuthMiddleware allowedRoles={['student']} />}>
-        <Route index element={<div>Student Dashboard - Coming Soon</div>} />
-        <Route path="schedule" element={<div>Student Schedule - Coming Soon</div>} />
+        <Route index element={<StudentHomepage />} />
+        <Route path="my-schedule" element={<StudentSchedule />} />
         <Route path="grades" element={<div>Student Grades - Coming Soon</div>} />
       </Route>
 
