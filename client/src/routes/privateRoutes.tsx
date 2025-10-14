@@ -2,7 +2,6 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/Center-dashboard";
-import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
@@ -16,7 +15,7 @@ import TeacherSchedule from "../pages/Teacher/Teacher-schedule/Teacher-schedule"
 import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
-import CreateClass from "../pages/manager/Class-management/CreateClass";
+import CreateClass from "../pages/manager/Class-management/AddClass";
 import AttendanceTable from "../pages/Teacher/Attendance-Manage/Attendance-Table";
 import LeaveRequestPage from "../pages/Teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/Teacher/My-request/MyRequests";
@@ -25,6 +24,8 @@ import FileManage from "../pages/Teacher/FileManagement/File_management";
 import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
 import StudentHomepage from "../pages/Student/Student-homepage";
 import StudentSchedule from "../pages/Student/My-schedule/Student-schedule";
+import StudentClassesPage from "../pages/Student/MyClass/studentClass";
+import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
 
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 
@@ -74,6 +75,8 @@ export const privateRoutes = (
       <Route path="/student" element={<AuthMiddleware allowedRoles={['student']} />}>
         <Route index element={<StudentHomepage />} />
         <Route path="my-schedule" element={<StudentSchedule />} />
+        <Route path="my-classes" element={<StudentClassesPage />} />
+        <Route path="my-classes/:classId" element={<StudentClassDetailPage />} />
         <Route path="grades" element={<div>Student Grades - Coming Soon</div>} />
       </Route>
 
