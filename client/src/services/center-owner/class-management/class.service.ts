@@ -29,7 +29,14 @@ export const classService = {
 
     // Update class
     updateClass: async (id: string, data: any) => {
-        const response = await apiClient.put(`${BASE_URL}/${id}`, data);
+        console.log(id, data);
+        
+        const response = await apiClient.patch(`${BASE_URL}/${id}`, data.schedules);
+        return response;
+    },
+
+    updateClassSchedule: async (id: string, data: any) => {
+        const response = await apiClient.patch(`${BASE_URL}/${id}/schedules`, data);
         return response;
     },
 

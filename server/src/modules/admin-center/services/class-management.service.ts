@@ -24,7 +24,6 @@ export class ClassManagementService {
                 sortBy = 'createdAt',
                 sortOrder = 'desc'
             } = queryDto;
-            console.log('Query DTO:', queryDto);
             
             const skip = (page - 1) * limit;
             const take = limit;
@@ -43,9 +42,6 @@ export class ClassManagementService {
                 currentAcademicYear = `${currentYear - 1}-${currentYear}`;
             }
             
-            console.log('Current academic year:', currentAcademicYear);
-            
-            // Build where clause
             const where: any = {};
             
             if (status && status !== 'all') where.status = status;
@@ -85,48 +81,14 @@ export class ClassManagementService {
 
             // Filter by teacher
             let classIds: string[] | undefined;
-            // if (teacherId) {
-            //     const assignments = await this.prisma.teacherClassAssignment.findMany({
-            //         where: { teacherId },
-            //         select: { classId: true }
-            //     });
-            //     classIds = assignments.map(a => a.classId);
-            //     where.id = { in: classIds };
-            // }
-            
-            // Note: We'll filter by dayOfWeek and shift after getting the data
-            // because Prisma's array_contains with complex objects is limited
-
-            // Note: We don't filter by academic year to show all classes
-            // We'll sort by academic year instead
-
-            // // Filter by date range
-            // if (startDate || endDate) {
-            //     const dateFilter: any = {};
-            //     if (startDate) dateFilter.gte = new Date(startDate);
-            //     if (endDate) dateFilter.lte = new Date(endDate);
-                
-            //     where.startDate = dateFilter;
-            // }
-
-            // // Filter by rating (if rating system exists)
-            // if (rating) {
-            //     where.averageRating = { gte: parseFloat(rating) };
-            // }
-
-            // Get total count (before post-filtering)
             const totalBeforeFilter = await this.prisma.class.count({ where });
-
-            // Build orderBy clause
             const orderBy: any = {};
             if (sortBy && sortOrder) {
                 orderBy[sortBy] = sortOrder;
             } else {
-                orderBy.createdAt = 'desc'; // Default ordering
+                orderBy.createdAt = 'desc'; 
             }
              console.log(where);
-                    
-            // Get data with relations - optimized for performance
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
@@ -169,13 +131,6 @@ export class ClassManagementService {
                 }
             });
 
-            // Debug: Log actual data
-            classes.forEach(cls => {
-                cls.teacherClassAssignments.forEach(ta => {
-                    console.log('Class:', cls.name, 'Schedule:', ta.recurringSchedule);
-                });
-            });
-
             // Transform data
             let transformedClasses = classes.map(cls => ({
                 id: cls.id,
@@ -209,7 +164,6 @@ export class ClassManagementService {
                 updatedAt: cls.updatedAt
             }));
 
-            // Filter by dayOfWeek and shift after getting data
             if (dayOfWeek && dayOfWeek !== 'all') {
                 transformedClasses = transformedClasses.filter(cls => {
                     if (!cls.recurringSchedule || !cls.recurringSchedule.schedules) return false;
@@ -236,20 +190,14 @@ export class ClassManagementService {
                     });
                 }
             }
-            
-            // Sort by academic year: current year first, then others
             const sortedClasses = transformedClasses.sort((a, b) => {
                 const aIsCurrentYear = a.academicYear === currentAcademicYear;
                 const bIsCurrentYear = b.academicYear === currentAcademicYear;
-                
                 if (aIsCurrentYear && !bIsCurrentYear) return -1;
                 if (!aIsCurrentYear && bIsCurrentYear) return 1;
-                return 0; // Keep original order if both have same priority
+                return 0; 
             });
-            
-            // Update total count after post-filtering
             const totalAfterFilter = sortedClasses.length;
-            
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
@@ -276,7 +224,6 @@ export class ClassManagementService {
     // Lấy chi tiết 1 lớp học
     async findOne(id: string) {
         try {
-            // Validate UUID
             if (!this.isValidUUID(id)) {
                 throw new HttpException(
                     {
@@ -584,6 +531,44 @@ export class ClassManagementService {
         }
     }
 
+    // Xóa lớp học (soft delete bằng cách đổi status)
+    async updateClassSchedules(id: string, body: any) {
+        console.log(id, body);
+        
+        // Tìm assignment trước
+        const assignment = await this.prisma.teacherClassAssignment.findFirst({
+            where: {
+                classId: id,
+                teacherId: body.teacherId,
+                // academicYear: body.academicYear,
+                // status: 'active'
+            }
+        });
+
+        if (!assignment) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không tìm thấy phân công giáo viên'
+                },
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Update bằng id
+        return this.prisma.teacherClassAssignment.update({
+            where: { id: assignment.id },
+            data: { 
+                recurringSchedule: {
+                    days: body.schedules.map((schedule: any) => schedule.day),
+                    startTime: body.schedules.map((schedule: any) => schedule.startTime),
+                    endTime: body.schedules.map((schedule: any) => schedule.endTime)
+                } 
+            }
+        });
+    }
+
+    
     // Xóa lớp học (soft delete bằng cách đổi status)
     async delete(id: string) {
         try {

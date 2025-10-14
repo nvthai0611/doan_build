@@ -550,7 +550,7 @@ model RolePermission {
 
 model TeacherClassAssignment {
   id                String       @id @default(uuid()) @db.Uuid
-  teacherId         String       @map("teacher_id") @db.Uuid
+  teacherId         String       @map("teacher_id") @db.Uuid 
   classId           String       @map("class_id") @db.Uuid
   recurringSchedule Json?        @map("recurring_schedule")
   startDate         DateTime     @map("start_date") @db.Date
