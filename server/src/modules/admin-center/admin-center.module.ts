@@ -19,6 +19,8 @@ import { PrismaService } from 'src/db/prisma.service';
 import { RouterModule } from '@nestjs/core';
 import { StudentManagementController } from './controllers/student-management.controller';
 import { StudentManagementService } from './services/student-management.service';
+import { IncidentHandleController } from './controllers/incident-handle.controller';
+import { IncidentHandleService } from './services/incident-handle.service';
 
 @Module({
   imports: [
@@ -38,7 +40,8 @@ import { StudentManagementService } from './services/student-management.service'
     ScheduleManagementController,
     TeacherManagementController,
     UsersController,
-    StudentManagementController
+    StudentManagementController,
+    IncidentHandleController,
   ],
   providers: [
     PrismaService,
@@ -50,7 +53,8 @@ import { StudentManagementService } from './services/student-management.service'
     ScheduleManagementService,
     TeacherManagementService,
     UsersService,
-    StudentManagementService
+    StudentManagementService,
+    IncidentHandleService,
   ],
 })
 export class AdminCenterModule {}

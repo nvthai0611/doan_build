@@ -6,8 +6,6 @@ import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
-import ScoreInputPage from "../pages/Teacher/PointManagement/ScoreInput";
-import ViewStudentPage from "../pages/teacher/PointManagement/ScoreView";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
 import TeacherQnmsInfo from "../pages/manager/Teacher-management/pages/TeacherQnmsInfo";
 import AddEmployee from "../pages/manager/Teacher-management/pages/AddTeacher";
@@ -16,6 +14,8 @@ import { ProfilePage } from "../pages/Auth/Profile";
 import PermissionTestPage from "../pages/manager/PermissionTestPage";
 import { ClassManagement } from "../pages/manager/Class-management/ClassManagement";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+import IncidentHandlePage from "../pages/manager/Incident-handle/IncidentHandle";
+
 
 import LeaveRequestPage from "../pages/teacher/LeaveRequest/LeaveRequestPage";
 import MyRequests from "../pages/teacher/My-request/MyRequests";
@@ -24,6 +24,8 @@ import FileManage from "../pages/teacher/FileManagement/FileManagement";
 import SessionDetails from "../pages/teacher/Session-details/SessionDetails";
 import CreateClass from "../pages/manager/Class-management/AddClass";
 import AttendanceTable from "../pages/teacher/Attendance-Manage/AttendanceTable";
+import ScoreInputPage from "../pages/Teacher/PointManagement/ScoreInput";
+import ViewStudentPage from "../pages/Teacher/PointManagement/ScoreView";
 import TeacherSchedule from "../pages/teacher/Teacher-schedule/TeacherSchedule";
 import { StudentDetailPage } from "../../src/pages/manager/Student-management/components/StudentDetail/student-detail-page";
 import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
@@ -51,6 +53,8 @@ export const privateRoutes = (
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="incidents" element={<IncidentHandlePage />} />
+
       </Route>
 
       {/* Giáo viên */}
@@ -63,7 +67,7 @@ export const privateRoutes = (
         <Route path="grades/view" element={<ViewStudentPage />} />
         <Route path="attendance" element={<AttendanceTable />} />
         <Route path="documents/upload" element={<FileUpload />} />
-        <Route path="documents/manage" element={<FileManage />} />        
+        <Route path="documents/manage" element={<FileManage />} />
         <Route path="incidents/report" element={<IncidentReportPage />} />
         <Route path="incidents/manage" element={<IncidentManagePage />} />
 
