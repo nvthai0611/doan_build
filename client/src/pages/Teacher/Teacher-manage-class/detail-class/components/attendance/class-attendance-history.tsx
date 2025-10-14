@@ -30,7 +30,7 @@ export function ClassAttendanceHistory({
   students,
   attendanceRecords,
   onRefresh,
-}: ClassAttendanceHistoryProps) {
+}: any) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"name" | "rate">("name")
@@ -219,7 +219,7 @@ export function ClassAttendanceHistory({
         </CardHeader>
         <CardContent>
           {/* Legend */}
-          <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border">
+          {/* <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border">
             <span className="text-sm font-medium text-muted-foreground">Chú thích:</span>
             <div className="flex items-center gap-3">
               {Object.entries(ATTENDANCE_STATUS_CONFIG).map(([status, config]) => (
@@ -229,31 +229,30 @@ export function ClassAttendanceHistory({
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Session Headers */}
           <div className="overflow-x-auto">
             <div className="min-w-max">
-              <div className="flex items-center gap-4 mb-2 pb-2 border-b border-border">
-                <div className="w-64 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-4 mb-2 pb-2 border-b border-border">
+                <div className="w-48 sm:w-56 md:w-64 flex-shrink-0">
                   <p className="text-sm font-medium">Học sinh</p>
                 </div>
-                <div className="flex gap-1.5 sm:gap-2 min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[800px]">
-                  {sortedSessions.map((session, index) => (
-                    <div
-                      key={session.id}
-                      className="flex-shrink-0 w-6 flex items-center justify-center"
-                      title={`${formatSessionDate(session.sessionDate)} - ${formatSessionTime(
-                        session.startTime,
-                        session.endTime,
-                      )}`}
-                    >
-                      <p className="text-xs font-medium text-muted-foreground">{index + 1}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="grid grid-cols-4 gap-1 sm:gap-2 md:gap-4 text-center">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-xs font-medium text-green-600 truncate">Có mặt</p>
                     </div>
-                  ))}
-                </div>
-                <div className="w-48 flex-shrink-0 text-right">
-                  <p className="text-sm font-medium">Thống kê</p>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-xs font-medium text-red-600 truncate">Vắng</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-xs font-medium text-blue-600 truncate">Có phép</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-xs font-medium text-muted-foreground truncate">Tỷ lệ</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
