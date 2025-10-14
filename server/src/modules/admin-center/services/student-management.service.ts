@@ -5,8 +5,207 @@ import { PrismaService } from 'src/db/prisma.service';
 export class StudentManagementService {
   constructor(private readonly prisma: PrismaService) {}
   
-  async createStudent() {
-    // TODO: Implement create student logic
+  async createStudent(createStudentData: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    birthDate?: string;
+    address?: string;
+    grade?: string;
+    parentEmail?: string;
+    schoolId: string; // Required field
+    password?: string;
+  }) {
+    try {
+      // Check if user with email already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: createStudentData.email }
+      });
+
+      if (existingUser) {
+        throw new Error('Email đã được sử dụng');
+      }
+
+      // Find parent if parentEmail is provided
+      let parentId = null;
+      if (createStudentData.parentEmail) {
+        const parent = await this.findParentByEmail(createStudentData.parentEmail);
+        if (parent?.data?.id) {
+          parentId = parent.data.id;
+        }
+      }
+
+      // Generate student code
+      const studentCount = await this.prisma.student.count();
+      const studentCode = `ST${(studentCount + 1).toString().padStart(6, '0')}`;
+
+      // Default password if not provided
+      const defaultPassword = createStudentData.password || '123456';
+
+      // Generate unique username from email
+      const username = createStudentData.email.split('@')[0] + '_' + Date.now();
+
+      // Create user first
+      const newUser = await this.prisma.user.create({
+        data: {
+          email: createStudentData.email,
+          username: username,
+          fullName: createStudentData.fullName,
+          phone: createStudentData.phone,
+          gender: createStudentData.gender || 'OTHER',
+          birthDate: createStudentData.birthDate ? new Date(createStudentData.birthDate) : null,
+          password: defaultPassword, // In production, hash this password
+          isActive: true,
+          role: 'STUDENT'
+        }
+      });
+
+      // Validate schoolId exists
+      if (createStudentData.schoolId) {
+        const school = await this.prisma.school.findUnique({
+          where: { id: createStudentData.schoolId }
+        });
+        if (!school) {
+          throw new Error('Trường học không tồn tại');
+        }
+      }
+
+      // Create student
+      const newStudent = await this.prisma.student.create({
+        data: {
+          userId: newUser.id,
+          studentCode: studentCode,
+          address: createStudentData.address,
+          grade: createStudentData.grade,
+          parentId: parentId,
+          schoolId: createStudentData.schoolId
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              gender: true,
+              birthDate: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          parent: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      return {
+        data: {
+          id: newStudent.id,
+          studentCode: newStudent.studentCode,
+          address: newStudent.address,
+          grade: newStudent.grade,
+          createdAt: newStudent.createdAt,
+          updatedAt: newStudent.updatedAt,
+          user: newStudent.user,
+          parent: newStudent.parent ? {
+            id: newStudent.parent.id,
+            user: newStudent.parent.user
+          } : null,
+          school: newStudent.school
+        },
+        message: 'Tạo tài khoản học viên thành công'
+      };
+
+    } catch (error) {
+      console.error('Error creating student:', error);
+      throw new Error(`Error creating student: ${error.message}`);
+    }
+  }
+
+  async findParentByEmail(email: string) {
+    try {
+      if (!email || !email.trim()) {
+        throw new Error('Email không được để trống');
+      }
+
+      const parent = await this.prisma.parent.findFirst({
+        where: {
+          user: {
+            email: email.trim().toLowerCase()
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              studentCode: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!parent) {
+        return {
+          data: null,
+          message: 'Không tìm thấy phụ huynh với email này'
+        };
+      }
+
+      return {
+        data: {
+          id: parent.id,
+          user: parent.user,
+          students: parent.students,
+          createdAt: parent.createdAt,
+          updatedAt: parent.updatedAt
+        },
+        message: 'Tìm thấy thông tin phụ huynh'
+      };
+
+    } catch (error) {
+      console.error('Error finding parent by email:', error);
+      throw new Error(`Error finding parent: ${error.message}`);
+    }
   }
 
   async getAllStudents(
@@ -324,6 +523,225 @@ export class StudentManagementService {
     } catch (error) {
       console.error('Error fetching student counts by status:', error);
       throw new Error(`Error fetching student counts by status: ${error.message}`);
+    }
+  }
+
+  async toggleStudentStatus(studentId: string, currentUserId?: string) {
+    try {
+      // Validate student exists
+      const existingStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              isActive: true
+            }
+          }
+        }
+      });
+
+      if (!existingStudent) {
+        throw new Error('Student not found');
+      }
+
+      // Toggle the isActive status
+      const newStatus = !existingStudent.user.isActive;
+
+      // Update the user's isActive status
+      const updatedUser = await this.prisma.user.update({
+        where: { id: existingStudent.user.id },
+        data: {
+          isActive: newStatus,
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          avatar: true,
+          isActive: true,
+          gender: true,
+          birthDate: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      // Get updated student data
+      const updatedStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              gender: true,
+              birthDate: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          parent: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      return {
+        data: {
+          id: updatedStudent.id,
+          studentCode: updatedStudent.studentCode,
+          address: updatedStudent.address,
+          grade: updatedStudent.grade,
+          createdAt: updatedStudent.createdAt,
+          updatedAt: updatedStudent.updatedAt,
+          user: updatedStudent.user,
+          parent: updatedStudent.parent ? {
+            id: updatedStudent.parent.id,
+            user: updatedStudent.parent.user
+          } : null,
+          school: updatedStudent.school,
+          previousStatus: existingStudent.user.isActive,
+          newStatus: newStatus
+        },
+        message: `Student account has been ${newStatus ? 'activated' : 'deactivated'} successfully`
+      };
+
+    } catch (error) {
+      console.error('Error toggling student status:', error);
+      throw new Error(`Error updating student status: ${error.message}`);
+    }
+  }
+
+  async updateStudentStatus(studentId: string, isActive: boolean, currentUserId?: string) {
+    try {
+      // Validate student exists
+      const existingStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              isActive: true
+            }
+          }
+        }
+      });
+
+      if (!existingStudent) {
+        throw new Error('Student not found');
+      }
+
+      // Update the user's isActive status
+      const updatedUser = await this.prisma.user.update({
+        where: { id: existingStudent.user.id },
+        data: {
+          isActive: isActive,
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          avatar: true,
+          isActive: true,
+          gender: true,
+          birthDate: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      // Get updated student data
+      const updatedStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              gender: true,
+              birthDate: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          parent: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      return {
+        data: {
+          id: updatedStudent.id,
+          studentCode: updatedStudent.studentCode,
+          address: updatedStudent.address,
+          grade: updatedStudent.grade,
+          createdAt: updatedStudent.createdAt,
+          updatedAt: updatedStudent.updatedAt,
+          user: updatedStudent.user,
+          parent: updatedStudent.parent ? {
+            id: updatedStudent.parent.id,
+            user: updatedStudent.parent.user
+          } : null,
+          school: updatedStudent.school,
+          previousStatus: existingStudent.user.isActive,
+          newStatus: isActive
+        },
+        message: `Student account has been ${isActive ? 'activated' : 'deactivated'} successfully`
+      };
+
+    } catch (error) {
+      console.error('Error updating student status:', error);
+      throw new Error(`Error updating student status: ${error.message}`);
     }
   }
 }

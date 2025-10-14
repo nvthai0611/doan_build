@@ -39,7 +39,9 @@ import { centerOwnerStudentService } from "../../../services/center-owner/studen
 import { useQuery } from "@tanstack/react-query"
 import { DataTable } from "../../../components/common/Table/DataTable"
 import { StudentDetailModal } from "./components/student-detail-modal"
+import { CreateStudentModal } from "./components/CreateStudentModal"
 import { useNavigate } from "react-router-dom"
+import { useUpdateStudentStatus, useToggleStudentStatus } from "./hooks/useStudents"
 
 const fetchData = async (params: any) => {
   const resDataStudent = await centerOwnerStudentService.getStudents(params)
@@ -69,6 +71,7 @@ export default function StudentManagement() {
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false)
 
   const tabs: Tab[] = [
     { key: "all", label: "Tất cả", count: 120 },
@@ -79,6 +82,11 @@ export default function StudentManagement() {
     { key: "stopped", label: "Dừng học", count: 43 },
   ]
   const navigate = useNavigate()
+  
+  // Mutations for status change
+  const updateStudentStatusMutation = useUpdateStudentStatus()
+  const toggleStudentStatusMutation = useToggleStudentStatus()
+
   const status: any = {
     active: "Đang học",
     completed: "Hoàn thành",
@@ -298,7 +306,12 @@ export default function StudentManagement() {
   }
 
   const handleAddStudent = (): void => {
-    toast.info("Mở form thêm học viên mới...")
+    setIsCreateModalOpen(true)
+  }
+
+  const handleCreateStudentSuccess = (): void => {
+    // Refresh data after successful creation
+    // The modal will handle query invalidation via TanStack Query
   }
 
   const handlePageChange = (page: number): void => {
@@ -337,6 +350,29 @@ export default function StudentManagement() {
   const handleYearChange = (year: string) => {
     setFilterState(prev => ({ ...prev, birthYear: year != "all" ? year : undefined }))
     setCurrentPage(1)
+  }
+
+  // Handle status change functions
+  const handleToggleAccountStatus = async (studentId: string, currentStatus: boolean) => {
+    try {
+      await updateStudentStatusMutation.mutateAsync({
+        studentId,
+        isActive: !currentStatus
+      })
+    } catch (error) {
+      console.error('Error toggling account status:', error)
+    }
+  }
+
+  const handleChangeAccountStatus = async (studentId: string, isActive: boolean) => {
+    try {
+      await updateStudentStatusMutation.mutateAsync({
+        studentId,
+        isActive
+      })
+    } catch (error) {
+      console.error('Error changing account status:', error)
+    }
   }
 
   const getTabCount = (tabKey: string): number => {
@@ -472,23 +508,6 @@ export default function StudentManagement() {
         </div>
       )
     },
-    // Account Status Column
-    {
-      key: "accountStatus",
-      header: "Trạng thái tài khoản",
-      width: "180px",
-      render: (student: any) => (
-        <Badge 
-          variant="secondary" 
-          className={student?.user?.isActive 
-            ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400" 
-            : "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
-          }
-        >
-          {student?.user?.isActive ? "Hoạt động" : "Không hoạt động"}
-        </Badge>
-      )
-    },
     // Course Column
     {
       key: "course",
@@ -511,29 +530,44 @@ export default function StudentManagement() {
         </span>
       )
     },
-    // Actions Column
+    // Account Status Column (moved to last)
     {
-      key: "actions",
-      header: "",
-      width: "80px",
+      key: "accountStatus",
+      header: "Tài khoản",
+      width: "250px",
       align: "right" as const,
       render: (student: any) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="gap-2" onClick={() => handleViewStudent(student?.id)}>
-              <Eye className="w-4 h-4" />
-              Xem
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-end gap-3">
+          <Switch
+            checked={student?.user?.isActive || false}
+            onCheckedChange={() => handleToggleAccountStatus(student?.id, student?.user?.isActive)}
+            disabled={updateStudentStatusMutation.isPending}
+            className="data-[state=checked]:bg-green-600"
+          />
+          <span className={`text-sm font-medium ${
+            student?.user?.isActive 
+              ? "text-green-700 dark:text-green-400" 
+              : "text-red-700 dark:text-red-400"
+          }`}>
+            {student?.user?.isActive ? "Hoạt động" : "Vô hiệu hóa"}
+          </span>
+          {/* <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleChangeAccountStatus(student?.id, !student?.user?.isActive)}
+            disabled={updateStudentStatusMutation.isPending}
+            className={`text-xs px-3 py-1 ml-2 ${
+              student?.user?.isActive
+                ? "text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                : "text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300"
+            }`}
+          >
+            {student?.user?.isActive ? "Vô hiệu hóa" : "Kích hoạt"}
+          </Button> */}
+        </div>
       )
     }
-  ], [currentPage, itemsPerPage, status, handleCopyCode, handleViewStudent, getStatusBadgeColor])
+  ], [currentPage, itemsPerPage, status, handleCopyCode, handleViewStudent, getStatusBadgeColor, handleToggleAccountStatus, handleChangeAccountStatus, updateStudentStatusMutation.isPending])
 
   // Pagination config for DataTable
   const paginationConfig = useMemo(() => ({
@@ -604,9 +638,9 @@ export default function StudentManagement() {
               <Plus className="w-4 h-4 mr-2" />
               Tài khoản học viên
             </Button>
-            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800" onClick={handleInviteStudent}>
+            {/* <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800" onClick={handleInviteStudent}>
               Mời tài khoản học viên
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
@@ -712,7 +746,7 @@ export default function StudentManagement() {
               onClearAll={handleClearAllFilters} // Pass hàm clear all
             />
 
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <MoreHorizontal className="w-4 h-4" />
@@ -736,7 +770,7 @@ export default function StudentManagement() {
                   Tải tất cả
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
           </div>
         </div>
       </div>
@@ -782,6 +816,13 @@ export default function StudentManagement() {
         studentId={selectedStudentId}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+      />
+
+      {/* Create Student Modal */}
+      <CreateStudentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateStudentSuccess}
       />
     </div>
   )

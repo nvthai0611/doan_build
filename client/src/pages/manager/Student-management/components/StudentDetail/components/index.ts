@@ -1,0 +1,7 @@
+export { StudentSidebar } from './StudentSidebar'
+export { StudentInfoCard } from './StudentInfoCard'
+export { StudentParentInfoCard } from './StudentParentInfoCard'
+export { StudentScheduleTab } from './StudentScheduleTab'
+export { StudentAttendanceTab } from './StudentAttendanceTab'
+export { StudentGradesTab } from './StudentGradesTab'
+export { StudentTuitionTab } from './StudentTuitionTab'
