@@ -1,235 +1,245 @@
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Users, Plus, Search, MoreHorizontal } from "lucide-react"
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { getStatusBadge } from '../const/statusBadge';
 
 interface LessonsInfoProps {
-  classId: string
+  classId: string;
+  classData?: any;
 }
 
-export default function LessonsInfo({ classId }: LessonsInfoProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeTab, setActiveTab] = useState<"all" | "upcoming" | "completed" | "cancelled">("all")
-
-  // Mock data - sẽ được thay thế bằng data thật từ API
-  const lessons = [
+export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
+  const [filter, setFilter] = useState<'all' | 'completed' | 'upcoming' | 'cancelled'>('all');
+  
+  // Sử dụng data thật từ props hoặc mock data
+  const sessions = classData?.sessions || [
     {
-      id: "1",
-      title: "Buổi 1: Giới thiệu khóa học",
-      date: "2024-01-15",
-      time: "19:45 - 21:15",
-      status: "completed",
-      attendance: 8,
-      totalStudents: 10,
-      room: "P1",
-      teacher: "Nguyễn Thị Lan",
-      notes: "Buổi học đầu tiên, giới thiệu chương trình học"
+      id: '1',
+      scheduledDate: '2024-01-15',
+      startTime: '19:45',
+      endTime: '21:15',
+      status: 'completed',
+      attendanceCount: 15,
+      totalStudents: 15,
+      topic: 'Bài 1: Giới thiệu về lập trình',
+      notes: 'Buổi học đầu tiên, học viên rất hào hứng'
     },
     {
-      id: "2",
-      title: "Buổi 2: Ngữ pháp cơ bản",
-      date: "2024-01-17",
-      time: "19:45 - 21:15",
-      status: "completed",
-      attendance: 9,
-      totalStudents: 10,
-      room: "P1",
-      teacher: "Nguyễn Thị Lan",
-      notes: "Học về thì hiện tại đơn"
+      id: '2',
+      scheduledDate: '2024-01-17',
+      startTime: '19:45',
+      endTime: '21:15',
+      status: 'completed',
+      attendanceCount: 14,
+      totalStudents: 15,
+      topic: 'Bài 2: Cú pháp cơ bản',
+      notes: 'Có 1 học viên vắng mặt'
     },
     {
-      id: "3",
-      title: "Buổi 3: Từ vựng chủ đề gia đình",
-      date: "2024-01-22",
-      time: "19:45 - 21:15",
-      status: "upcoming",
-      attendance: 0,
-      totalStudents: 10,
-      room: "P1",
-      teacher: "Nguyễn Thị Lan",
-      notes: ""
+      id: '3',
+      scheduledDate: '2024-01-19',
+      startTime: '19:45',
+      endTime: '21:15',
+      status: 'upcoming',
+      attendanceCount: 0,
+      totalStudents: 15,
+      topic: 'Bài 3: Biến và kiểu dữ liệu',
+      notes: ''
     },
     {
-      id: "4",
-      title: "Buổi 4: Luyện nghe",
-      date: "2024-01-24",
-      time: "19:45 - 21:15",
-      status: "upcoming",
-      attendance: 0,
-      totalStudents: 10,
-      room: "P1",
-      teacher: "Nguyễn Thị Lan",
-      notes: ""
+      id: '4',
+      scheduledDate: '2024-01-21',
+      startTime: '19:45',
+      endTime: '21:15',
+      status: 'cancelled',
+      attendanceCount: 0,
+      totalStudents: 15,
+      topic: 'Bài 4: Câu lệnh điều kiện',
+      notes: 'Hủy do nghỉ lễ'
     }
-  ]
+  ];
 
-  const filteredLessons = lessons.filter(lesson => {
-    const matchesSearch = lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lesson.teacher.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    if (activeTab === "all") return matchesSearch
-    if (activeTab === "upcoming") return matchesSearch && lesson.status === "upcoming"
-    if (activeTab === "completed") return matchesSearch && lesson.status === "completed"
-    if (activeTab === "cancelled") return matchesSearch && lesson.status === "cancelled"
-    
-    return matchesSearch
-  })
+  const filteredSessions = sessions.filter((session: any) => {
+    if (filter === 'all') return true;
+    return session.status === filter;
+  });
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <Badge className="bg-green-100 text-green-800">Hoàn thành</Badge>
-      case "upcoming":
-        return <Badge className="bg-blue-100 text-blue-800">Sắp tới</Badge>
-      case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">Đã hủy</Badge>
-      default:
-        return <Badge variant="secondary">Không xác định</Badge>
-    }
-  }
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
+      completed: { 
+        variant: 'default', 
+        label: 'Đã hoàn thành', 
+        className: 'bg-green-100 text-green-800 border-green-200',
+        icon: CheckCircle
+      },
+      upcoming: { 
+        variant: 'secondary', 
+        label: 'Sắp tới',
+        className: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: Clock
+      },
+      cancelled: { 
+        variant: 'destructive', 
+        label: 'Đã hủy',
+        className: 'bg-red-100 text-red-800 border-red-200',
+        icon: XCircle
+      },
+      in_progress: { 
+        variant: 'outline', 
+        label: 'Đang diễn ra',
+        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: AlertCircle
+      }
+    };
+    const config = variants[status] || variants.upcoming;
+    const Icon = config.icon;
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        <Icon className="h-3 w-3 mr-1" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getAttendanceRate = (attendanceCount: number, totalStudents: number) => {
+    if (totalStudents === 0) return 0;
+    return Math.round((attendanceCount / totalStudents) * 100);
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Buổi học</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Quản lý lịch học và điểm danh
-          </p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Thêm buổi học
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Tìm kiếm buổi học..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab("all")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "all"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Tất cả ({lessons.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("upcoming")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "upcoming"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Sắp tới ({lessons.filter(l => l.status === "upcoming").length})
-              </button>
-              <button
-                onClick={() => setActiveTab("completed")}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "completed"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                Hoàn thành ({lessons.filter(l => l.status === "completed").length})
-              </button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lessons List */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách buổi học ({filteredLessons.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredLessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="flex items-center justify-between p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {new Date(lesson.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {lesson.title}
-                    </h3>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {lesson.time}
-                      </div>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-1" />
-                        {lesson.attendance}/{lesson.totalStudents} học viên
-                      </div>
-                      <span>Phòng: {lesson.room}</span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Giáo viên: {lesson.teacher}
-                    </p>
-                    {lesson.notes && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                        "{lesson.notes}"
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  {getStatusBadge(lesson.status)}
-                  
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Buổi học ({filteredSessions.length})
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                {[
+                  { key: 'all', label: 'Tất cả' },
+                  { key: 'upcoming', label: 'Sắp tới' },
+                  { key: 'completed', label: 'Đã hoàn thành' },
+                  { key: 'cancelled', label: 'Đã hủy' }
+                ].map((filterOption) => (
+                  <Button
+                    key={filterOption.key}
+                    variant={filter === filterOption.key ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilter(filterOption.key as any)}
+                    className="text-xs"
+                  >
+                    {filterOption.label}
                   </Button>
-                </div>
+                ))}
               </div>
-            ))}
-
-            {filteredLessons.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 dark:text-gray-500">
-                  <Calendar className="h-12 w-12 mx-auto mb-4" />
-                  <p className="text-lg font-medium">Không có buổi học nào</p>
-                  <p className="text-sm">Thêm buổi học đầu tiên cho lớp</p>
-                </div>
-              </div>
-            )}
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm buổi học
+              </Button>
+            </div>
           </div>
+        </CardHeader>
+      </Card>
+
+      {/* Sessions Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ngày & Giờ</TableHead>
+                <TableHead>Chủ đề</TableHead>
+                <TableHead>Điểm danh</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Ghi chú</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSessions.map((session: any) => (
+                <TableRow key={session.id}>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="font-medium">
+                        {format(new Date(session.scheduledDate), 'dd/MM/yyyy')}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {session.startTime} - {session.endTime}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">{session.topic}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">
+                        {session.attendanceCount}/{session.totalStudents}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({getAttendanceRate(session.attendanceCount, session.totalStudents)}%)
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(session.status)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-600 max-w-xs truncate">
+                      {session.notes || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
+                        <DropdownMenuItem>Điểm danh</DropdownMenuItem>
+                        <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
+                        <DropdownMenuItem>Hủy buổi học</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* Empty State */}
+      {filteredSessions.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {filter === 'all' ? 'Chưa có buổi học nào' : `Không có buổi học ${filter === 'upcoming' ? 'sắp tới' : filter === 'completed' ? 'đã hoàn thành' : 'đã hủy'}`}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {filter === 'all' ? 'Hãy tạo lịch học cho lớp này' : 'Thử thay đổi bộ lọc để xem các buổi học khác'}
+            </p>
+            {filter === 'all' && (
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Tạo buổi học đầu tiên
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
-  )
-}
+  );
+};

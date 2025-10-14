@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Loading from '../../../components/Loading/LoadingPage';
-import GeneralInfo from './components/GeneralInfo';
-import StudentsInfo from './components/StudentsInfo';
-import TeachersInfo from './components/TeachersInfo';
-import LessonsInfo from './components/LessonsInfo';
-import AssignmentsInfo from './components/AssignmentsInfo';
+import { GeneralInfo } from './components/GeneralInfo';
+import { StudentsInfo } from './components/StudentsInfo';
+import { TeachersInfo } from './components/TeachersInfo';
+import { LessonsInfo } from './components/LessonsInfo';
+import { AssignmentsInfo } from './components/AssignmentsInfo';
 import {
   Breadcrumb,
   BreadcrumbPage,
@@ -16,6 +17,7 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
 } from '@/components/ui/breadcrumb';
+import { classService } from '../../../services/center-owner/class-management/class.service';
 
 export default function ClassDetail() {
   const params = useParams();
@@ -24,25 +26,16 @@ export default function ClassDetail() {
 
   const [activeTab, setActiveTab] = useState('general');
 
-  // Mock data - sẽ được thay thế bằng data thật từ API
-  const classData = {
-    id: classId,
-    name: 'TINY EXPLORERS 1',
-    code: 'TIXP1',
-    course: 'TINY EXPLORERS',
-    room: 'P1',
-    startDate: '',
-    endDate: '',
-    status: 'Chưa cập nhật',
-    description: '',
-    schedule: [
-      { day: 'Thứ Ba', time: '19:45 -> 21:15' },
-      { day: 'Thứ Năm', time: '19:45 -> 21:15' },
-    ],
-  };
+  // Fetch class detail data
+  const { data: classDetailResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ['classDetail', classId],
+    queryFn: () => classService.getClassDetail(classId),
+    enabled: !!classId,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
+  });
 
-  const isLoading = false;
-  const error = null;
+  const classData = classDetailResponse?.data as any;
 
   // Loading state
   if (isLoading) {
@@ -80,17 +73,19 @@ export default function ClassDetail() {
   ];
 
   const renderTabContent = () => {
+    if (!classData) return null;
+    
     switch (activeTab) {
       case 'general':
         return <GeneralInfo classData={classData} />;
       case 'students':
-        return <StudentsInfo classId={classId} />;
+        return <StudentsInfo classId={classId} classData={classData} />;
       case 'teachers':
-        return <TeachersInfo classId={classId} />;
+        return <TeachersInfo classId={classId} classData={classData} />;
       case 'lessons':
-        return <LessonsInfo classId={classId} />;
+        return <LessonsInfo classId={classId} classData={classData} />;
       case 'assignments':
-        return <AssignmentsInfo classId={classId} />;
+        return <AssignmentsInfo classId={classId} classData={classData} />;
       //   case "exercises":
       //     return <ExercisesInfo classId={classId} />
       //   case "documents":
@@ -108,8 +103,8 @@ export default function ClassDetail() {
       <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         {/* Breadcrumbs */}
         <div className="space-y-2">
-          <h1 className="text-2xl  font-semibold text-foreground">
-            Danh sách lớp học
+          <h1 className="text-2xl font-semibold text-foreground">
+            {`Chi tiết lớp học ${classData?.name}` || 'Chi tiết lớp học'}
           </h1>
           <Breadcrumb>
             <BreadcrumbList>

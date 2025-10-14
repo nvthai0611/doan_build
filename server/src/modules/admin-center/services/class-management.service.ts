@@ -90,7 +90,6 @@ export class ClassManagementService {
             } else {
                 orderBy.createdAt = 'desc'; 
             }
-             console.log(where);
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
@@ -245,8 +244,6 @@ export class ClassManagementService {
                     feeStructure: true,
                     teacherClassAssignments: {
                         where: {
-                            // academicYear: currentAcademicYear,
-                            // semester: currentSemester,
                             status: 'active'
                         },
                         include: {
@@ -625,7 +622,6 @@ export class ClassManagementService {
                     }
                 }
             });
-            console.log(body);
             
             // Update teacher assignment based on academicYear and teacherId from request
             if (body.academicYear && body.teacherId) {
@@ -830,8 +826,9 @@ export class ClassManagementService {
                     teacherId: body.teacherId,
                     semester: body.semester,
                     academicYear: body.academicYear,
-                    startDate: new Date(body.startDate),
-                    endDate: body.endDate ? new Date(body.endDate) : null,
+                    // Copy dates from Class: actualStartDate/actualEndDate takes priority over expectedStartDate
+                    startDate: new Date(body.startDate || classItem.actualStartDate || classItem.expectedStartDate),
+                    endDate: body.endDate ? new Date(body.endDate) : (classItem.actualEndDate ? new Date(classItem.actualEndDate) : null),
                     // Copy schedule from Classes table to teacherClassAssignments
                     recurringSchedule: body.recurringSchedule || (classItem as any).recurringSchedule,
                     maxStudents: body.maxStudents || classItem.maxStudents,
