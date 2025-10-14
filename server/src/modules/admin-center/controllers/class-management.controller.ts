@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ClassManagementService } from '../services/class-management.service';
 import { CreateClassDto } from '../dto/class/create-class.dto';
@@ -36,12 +36,26 @@ export class ClassManagementController {
         return this.classManagementService.findOne(id);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @ApiOperation({ summary: 'Cập nhật thông tin lớp học' })
     @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+<<<<<<< Updated upstream
     async update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
         return this.classManagementService.update(id, updateClassDto);
+=======
+    async update(@Param('id') id: string, @Body() body: any) {
+        console.log(id, body);
+        return this.classManagementService.update(id, body);
+>>>>>>> Stashed changes
+    }
+
+    @Patch(':id/schedules')
+    @ApiOperation({ summary: 'Cập nhật lịch học' })
+    @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async updateClassSchedules(@Param('id') id: string, @Body() body: any) {
+        return this.classManagementService.updateClassSchedules(id, body);
     }
 
     @Delete(':id')
