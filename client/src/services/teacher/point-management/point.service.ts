@@ -55,7 +55,7 @@ export const teacherPointService = {
   /**
    * Ghi điểm cho học sinh
    */
-  recordGrades: async (payload: RecordGradesPayload): Promise<{ assessmentId: string }> => {
+  recordGrades: async (payload: any): Promise<{ assessmentId: string }> => {
     const response = await ApiService.post<{ assessmentId: string }>("/teacher/grades/record", payload)
     return response.data || { assessmentId: '' }
   },
