@@ -24,25 +24,16 @@ import { EditScheduleSheet } from './components/EditScheduleSheet';
 // Hooks
 import { useClassesQuery } from './hooks/useClassesQuery';
 import { useClassMutations } from './hooks/useClassMutations';
-import { formatSchedule } from '../../../utils/format';
+import { formatDate, formatSchedule } from '../../../utils/format';
 import { useEnrollmentMutations } from './hooks/useEnrollmentMutations';
 
 // Types
 import { ClassType } from '../../../services/center-owner/class-management/class.types';
 import { EnrollmentType } from '../../../services/center-owner/enrollment/enrollment.types';
 import { usePagination } from '../../../hooks/usePagination';
+import { getStatusBadge } from './const/statusBadge';
 
-// Helper function to get status badge
-const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
-        draft: { variant: 'secondary', label: 'Chưa cập nhật' },
-        active: { variant: 'default', label: 'Đang diễn ra', className: 'bg-green-100 text-green-800 border-green-200' },
-        completed: { variant: 'destructive', label: 'Đã kết thúc' },
-        deleted: { variant: 'destructive', label: 'Đã hủy' }
-    };
-    const config = variants[status] || variants.draft;
-    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
-};
+
 
 export const ClassManagement = () => {
     const navigate = useNavigate();
@@ -221,8 +212,6 @@ export const ClassManagement = () => {
                 teacherId: currentTeacher?.id,
                 academicYear: selectedClass.academicYear || currentTeacher?.academicYear
             };
-            console.log(requestData);
-            
             const response = await classService.updateClassSchedule(selectedClass.id, requestData);
             
             if (response?.success) {
@@ -332,7 +321,7 @@ export const ClassManagement = () => {
         {
             key: 'name',
             header: 'Tên lớp',
-            width: '250px',
+            width: '120px',
             sortable: true,
             searchable: true,
             searchPlaceholder: 'Tìm tên lớp...',
@@ -370,7 +359,7 @@ export const ClassManagement = () => {
                                 'sunday': 'CN'
                             };
                             const dayName = dayNames[schedule.day] || schedule.day;
-                            schedules.push(`${dayName}: ${schedule.startTime}-${schedule.endTime}`);
+                            schedules.push(`${dayName}: ${schedule.startTime} → ${schedule.endTime}`);
                         });
                     } else {
                         // Fallback cho cấu trúc cũ
@@ -384,8 +373,8 @@ export const ClassManagement = () => {
                         {schedules.length > 0 ? (
                             schedules.map((schedule, idx) => (
                                 <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                                    <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
-                                    {schedule}
+                                    <span className="inline-block w-1 h-1 rounded-full bg-green-400 "></span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-300">{schedule}</span>
                                 </div>
                             ))
                         ) : (
@@ -478,21 +467,28 @@ export const ClassManagement = () => {
             header: 'Phòng',
             render: (item: any) => item.roomName || '-'
         },
-        // {
-        //     key: 'students',
-        //     header: 'Sĩ số',
-        //     align: 'center',
-        //     render: (item: any) => (
-        //         <span className={item.currentStudents >= (item.maxStudents || 0) ? 'text-red-600 font-semibold' : ''}>
-        //             {item.currentStudents}/{item.maxStudents || '∞'}
-        //         </span>
-        //     )
-        // },
         {
             key: 'status',
             header: 'Trạng thái',
             sortable: true,
             render: (item: any) => getStatusBadge(item.status)
+        },
+        {
+            key: 'actualStartDate-actualEndDate',
+            header: 'Ngày bắt đầu & kết thúc',
+            align: 'center',
+            width: '220px',
+            render: (item: any) => (
+                <div className="text-sm space-y-1">
+                    <div>
+                        {item.actualStartDate ? formatDate(item.actualStartDate) : 
+                         item.expectedStartDate ? formatDate(item.expectedStartDate) : 'Chưa xác định'}
+                    </div>
+                    <div>
+                        {item.actualEndDate ? formatDate(item.actualEndDate) : 'Chưa xác định'}
+                    </div>
+                </div>
+            )
         },
         {
             key: 'actions',
