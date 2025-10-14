@@ -279,7 +279,7 @@ export default function GradeInputPage() {
       return
     }
     
-    const payload: GradeEntry[] = Object.keys(grades).map((sid) => ({
+    const payload: any = Object.keys(grades).map((sid) => ({
       studentId: sid,
       score: grades[sid]?.score ? Number.parseFloat(grades[sid].score) : undefined,
       feedback: grades[sid]?.comment,
