@@ -28,6 +28,7 @@ import { useClassMutations } from './hooks/useClassMutations';
 import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { GRADE_LEVEL_OPTIONS } from '../../../lib/gradeConstants';
 
 interface ScheduleItem {
   id: string;
@@ -42,12 +43,11 @@ export const CreateClass = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    code: '',
-    subjectId: '',
     grade: '',
+    subjectId: '',
     maxStudents: '',
     roomId: '',
-    startDate: '',
+    expectedStartDate: '',
     description: '',
     status: 'draft',
     academicYear: '',
@@ -133,8 +133,8 @@ export const CreateClass = () => {
     }
 
     // Validate start date
-    if (!validateRequired(formData.startDate)) {
-      newErrors.startDate = 'Ngày khai giảng là bắt buộc';
+    if (!validateRequired(formData.expectedStartDate)) {
+      newErrors.expectedStartDate = 'Ngày khai giảng là bắt buộc';
     }
 
     // Validate room
@@ -311,16 +311,24 @@ export const CreateClass = () => {
               {/* Mã lớp & Khoá học */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="code" className="text-sm font-medium">
-                    Mã lớp
+                  <Label htmlFor="grade" className="text-sm font-medium">
+                    Khối lớp
                   </Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => handleInputChange("code", e.target.value)}
-                    placeholder="Mã lớp"
-                    className="mt-1.5"
-                  />
+                  <Select 
+                    value={formData.grade} 
+                    onValueChange={(value) => handleInputChange("grade", value)}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Chọn khối lớp" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GRADE_LEVEL_OPTIONS.map(grade => (
+                        <SelectItem key={grade.value} value={grade.value}>
+                          {grade.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="subjectId" className="text-sm font-medium">
@@ -351,18 +359,18 @@ export const CreateClass = () => {
               {/* Ngày khai giảng & Phòng học */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="startDate" className="text-sm font-medium">
+                    <Label htmlFor="expectedStartDate" className="text-sm font-medium">
                     Ngày khai giảng (dự kiến) <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    id="startDate"
+                    id="expectedStartDate"
                     type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleInputChange("startDate", e.target.value)}
-                    className={`mt-1.5 ${errors.startDate ? "border-red-500" : ""}`}
+                    value={formData.expectedStartDate}
+                    onChange={(e) => handleInputChange("expectedStartDate", e.target.value)}
+                    className={`mt-1.5 ${errors.expectedStartDate ? "border-red-500" : ""}`}
                     required
                   />
-                  <ErrorMessage field="startDate" />
+                  <ErrorMessage field="expectedStartDate" />
                 </div>
                 <div>
                   <Label htmlFor="roomId" className="text-sm font-medium">

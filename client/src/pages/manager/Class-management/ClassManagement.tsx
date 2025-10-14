@@ -11,7 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-
+import { toast } from 'sonner';
+// Services
+import { classService } from '../../../services/center-owner/class-management/class.service';
 // Components
 import { DataTable, Column } from '../../../components/common/Table/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -32,14 +34,14 @@ import { usePagination } from '../../../hooks/usePagination';
 
 // Helper function to get status badge
 const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-        draft: { variant: 'secondary', label: 'Đang chiêu sinh' },
-        active: { variant: 'default', label: 'Hoạt động' },
-        completed: { variant: 'outline', label: 'Hoàn thành' },
-        deleted: { variant: 'destructive', label: 'Đã xóa' }
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
+        draft: { variant: 'secondary', label: 'Chưa cập nhật' },
+        active: { variant: 'default', label: 'Đang diễn ra', className: 'bg-green-100 text-green-800 border-green-200' },
+        completed: { variant: 'destructive', label: 'Đã kết thúc' },
+        deleted: { variant: 'destructive', label: 'Đã hủy' }
     };
     const config = variants[status] || variants.draft;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
 };
 
 export const ClassManagement = () => {
@@ -145,9 +147,6 @@ export const ClassManagement = () => {
     const teachers = (teachersData as any)?.data || [];
     const totalCount = (classesData as any)?.meta?.total || 0;
     const totalPages = (classesData as any)?.meta?.totalPages || 1;
-    
-    console.log(teachers);
-    
     // Stats
     const stats = {
         totalClasses: meta.total,
@@ -201,14 +200,44 @@ export const ClassManagement = () => {
     };
 
     const handleEditSchedule = (classItem: any) => {
+        // Kiểm tra status trước khi cho phép chỉnh sửa
+        if (classItem.status === 'active') {
+            toast.error('Không thể chỉnh sửa lịch học cho lớp đang hoạt động. Vui lòng chuyển lớp sang trạng thái khác trước.');
+            return;
+        }
+        
         setSelectedClass(classItem);
         setIsEditScheduleSheetOpen(true);
     };
 
-    const handleScheduleSubmit = (schedules: any[]) => {
-        console.log('Updating schedules:', schedules);
-        // TODO: Call API to update schedules
-        setIsEditScheduleSheetOpen(false);
+    const handleScheduleSubmit = async (schedules: any[]) => {
+        if (!selectedClass) return;
+        
+        try {
+            // Lấy thông tin giáo viên hiện tại và năm học
+            const currentTeacher = selectedClass.teachers?.[0];
+            const requestData = {
+                schedules: schedules,
+                teacherId: currentTeacher?.id,
+                academicYear: selectedClass.academicYear || currentTeacher?.academicYear
+            };
+            console.log(requestData);
+            
+            const response = await classService.updateClassSchedule(selectedClass.id, requestData);
+            
+            if (response?.success) {
+                toast.success('Cập nhật lịch học thành công!');
+                // Refresh data
+                refetch();
+                setIsEditScheduleSheetOpen(false);
+            } else {
+                toast.error(response?.message || 'Có lỗi xảy ra khi cập nhật lịch học');
+            }
+        } catch (error: any) {
+            console.error('Error updating schedule:', error);
+            const errorMessage = error.response?.message || error.message || 'Có lỗi xảy ra khi cập nhật lịch học';
+            toast.error(errorMessage);
+        }
     };
 
     const handleView = (classItem: any) => {
@@ -298,7 +327,7 @@ export const ClassManagement = () => {
         header: "STT",
         width: "80px",
         align: "center",
-        render: (item: any, index: number) => index + 1
+        render: (item: any, index: number) => (pagination.currentPage - 1) * pagination.itemsPerPage + index + 1
     },
         {
             key: 'name',
@@ -382,8 +411,67 @@ export const ClassManagement = () => {
         // },
         {
             key: 'teachers',
+            width: '290px',
             header: 'Giáo viên',
-            render: (item: any) => item.teachers && item.teachers.length > 0 ? item.teachers[0].name : '-'
+            render: (item: any) => {
+                if (item.teachers && item.teachers.length > 0) {
+                    const teacher = item.teachers[0];
+                    return (
+                        <div className="flex items-center gap-2">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <img 
+                                        src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                        alt={teacher.name || "Giáo viên"} 
+                                        className="w-8 h-8 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all"
+                                    />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4" align="start">
+                                    <div className="flex items-center gap-3">
+                                        <img 
+                                            src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                            alt={teacher.name || "Giáo viên"} 
+                                            className="w-16 h-16 rounded-full object-cover"
+                                        />
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg">{teacher.name}</h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">{teacher.email}</p>
+                                            <div className="mt-2">
+                                                <Badge variant="outline" className="text-xs">
+                                                    Giáo viên chính
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t">
+                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                                <span className="text-gray-500">Môn học:</span>
+                                                <p className="font-medium">{item.subjectName}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500">Lớp:</span>
+                                                <p className="font-medium">{item.name}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                            <span className="text-sm">{teacher.name}</span>
+                        </div>
+                    );
+                }
+                return (
+                    <div className="flex items-center gap-2">
+                        <img 
+                            src="https://picsum.photos/200/300" 
+                            alt="Giáo viên" 
+                            className="w-8 h-8 rounded-full object-cover opacity-50"
+                        />
+                        <span className="text-sm text-gray-400">Chưa phân công</span>
+                    </div>
+                );
+            }
         },
         {
             key: 'roomName',
