@@ -132,6 +132,12 @@ const centerOwnerMenuItems = [
         href: "/users",
     },
     {
+        title: "Báo cáo sự cố",
+        icon: AlertTriangle,
+        href: "/center-qn/incidents",
+
+    },
+    {
         title: "Cài đặt",
         icon: Settings,
         href: "/settings",
@@ -234,8 +240,6 @@ const studentMenuItems = [
         icon: Calendar,
         href: "/student/my-schedule",
     },
-
-    
 ]
 
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
