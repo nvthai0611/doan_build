@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject, IsDateString } from 'class-validator';
 
 export class CreateClassDto {
   @IsString()
@@ -43,4 +43,8 @@ export class CreateClassDto {
   @IsOptional()
   @IsString()
   startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  expectedStartDate?: string;
 }
