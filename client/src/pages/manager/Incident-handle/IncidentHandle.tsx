@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTable, type Column } from "../../../components/common/Table/DataTable"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Search, Filter, Eye, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
@@ -20,7 +20,7 @@ interface Incident {
   type: string
   severity: "low" | "medium" | "high" | "critical"
   status: "pending" | "processing" | "resolved"
-  // title: string
+  title: string
   description: string
   date: string
   time: string
@@ -52,7 +52,7 @@ export default function CenterOwnerIncidentsPage() {
     status: ((i.status || 'pending').toLowerCase()) as Incident['status'],
     title: i.incidentType,
     description: i.description,
-    date: String(i.date).slice(0, 10),
+    date: String(i.date).slice(0,10),
     time: i.time,
     location: i.location || '-',
     studentsInvolved: (i.studentsInvolved || '').split(',').filter(Boolean),
@@ -67,6 +67,8 @@ export default function CenterOwnerIncidentsPage() {
   const [filterSeverity, setFilterSeverity] = useState<string>("all")
   const [filterType, setFilterType] = useState<string>("all")
   const [newStatus, setNewStatus] = useState<string>("")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   function getIncidentTypeLabel(type: string) {
     const map: Record<string, string> = {
@@ -83,7 +85,7 @@ export default function CenterOwnerIncidentsPage() {
     const typeText = getIncidentTypeLabel(incident.type).toLowerCase()
     const q = searchTerm.toLowerCase()
     const matchesSearch =
-      // incident.title.toLowerCase().includes(q) ||
+      incident.title.toLowerCase().includes(q) ||
       incident.teacherName.toLowerCase().includes(q) ||
       typeText.includes(q) ||
       incident.type.toLowerCase().includes(q)
@@ -92,6 +94,11 @@ export default function CenterOwnerIncidentsPage() {
     const matchesType = filterType === "all" || incident.type === filterType
     return matchesSearch && matchesStatus && matchesSeverity && matchesType
   })
+
+  // Paginate data
+  const startIndex = (page - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedIncidents = filteredIncidents.slice(startIndex, endIndex)
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -162,7 +169,7 @@ export default function CenterOwnerIncidentsPage() {
     }
   }
 
-
+  
 
   const handleViewDetail = (incident: Incident) => {
     setSelectedIncident(incident)
@@ -196,6 +203,55 @@ export default function CenterOwnerIncidentsPage() {
     processing: incidents.filter((i) => i.status === "processing").length,
     resolved: incidents.filter((i) => i.status === "resolved").length,
   }
+
+  // Table columns
+  const columns: Column<Incident>[] = [
+    {
+      key: 'type',
+      header: 'Loại sự cố',
+      render: (item) => getIncidentTypeLabel(item.type),
+    },
+    {
+      key: 'teacherName',
+      header: 'Giáo viên',
+      render: (item) => item.teacherName,
+    },
+    {
+      key: 'severity',
+      header: 'Mức độ',
+      render: (item) => (
+        <Badge variant="outline" className={getSeverityColor(item.severity)}>
+          {getSeverityLabel(item.severity)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      render: (item) => (
+        <Badge variant="outline" className={cn("gap-1", getStatusColor(item.status))}>
+          {getStatusIcon(item.status)}
+          {getStatusLabel(item.status)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'reportedAt',
+      header: 'Ngày báo cáo',
+      render: (item) => item.reportedAt,
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'center',
+      render: (item) => (
+        <Button variant="ghost" size="sm" onClick={() => handleViewDetail(item)}>
+          <Eye className="w-4 h-4 mr-1" />
+          Xem chi tiết
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div className="p-6 space-y-6">
@@ -244,33 +300,26 @@ export default function CenterOwnerIncidentsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+
+      {/* Incidents Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Bộ lọc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Tìm kiếm</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <CardTitle>Danh sách báo cáo sự cố</CardTitle>
+          <CardDescription>
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
+                  type="text"
                   placeholder="Tìm theo loại sự cố, giáo viên..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-10"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Trạng thái</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
@@ -279,12 +328,9 @@ export default function CenterOwnerIncidentsPage() {
                   <SelectItem value="resolved">Đã xử lý</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Mức độ</Label>
               <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Mức độ" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
@@ -294,12 +340,9 @@ export default function CenterOwnerIncidentsPage() {
                   <SelectItem value="critical">Nghiêm trọng</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Loại sự cố</Label>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Loại sự cố" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
@@ -311,55 +354,28 @@ export default function CenterOwnerIncidentsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Incidents Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách báo cáo sự cố</CardTitle>
-          <CardDescription>{isLoading ? 'Đang tải...' : `Hiển thị ${filteredIncidents.length} báo cáo`}</CardDescription>
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Loại sự cố</TableHead>
-                <TableHead>Giáo viên</TableHead>
-                <TableHead>Mức độ</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Ngày báo cáo</TableHead>
-                <TableHead>Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredIncidents.map((incident) => (
-                <TableRow key={incident.id}>
-                  <TableCell>{getIncidentTypeLabel(incident.type)}</TableCell>
-                  <TableCell>{incident.teacherName}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getSeverityColor(incident.severity)}>
-                      {getSeverityLabel(incident.severity)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("gap-1", getStatusColor(incident.status))}>
-                      {getStatusIcon(incident.status)}
-                      {getStatusLabel(incident.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{incident.reportedAt}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => handleViewDetail(incident)}>
-                      <Eye className="w-4 h-4 mr-1" />
-                      Xem chi tiết
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            data={paginatedIncidents}
+            pagination={{
+              currentPage: page,
+              totalPages: Math.ceil(filteredIncidents.length / pageSize),
+              totalItems: filteredIncidents.length,
+              itemsPerPage: pageSize,
+              onPageChange: setPage,
+              onItemsPerPageChange: (newPageSize) => {
+                setPageSize(newPageSize)
+                setPage(1) // Reset về trang 1 khi thay đổi page size
+              },
+            }}
+            loading={isLoading}
+            error={null}
+            emptyMessage="Chưa có báo cáo sự cố nào"
+            enableSearch={false}
+          />
         </CardContent>
       </Card>
 
@@ -385,11 +401,9 @@ export default function CenterOwnerIncidentsPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Mức độ nghiêm trọng</Label>
-                  <p>
-                    <Badge variant="outline" className={getSeverityColor(selectedIncident.severity)}>
-                      {getSeverityLabel(selectedIncident.severity)}
-                    </Badge>
-                  </p>
+                  <Badge variant="outline" className={getSeverityColor(selectedIncident.severity)}>
+                    {getSeverityLabel(selectedIncident.severity)}
+                  </Badge>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Ngày xảy ra</Label>
@@ -405,19 +419,17 @@ export default function CenterOwnerIncidentsPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Trạng thái hiện tại</Label>
-                  <p>
-                    <Badge variant="outline" className={cn("gap-1", getStatusColor(selectedIncident.status))}>
-                      {getStatusIcon(selectedIncident.status)}
-                      {getStatusLabel(selectedIncident.status)}
-                    </Badge>
-                  </p>
+                  <Badge variant="outline" className={cn("gap-1", getStatusColor(selectedIncident.status))}>
+                    {getStatusIcon(selectedIncident.status)}
+                    {getStatusLabel(selectedIncident.status)}
+                  </Badge>
                 </div>
               </div>
 
               {/* Title and Description */}
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Loại sự cố</Label>
-                <p className="font-medium">{getIncidentTypeLabel(selectedIncident.type)}</p>
+                <Label className="text-muted-foreground">Tiêu đề</Label>
+                <p className="font-medium">{selectedIncident.title}</p>
               </div>
 
               <div className="space-y-2">

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTable, type Column } from "../../../components/common/Table/DataTable"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,8 @@ export default function ManageIncidentsPage() {
   const [filterSeverity, setFilterSeverity] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
   const [selectedIncident, setSelectedIncident] = useState<IncidentReportItem | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const { data, isLoading } = useQuery({
     queryKey: ['incident-reports', { filterSeverity, filterStatus, searchTerm }],
@@ -46,6 +48,11 @@ export default function ManageIncidentsPage() {
 
     return matchesSearch && matchesSeverity && matchesStatus
   })
+
+  // Paginate data
+  const startIndex = (page - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedIncidents = filteredIncidents.slice(startIndex, endIndex)
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
@@ -117,109 +124,48 @@ export default function ManageIncidentsPage() {
     }
   }
 
-  return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-balance flex items-center gap-3">
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
-              Quản lý báo cáo sự cố
-            </h1>
-            <p className="text-muted-foreground mt-1">Xem và theo dõi các báo cáo sự cố đã gửi</p>
-          </div>
-          <Button onClick={() => (window.location.href = "/teacher/incidents/report")}>
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Báo cáo sự cố mới
-          </Button>
+  // Table columns
+  const columns: Column<IncidentReportItem>[] = [
+    {
+      key: 'date',
+      header: 'Ngày giờ',
+      render: (item) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{String(item.date).slice(0,10)}</span>
+          <span className="text-sm text-muted-foreground">{item.time}</span>
         </div>
-
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Bộ lọc
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Tìm kiếm sự cố..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Mức độ nghiêm trọng" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả mức độ</SelectItem>
-                  <SelectItem value="low">Thấp</SelectItem>
-                  <SelectItem value="medium">Trung bình</SelectItem>
-                  <SelectItem value="high">Cao</SelectItem>
-                  <SelectItem value="critical">Nghiêm trọng</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="pending">Đang chờ</SelectItem>
-                  <SelectItem value="processing">Đang xử lý</SelectItem>                  
-                  <SelectItem value="resolved">Đã xử lý</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Incidents Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Danh sách báo cáo</CardTitle>
-            <CardDescription>
-              {isLoading ? 'Đang tải...' : `Hiển thị ${filteredIncidents.length} / ${incidents.length} báo cáo`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ngày giờ</TableHead>
-                  <TableHead>Loại sự cố</TableHead>
-                  <TableHead>Mức độ</TableHead>
-                  <TableHead>Lớp học</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredIncidents.map((incident) => (
-                  <TableRow key={incident.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{String(incident.date).slice(0,10)}</span>
-                        <span className="text-sm text-muted-foreground">{incident.time}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getIncidentTypeLabel(incident.incidentType)}</TableCell>
-                    <TableCell>{getSeverityBadge(incident.severity)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{incident.class?.name || '-'}</Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge((incident.status || '').toLowerCase())}</TableCell>
-                    <TableCell>
+      ),
+    },
+    {
+      key: 'incidentType',
+      header: 'Loại sự cố',
+      render: (item) => getIncidentTypeLabel(item.incidentType),
+    },
+    {
+      key: 'severity',
+      header: 'Mức độ',
+      render: (item) => getSeverityBadge(item.severity),
+    },
+    {
+      key: 'class',
+      header: 'Lớp học',
+      render: (item) => (
+        <Badge variant="outline">{item.class?.name || '-'}</Badge>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      render: (item) => getStatusBadge((item.status || '').toLowerCase()),
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'center',
+      render: (item) => (
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedIncident(incident)}>
+            <Button variant="outline" size="sm" onClick={() => setSelectedIncident(item)}>
                             <Eye className="w-4 h-4 mr-2" />
                             Chi tiết
                           </Button>
@@ -238,7 +184,7 @@ export default function ManageIncidentsPage() {
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <p className="text-sm font-medium text-muted-foreground">Loại sự cố</p>
-                                  <p className="text-sm">{getIncidentTypeLabel(selectedIncident.incidentType)}</p>
+                    <p className="text-sm">{getIncidentTypeLabel(selectedIncident.incidentType)}</p>
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium text-muted-foreground">Mức độ</p>
@@ -252,7 +198,7 @@ export default function ManageIncidentsPage() {
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground">Thời gian</p>
                                     <p className="text-sm">
-                                      {String(selectedIncident.date).slice(0,10)} - {selectedIncident.time}
+                        {String(selectedIncident.date).slice(0,10)} - {selectedIncident.time}
                                     </p>
                                   </div>
                                 </div>
@@ -268,7 +214,7 @@ export default function ManageIncidentsPage() {
                               <div>
                                 <p className="text-sm font-medium text-muted-foreground">Lớp học</p>
                                 <Badge variant="outline" className="mt-1">
-                                  {selectedIncident.class?.name || '-'}
+                    {selectedIncident.class?.name || '-'}
                                 </Badge>
                               </div>
 
@@ -302,11 +248,11 @@ export default function ManageIncidentsPage() {
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground">Trạng thái</p>
-                                    {getStatusBadge((selectedIncident.status || '').toLowerCase())}
+                      {getStatusBadge((selectedIncident.status || '').toLowerCase())}
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground">Người báo cáo</p>
-                                    <p className="text-sm">{selectedIncident.reportedBy?.user?.fullName || '-'}</p>
+                      <p className="text-sm">{selectedIncident.reportedBy?.user?.fullName || '-'}</p>
                                   </div>
                                 </div>
                               </div>
@@ -314,11 +260,88 @@ export default function ManageIncidentsPage() {
                           )}
                         </DialogContent>
                       </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+      ),
+    },
+  ]
+
+  return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance flex items-center gap-3">
+              <AlertTriangle className="w-8 h-8 text-orange-600" />
+              Quản lý báo cáo sự cố
+            </h1>
+            <p className="text-muted-foreground mt-1">Xem và theo dõi các báo cáo sự cố đã gửi</p>
+          </div>
+          <Button onClick={() => (window.location.href = "/teacher/incidents/report")}>
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Báo cáo sự cố mới
+          </Button>
+        </div>
+
+        {/* Incidents Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Danh sách báo cáo</CardTitle>
+            <CardDescription>
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Tìm kiếm sự cố..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Mức độ nghiêm trọng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả mức độ</SelectItem>
+                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="medium">Trung bình</SelectItem>
+                    <SelectItem value="high">Cao</SelectItem>
+                    <SelectItem value="critical">Nghiêm trọng</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="pending">Đang chờ</SelectItem>
+                    <SelectItem value="processing">Đang xử lý</SelectItem>                  
+                    <SelectItem value="resolved">Đã xử lý</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={columns}
+              data={paginatedIncidents}
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(filteredIncidents.length / pageSize),
+                totalItems: filteredIncidents.length,
+                itemsPerPage: pageSize,
+                onPageChange: setPage,
+                onItemsPerPageChange: (newPageSize) => {
+                  setPageSize(newPageSize)
+                  setPage(1) // Reset về trang 1 khi thay đổi page size
+                },
+              }}
+              loading={isLoading}
+              error={null}
+              emptyMessage="Chưa có báo cáo sự cố nào"
+              enableSearch={false}
+            />
           </CardContent>
         </Card>
       </div>

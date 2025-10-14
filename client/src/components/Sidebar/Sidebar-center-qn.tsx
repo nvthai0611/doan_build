@@ -242,14 +242,45 @@ const studentMenuItems = [
     },
 ]
 
+const parentMenuItems = [
+    {
+        title: "Tổng quan",
+        icon: Home,
+        href: "/parent/profile",
+    },
+    
+    {
+        title: "Lớp học của tôi",
+        icon: Users,
+        href: "/parent/my-classes",
+    },
+    
+    {
+        title: "Điểm số",
+        icon: Target,
+        href: "/parent/my-grades",
+    },
+    
+    {
+        title: "Tài liệu học tập",
+        icon: Upload,
+        href: "/parent/my-documents",
+    },
+    
+    {
+        title: "Lịch học",
+        icon: Calendar,
+        href: "/parent/my-schedule",
+    },
+]
+
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
     const [expandedItems, setExpandedItems] = useState<string[]>([])
     const [isCollapsed, setIsCollapsed] = useState(false)
     const navigate = useNavigate()
     const { pathname } = useLocation()
-    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : studentMenuItems
-
+    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems
     const toggleExpanded = (title: string) => {
         setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
     }
