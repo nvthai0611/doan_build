@@ -31,6 +31,7 @@ import {
     Target,
     Menu,
     ChevronLeft,
+    AlertTriangle,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -186,6 +187,15 @@ const teacherMenuItems = [
             // { title: "Đổi ca dạy", href: "/teacher/schedule/change" },
             { title: "Đơn xin nghỉ", href: "/teacher/schedule/leave" },
             { title: "Đơn của tôi", href: "/teacher/schedule/my-requests" },
+        ],
+    },
+    {
+        title: "Báo cáo sự cố",
+        icon: AlertTriangle,
+        href: "/teacher/incidents",
+        children: [
+            { title: "Báo cáo sự cố mới", href: "/teacher/incidents/report" },
+            { title: "Quản lý báo cáo", href: "/teacher/incidents/manage" },
         ],
     },
     {
