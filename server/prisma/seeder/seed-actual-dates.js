@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function seedActualDates() {
   try {
-    console.log('🌱 Bắt đầu seed actualStartDate và actualEndDate...');
+    console.log('🌱 Bắt đầu seed expectedStartDate, actualStartDate và actualEndDate...');
 
     // Lấy tất cả classes
     const classes = await prisma.class.findMany({
@@ -23,14 +23,22 @@ async function seedActualDates() {
     let updatedCount = 0;
 
     for (const classItem of classes) {
+      let expectedStartDate = classItem.expectedStartDate;
       let actualStartDate = null;
       let actualEndDate = null;
 
-      // Logic đơn giản hơn: set actualStartDate cho tất cả classes có expectedStartDate
-      if (classItem.expectedStartDate) {
-        actualStartDate = classItem.expectedStartDate;
+      // 1. Thêm expectedStartDate cho các lớp chưa có
+      if (!expectedStartDate) {
+        const createdAt = new Date(classItem.createdAt);
+        expectedStartDate = new Date(createdAt.getFullYear(), createdAt.getMonth() + 1, createdAt.getDate());
+        console.log(`📅 Thêm expectedStartDate cho lớp "${classItem.name}": ${expectedStartDate.toISOString().split('T')[0]}`);
+      }
+
+      // 2. Chỉ thêm actualStartDate và actualEndDate cho các lớp không phải draft
+      if (classItem.status !== 'draft') {
+        actualStartDate = expectedStartDate;
         
-        // Tính actualEndDate dựa trên academic year hoặc thêm 6 tháng
+        // Tính actualEndDate dựa trên academic year hoặc thêm 1 năm
         if (classItem.academicYear) {
           const yearParts = classItem.academicYear.split('-');
           if (yearParts.length === 2) {
@@ -39,28 +47,36 @@ async function seedActualDates() {
           }
         } else {
           // Nếu không có academicYear, thêm 1 năm vào expectedStartDate
-          const startDate = new Date(classItem.expectedStartDate);
+          const startDate = new Date(expectedStartDate);
           actualEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
         }
-      } else {
-        // Nếu không có expectedStartDate, dùng createdAt + 1 tháng
-        const createdAt = new Date(classItem.createdAt);
-        actualStartDate = new Date(createdAt.getFullYear(), createdAt.getMonth() + 1, createdAt.getDate());
-        actualEndDate = new Date(createdAt.getFullYear() + 1, createdAt.getMonth() + 1, createdAt.getDate());
       }
 
       // Update class
+      const updateData = {
+        expectedStartDate
+      };
+
+      // Chỉ thêm actualStartDate và actualEndDate nếu không phải draft
+      if (classItem.status !== 'draft') {
+        updateData.actualStartDate = actualStartDate;
+        updateData.actualEndDate = actualEndDate;
+      }
+
       await prisma.class.update({
         where: { id: classItem.id },
-        data: {
-          actualStartDate,
-          actualEndDate
-        }
+        data: updateData
       });
 
       console.log(`✅ Cập nhật lớp "${classItem.name}":`);
-      console.log(`   - actualStartDate: ${actualStartDate.toISOString().split('T')[0]}`);
-      console.log(`   - actualEndDate: ${actualEndDate.toISOString().split('T')[0]}`);
+      console.log(`   - expectedStartDate: ${expectedStartDate.toISOString().split('T')[0]}`);
+      if (classItem.status !== 'draft') {
+        console.log(`   - actualStartDate: ${actualStartDate.toISOString().split('T')[0]}`);
+        console.log(`   - actualEndDate: ${actualEndDate.toISOString().split('T')[0]}`);
+      } else {
+        console.log(`   - actualStartDate: null (draft status)`);
+        console.log(`   - actualEndDate: null (draft status)`);
+      }
       console.log(`   - Status: ${classItem.status}`);
       
       updatedCount++;

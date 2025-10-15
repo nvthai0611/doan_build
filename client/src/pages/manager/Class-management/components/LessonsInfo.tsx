@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { getStatusBadge } from '../const/statusBadge';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check } from 'lucide-react';
+import { format, addYears } from 'date-fns';
+import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
+import { usePagination } from '../../../../hooks/usePagination';
+import { classService } from '../../../../services/center-owner/class-management/class.service';
+import { useDebounce } from '../../../../hooks/useDebounce';
 
 interface LessonsInfoProps {
   classId: string;
@@ -14,60 +22,82 @@ interface LessonsInfoProps {
 }
 
 export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
-  const [filter, setFilter] = useState<'all' | 'completed' | 'upcoming' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_progress' | 'completed'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isAddLessonOpen, setIsAddLessonOpen] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   
-  // Sử dụng data thật từ props hoặc mock data
-  const sessions = classData?.sessions || [
-    {
-      id: '1',
-      scheduledDate: '2024-01-15',
-      startTime: '19:45',
-      endTime: '21:15',
-      status: 'completed',
-      attendanceCount: 15,
-      totalStudents: 15,
-      topic: 'Bài 1: Giới thiệu về lập trình',
-      notes: 'Buổi học đầu tiên, học viên rất hào hứng'
-    },
-    {
-      id: '2',
-      scheduledDate: '2024-01-17',
-      startTime: '19:45',
-      endTime: '21:15',
-      status: 'completed',
-      attendanceCount: 14,
-      totalStudents: 15,
-      topic: 'Bài 2: Cú pháp cơ bản',
-      notes: 'Có 1 học viên vắng mặt'
-    },
-    {
-      id: '3',
-      scheduledDate: '2024-01-19',
-      startTime: '19:45',
-      endTime: '21:15',
-      status: 'upcoming',
-      attendanceCount: 0,
-      totalStudents: 15,
-      topic: 'Bài 3: Biến và kiểu dữ liệu',
-      notes: ''
-    },
-    {
-      id: '4',
-      scheduledDate: '2024-01-21',
-      startTime: '19:45',
-      endTime: '21:15',
-      status: 'cancelled',
-      attendanceCount: 0,
-      totalStudents: 15,
-      topic: 'Bài 4: Câu lệnh điều kiện',
-      notes: 'Hủy do nghỉ lễ'
-    }
-  ];
-
-  const filteredSessions = sessions.filter((session: any) => {
-    if (filter === 'all') return true;
-    return session.status === filter;
+  // Pagination hook
+  const pagination = usePagination({
+    initialPage: 1,
+    initialItemsPerPage: 10,
+    totalItems: 0 
   });
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Reset search when filter changes
+  useEffect(() => {
+    setSearchTerm('');
+  }, [filter]);
+
+  // Reset to page 1 when changing items per page
+  useEffect(() => {
+    pagination.setCurrentPage(1);
+  }, [pagination.itemsPerPage]);
+  
+  // Fetch sessions data from API
+  const { 
+    data: sessionsResponse, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery({
+    queryKey: ['classSessions', classId, debouncedSearchTerm, filter, startDate, endDate, pagination.currentPage, pagination.itemsPerPage],
+    queryFn: () => classService.getClassSessions(classId, {
+      search: debouncedSearchTerm || undefined,
+      status: filter !== 'all' ? filter : undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page: pagination.currentPage,
+      limit: pagination.itemsPerPage,
+      sortBy: "sessionDate",
+      sortOrder: "asc",
+    }),
+    enabled: !!classId,
+    staleTime: 3000,
+    refetchOnWindowFocus: true
+  });
+
+  const sessions = (sessionsResponse as any)?.data || [];
+  const totalCount = (sessionsResponse as any)?.meta?.total || 0;
+  const totalPages = (sessionsResponse as any)?.meta?.totalPages || 1;
+
+  // Update pagination total items when data changes
+  useEffect(() => {
+    pagination.setItemsPerPage(pagination.itemsPerPage);
+  }, [totalCount]);
+
+  // Calculate metrics
+  const metrics = {
+    attended: sessions.reduce((sum: number, s: any) => sum + (s.attendanceCount || 0), 0),
+    onTime: sessions.reduce((sum: number, s: any) => sum + (s.status === 'in_progress' ? (s.attendanceCount || 0) : 0), 0),
+    late: sessions.reduce((sum: number, s: any) => sum + (s.lateCount || 0), 0),
+    excusedAbsence: sessions.reduce((sum: number, s: any) => sum + (s.excusedAbsenceCount || 0), 0),
+    unexcusedAbsence: sessions.reduce((sum: number, s: any) => sum + (s.unexcusedAbsenceCount || 0), 0),
+    notAttended: sessions.reduce((sum: number, s: any) => sum + (s.notAttendedCount || 0), 0)
+  };
+
+  // Status filters với counts
+  const statusFilters = [
+    { key: 'all', label: 'Tất cả', count: totalCount },
+    { key: 'scheduled', label: 'Chưa diễn ra', count: sessions.filter((s: any) => s.status === 'scheduled').length },
+    { key: 'in_progress', label: 'Đang diễn ra', count: sessions.filter((s: any ) => s.status === 'in_progress').length },
+    { key: 'completed', label: 'Đã kết thúc', count: sessions.filter((s: any) => s.status === 'completed').length }
+  ];
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
@@ -77,7 +107,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         className: 'bg-green-100 text-green-800 border-green-200',
         icon: CheckCircle
       },
-      upcoming: { 
+      scheduled: { 
         variant: 'secondary', 
         label: 'Sắp tới',
         className: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -111,94 +141,111 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     return Math.round((attendanceCount / totalStudents) * 100);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Buổi học ({filteredSessions.length})
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                {[
-                  { key: 'all', label: 'Tất cả' },
-                  { key: 'upcoming', label: 'Sắp tới' },
-                  { key: 'completed', label: 'Đã hoàn thành' },
-                  { key: 'cancelled', label: 'Đã hủy' }
-                ].map((filterOption) => (
-                  <Button
-                    key={filterOption.key}
-                    variant={filter === filterOption.key ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setFilter(filterOption.key as any)}
-                    className="text-xs"
-                  >
-                    {filterOption.label}
-                  </Button>
-                ))}
-              </div>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Thêm buổi học
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
 
-      {/* Sessions Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ngày & Giờ</TableHead>
-                <TableHead>Chủ đề</TableHead>
-                <TableHead>Điểm danh</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Ghi chú</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSessions.map((session: any) => (
-                <TableRow key={session.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium">
-                        {format(new Date(session.scheduledDate), 'dd/MM/yyyy')}
+  // Define columns for DataTable
+  const columns: Column<any>[] = [
+    {
+      key: 'stt',
+      header: 'STT',
+      width: '80px',
+      align: 'center',
+      render: (_: any, index: number) => ((pagination.currentPage - 1) * pagination.itemsPerPage + index + 1),
+      sortable: true,
+      sortKey: 'stt',
+    },
+    {
+      key: 'lesson',
+      header: 'Buổi học',
+      width: '300px',
+      sortable: true,
+      sortKey: 'topic',
+      searchable: true,
+      searchPlaceholder: 'Tìm kiếm buổi học...',
+      render: (session: any, index: number) => (
+        <div>
+          <div className="font-medium text-blue-600 cursor-pointer hover:underline">
+            {session.topic || session.name || `Buổi ${index + 1}`}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {session.startTime} - {session.endTime}
+            {(() => {
+              const d = session.scheduledDate || session.sessionDate;
+              if (!d) return '-';
+              const weekday = getWeekdayName(d);
+              const dateText = format(new Date(d), 'dd/MM/yyyy');
+              const timeText = session.startTime && session.endTime ? ` ${session.startTime} → ${session.endTime}` : '';
+              return `${weekday}: ${dateText}${timeText}`;
+            })()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{session.topic}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">
-                        {session.attendanceCount}/{session.totalStudents}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({getAttendanceRate(session.attendanceCount, session.totalStudents)}%)
-                      </span>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      width: '150px',
+      align: 'center',
+      render: (session: any) => getStatusBadge(session.status)
+    },
+    {
+      key: 'teacher',
+      header: 'Giáo viên',
+      width: '200px',
+      render: (session: any) => (
+        <div className="text-sm text-gray-600">
+          {session.teacher?.name || session.teacherName || '-'}
+        </div>
+      )
+    },
+    {
+      key: 'attendance',
+      header: 'Sĩ số',
+      width: '120px',
+      align: 'center',
+      render: (session: any) => (
+        <div className="flex items-center gap-1">
+          <Info className="h-4 w-4 text-gray-400" />
+          <span className="text-sm">{session.totalStudents || session.studentCount || 0}</span>
+        </div>
+      )
+    },
+    {
+      key: 'absent',
+      header: 'Nghỉ học',
+      width: '100px',
+      align: 'center',
+      render: (session: any) => (
+        <span className="text-sm">{session.absentCount || 0}</span>
+      )
+    },
+    {
+      key: 'notAttended',
+      header: 'Chưa điểm danh',
+      width: '120px',
+      align: 'center',
+      render: (session: any) => (
+        <span className="text-sm">{session.notAttendedCount || 0}</span>
+      )
+    },
+    {
+      key: 'rating',
+      header: 'Đánh giá',
+      width: '150px',
+      align: 'center',
+      render: (session: any) => (
+        <div className="flex items-center gap-1">
+          <div className="flex">
+            {renderStars(session.rating || 0)}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(session.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-gray-600 max-w-xs truncate">
-                      {session.notes || '-'}
+          <span className="text-sm text-gray-500">({session.rating || 0})</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
+      )
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '80px',
+      align: 'center',
+      render: (session: any) => (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -209,37 +256,418 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                         <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
                         <DropdownMenuItem>Điểm danh</DropdownMenuItem>
                         <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
-                        <DropdownMenuItem>Hủy buổi học</DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600">Hủy buổi học</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      )
+    }
+  ];
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${
+          i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
+
+  // Helper: tên thứ (vi-VN)
+  const getWeekdayName = (dateInput?: string | Date) => {
+    if (!dateInput) return '';
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const names = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    return names[d.getDay()] || '';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {metrics.attended}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Đã điểm danh
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {metrics.onTime}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Đúng giờ
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-orange-600 mb-1">
+                {metrics.late}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Đi muộn
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-green-600 mb-1">
+                {metrics.excusedAbsence}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Nghỉ học có phép
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-green-600 mb-1">
+                {metrics.unexcusedAbsence}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Nghỉ học không phép
+              </div>
+            </div>
         </CardContent>
       </Card>
 
-      {/* Empty State */}
-      {filteredSessions.length === 0 && (
         <Card>
-          <CardContent className="p-8 text-center">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {filter === 'all' ? 'Chưa có buổi học nào' : `Không có buổi học ${filter === 'upcoming' ? 'sắp tới' : filter === 'completed' ? 'đã hoàn thành' : 'đã hủy'}`}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {filter === 'all' ? 'Hãy tạo lịch học cho lớp này' : 'Thử thay đổi bộ lọc để xem các buổi học khác'}
-            </p>
-            {filter === 'all' && (
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Tạo buổi học đầu tiên
-              </Button>
-            )}
+          <CardContent className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-blue-600 mb-1">
+                {metrics.notAttended}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Chưa điểm danh
+              </div>
+            </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Header */}
+      <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Danh sách buổi học
+            </h1>
+            <Info className="h-4 w-4 text-gray-400" />
+              </div>
+          <Sheet open={isAddLessonOpen} onOpenChange={setIsAddLessonOpen}>
+            <SheetTrigger asChild>
+              <Button >
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm mới buổi học
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Tạo mới các buổi học tiếp theo</SheetTitle>
+              </SheetHeader>
+              <AddLessonForm
+                classId={classId}
+                actualStartDate={classData?.actualStartDate}
+                actualEndDate={classData?.actualEndDate}
+                onClose={() => setIsAddLessonOpen(false)}
+                onGenerated={() => {
+                  refetch();
+                }}
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 mb-6">
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end gap-4 flex-1">
+            {/* Date filters */}
+            <div className="flex gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-48"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-48"
+                />
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="flex flex-col flex-1 max-w-md">
+              <label className="text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Tìm kiếm theo tên buổi học"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+                {/* Loading indicator khi đang debounce */}
+                {searchTerm !== debouncedSearchTerm && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
+        <div className="border-b">
+          <div className="flex">
+            {statusFilters.map((filterOption) => (
+              <button
+                key={filterOption.key}
+                onClick={() => setFilter(filterOption.key as any)}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  filter === filterOption.key
+                    ? "border-purple-600 text-purple-600 bg-purple-50"
+                    : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white"
+                }`}
+              >
+                {filterOption.label} <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{filterOption.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* DataTable */}
+        <DataTable
+          data={sessions}
+          columns={columns}
+          loading={isLoading}
+          error={error ? "Có lỗi xảy ra khi tải dữ liệu" : null}
+          onRetry={refetch}
+          emptyMessage="Không có dữ liệu buổi học"
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: totalPages,
+            totalItems: totalCount,
+            itemsPerPage: pagination.itemsPerPage,
+            onPageChange: pagination.setCurrentPage,
+            onItemsPerPageChange: pagination.setItemsPerPage,
+            showItemsPerPage: true,
+            showPageInfo: true
+          }}
+          rowKey="id"
+          hoverable={true}
+          striped={false}
+          enableSearch={false}
+          enableSort={true}
+          enableCheckbox={true}
+          selectedItems={selectedSessions}
+          onSelectionChange={setSelectedSessions}
+          getItemId={(item: any) => item.id}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Add Lesson Form Component
+const AddLessonForm = ({
+  classId,
+  actualStartDate,
+  actualEndDate,
+  onClose,
+  onGenerated
+}: {
+  classId: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  onClose: () => void;
+  onGenerated?: () => void;
+}) => {
+  const initialStart = actualStartDate ? new Date(actualStartDate) : new Date();
+  const initialEnd = actualEndDate ? new Date(actualEndDate) : addYears(initialStart, 1);
+
+  const [startDate, setStartDate] = useState<Date>(initialStart);
+  const [endDate, setEndDate] = useState<Date>(initialEnd);
+  const [lessonCount, setLessonCount] = useState(0);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  return (
+    <div className="space-y-4 pt-4">
+      {/* Action Buttons - Top Right */}
+      <div className="flex justify-end gap-2 mb-4">
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <Undo className="w-4 h-4" />
+        </Button>
+        <Button
+          size="sm"
+          onClick={async () => {
+            try {
+              setIsGenerating(true);
+              const payload = actualStartDate || actualEndDate
+                ? {
+                    generateForFullYear: false,
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
+                    sessionInterval: 1,
+                    sessionCount: lessonCount,
+                  }
+                : {
+                    generateForFullYear: true,
+                    sessionInterval: 1,
+                    startDate: startDate.toISOString(),
+                    sessionCount: lessonCount,
+                  };
+              await classService.generateSessions(classId, payload);
+              onGenerated && onGenerated();
+              onClose();
+            } catch (e) {
+              // no-op UI change
+            } finally {
+              setIsGenerating(false);
+            }
+          }}
+          disabled={isGenerating}
+        >
+          <Check className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+        <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+        <p className="text-sm text-blue-800">
+          Hệ thống sẽ tạo các buổi học kế tiếp theo lịch học của lớp
+        </p>
+      </div>
+
+      {/* Start Date */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">
+          Thời gian bắt đầu tạo buổi học
+        </label>
+        <div className="flex items-center gap-2">
+          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex-1 justify-start text-left font-normal"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {format(startDate, 'dd/MM/yyyy, HH:mm')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={startDate}
+                onSelect={(date: Date | undefined) => {
+                  if (date) {
+                    setStartDate(date);
+                    // nếu người dùng chưa set endDate thủ công, cập nhật mặc định 1 năm sau
+                    if (!(actualStartDate || actualEndDate)) {
+                      setEndDate(addYears(date, 1));
+                    }
+                    setIsCalendarOpen(false);
+                  }
+                }}
+                className="rounded-md border shadow-sm"
+                captionLayout="dropdown"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* End Date - chỉ hiện khi lớp thiếu actualStartDate/actualEndDate */}
+      {!(actualStartDate && actualEndDate) && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">
+            Ngày kết thúc
+          </label>
+          <div className="flex items-center gap-2">
+            <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1 justify-start text-left font-normal"
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {format(endDate, 'dd/MM/yyyy, HH:mm')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date: Date | undefined) => {
+                    if (date) {
+                      setEndDate(date);
+                      setIsEndCalendarOpen(false);
+                    }
+                  }}
+                  className="rounded-md border shadow-sm"
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       )}
+
+      {/* Lesson Count */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">
+          Số lượng buổi học muốn tạo
+        </label>
+        <Input
+          type="number"
+          value={lessonCount}
+          onChange={(e) => setLessonCount(Number(e.target.value))}
+          min="1"
+          max="100"
+        />
+      </div>
+
+      {/* Floating Action Button */}
+      <div className="fixed bottom-6 right-6">
+        <Button size="sm" className="rounded-full w-12 h-12 bg-blue-500 hover:bg-blue-600">
+          <Plus className="h-5 w-5" />
+        </Button>
+      </div>
     </div>
   );
 };
