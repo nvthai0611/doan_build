@@ -216,25 +216,25 @@ const studentMenuItems = [
         icon: Home,
         href: "/student/profile",
     },
-    
+
     {
         title: "Lớp học của tôi",
         icon: Users,
         href: "/student/my-classes",
     },
-    
+
     {
         title: "Điểm số",
         icon: Target,
         href: "/student/my-grades",
     },
-    
+
     {
         title: "Tài liệu học tập",
         icon: Upload,
         href: "/student/my-documents",
     },
-    
+
     {
         title: "Lịch học",
         icon: Calendar,
@@ -248,29 +248,20 @@ const parentMenuItems = [
         icon: Home,
         href: "/parent/profile",
     },
-    
     {
-        title: "Lớp học của tôi",
-        icon: Users,
-        href: "/parent/my-classes",
-    },
-    
-    {
-        title: "Điểm số",
+        title: "Đăng ký khoá học",
         icon: Target,
-        href: "/parent/my-grades",
+        href: "/parent/courses",
     },
-    
+    {
+        title: "Các con của tôi",
+        icon: Users,
+        href: "/parent/children",
+    },
     {
         title: "Tài liệu học tập",
         icon: Upload,
         href: "/parent/my-documents",
-    },
-    
-    {
-        title: "Lịch học",
-        icon: Calendar,
-        href: "/parent/my-schedule",
     },
 ]
 
