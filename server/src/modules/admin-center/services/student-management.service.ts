@@ -743,4 +743,268 @@ export class StudentManagementService {
       throw new Error(`Error updating student status: ${error.message}`);
     }
   }
+
+  async updateStudent(studentId: string, updateStudentData: {
+    fullName?: string;
+    phone?: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    birthDate?: string;
+    address?: string;
+    grade?: string;
+    schoolId?: string;
+  }) {
+    try {
+      // Validate student exists
+      const existingStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: true
+        }
+      });
+
+      if (!existingStudent) {
+        throw new Error('Học viên không tồn tại');
+      }
+
+      // Validate schoolId if provided
+      if (updateStudentData.schoolId) {
+        const school = await this.prisma.school.findUnique({
+          where: { id: updateStudentData.schoolId }
+        });
+        if (!school) {
+          throw new Error('Trường học không tồn tại');
+        }
+      }
+
+      // Prepare user update data
+      const userUpdateData: any = {};
+      if (updateStudentData.fullName !== undefined) {
+        userUpdateData.fullName = updateStudentData.fullName;
+      }
+      if (updateStudentData.phone !== undefined) {
+        userUpdateData.phone = updateStudentData.phone;
+      }
+      if (updateStudentData.gender !== undefined) {
+        userUpdateData.gender = updateStudentData.gender;
+      }
+      if (updateStudentData.birthDate !== undefined) {
+        userUpdateData.birthDate = updateStudentData.birthDate ? new Date(updateStudentData.birthDate) : null;
+      }
+
+      // Prepare student update data
+      const studentUpdateData: any = {};
+      if (updateStudentData.address !== undefined) {
+        studentUpdateData.address = updateStudentData.address;
+      }
+      if (updateStudentData.grade !== undefined) {
+        studentUpdateData.grade = updateStudentData.grade;
+      }
+      if (updateStudentData.schoolId !== undefined) {
+        studentUpdateData.schoolId = updateStudentData.schoolId;
+      }
+
+      // Update user data if there are changes
+      if (Object.keys(userUpdateData).length > 0) {
+        await this.prisma.user.update({
+          where: { id: existingStudent.userId },
+          data: {
+            ...userUpdateData,
+            updatedAt: new Date()
+          }
+        });
+      }
+
+      // Update student data if there are changes
+      if (Object.keys(studentUpdateData).length > 0) {
+        await this.prisma.student.update({
+          where: { id: studentId },
+          data: {
+            ...studentUpdateData,
+            updatedAt: new Date()
+          }
+        });
+      }
+
+      // Get updated student data
+      const updatedStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              gender: true,
+              birthDate: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          parent: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      return {
+        data: {
+          id: updatedStudent.id,
+          studentCode: updatedStudent.studentCode,
+          address: updatedStudent.address,
+          grade: updatedStudent.grade,
+          createdAt: updatedStudent.createdAt,
+          updatedAt: updatedStudent.updatedAt,
+          user: updatedStudent.user,
+          parent: updatedStudent.parent ? {
+            id: updatedStudent.parent.id,
+            user: updatedStudent.parent.user
+          } : null,
+          school: updatedStudent.school
+        },
+        message: 'Cập nhật thông tin học viên thành công'
+      };
+
+    } catch (error) {
+      console.error('Error updating student:', error);
+      throw new Error(`Error updating student: ${error.message}`);
+    }
+  }
+
+  async updateStudentParent(studentId: string, parentId: string | null) {
+    try {
+      // Validate student exists
+      const existingStudent = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true
+            }
+          }
+        }
+      });
+
+      if (!existingStudent) {
+        throw new Error('Học viên không tồn tại');
+      }
+
+      // Validate parent if parentId is provided
+      if (parentId) {
+        const parent = await this.prisma.parent.findUnique({
+          where: { id: parentId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        });
+
+        if (!parent) {
+          throw new Error('Phụ huynh không tồn tại');
+        }
+
+        // Check if parent is active
+        if (!parent.user) {
+          throw new Error('Tài khoản phụ huynh không hợp lệ');
+        }
+      }
+
+      // Update student's parent
+      const updatedStudent = await this.prisma.student.update({
+        where: { id: studentId },
+        data: {
+          parentId: parentId,
+          updatedAt: new Date()
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              gender: true,
+              birthDate: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          parent: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                  avatar: true
+                }
+              }
+            }
+          },
+          school: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      return {
+        data: {
+          id: updatedStudent.id,
+          studentCode: updatedStudent.studentCode,
+          address: updatedStudent.address,
+          grade: updatedStudent.grade,
+          createdAt: updatedStudent.createdAt,
+          updatedAt: updatedStudent.updatedAt,
+          user: updatedStudent.user,
+          parent: updatedStudent.parent ? {
+            id: updatedStudent.parent.id,
+            user: updatedStudent.parent.user
+          } : null,
+          school: updatedStudent.school
+        },
+        message: parentId 
+          ? 'Liên kết phụ huynh thành công' 
+          : 'Hủy liên kết phụ huynh thành công'
+      };
+
+    } catch (error) {
+      console.error('Error updating student parent:', error);
+      throw new Error(`Error updating student parent: ${error.message}`);
+    }
+  }
+
+  
 }

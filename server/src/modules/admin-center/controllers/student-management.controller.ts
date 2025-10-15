@@ -1,6 +1,6 @@
 import { query } from 'express';
 import { StudentManagementService } from '../services/student-management.service';
-import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post } from "@nestjs/common";
+import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody } from '@nestjs/swagger';
 
 @Injectable()
@@ -276,5 +276,179 @@ export class StudentManagementController {
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    @ApiOperation({ summary: "Cập nhật thông tin học sinh" })
+    @ApiResponse({
+        status: 200,
+        description: "Cập nhật thông tin học sinh thành công"
+    })
+    @ApiResponse({
+        status: 400,
+        description: "Dữ liệu không hợp lệ"
+    })
+    @ApiResponse({
+        status: 404,
+        description: "Không tìm thấy học sinh"
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID của học sinh cần cập nhật',
+        type: 'string'
+    })
+    @ApiBody({
+        description: 'Thông tin cập nhật học sinh',
+        schema: {
+            type: 'object',
+            properties: {
+                fullName: {
+                    type: 'string',
+                    description: 'Họ và tên học sinh',
+                    example: 'Nguyễn Văn A'
+                },
+                phone: {
+                    type: 'string',
+                    description: 'Số điện thoại',
+                    example: '0987654321'
+                },
+                gender: {
+                    type: 'string',
+                    enum: ['MALE', 'FEMALE', 'OTHER'],
+                    description: 'Giới tính',
+                    example: 'MALE'
+                },
+                birthDate: {
+                    type: 'string',
+                    format: 'date',
+                    description: 'Ngày sinh (định dạng YYYY-MM-DD)',
+                    example: '2010-01-15'
+                },
+                address: {
+                    type: 'string',
+                    description: 'Địa chỉ',
+                    example: '123 Đường ABC, Quận 1, TP.HCM'
+                },
+                grade: {
+                    type: 'string',
+                    description: 'Lớp học',
+                    example: '10A1'
+                },
+                schoolId: {
+                    type: 'string',
+                    description: 'ID trường học',
+                    example: 'uuid-school-id'
+                }
+            }
+        }
+    })
+    @Put(':id')
+    async updateStudent(
+      @Param('id') studentId: string,
+      @Body() updateStudentDto: {
+        fullName?: string;
+        phone?: string;
+        gender?: 'MALE' | 'FEMALE' | 'OTHER';
+        birthDate?: string;
+        address?: string;
+        grade?: string;
+        schoolId?: string;
+      }
+    ) {
+      try {
+        if (!studentId) {
+          throw new HttpException('Student ID is required', HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate fullName if provided
+        if (updateStudentDto.fullName !== undefined && !updateStudentDto.fullName.trim()) {
+          throw new HttpException('Họ tên không được để trống', HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate phone format if provided
+        if (updateStudentDto.phone && updateStudentDto.phone.trim()) {
+          const phoneRegex = /^[0-9]{10,11}$/;
+          if (!phoneRegex.test(updateStudentDto.phone.trim())) {
+            throw new HttpException('Số điện thoại không hợp lệ (10-11 chữ số)', HttpStatus.BAD_REQUEST);
+          }
+        }
+
+        return await this.studentManagementService.updateStudent(studentId, updateStudentDto);
+      } catch (error) {
+        if (error.message.includes('không tồn tại')) {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        throw new HttpException(
+          error.message || 'Failed to update student',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
+
+    @ApiOperation({ summary: "Cập nhật liên kết phụ huynh cho học sinh" })
+    @ApiResponse({
+        status: 200,
+        description: "Cập nhật liên kết phụ huynh thành công"
+    })
+    @ApiResponse({
+        status: 400,
+        description: "Dữ liệu không hợp lệ"
+    })
+    @ApiResponse({
+        status: 404,
+        description: "Không tìm thấy học sinh hoặc phụ huynh"
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID của học sinh cần cập nhật',
+        type: 'string'
+    })
+    @ApiBody({
+        description: 'Thông tin liên kết phụ huynh',
+        schema: {
+            type: 'object',
+            required: ['parentId'],
+            properties: {
+                parentId: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'ID phụ huynh (null để hủy liên kết)',
+                    example: 'uuid-parent-id'
+                }
+            }
+        }
+    })
+    @Put(':id/parent')
+    async updateStudentParent(
+      @Param('id') studentId: string,
+      @Body() updateParentDto: {
+        parentId: string | null;
+      }
+    ) {
+      try {
+        if (!studentId) {
+          throw new HttpException('Student ID is required', HttpStatus.BAD_REQUEST);
+        }
+        if (updateParentDto.parentId === undefined) {
+          throw new HttpException('parentId field is required', HttpStatus.BAD_REQUEST);
+        }
+        return await this.studentManagementService.updateStudentParent(
+          studentId, 
+          updateParentDto.parentId
+        );
+      } catch (error) {
+        if (error.message.includes('không tồn tại')) {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        throw new HttpException(
+          error.message || 'Failed to update student parent',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
     }
 }

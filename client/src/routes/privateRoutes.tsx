@@ -31,6 +31,9 @@ import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
 import IncidentHandlePage from "../pages/manager/Incident-handle/IncidentHandle";
 import { ParentDashboard } from "../pages/Parent/Dashboard/ListChildren";
+import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
+import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
+import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
 
 
 export const privateRoutes = (
@@ -54,6 +57,9 @@ export const privateRoutes = (
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="parents" element={<ParentManagement />} />
+        <Route path="parents/:id" element={<ParentDetailPage />} />
       </Route>
 
       {/* Giáo viên */}
