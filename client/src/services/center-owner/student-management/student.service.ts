@@ -37,11 +37,19 @@ class StudentService {
   };
 
   /**
-   * Cập nhật thông tin học sinh
+   * Cập nhật thông tin học sinh (full update)
    */
-  async updateStudent(id: string, data: Partial<CreateStudentRequest>): Promise<Student> {
-    const response = await ApiService.patch<Student>(`/admin-center/student-management/${id}`, data)
-    return response.data as Student
+  async updateStudent(id: string, data: {
+    fullName?: string;
+    phone?: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    birthDate?: string;
+    address?: string;
+    grade?: string;
+    schoolId?: string;
+  }): Promise<any> {
+    const response = await ApiService.put<any>(`/admin-center/student-management/${id}`, data)
+    return response.data as any
   };
 
   /**
@@ -249,6 +257,14 @@ class StudentService {
     const response = await ApiService.post("/admin-center/student-management", data)
     return response.data as any
   }
+
+  /**
+   * Cập nhật liên kết phụ huynh cho học sinh
+   */
+  async updateStudentParent(studentId: string, parentId: string | null): Promise<any> {
+    const response = await ApiService.put<any>(`/admin-center/student-management/${studentId}/parent`, { parentId })
+    return response.data as any
+  };
 
   async getSchools(): Promise<any> {
     const response = await ApiService.get("/schools")

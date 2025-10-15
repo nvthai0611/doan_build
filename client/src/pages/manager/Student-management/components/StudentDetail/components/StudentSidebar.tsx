@@ -57,24 +57,24 @@ export function StudentSidebar({
             </p>
           </div>
           
-          <div className="text-center">
+          {/* <div className="text-center">
             <p className="text-sm text-muted-foreground mb-1">Công nợ:</p>
             <p className="text-xl font-semibold text-red-600">
               {student?.feeRecords?.reduce((total: number, fee: any) => 
                 total + (fee.amount - (fee.paidAmount || 0)), 0
               ).toLocaleString('vi-VN') || 0} đ
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* Verify Button */}
-        <Button
+        {/* <Button
           variant="outline"
           className="w-full mb-8 border-indigo-600 text-indigo-600 hover:bg-indigo-50 bg-transparent"
         >
           <span className="mr-2">✓</span>
           Xác thực
-        </Button>
+        </Button> */}
 
         {/* Login Account Info */}
         <div>

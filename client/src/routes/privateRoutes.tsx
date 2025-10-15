@@ -27,6 +27,9 @@ import StudentHomepage from "../pages/Student/Student-homepage";
 import StudentSchedule from "../pages/Student/My-schedule/Student-schedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
+import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
+import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
+import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
 
 
 export const privateRoutes = (
@@ -48,6 +51,9 @@ export const privateRoutes = (
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="parents" element={<ParentManagement />} />
+        <Route path="parents/:id" element={<ParentDetailPage />} />
       </Route>
 
       {/* Giáo viên */}

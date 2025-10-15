@@ -52,7 +52,7 @@ const centerOwnerMenuItems = [
         href: "/center-qn/students",
         children: [
             { title: "Danh sách học sinh", href: "/center-qn/students" },
-            { title: "Thông tin phụ huynh", href: "/center-qn/students/parents" },
+            { title: "Thông tin phụ huynh", href: "/center-qn/parents" },
             { title: "Phân lớp tự động", href: "/center-qn/students/auto-assign" },
             { title: "Học bạ nội bộ", href: "/center-qn/students/records" },
             { title: "Kết quả học tập", href: "/center-qn/students/results" },
