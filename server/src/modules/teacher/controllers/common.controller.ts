@@ -199,4 +199,36 @@ export class CommonController {
       };
     }
   }
+
+  /**
+   * Lấy danh sách buổi học theo assignment và năm học hiện tại
+   * GET /common/assignment/:assignmentId/sessions
+   */
+  @Get('assignment/:assignmentId/sessions')
+  @ApiOperation({
+    summary: 'Lấy danh sách buổi học theo năm học hiện tại',
+    description:
+      'Trả về danh sách buổi học của lớp theo assignment và academicYear hiện tại',
+  })
+  @ApiParam({
+    name: 'assignmentId',
+    description: 'ID phân công giáo viên - lớp học',
+    example: 'uuid-string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy danh sách buổi học thành công',
+  })
+  async getClassSessionsByAssignment(@Param('assignmentId') assignmentId: string) {
+    try {
+      const result = await this.commonService.getClassSessionsByAssignment(assignmentId);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        data: null,
+      };
+    }
+  }
 }

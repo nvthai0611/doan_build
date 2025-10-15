@@ -129,8 +129,8 @@ export function ClassDetailsPage() {
         return (
           <HocVienTab
             onAddStudent={() => setAddStudentOpen(true)}
-            onEditStudent={(student) => handleEdit("student", student)}
-            onDeleteStudent={(student) => handleDelete("student", student)}
+            onEditStudent={(student: any) => handleEdit("student", student)}
+            onDeleteStudent={(student: any) => handleDelete("student", student)}
             teacherClassAssignmentId= {teacherClassAssignmentId as string}
           />
         )
@@ -148,6 +148,7 @@ export function ClassDetailsPage() {
             onAddSession={() => setAddSessionOpen(true)}
             onEditSession={(session) => handleEdit("session", session)}
             onDeleteSession={(session) => handleDelete("session", session)}
+            teacherClassAssignmentId={teacherClassAssignmentId as string}
           />
         )
       case "cong-viec":

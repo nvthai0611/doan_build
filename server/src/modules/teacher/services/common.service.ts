@@ -120,6 +120,50 @@ export class CommonService {
   }
 
   /**
+   * Lấy danh sách buổi học theo assignment và năm học hiện tại
+   */
+  async getClassSessionsByAssignment(assignmentId: string) {
+    try {
+      // Tìm assignment để lấy classId và academicYear
+      const assignment = await this.prisma.teacherClassAssignment.findUnique({
+        where: { id: assignmentId },
+        select: { classId: true, academicYear: true }
+      });
+
+      if (!assignment) {
+        return {
+          success: false,
+          message: 'Không tìm thấy phân công lớp học (assignment)'
+        };
+      }
+
+      const sessions = await this.prisma.classSession.findMany({
+        where: {
+          classId: assignment.classId,
+          academicYear: assignment.academicYear
+        },
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          room: { select: { name: true } }
+        },
+        orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }]
+      });
+
+      return {
+        success: true,
+        data: sessions,
+        message: `Lấy danh sách buổi học thành công (${sessions.length})`
+      };
+    } catch (error) {
+      throw new Error(`Lỗi khi lấy danh sách buổi học: ${error.message}`);
+    }
+  }
+
+  /**
    * Lấy chi tiết thông tin học sinh trong lớp
    */
   async getDetailStudentOfClass(studentId: string, assignmentId?: string) {

@@ -44,6 +44,15 @@ export const teacherCommonService = {
     return response.data as ClassStatisticsResponse
   },
 
+  /**
+   * Lấy danh sách buổi học theo assignment và năm học hiện tại
+   */
+  getClassSessions: async (assignmentId: string): Promise<any> => {
+    const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/sessions`)
+    // Trả về trực tiếp mảng sessions để BuoiHocTab dùng (data || [])
+    return (response.data ?? []) as any
+  },
+
   // ===== Student Data Processing =====
 
   /**
