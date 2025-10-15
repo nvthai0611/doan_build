@@ -134,14 +134,39 @@ export class ParentManagementController {
     }
 
     /**
-     * Lấy chi tiết phụ huynh theo ID
+     * Đếm số lượng phụ huynh theo trạng thái
      */
-    @Get(':id')
-    @ApiOperation({ summary: 'Lấy chi tiết phụ huynh theo ID' })
-    @ApiResponse({ status: HttpStatus.OK, description: 'Lấy thông tin thành công' })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy phụ huynh' })
-    async getParentById(@Param('id') id: string) {
-        const result = await this.parentManagementService.getParentById(id);
+    @Get('count-status')
+    @ApiOperation({ summary: 'Đếm số lượng phụ huynh theo trạng thái' })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Đếm thành công' })
+    async getCountByStatus() {
+        const result = await this.parentManagementService.getCountByStatus();
+
+        return {
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data
+        };
+    }
+
+    /**
+     * Tìm kiếm học sinh theo mã học sinh
+     */
+    @Get('search-student')
+    @ApiOperation({ summary: 'Tìm kiếm học sinh theo mã để liên kết với phụ huynh' })
+    @ApiQuery({ name: 'studentCode', required: true, type: String, description: 'Mã học sinh' })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Tìm thấy học sinh' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy học sinh' })
+    async findStudentByCode(@Query('studentCode') studentCode: string) {
+        if (!studentCode || studentCode.trim().length === 0) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Mã học sinh không được để trống',
+                data: null
+            };
+        }
+
+        const result = await this.parentManagementService.findStudentByCode(studentCode);
 
         if (!result.data) {
             return {
@@ -159,13 +184,22 @@ export class ParentManagementController {
     }
 
     /**
-     * Đếm số lượng phụ huynh theo trạng thái
+     * Lấy chi tiết phụ huynh theo ID
      */
-    @Get('count-status')
-    @ApiOperation({ summary: 'Đếm số lượng phụ huynh theo trạng thái' })
-    @ApiResponse({ status: HttpStatus.OK, description: 'Đếm thành công' })
-    async getCountByStatus() {
-        const result = await this.parentManagementService.getCountByStatus();
+    @Get(':id')
+    @ApiOperation({ summary: 'Lấy chi tiết phụ huynh theo ID' })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Lấy thông tin thành công' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy phụ huynh' })
+    async getParentById(@Param('id') id: string) {
+        const result = await this.parentManagementService.getParentById(id);
+
+        if (!result.data) {
+            return {
+                statusCode: HttpStatus.NOT_FOUND,
+                message: result.message,
+                data: null
+            };
+        }
 
         return {
             statusCode: HttpStatus.OK,
@@ -259,40 +293,6 @@ export class ParentManagementController {
                 birthDate: body.birthDate
             }
         );
-
-        if (!result.data) {
-            return {
-                statusCode: HttpStatus.NOT_FOUND,
-                message: result.message,
-                data: null
-            };
-        }
-
-        return {
-            statusCode: HttpStatus.OK,
-            message: result.message,
-            data: result.data
-        };
-    }
-
-    /**
-     * Tìm kiếm học sinh theo mã học sinh
-     */
-    @Get('search-student')
-    @ApiOperation({ summary: 'Tìm kiếm học sinh theo mã để liên kết với phụ huynh' })
-    @ApiQuery({ name: 'studentCode', required: true, type: String, description: 'Mã học sinh' })
-    @ApiResponse({ status: HttpStatus.OK, description: 'Tìm thấy học sinh' })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy học sinh' })
-    async findStudentByCode(@Query('studentCode') studentCode: string) {
-        if (!studentCode || studentCode.trim().length === 0) {
-            return {
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Mã học sinh không được để trống',
-                data: null
-            };
-        }
-
-        const result = await this.parentManagementService.findStudentByCode(studentCode);
 
         if (!result.data) {
             return {

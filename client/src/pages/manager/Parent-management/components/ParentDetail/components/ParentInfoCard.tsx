@@ -111,7 +111,7 @@ export function ParentInfoCard({ parentData, onUpdate }: ParentInfoCardProps) {
           <div className="border-t pt-4">
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-500">Số học sinh:</span>
+                <span className="text-gray-500">Tổng số con đang giám hộ:</span>
                 <span className="font-medium">
                   {parentData.students?.length || 0}
                 </span>

@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { ParentService } from "../../../../services/center-owner/parent-management/parent.service"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { Loader2, Search, X, Link, Unlink } from "lucide-react"
+import { isValidEmail, isValidPhone, sanitizeString } from "../../../../services/common/utils/validation.utils"
 
 interface EditParentModalProps {
   isOpen: boolean
@@ -98,20 +99,24 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (formData.email && !emailRegex.test(formData.email)) {
+    // Email validation (if provided)
+    if (formData.email && !isValidEmail(formData.email)) {
       newErrors.email = "Email không hợp lệ"
     }
 
-    // FullName validation
-    if (formData.fullName && formData.fullName.trim().length === 0) {
-      newErrors.fullName = "Họ và tên không được để trống"
+    // FullName validation (if provided)
+    if (formData.fullName) {
+      const sanitizedFullName = sanitizeString(formData.fullName)
+      if (!sanitizedFullName) {
+        newErrors.fullName = "Họ và tên không được để trống"
+      } else if (sanitizedFullName.length < 2) {
+        newErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
+      }
     }
 
-    // Phone validation
-    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone)) {
-      newErrors.phone = "Số điện thoại phải có 10-11 chữ số"
+    // Phone validation (if provided)
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      newErrors.phone = "Số điện thoại không hợp lệ (VD: 0912345678)"
     }
 
     setErrors(newErrors)
@@ -127,9 +132,9 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
     }
 
     const submitData = {
-      email: formData.email || undefined,
-      fullName: formData.fullName || undefined,
-      phone: formData.phone || undefined,
+      email: formData.email ? formData.email.trim() : undefined,
+      fullName: formData.fullName ? sanitizeString(formData.fullName) : undefined,
+      phone: formData.phone ? formData.phone.trim() : undefined,
       gender: formData.gender,
       birthDate: formData.birthDate || undefined
     }

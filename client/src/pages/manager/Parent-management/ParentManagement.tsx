@@ -271,27 +271,27 @@ export default function ParentManagement() {
       )
     },
     // Actions Column
-    {
-      key: "actions",
-      header: "Thao tác",
-      width: "150px",
-      align: "center" as const,
-      render: (parent: any) => (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleEditParent(parent)
-            }}
-            className="text-blue-600 hover:bg-blue-50 border-blue-200"
-          >
-            Chỉnh sửa
-          </Button>
-        </div>
-      )
-    },
+    // {
+    //   key: "actions",
+    //   header: "Thao tác",
+    //   width: "150px",
+    //   align: "center" as const,
+    //   render: (parent: any) => (
+    //     <div className="flex items-center justify-center gap-2">
+    //       <Button
+    //         size="sm"
+    //         variant="outline"
+    //         onClick={(e) => {
+    //           e.stopPropagation()
+    //           handleEditParent(parent)
+    //         }}
+    //         className="text-blue-600 hover:bg-blue-50 border-blue-200"
+    //       >
+    //         Chỉnh sửa
+    //       </Button>
+    //     </div>
+    //   )
+    // },
     // Account Status Column
     {
       key: "accountStatus",

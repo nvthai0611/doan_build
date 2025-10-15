@@ -37,6 +37,17 @@ export class ParentManagementService {
                 throw new Error('Email đã được sử dụng');
             }
 
+            // Check if phone already exists (if provided)
+            if (createParentData.phone) {
+                const existingPhone = await this.prisma.user.findFirst({
+                    where: { phone: createParentData.phone }
+                });
+
+                if (existingPhone) {
+                    throw new Error('Số điện thoại đã được sử dụng');
+                }
+            }
+
             // Generate parent code - not in schema, removed
             // const parentCount = await this.prisma.parent.count();
             // const parentCode = `PH${(parentCount + 1).toString().padStart(6, '0')}`;
@@ -48,7 +59,7 @@ export class ParentManagementService {
             const newUser = await this.prisma.user.create({
                 data: {
                     email: createParentData.email,
-                    username: createParentData.username,
+                    username: createParentData.username + "@qne.edu.vn",
                     fullName: createParentData.fullName,
                     phone: createParentData.phone,
                     gender: createParentData.gender || 'OTHER',
@@ -112,7 +123,7 @@ export class ParentManagementService {
 
         } catch (error) {
             console.error('Error creating parent:', error);
-            throw new Error(`Error creating parent: ${error.message}`);
+            throw new Error(`${error.message}`);
         }
     }
 

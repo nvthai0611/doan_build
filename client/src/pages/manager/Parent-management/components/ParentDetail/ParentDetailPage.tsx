@@ -142,16 +142,19 @@ export default function ParentDetailPage() {
           <TabsContent value="info" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Sidebar */}
-              <div className="lg:col-span-1">
+              {/* <div className="lg:col-span-1">
                 <ParentSidebar
                   parentData={parentData}
                   formatDate={formatDate}
                 />
+              </div> */}
+              <div className="lg:col-span-1">
+                                <ParentInfoCard parentData={parentData} onUpdate={() => refetch()} />
+
               </div>
 
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
-                <ParentInfoCard parentData={parentData} onUpdate={() => refetch()} />
                 <ParentStudentsTab parentData={parentData} />
               </div>
             </div>

@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { ParentService } from "../../../../services/center-owner/parent-management/parent.service"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
+import { isValidEmail, isValidPhone, sanitizeString } from "../../../../services/common/utils/validation.utils"
 
 interface CreateParentModalProps {
   isOpen: boolean
@@ -42,7 +43,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       onSuccess?.()
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Có lỗi xảy ra khi tạo phụ huynh"
+      const message = error?.message || "Có lỗi xảy ra khi tạo phụ huynh"
       toast.error(message)
     }
   })
@@ -51,10 +52,13 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     const newErrors: Record<string, string> = {}
 
     // Username validation
-    if (!formData.username.trim()) {
+    const sanitizedUsername = sanitizeString(formData.username)
+    if (!sanitizedUsername) {
       newErrors.username = "Username không được để trống"
-    } else if (formData.username.length < 3 || formData.username.length > 20) {
+    } else if (sanitizedUsername.length < 3 || sanitizedUsername.length > 20) {
       newErrors.username = "Username phải từ 3-20 ký tự"
+    } else if (!/^[a-zA-Z0-9_]+$/.test(sanitizedUsername)) {
+      newErrors.username = "Username chỉ được chứa chữ, số và dấu gạch dưới"
     }
 
     // Password validation
@@ -65,21 +69,25 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     }
 
     // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!formData.email.trim()) {
       newErrors.email = "Email không được để trống"
-    } else if (!emailRegex.test(formData.email)) {
+    } else if (!isValidEmail(formData.email)) {
       newErrors.email = "Email không hợp lệ"
     }
 
     // FullName validation
-    if (!formData.fullName.trim()) {
+    const sanitizedFullName = sanitizeString(formData.fullName)
+    if (!sanitizedFullName) {
       newErrors.fullName = "Họ và tên không được để trống"
+    } else if (sanitizedFullName.length < 2) {
+      newErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
     }
 
-    // Phone validation (optional but if provided must be valid)
-    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone)) {
-      newErrors.phone = "Số điện thoại phải có 10-11 chữ số"
+    // Phone validation (required)
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Số điện thoại không được để trống"
+    } else if (!isValidPhone(formData.phone)) {
+      newErrors.phone = "Số điện thoại không hợp lệ (VD: 0912345678)"
     }
 
     setErrors(newErrors)
@@ -96,7 +104,10 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
 
     const submitData = {
       ...formData,
-      phone: formData.phone || undefined,
+      username: sanitizeString(formData.username),
+      fullName: sanitizeString(formData.fullName),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
       birthDate: formData.birthDate || undefined
     }
 
@@ -209,7 +220,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
           {/* Phone */}
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-sm font-medium">
-              Số điện thoại
+              Số điện thoại <span className="text-red-500">*</span>
             </Label>
             <Input
               id="phone"

@@ -75,9 +75,9 @@ export function ParentSidebar({ parentData, formatDate }: ParentSidebarProps) {
           <div className="flex items-start gap-3">
             <Users className="h-4 w-4 mt-1 text-muted-foreground" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-muted-foreground">Số học sinh</p>
+              <p className="text-sm text-muted-foreground">Tổng số con đang giám hộ</p>
               <p className="text-sm font-medium">
-                {parentData.studentCount || 0} học sinh
+                {parentData.studentCount || 0} con
               </p>
             </div>
           </div>
@@ -104,12 +104,12 @@ export function ParentSidebar({ parentData, formatDate }: ParentSidebarProps) {
                   {parentData.paymentStats.totalPaid?.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
+              {/* <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Còn nợ:</span>
                 <span className="font-medium text-orange-600">
                   {parentData.paymentStats.totalPending?.toLocaleString('vi-VN')} đ
                 </span>
-              </div>
+              </div> */}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Số giao dịch:</span>
                 <span className="font-medium">
