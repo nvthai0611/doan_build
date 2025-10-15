@@ -40,36 +40,36 @@ export function AffectedSessionsTable({
   const [loadingTeachers, setLoadingTeachers] = useState<string | null>(null);
   const [teachersCache, setTeachersCache] = useState<Map<string, ReplacementTeacher[]>>(new Map());
 
-  const handleCheckboxChange = (sessionId: string, checked: boolean) => {
-    setSessions(
-      sessions.map((s) =>
-        s.id === sessionId ? { ...s, selected: checked } : s,
-      ),
-    );
-  };
+  // const handleCheckboxChange = (sessionId: string, checked: boolean) => {
+  //   setSessions(
+  //     sessions.map((s) =>
+  //       s.id === sessionId ? { ...s, selected: checked } : s,
+  //     ),
+  //   );
+  // };
 
-  const handleReplacementChange = (sessionId: string, teacherId: string) => {
-    setSessions(
-      sessions.map((s) =>
-        s.id === sessionId ? { ...s, replacementTeacherId: teacherId } : s,
-      ),
-    );
-  };
+  // const handleReplacementChange = (sessionId: string, teacherId: string) => {
+  //   setSessions(
+  //     sessions.map((s) =>
+  //       s.id === sessionId ? { ...s, replacementTeacherId: teacherId } : s,
+  //     ),
+  //   );
+  // };
 
-  const handleReplaceAll = () => {
-    if (!bulkReplacementTeacherId) return;
-    setSessions(
-      sessions.map((s) =>
-        s.selected
-          ? { ...s, replacementTeacherId: bulkReplacementTeacherId }
-          : s,
-      ),
-    );
-  };
+  // const handleReplaceAll = () => {
+  //   if (!bulkReplacementTeacherId) return;
+  //   setSessions(
+  //     sessions.map((s) =>
+  //       s.selected
+  //         ? { ...s, replacementTeacherId: bulkReplacementTeacherId }
+  //         : s,
+  //     ),
+  //   );
+  // };
 
-  const handleSelectAll = () => {
-    setSessions(sessions.map((s) => ({ ...s, selected: true })));
-  };
+  // const handleSelectAll = () => {
+  //   setSessions(sessions.map((s) => ({ ...s, selected: true })));
+  // };
 
   // Function để lấy danh sách giáo viên thay thế
   const fetchReplacementTeachers = async (sessionId: string, date: string, time: string) => {
@@ -101,11 +101,11 @@ export function AffectedSessionsTable({
   };
 
   // Function để handle khi user click vào dropdown
-  const handleSelectOpen = (sessionId: string, date: string, time: string) => {
-    if (replacementTeachers.length === 0) {
-      fetchReplacementTeachers(sessionId, date, time);
-    }
-  };
+  // const handleSelectOpen = (sessionId: string, date: string, time: string) => {
+  //   if (replacementTeachers.length === 0) {
+  //     fetchReplacementTeachers(sessionId, date, time);
+  //   }
+  // };
 
   if (sessions.length === 0) {
     return (
@@ -122,14 +122,14 @@ export function AffectedSessionsTable({
 
   return (
     <div className="space-y-4 overflow-hidden">
-      <div>
+      {/* <div>
         <p className="text-sm text-muted-foreground">
           Hệ thống tự động liệt kê các buổi bạn có trong thời gian nghỉ. Bạn có
           thể chọn người dạy thay cho từng buổi.
         </p>
-      </div>
+      </div> */}
 
-      <div className="bg-accent border border-border rounded-xl p-5 space-y-4 overflow-hidden">
+      {/* <div className="bg-accent border border-border rounded-xl p-5 space-y-4 overflow-hidden">
         <div className="flex items-center gap-2 text-accent-foreground">
           <UserCheck className="w-5 h-5" />
           <h4 className="font-semibold">Thay thế hàng loạt</h4>
@@ -204,7 +204,7 @@ export function AffectedSessionsTable({
             thay thế cho tất cả.
           </p>
         )}
-      </div>
+      </div> */}
 
       <div className="space-y-3 overflow-hidden">
         {sessions.map((session) => (
@@ -213,14 +213,14 @@ export function AffectedSessionsTable({
             className="bg-card border rounded-xl p-5 hover:shadow-md transition-shadow overflow-hidden"
           >
             <div className="flex items-start gap-4">
-              <Checkbox
+              {/* <Checkbox
                 id={`session-${session.id}`}
                 checked={session.selected}
                 onCheckedChange={(checked) =>
                   handleCheckboxChange(session.id, checked as boolean)
                 }
                 className="mt-1"
-              />
+              /> */}
               <div className="flex-1 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 text-sm">
@@ -255,7 +255,7 @@ export function AffectedSessionsTable({
                   </div>
                 </div>
 
-                {session.selected && (
+                {/* {session.selected && (
                   <div className="space-y-2 pt-2 border-t overflow-hidden">
                     <Label
                       htmlFor={`replacement-${session.id}`}
@@ -320,7 +320,7 @@ export function AffectedSessionsTable({
                       </SelectContent>
                     </Select>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           </div>
