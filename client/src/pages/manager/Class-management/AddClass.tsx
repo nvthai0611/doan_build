@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { GRADE_LEVEL_OPTIONS } from '../../../lib/gradeConstants';
+import { dayOptions } from '../../../utils/commonData';
 
 interface ScheduleItem {
   id: string;
@@ -80,15 +81,6 @@ export const CreateClass = () => {
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
 
-  const dayOptions = [
-    { value: 'monday', label: 'Thứ Hai' },
-    { value: 'tuesday', label: 'Thứ Ba' },
-    { value: 'wednesday', label: 'Thứ Tư' },
-    { value: 'thursday', label: 'Thứ Năm' },
-    { value: 'friday', label: 'Thứ Sáu' },
-    { value: 'saturday', label: 'Thứ Bảy' },
-    { value: 'sunday', label: 'Chủ Nhật' },
-  ];
 
   const handleAddSchedule = () => {
     const newSchedule: ScheduleItem = {
@@ -151,6 +143,70 @@ export const CreateClass = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [autoSelectNotification, setAutoSelectNotification] = useState<string>('');
+
+  // Logic tự động chọn khóa học và khối lớp
+  const autoSelectSubjectAndGrade = (className: string) => {
+    const lowerClassName = className.toLowerCase();
+    let selectedSubjectId = '';
+    let selectedGrade = '';
+    let notification = '';
+
+    // Mapping từ khóa học
+    const subjectKeywords = {
+      'toán': ['toán', 'math', 'mathematics'],
+      'văn': ['văn', 'literature', 'ngữ văn'],
+      'anh': ['anh', 'english', 'tiếng anh', 'tieng anh'],
+      'lý': ['lý', 'physics', 'vật lý'],
+      'hóa': ['hóa', 'chemistry', 'hóa học'],
+      'sinh': ['sinh', 'biology', 'sinh học'],
+      'sử': ['sử', 'history', 'lịch sử'],
+      'địa': ['địa', 'geography', 'địa lý'],
+      'gdcd': ['gdcd', 'civic', 'giáo dục công dân'],
+      'tin': ['tin', 'informatics', 'tin học'],
+      'công nghệ': ['công nghệ', 'technology', 'cong nghe'],
+      'mỹ thuật': ['mỹ thuật', 'art', 'my thuat'],
+      'âm nhạc': ['âm nhạc', 'music', 'am nhac'],
+      'thể dục': ['thể dục', 'physical', 'the duc']
+    };
+
+    // Tìm khóa học phù hợp
+    for (const [subjectName, keywords] of Object.entries(subjectKeywords)) {
+      if (keywords.some(keyword => lowerClassName.includes(keyword))) {
+        // Tìm subject trong danh sách subjects
+        const matchedSubject = subjects.find((subject: any) => 
+          subject.name.toLowerCase().includes(subjectName)
+        );
+        if (matchedSubject) {
+          selectedSubjectId = matchedSubject.id;
+          notification += `Đã tự động chọn khóa học: ${matchedSubject.name}. `;
+          break;
+        }
+      }
+    }
+
+    // Tìm khối lớp từ số trong tên lớp
+    const gradeMatch = lowerClassName.match(/(\d+)/);
+    if (gradeMatch) {
+      const gradeNumber = parseInt(gradeMatch[1]);
+      // Mapping số thành khối lớp (chỉ hỗ trợ khối 6-9)
+      const gradeMapping: Record<number, string> = {
+        6: '6',
+        7: '7',
+        8: '8',
+        9: '9'
+      };
+      
+      if (gradeMapping[gradeNumber]) {
+        selectedGrade = gradeMapping[gradeNumber];
+        const gradeLabel = GRADE_LEVEL_OPTIONS.find(grade => grade.value === gradeMapping[gradeNumber])?.label || `Khối ${gradeNumber}`;
+        notification += `Đã tự động chọn khối lớp: ${gradeLabel}.`;
+      }
+    }
+
+    return { selectedSubjectId, selectedGrade, notification };
+  };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -163,6 +219,40 @@ export const CreateClass = () => {
         ...prev,
         [field]: ''
       }));
+    }
+
+    // Tự động chọn khóa học và khối lớp khi nhập tên lớp
+    if (field === 'name' && subjects.length > 0) {
+      if (value && value.trim()) {
+        const { selectedSubjectId, selectedGrade, notification } = autoSelectSubjectAndGrade(value);
+        
+        setFormData(prev => ({
+          ...prev,
+          ...(selectedSubjectId && { subjectId: selectedSubjectId }),
+          ...(selectedGrade && { grade: selectedGrade })
+        }));
+
+        // Clear errors cho các field được auto-select
+        if (selectedSubjectId || selectedGrade) {
+          setErrors(prev => ({
+            ...prev,
+            ...(selectedSubjectId && { subjectId: '' }),
+            ...(selectedGrade && { grade: '' })
+          }));
+        }
+
+        // Hiển thị thông báo auto-select
+        if (notification) {
+          setAutoSelectNotification(notification);
+          // Tự động ẩn thông báo sau 3 giây
+          setTimeout(() => {
+            setAutoSelectNotification('');
+          }, 3000);
+        }
+      } else {
+        // Nếu xóa tên lớp, ẩn thông báo auto-select
+        setAutoSelectNotification('');
+      }
     }
   };
 
@@ -301,11 +391,19 @@ export const CreateClass = () => {
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Nhập tên lớp học"
+                  placeholder="Nhập tên lớp học (VD: Toán 6, Văn 7, Anh 8, Lý 9)"
                   className={`mt-1.5 ${errors.name ? "border-red-500" : ""}`}
                   required
                 />
                 <ErrorMessage field="name" />
+                {autoSelectNotification && (
+                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <Check className="w-4 h-4 inline mr-1" />
+                      {autoSelectNotification}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Mã lớp & Khoá học */}
@@ -319,7 +417,7 @@ export const CreateClass = () => {
                     onValueChange={(value) => handleInputChange("grade", value)}
                   >
                     <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Chọn khối lớp" />
+                      <SelectValue placeholder="Chọn khối lớp (6-9)" />
                     </SelectTrigger>
                     <SelectContent>
                       {GRADE_LEVEL_OPTIONS.map(grade => (
@@ -427,9 +525,125 @@ export const CreateClass = () => {
                 </Select>
                 <ErrorMessage field="academicYear" />
               </div>
-            </div>
 
-            
+              {/* Lịch học hàng tuần */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-base font-semibold">
+                    Lịch học hàng tuần
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    onClick={handleAddSchedule}
+                    className="text-blue-600 hover:text-blue-700 h-auto p-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Lịch học
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {schedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800"
+                    >
+                      <div className="flex items-end gap-3">
+                        {/* Thứ */}
+                        <div className="flex-1">
+                          <Label className="text-xs text-gray-600 dark:text-gray-400">
+                            Thứ
+                          </Label>
+                          <Select
+                            value={schedule.day}
+                            onValueChange={(value: string) =>
+                              handleScheduleChange(schedule.id, 'day', value)
+                            }
+                          >
+                            <SelectTrigger className="mt-1 h-9">
+                              <SelectValue placeholder="Chọn" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {dayOptions.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Bắt đầu */}
+                        <div className="flex-1">
+                          <Label className="text-xs text-gray-600 dark:text-gray-400">
+                            Bắt đầu <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="relative mt-1">
+                            <Clock className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                            <Input
+                              type="time"
+                              value={schedule.startTime}
+                              onChange={(e: any) =>
+                                handleScheduleChange(
+                                  schedule.id,
+                                  'startTime',
+                                  e.target.value,
+                                )
+                              }
+                              className="pl-9 h-9"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Thời lượng */}
+                        <div className="flex-1">
+                          <Label className="text-xs text-gray-600 dark:text-gray-400">
+                            Thời lượng (phút){' '}
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            value={schedule.duration}
+                            onChange={(e: any) =>
+                              handleScheduleChange(
+                                schedule.id,
+                                'duration',
+                                parseInt(e.target.value) || 0,
+                              )
+                            }
+                            min={0}
+                            step={15}
+                            className="mt-1 h-9"
+                          />
+                        </div>
+
+                        {/* Delete button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSchedule(schedule.id)}
+                          className="text-red-600 hover:text-red-700 h-9 w-9 p-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {schedules.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 text-sm border border-dashed rounded-lg">
+                      Chưa có lịch học. Click "+ Lịch học" để thêm.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Right Column */}
@@ -450,124 +664,37 @@ export const CreateClass = () => {
                 />
               </div>
             </div>
-{/* Lịch học hàng tuần */}
-<div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Label className="text-base font-semibold">
-                  Lịch học hàng tuần
-                </Label>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  onClick={handleAddSchedule}
-                  className="text-blue-600 hover:text-blue-700 h-auto p-0"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Lịch học
-                </Button>
-              </div>
 
-              <div className="space-y-3">
-                {schedules.map((schedule) => (
-                  <div
-                    key={schedule.id}
-                    className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800"
-                  >
-                    <div className="flex items-end gap-3">
-                      {/* Thứ */}
-                      <div className="flex-1">
-                        <Label className="text-xs text-gray-600 dark:text-gray-400">
-                          Thứ
-                        </Label>
-                        <Select
-                          value={schedule.day}
-                          onValueChange={(value: string) =>
-                            handleScheduleChange(schedule.id, 'day', value)
-                          }
-                        >
-                          <SelectTrigger className="mt-1 h-9">
-                            <SelectValue placeholder="Chọn" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {dayOptions.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Bắt đầu */}
-                      <div className="flex-1">
-                        <Label className="text-xs text-gray-600 dark:text-gray-400">
-                          Bắt đầu <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative mt-1">
-                          <Clock className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                          <Input
-                            type="time"
-                            value={schedule.startTime}
-                            onChange={(e: any) =>
-                              handleScheduleChange(
-                                schedule.id,
-                                'startTime',
-                                e.target.value,
-                              )
-                            }
-                            className="pl-9 h-9"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Thời lượng */}
-                      <div className="flex-1">
-                        <Label className="text-xs text-gray-600 dark:text-gray-400">
-                          Thời lượng (phút){' '}
-                          <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          type="number"
-                          value={schedule.duration}
-                          onChange={(e: any) =>
-                            handleScheduleChange(
-                              schedule.id,
-                              'duration',
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                          min={0}
-                          step={15}
-                          className="mt-1 h-9"
-                        />
-                      </div>
-
-                      {/* Delete button */}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSchedule(schedule.id)}
-                        className="text-red-600 hover:text-red-700 h-9 w-9 p-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {schedules.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 text-sm border border-dashed rounded-lg">
-                    Chưa có lịch học. Click "+ Lịch học" để thêm.
-                  </div>
-                )}
+            {/* Mô tả */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Mô tả</h2>
+                <div className="border rounded-lg overflow-hidden">
+                  <ReactQuill
+                    value={formData.description}
+                    onChange={(value) => handleInputChange("description", value)}
+                    placeholder="Nhập mô tả về lớp học..."
+                    style={{ height: '200px' }}
+                    modules={{
+                      toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        [{ 'indent': '-1' }, { 'indent': '+1' }],
+                        [{ 'align': [] }],
+                        ['link', 'image'],
+                        ['clean']
+                      ],
+                    }}
+                    formats={[
+                      'header', 'bold', 'italic', 'underline', 'strike',
+                      'list', 'bullet', 'indent', 'align', 'link', 'image'
+                    ]}
+                    theme="snow"
+                  />
+                </div>
               </div>
             </div>
-           
           </div>
         </div>
       </div>

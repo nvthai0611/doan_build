@@ -100,6 +100,22 @@ export class ClassManagementController {
         return this.classManagementService.getStats(classId);
     }
 
+    @Post(':id/generate-sessions')
+    @ApiOperation({ summary: 'Tạo tự động buổi học cho lớp' })
+    @ApiResponse({ status: 200, description: 'Tạo buổi học thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async generateSessions(@Param('id') classId: string, @Body() body: any) {
+        return this.classManagementService.generateSessions(classId, body);
+    }
+
+    @Get(':id/sessions')
+    @ApiOperation({ summary: 'Lấy danh sách buổi học của lớp' })
+    @ApiResponse({ status: 200, description: 'Danh sách buổi học' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async getClassSessions(@Param('id') classId: string, @Query() query: any) {
+        return this.classManagementService.getClassSessions(classId, query);
+    }
+
     // ============ LEGACY ENDPOINTS (Backward Compatibility) ============
 
     @Get('/:teacherId/teacher')

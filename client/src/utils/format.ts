@@ -32,8 +32,8 @@ export const formatSchedule = (recurringSchedule: any): string => {
     
     return recurringSchedule.schedules.map((schedule: any) => {
       const dayName = dayNames[schedule.day] || schedule.day;
-       return `${dayName} ${schedule.startTime} → ${schedule.endTime}`
-    }).join(', ');
+       return `${dayName}: ${schedule.startTime} → ${schedule.endTime}`
+    }).join('\n');
   }
   
   return 'Chưa có lịch';

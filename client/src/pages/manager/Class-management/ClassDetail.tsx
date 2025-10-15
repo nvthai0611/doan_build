@@ -9,6 +9,7 @@ import { StudentsInfo } from './components/StudentsInfo';
 import { TeachersInfo } from './components/TeachersInfo';
 import { LessonsInfo } from './components/LessonsInfo';
 import { AssignmentsInfo } from './components/AssignmentsInfo';
+import GradesInfo from './components/GradesInfo';
 import {
   Breadcrumb,
   BreadcrumbPage,
@@ -18,6 +19,7 @@ import {
   BreadcrumbList,
 } from '@/components/ui/breadcrumb';
 import { classService } from '../../../services/center-owner/class-management/class.service';
+import DashboardTab from './components/GradesInfo';
 
 export default function ClassDetail() {
   const params = useParams();
@@ -63,13 +65,13 @@ export default function ClassDetail() {
 
   const tabs = [
     { key: 'general', label: 'Thông tin chung' },
+    { key: 'dashboard', label: 'Tổng quan' },
     { key: 'students', label: 'Học viên' },
     { key: 'teachers', label: 'Giáo viên' },
     { key: 'lessons', label: 'Buổi học' },
     { key: 'assignments', label: 'Công việc' },
     { key: 'exercises', label: 'Bài tập' },
     { key: 'documents', label: 'Tài liệu' },
-    { key: 'grades', label: 'Đánh giá' },
   ];
 
   const renderTabContent = () => {
@@ -78,6 +80,8 @@ export default function ClassDetail() {
     switch (activeTab) {
       case 'general':
         return <GeneralInfo classData={classData} />;
+        case "dashboard":
+        return <DashboardTab classId={classId} classData={classData} />;
       case 'students':
         return <StudentsInfo classId={classId} classData={classData} />;
       case 'teachers':
@@ -90,8 +94,7 @@ export default function ClassDetail() {
       //     return <ExercisesInfo classId={classId} />
       //   case "documents":
       //     return <DocumentsInfo classId={classId} />
-      //   case "grades":
-      //     return <GradesInfo classId={classId} />
+      
       default:
         return null;
     }

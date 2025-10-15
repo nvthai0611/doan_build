@@ -31,7 +31,7 @@ export const classService = {
     updateClass: async (id: string, data: any) => {
         console.log(id, data);
         
-        const response = await apiClient.patch(`${BASE_URL}/${id}`, data.schedules);
+        const response = await apiClient.patch(`${BASE_URL}/${id}`, data);
         return response;
     },
 
@@ -74,6 +74,26 @@ export const classService = {
     // Cập nhật lịch học
     updateClassSchedule: async (id: string, data: any) => {
         const response = await apiClient.patch(`${BASE_URL}/${id}/schedules`, data);
+        return response;
+    },
+
+    // Get class sessions
+    // Tạo tự động buổi học cho lớp
+  generateSessions: async (classId: string, data: any) => {
+    try {
+      const response = await apiClient.post(`${BASE_URL}/${classId}/generate-sessions`, data);
+      return response;
+    } catch (error) {
+      console.error('Error generating sessions:', error);
+      const anyErr: any = error as any;
+      const message = anyErr?.response?.message || anyErr?.message || 'Lỗi không xác định';
+      const status = anyErr?.response?.status ?? 0;
+      throw { status, message };
+    }
+  },
+
+  getClassSessions: async (classId: string, params?: any) => {
+        const response = await apiClient.get(`${BASE_URL}/${classId}/sessions`,  params );
         return response;
     },
 
