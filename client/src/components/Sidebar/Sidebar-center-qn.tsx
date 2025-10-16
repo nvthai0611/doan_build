@@ -217,10 +217,6 @@ const studentMenuItems = [
         href: "/student/profile",
         children: undefined,
     },
-<<<<<<< HEAD
-=======
-
->>>>>>> development
     {
         title: "Lớp học của tôi",
         icon: Users,

@@ -29,9 +29,6 @@ class TeacherLeaveRequestService {
     const response = await apiClient.post<{ data: LeaveRequest }>(
       '/teacher/leave-request/create-leave-request',
       params,
-      {
-        contentType: 'multipart/form-data',
-      }
     )
 
     const payload: any = response as any

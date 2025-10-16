@@ -36,6 +36,9 @@ interface ClassModalsProps {
   setEditAssessmentOpen: (open: boolean) => void
   selectedItem: any
   classData: any
+  classId?: string
+  teacherClassAssignmentId?: string
+  classDetails?: any
 }
 
 export function ClassModals(props: ClassModalsProps) {
@@ -63,6 +66,9 @@ export function ClassModals(props: ClassModalsProps) {
         editSessionOpen={props.editSessionOpen}
         setEditSessionOpen={props.setEditSessionOpen}
         selectedItem={props.selectedItem}
+        classId={props.classId}
+        teacherClassAssignmentId={props.teacherClassAssignmentId}
+        assignmentRoom={props?.classDetails?.room}
       />
 
       <TaskModals

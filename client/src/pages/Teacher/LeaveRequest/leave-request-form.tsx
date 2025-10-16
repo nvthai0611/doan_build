@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { AffectedSessionsTable } from './affected-sessions-table';
 import { ConfirmationModal } from './confirmation-modal';
-import { Calendar, Upload, X, FileText, Loader2 } from 'lucide-react';
+import { Calendar, Loader2 } from 'lucide-react';
 import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
 import { teacherCommonService } from '../../../services/teacher/common/common.service';
 import Loading from '../../../components/Loading/LoadingPage';
@@ -45,10 +45,6 @@ export function LeaveRequestForm() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    null,
-  );
   const [affectedSessions, setAffectedSessions] = useState<AffectedSessionItem[]>(
     [],
   );
@@ -92,28 +88,28 @@ export function LeaveRequestForm() {
     };
   }, [startDate, endDate]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     setImage(file);
 
-      // Create preview for images
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setImagePreview(null);
-      }
-    }
-  };
+  //     // Create preview for images
+  //     if (file.type.startsWith('image/')) {
+  //       const reader = new FileReader();
+  //       reader.onloadend = () => {
+  //         setImagePreview(reader.result as string);
+  //       };
+  //       reader.readAsDataURL(file);
+  //     } else {
+  //       setImagePreview(null);
+  //     }
+  //   }
+  // };
 
-  const removeAttachment = () => {
-    setImage(null);
-    setImagePreview(null);
-  };
+  // const removeAttachment = () => {
+  //   setImage(null);
+  //   setImagePreview(null);
+  // };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,10 +121,10 @@ export function LeaveRequestForm() {
     }
 
     //check if selected session is not select a replacement teacher
-    if (affectedSessions.some((s) => !s.replacementTeacherId)) {
-      toast.error('Vui lòng chọn giáo viên thay thế cho tất cả các buổi học');
-      return;
-    }
+    // if (affectedSessions.some((s) => !s.replacementTeacherId)) {
+    //   toast.error('Vui lòng chọn giáo viên thay thế cho tất cả các buổi học');
+    //   return;
+    // }
 
     if (new Date(endDate) < new Date(startDate)) {
       toast.error('Ngày kết thúc không được trước ngày bắt đầu');
@@ -150,7 +146,6 @@ export function LeaveRequestForm() {
         startDate,
         endDate,
         reason,
-        image: image as File,
         affectedSessions: affectedSessions.filter((s) => s.selected) as AffectedSessionItem[],
       });
 
@@ -177,8 +172,6 @@ export function LeaveRequestForm() {
     setStartDate('');
     setEndDate('');
     setReason('');
-    setImage(null);
-    setImagePreview(null);
     setAffectedSessions([]);
   };
 
@@ -303,7 +296,7 @@ export function LeaveRequestForm() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <Label
                           htmlFor="image"
                           className="text-sm font-medium text-foreground"
@@ -366,7 +359,7 @@ export function LeaveRequestForm() {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 pt-6">

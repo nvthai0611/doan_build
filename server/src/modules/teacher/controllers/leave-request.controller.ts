@@ -1,8 +1,7 @@
-import { Controller, Get, HttpException, HttpStatus, Post, Query, Req, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, HttpException, HttpStatus, Post, Query, Req, Body } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LeaveRequestService } from '../services/leave-request.service';
 import { AffectedSessionsQueryDto, AffectedSessionItemDto, ReplacementTeachersQueryDto, ReplacementTeacherDto, LeaveRequestDto } from '../dto/leave-request/leave-request.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Teacher - Leave Requests')
 @Controller('leave-request')
@@ -149,23 +148,20 @@ export class LeaveRequestController {
   }
 
   @Post('create-leave-request')
-  @UseInterceptors(FileInterceptor('image'))
   @ApiOperation({ summary: 'Tạo yêu cầu nghỉ' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({ type: LeaveRequestDto, schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiBody({ type: LeaveRequestDto})
   @ApiResponse({
     status: 200,
     description: 'Yêu cầu nghỉ đã được tạo thành công',
   })
   @ApiResponse({ status: 400, description: 'Thiếu hoặc sai tham số' })
-  async createLeaveRequest(@Req() req: any, @Body() body: LeaveRequestDto, @UploadedFile() file?: any) {
+  async createLeaveRequest(@Req() req: any, @Body() body: LeaveRequestDto) {
     try {
       const teacherId = req.user?.teacherId;
 
       const data = await this.leaveRequestService.createLeaveRequest(
         teacherId,
         body,
-        file,
         body.affectedSessions,
         req.user?.userId,
       );

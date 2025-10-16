@@ -27,7 +27,7 @@ export { teacherScheduleService } from './schedule/schedule.service'
 export type {
   TeacherSchedule,
   TeacherSession,
-  ScheduleFilters,  
+  ScheduleFilters, 
 } from './schedule/schedule.types'
 
 // Profile
