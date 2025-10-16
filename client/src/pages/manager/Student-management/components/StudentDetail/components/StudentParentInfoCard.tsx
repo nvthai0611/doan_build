@@ -14,9 +14,9 @@ export function StudentParentInfoCard({ student }: StudentParentInfoCardProps) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-foreground">Thông tin phụ huynh</h2>
-          <Button variant="ghost" size="icon">
+          {/* <Button variant="ghost" size="icon">
             <LinkIcon className="h-4 w-4 text-muted-foreground" />
-          </Button>
+          </Button> */}
         </div>
 
         {hasParentInfo ? (

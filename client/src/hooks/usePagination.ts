@@ -12,6 +12,7 @@ export interface UsePaginationReturn {
   totalPages: number
   setCurrentPage: (page: number) => void
   setItemsPerPage: (itemsPerPage: number) => void
+  setTotalItems: (totalItems: number) => void
   goToPage: (page: number) => void
   nextPage: () => void
   prevPage: () => void
@@ -31,8 +32,13 @@ export const usePagination = ({
 }: UsePaginationProps = {}): UsePaginationReturn => {
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage)
+  const [totalItemsState, setTotalItemsState] = useState(totalItems)
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const totalPages = Math.ceil(totalItemsState / itemsPerPage)
+
+  const setTotalItems = useCallback((total: number) => {
+    setTotalItemsState(total)
+  }, [])
 
   const goToPage = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -57,13 +63,13 @@ export const usePagination = ({
 
   const getPageInfo = useCallback(() => {
     const startItem = (currentPage - 1) * itemsPerPage + 1
-    const endItem = Math.min(currentPage * itemsPerPage, totalItems)
+    const endItem = Math.min(currentPage * itemsPerPage, totalItemsState)
     return {
       startItem,
       endItem,
-      totalItems
+      totalItems: totalItemsState
     }
-  }, [currentPage, itemsPerPage, totalItems])
+  }, [currentPage, itemsPerPage, totalItemsState])
 
   return {
     currentPage,
@@ -71,6 +77,7 @@ export const usePagination = ({
     totalPages,
     setCurrentPage,
     setItemsPerPage,
+    setTotalItems,
     goToPage,
     nextPage,
     prevPage,

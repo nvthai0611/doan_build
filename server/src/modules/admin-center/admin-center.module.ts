@@ -21,6 +21,8 @@ import { StudentManagementController } from './controllers/student-management.co
 import { StudentManagementService } from './services/student-management.service';
 import { IncidentHandleController } from './controllers/incident-handle.controller';
 import { IncidentHandleService } from './services/incident-handle.service';
+import { ParentManagementController } from './controllers/parent-management.controller';
+import { ParentManagementService } from './services/parent-management.service';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { IncidentHandleService } from './services/incident-handle.service';
     UsersController,
     StudentManagementController,
     IncidentHandleController,
+    ParentManagementController,
   ],
   providers: [
     PrismaService,
@@ -55,6 +58,7 @@ import { IncidentHandleService } from './services/incident-handle.service';
     UsersService,
     StudentManagementService,
     IncidentHandleService,
+    ParentManagementService,
   ],
 })
 export class AdminCenterModule {}

@@ -146,9 +146,12 @@ export class ClassManagementService {
                 roomName: cls.room?.name || 'Chưa xác định',
                 description: cls.description,
                 feeStructureId: cls.feeStructureId,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
                 // Use schedule from Classes table directly
                 recurringSchedule: (cls as any).recurringSchedule,
                 academicYear: (cls as any).academicYear,
+                expectedStartDate: cls.expectedStartDate,
                 teachers: cls.teacherClassAssignments.map(ta => ({
                     id: ta.teacher.id,
                     userId: ta.teacher.userId,
@@ -349,7 +352,6 @@ export class ClassManagementService {
                     HttpStatus.BAD_REQUEST
                 );
             }
-
             // Check subject exists if provided
             if (createClassDto.subjectId) {
                 const subject = await this.prisma.subject.findUnique({
@@ -366,7 +368,6 @@ export class ClassManagementService {
                     );
                 }
             }
-
             // Check room exists if provided
             if (createClassDto.roomId) {
                 const room = await this.prisma.room.findUnique({
@@ -383,7 +384,6 @@ export class ClassManagementService {
                     );
                 }
             }
-
             // Determine current academic year
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth() + 1;
@@ -402,7 +402,9 @@ export class ClassManagementService {
                     status: createClassDto.status || 'draft',
                     recurringSchedule: createClassDto.recurringSchedule || null,
                     academicYear: createClassDto.academicYear || currentAcademicYear,
-                    expectedStartDate: createClassDto.expectedStartDate ? new Date(createClassDto.expectedStartDate) : null
+                    expectedStartDate: createClassDto.expectedStartDate ? new Date(createClassDto.expectedStartDate) : null,
+                    actualStartDate: createClassDto.actualStartDate ? new Date(createClassDto.actualStartDate) : null,
+                    actualEndDate: createClassDto.actualEndDate ? new Date(createClassDto.actualEndDate) : null
                 } as any,
                 include: {
                     subject: true,
@@ -531,9 +533,362 @@ export class ClassManagementService {
         }
     }
 
+    // Tạo tự động buổi học cho lớp
+    async generateSessions(classId: string, body: any) {
+        try {
+            const {
+                startDate,
+                endDate,
+                sessionCount,
+                sessionInterval = 1, // Số ngày giữa các buổi học
+                sessionDuration = 180, // Thời lượng buổi học (phút)
+                generateForFullYear = true
+            } = body;
+
+            // Validate UUID
+            if (!this.isValidUUID(classId)) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'ID lớp học không hợp lệ'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Lấy thông tin lớp học (JSON recurringSchedule là thuộc tính trực tiếp của class)
+            const classInfo = await this.prisma.class.findUnique({
+                where: { id: classId },
+                include: {
+                    teacherClassAssignments: {
+                        include: {
+                            teacher: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            fullName: true
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        take: 1
+                    },
+                    room: true,
+                }
+            });
+
+            if (!classInfo) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không tìm thấy lớp học'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Xác định ngày bắt đầu và kết thúc
+            let sessionStartDate: Date;
+            let sessionEndDate: Date;
+
+            if (generateForFullYear) {
+                // Ưu tiên khoảng thời gian thực tế nếu có; nếu không, mặc định 1 năm kể từ start
+                sessionStartDate = classInfo.actualStartDate || classInfo.expectedStartDate || new Date();
+                sessionEndDate = classInfo.actualEndDate || new Date(sessionStartDate.getFullYear() + 1, sessionStartDate.getMonth(), sessionStartDate.getDate());
+            } else {
+                // Sử dụng ngày từ request body
+                sessionStartDate = new Date(startDate);
+                sessionEndDate = new Date(endDate);
+            }
+
+            // Validate dates
+            if (sessionStartDate >= sessionEndDate) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Ngày bắt đầu phải trước ngày kết thúc'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Lấy lịch học định kỳ từ class
+            const recurringSchedule = classInfo.recurringSchedule as any;
+            const scheduleDays = Array.isArray(recurringSchedule?.schedules) ? recurringSchedule.schedules : [];
+
+            if (scheduleDays.length === 0) {
+                throw new HttpException(
+                    { success: false, message: 'Lớp học chưa có lịch học định kỳ' },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Tạo danh sách buổi học theo lịch định kỳ: dựa vào thứ và khoảng ngày hiệu lực
+            const sessions: Array<{
+                classId: string;
+                academicYear: string;
+                sessionDate: Date;
+                startTime: string;
+                endTime: string;
+                roomId: string | null;
+                status: string;
+                notes: string;
+                createdAt: Date;
+            }> = [];
+
+            // Lấy số thứ tự tiếp theo từ notes (nếu muốn hiển thị)
+            let displayIndex = 1;
+            const lastByCreated = await this.prisma.classSession.findFirst({ where: { classId }, orderBy: { createdAt: 'desc' } });
+            if (lastByCreated) {
+                const parsed = parseInt(lastByCreated.notes?.match(/Buổi (\d+)/)?.[1] || '0');
+                if (!isNaN(parsed) && parsed > 0) displayIndex = parsed + 1;
+            }
+
+            const overallStart = new Date(sessionStartDate);
+            const overallEnd = new Date(sessionEndDate);
+
+            for (let d = new Date(overallStart); d <= overallEnd; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+
+                // Lấy tất cả schedule của ngày này (có thể nhiều ca)
+                const daySchedules = scheduleDays.filter((s: any) => (s.day || '').toLowerCase() === dayName);
+                if (daySchedules.length === 0) continue;
+
+                for (const s of daySchedules) {
+                    // Nếu schedule có phạm vi startDate/endDate riêng, kiểm tra trong phạm vi
+                    const schedStart = s.startDate ? new Date(s.startDate) : overallStart;
+                    const schedEnd = s.endDate ? new Date(s.endDate) : overallEnd;
+                    if (d < schedStart || d > schedEnd) continue;
+
+                    const startTime: string = s.startTime;
+                    const endTime: string = s.endTime;
+                    if (!startTime || !endTime) continue;
+
+                    sessions.push({
+                        classId,
+                        academicYear: classInfo.academicYear || new Date().getFullYear().toString(),
+                        sessionDate: new Date(d),
+                        startTime,
+                        endTime,
+                        roomId: classInfo.roomId,
+                        status: 'scheduled',
+                        notes: `Buổi ${displayIndex++} - ${classInfo.name}`,
+                        createdAt: new Date(),
+                    });
+                    if (sessionCount && sessions.length >= sessionCount) break;
+                }
+                if (sessionCount && sessions.length >= sessionCount) break;
+            }
+
+            // Kiểm tra xem có buổi học nào trùng lặp không
+            const existingSessions = await this.prisma.classSession.findMany({
+                where: {
+                    classId,
+                    sessionDate: {
+                        gte: sessionStartDate,
+                        lte: sessionEndDate
+                    }
+                }
+            });
+
+            // Lọc bỏ các buổi học trùng lặp
+            const filteredSessions = sessions.filter(session => 
+                !existingSessions.some(existing => 
+                    existing.sessionDate.toDateString() === session.sessionDate.toDateString() &&
+                    existing.startTime === session.startTime
+                )
+            );
+
+            // Tạo buổi học trong database
+            const createdSessions = await this.prisma.classSession.createMany({
+                data: filteredSessions,
+                skipDuplicates: true
+            });
+
+            return {
+                success: true,
+                data: {
+                    createdCount: createdSessions.count,
+                    totalSessions: sessions.length,
+                    filteredCount: filteredSessions.length,
+                    skippedCount: sessions.length - filteredSessions.length,
+                    startDate: sessionStartDate,
+                    endDate: sessionEndDate,
+                    sessions: filteredSessions
+                },
+                message: `Tạo thành công ${createdSessions.count} buổi học`
+            };
+
+        } catch (error) {
+            console.error('Error generating sessions:', error);
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Có lỗi xảy ra khi tạo buổi học'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // Lấy danh sách buổi học của lớp
+    async getClassSessions(classId: string, query: any) {
+        try {
+            const {
+                page = 1,
+                limit = 10,
+                search,
+                status,
+                startDate,
+                endDate,
+                sortBy = 'sessionDate',
+                sortOrder = 'desc'
+            } = query;
+
+            const skip = (page - 1) * limit;
+            const take = parseInt(limit);
+
+            // Build where clause
+            const where: any = {
+                classId: classId
+            };
+
+            // Add search filter
+            if (search) {
+                where.OR = [
+                    { notes: { contains: search, mode: 'insensitive' } }
+                ];
+            }
+
+            // Add status filter
+            if (status && status !== 'all') {
+                where.status = status;
+            }
+
+            // Add date range filter
+            if (startDate || endDate) {
+                where.sessionDate = {};
+                if (startDate) {
+                    where.sessionDate.gte = new Date(startDate);
+                }
+                if (endDate) {
+                    where.sessionDate.lte = new Date(endDate);
+                }
+            }
+
+            // Build orderBy clause
+            const orderBy: any = {};
+            if (sortBy === 'sessionDate') {
+                orderBy.sessionDate = sortOrder;
+            } else if (sortBy === 'startTime') {
+                orderBy.startTime = sortOrder;
+            } else if (sortBy === 'notes') {
+                orderBy.notes = sortOrder;
+            } else {
+                orderBy.sessionDate = 'desc';
+            }
+            
+            // Get sessions with pagination
+            const [sessions, total] = await Promise.all([
+                this.prisma.classSession.findMany({
+                    where,
+                    skip,
+                    take,
+                    orderBy,
+                    include: {
+                        class: {
+                            select: {
+                                name: true,
+                                maxStudents: true,
+                                teacherClassAssignments: {
+                                    select: {
+                                        teacher: {
+                                            select: {
+                                                user: {
+                                                    select: {
+                                                        fullName: true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    take: 1
+                                }
+                            }
+                        },
+                        room: {
+                            select: {
+                                name: true
+                            }
+                        },
+                        _count: {
+                            select: {
+                                attendances: true
+                            }
+                        }
+                    }
+                }),
+                this.prisma.classSession.count({ where })
+            ]);
+
+            
+            // Transform data to match frontend expectations
+            const transformedSessions = sessions.map((session, index) => ({
+                id: session.id,
+                topic: session.notes || `Buổi ${index + 1}`,
+                name: session.notes || `Buổi ${index + 1}`,
+                scheduledDate: session.sessionDate.toISOString().split('T')[0],
+                sessionDate: session.sessionDate.toISOString().split('T')[0],
+                startTime: session.startTime,
+                endTime: session.endTime,
+                status: session.status,
+                notes: session.notes,
+                teacher: session.class.teacherClassAssignments[0]?.teacher?.user?.fullName || null,
+                teacherName: session.class.teacherClassAssignments[0]?.teacher?.user?.fullName || null,
+                totalStudents: session.class.maxStudents || 0,
+                studentCount: session.class.maxStudents || 0,
+                attendanceCount: session._count.attendances || 0,
+                absentCount: 0, // Will be calculated based on attendance
+                notAttendedCount: (session.class.maxStudents || 0) - (session._count.attendances || 0),
+                rating: 0, // Default rating since not available in schema
+                roomName: session.room?.name || null
+            }));
+
+            const totalPages = Math.ceil(total / take);
+
+            return {
+                success: true,
+                data: transformedSessions,
+                meta: {
+                    total,
+                    page: parseInt(page),
+                    limit: take,
+                    totalPages
+                },
+                message: 'Lấy danh sách buổi học thành công'
+            };
+
+        } catch (error) {
+            console.error('Error getting class sessions:', error);
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Có lỗi xảy ra khi lấy danh sách buổi học'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
     // Xóa lớp học (soft delete bằng cách đổi status)
     async updateClassSchedules(id: string, body: any) {
         try {
+            
             // Validate UUID
             if (!this.isValidUUID(id)) {
                 throw new HttpException(

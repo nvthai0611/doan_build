@@ -32,7 +32,7 @@ export function BuoiHocTab({ onAddSession, onEditSession, onDeleteSession, teach
       id: s.id,
       title: `Buổi ${idx + 1}`,
       date: dateStr,
-      status: s.status === 'scheduled' ? 'Sắp tới' : s.status === 'completed' ? 'Hoàn thành' : s.status,
+      status: s.status === 'scheduled' ? 'Sắp tới' : s.status === 'completed' ? 'Hoàn thành' : s.status || "Đã hủy",
       attendance: Array.isArray(s.attendances) ? s.attendances.length : 0,
       startTime: s.startTime,
       endTime: s.endTime,
@@ -55,43 +55,43 @@ export function BuoiHocTab({ onAddSession, onEditSession, onDeleteSession, teach
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-sm text-muted-foreground">Đang tải buổi học...</div>
-          ) : isError ? (
-            <div className="text-sm text-destructive">Không thể tải danh sách buổi học</div>
-          ) : (
-            <div className="space-y-4">
-              {sessions.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Chưa có buổi học nào</div>
+                <div className="text-sm text-muted-foreground">Đang tải buổi học...</div>
+              ) : isError ? (
+                <div className="text-sm text-destructive">Không thể tải danh sách buổi học</div>
               ) : (
-                sessions.map((session: any) => (
-                  <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{session.title}</p>
-                      <p className="text-sm text-muted-foreground">Ngày: {session.date}</p>
-                      <p className="text-sm text-muted-foreground">Thời gian: {session.startTime} → {session.endTime}</p>
-                      {session.roomName && (
-                        <p className="text-sm text-muted-foreground">Phòng: {session.roomName}</p>
-                      )}
-                      {session.attendance > 0 && (
-                        <p className="text-sm text-muted-foreground">Có mặt: {session.attendance} học viên</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant={session.status === "Hoàn thành" ? "default" : "secondary"}>{session.status}</Badge>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => onEditSession(session)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => onDeleteSession(session)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                <div className="space-y-4">
+                  {sessions.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">Chưa có buổi học nào</div>
+                  ) : (
+                    sessions.map((session: any) => (
+                      <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{session.title}</p>
+                          <p className="text-sm text-muted-foreground">Ngày: {session.date}</p>
+                          <p className="text-sm text-muted-foreground">Thời gian: {session.startTime} → {session.endTime}</p>
+                          {session.roomName && (
+                            <p className="text-sm text-muted-foreground">Phòng: {session.roomName}</p>
+                          )}
+                          {session.attendance > 0 && (
+                            <p className="text-sm text-muted-foreground">Có mặt: {session.attendance} học viên</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge variant={session.status === "Hoàn thành" ? "default" : "secondary"}>{session.status}</Badge>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => onEditSession(session)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {/* <Button variant="ghost" size="sm" onClick={() => onDeleteSession(session)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button> */}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))
+                    ))
+                  )}
+                </div>
               )}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

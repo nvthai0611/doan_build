@@ -5,6 +5,7 @@ import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ChevronLeft, ChevronRight, Search, X, ChevronUp, ChevronDown } from "lucide-react"
 
 export interface Column<T> {
@@ -51,6 +52,10 @@ export interface DataTableProps<T> {
   searchPlaceholder?: string
   enableSort?: boolean
   onSortChange?: (sortBy: string, sortOrder: "asc" | "desc" | null) => void
+  enableCheckbox?: boolean
+  selectedItems?: string[]
+  onSelectionChange?: (selectedItems: string[]) => void
+  getItemId?: (item: T) => string
 }
 
 export function DataTable<T>({
@@ -70,6 +75,10 @@ export function DataTable<T>({
   searchPlaceholder = "Tìm kiếm...",
   enableSort = true,
   onSortChange,
+  enableCheckbox = false,
+  selectedItems = [],
+  onSelectionChange,
+  getItemId,
 }: DataTableProps<T>) {
   // State cho search filters
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>({})
@@ -78,6 +87,7 @@ export function DataTable<T>({
     key: "",
     direction: null
   })
+
 
   // Hàm xử lý thay đổi search filter
   const handleSearchChange = (columnKey: string, value: string) => {
@@ -156,6 +166,32 @@ export function DataTable<T>({
     })
   }, [data, searchFilters, columns, enableSearch])
 
+  // Checkbox handlers
+  const isAllSelected = enableCheckbox && selectedItems.length === filteredData.length && filteredData.length > 0
+  const isIndeterminate = enableCheckbox && selectedItems.length > 0 && selectedItems.length < filteredData.length
+
+  const handleSelectAll = (checked: boolean) => {
+    if (!enableCheckbox || !onSelectionChange || !getItemId) return
+    
+    if (checked) {
+      const allIds = filteredData.map(item => getItemId(item))
+      onSelectionChange(allIds)
+    } else {
+      onSelectionChange([])
+    }
+  }
+
+  const handleSelectItem = (item: T, checked: boolean) => {
+    if (!enableCheckbox || !onSelectionChange || !getItemId) return
+    
+    const itemId = getItemId(item)
+    if (checked) {
+      onSelectionChange([...selectedItems, itemId])
+    } else {
+      onSelectionChange(selectedItems.filter(id => id !== itemId))
+    }
+  }
+
   const getRowKey = (item: T, index: number): string | number => {
     if (rowKey) {
       if (typeof rowKey === "function") {
@@ -168,7 +204,7 @@ export function DataTable<T>({
 
   const renderLoadingRow = () => (
     <tr>
-      <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
+      <td colSpan={columns.length + (enableCheckbox ? 1 : 0)} className="px-6 py-8 text-center text-gray-500">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
         </div>
@@ -178,7 +214,7 @@ export function DataTable<T>({
 
   const renderErrorRow = () => (
     <tr>
-      <td colSpan={columns.length} className="px-6 py-8 text-center text-red-500">
+      <td colSpan={columns.length + (enableCheckbox ? 1 : 0)} className="px-6 py-8 text-center text-red-500">
         <div className="flex flex-col items-center justify-center">
           <p>{error}</p>
           {onRetry && (
@@ -193,7 +229,7 @@ export function DataTable<T>({
 
   const renderEmptyRow = () => (
     <tr>
-      <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
+      <td colSpan={columns.length + (enableCheckbox ? 1 : 0)} className="px-6 py-8 text-center text-gray-500">
         {emptyMessage}
       </td>
     </tr>
@@ -214,6 +250,14 @@ export function DataTable<T>({
         `}
         onClick={() => onRowClick?.(item, index)}
       >
+        {enableCheckbox && (
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+            <Checkbox
+              checked={getItemId ? selectedItems.includes(getItemId(item)) : false}
+              onCheckedChange={(checked) => handleSelectItem(item, checked as boolean)}
+            />
+          </td>
+        )}
         {columns.map((column) => (
           <td
             key={column.key}
@@ -380,6 +424,14 @@ export function DataTable<T>({
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              {enableCheckbox && (
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '50px' }}>
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
