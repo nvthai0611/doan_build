@@ -103,7 +103,7 @@ export default function StudentClassDetailPage() {
             <div className="flex items-center justify-center gap-2">
               <span className="text-muted-foreground">Sĩ số:</span>
               <Users className="w-4 h-4 text-amber-500" />
-              <span className="font-medium">{detail.currentStudents}/{detail.maxStudents}</span>
+              <span className="font-medium">{detail.currentStudents}</span>
             </div>
             <div className="flex items-center justify-center gap-2">
               <span className="text-muted-foreground">Môn học:</span>

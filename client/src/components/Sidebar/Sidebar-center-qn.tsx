@@ -212,33 +212,37 @@ const teacherMenuItems = [
 ]
 const studentMenuItems = [
     {
-        title: "Tổng quan",
-        icon: Home,
+        title: "Hồ Sơ",
+        icon: UserCog,
         href: "/student/profile",
+        children: undefined,
     },
-    
     {
         title: "Lớp học của tôi",
         icon: Users,
         href: "/student/my-classes",
+        children: undefined,
     },
     
     {
-        title: "Điểm số",
+        title: "Bảng điểm",
         icon: Target,
         href: "/student/my-grades",
+        children: undefined,
     },
     
     {
         title: "Tài liệu học tập",
         icon: Upload,
         href: "/student/my-documents",
+        children: undefined,
     },
     
     {
         title: "Lịch học",
         icon: Calendar,
         href: "/student/my-schedule",
+        children: undefined,
     },
 ]
 

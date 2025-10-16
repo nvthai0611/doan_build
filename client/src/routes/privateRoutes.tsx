@@ -23,10 +23,13 @@ import MyRequests from "../pages/Teacher/My-request/MyRequests";
 import FileUpload from "../pages/Teacher/FileManagement/FileUpload";
 import FileManage from "../pages/Teacher/FileManagement/FileManagement";
 import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
-import StudentHomepage from "../pages/Student/Student-homepage";
-import StudentSchedule from "../pages/Student/My-schedule/Student-schedule";
+// import StudentHomepage from "../pages/Student/StudentHomepage";
+import StudentSchedule from "../pages/Student/MySchedule/StudentSchedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
+import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
+import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
+import StudentMaterialsPage from "../pages/Student/MyMaterials/StudentMaterials";
 
 
 export const privateRoutes = (
@@ -71,11 +74,13 @@ export const privateRoutes = (
 
       {/* Học sinh */}
       <Route path="/student" element={<AuthMiddleware allowedRoles={['student']} />}>
-        <Route index element={<StudentHomepage />} />
+        <Route index element={<StudentProfilePage />} />
+        <Route path="profile" element={<StudentProfilePage />} />
         <Route path="my-schedule" element={<StudentSchedule />} />
         <Route path="my-classes" element={<StudentClassesPage />} />
         <Route path="my-classes/:classId" element={<StudentClassDetailPage />} />
-        <Route path="grades" element={<div>Student Grades - Coming Soon</div>} />
+        <Route path="my-grades" element={<StudentTranscriptPage />} />
+        <Route path="my-documents" element={<StudentMaterialsPage />} />
       </Route>
 
       {/* Phụ huynh */}
