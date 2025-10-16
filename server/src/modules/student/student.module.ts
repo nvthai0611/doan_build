@@ -1,6 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
-import { AcademicTrackingController } from './controllers/academic-tracking.controller';
+import { AcademicTrackingController, GradesController } from './controllers/academic-tracking.controller';
 import { ClassInformationController } from './controllers/class-information.controller';
 import { EnrollmentsController } from './controllers/enrollments.controller';
 import { MaterialsController } from './controllers/materials.controller';
@@ -28,6 +28,7 @@ import { MiddlewareStudent } from '../../common/middleware/student/student.middl
   ],
   controllers: [
     AcademicTrackingController,
+    GradesController,
     ClassInformationController,
     EnrollmentsController,
     MaterialsController,

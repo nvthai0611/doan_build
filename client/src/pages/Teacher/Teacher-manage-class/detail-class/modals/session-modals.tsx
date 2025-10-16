@@ -38,7 +38,7 @@ export function SessionModals({
               <label className="text-sm font-medium">Ngày học</label>
               <Input type="date" />
             </div>
-            <div>
+            {/* <div>
               <label className="text-sm font-medium">Trạng thái</label>
               <Select defaultValue="sap-toi">
                 <SelectTrigger>
@@ -50,7 +50,7 @@ export function SessionModals({
                   <SelectItem value="hoan-thanh">Hoàn thành</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
             <div>
               <label className="text-sm font-medium">Ghi chú</label>
               <Textarea placeholder="Nhập ghi chú cho buổi học" />
