@@ -65,18 +65,17 @@ export interface ChildAttendance {
 
 export interface ChildGrade {
   id: string
-  assessmentId: string
-  score?: number
-  feedback?: string
-  assessment: {
-    name: string
-    type: string
-    maxScore: number
-    date: string
-    class: {
-      name: string
-    }
-  }
+  subject: string
+  examName: string
+  date: string
+  score: number | null
+  maxScore: number
+  status: 'excellent' | 'good' | 'average'
+  teacher: string
+  feedback: string
+  gradedAt: string
+  assessmentType: string
+  className: string
 }
 
 export interface ChildPayment {

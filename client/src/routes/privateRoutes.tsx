@@ -78,6 +78,7 @@ export const privateRoutes = (
         <Route path="documents/manage" element={<FileManage />} />
         <Route path="incidents/report" element={<IncidentReportPage />} />
         <Route path="incidents/manage" element={<IncidentManagePage />} />
+        <Route path="classes/:teacherClassAssignmentId/session/:sessionId" element={<SessionDetails />} />
 
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}

@@ -3,18 +3,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Plus, Edit, Trash2 } from "lucide-react"
+import { Calendar, Plus, Edit, Trash2, Eye } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
 
 interface BuoiHocTabProps {
   onAddSession: () => void
-  onEditSession: (session: any) => void
+  onViewDetailSession: (session: any) => void
   onDeleteSession: (session: any) => void
   teacherClassAssignmentId: any
 }
 
-export function BuoiHocTab({ onAddSession, onEditSession, onDeleteSession, teacherClassAssignmentId }: BuoiHocTabProps) {
+export function BuoiHocTab({ onAddSession, onViewDetailSession, onDeleteSession, teacherClassAssignmentId }: BuoiHocTabProps) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['class-sessions', teacherClassAssignmentId],
     queryFn: async () => {
@@ -79,12 +79,12 @@ export function BuoiHocTab({ onAddSession, onEditSession, onDeleteSession, teach
                         <div className="flex items-center gap-4">
                           <Badge variant={session.status === "Hoàn thành" ? "default" : "secondary"}>{session.status}</Badge>
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => onEditSession(session)}>
-                              <Edit className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" onClick={() => onViewDetailSession(session)}>
+                              <Eye className="h-4 w-4" />
                             </Button>
-                            {/* <Button variant="ghost" size="sm" onClick={() => onDeleteSession(session)}>
+                            <Button variant="ghost" size="sm" onClick={() => onDeleteSession(session)}>
                               <Trash2 className="h-4 w-4" />
-                            </Button> */}
+                            </Button>
                           </div>
                         </div>
                       </div>
