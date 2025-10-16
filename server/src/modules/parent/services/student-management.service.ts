@@ -251,6 +251,89 @@ export class StudentManagementService {
     return { data: result, message: 'Lấy chi tiết học sinh thành công' };
   }
 
+  async getChildScheduleForParent(
+    userId: string,
+    childId: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const parent = await this.prisma.parent.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!parent) return { data: [], message: 'Không tìm thấy phụ huynh' };
+
+    // Xác thực child thuộc về parent
+    const child = await this.prisma.student.findFirst({
+      where: { id: childId, parentId: parent.id },
+      select: { id: true },
+    });
+    if (!child) return { data: [], message: 'Không tìm thấy học sinh' };
+
+    // Lấy các lớp mà học sinh đang theo học
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { studentId: childId, status: 'active' },
+      select: { classId: true },
+    });
+    const classIds = enrollments.map((e) => e.classId);
+    if (classIds.length === 0) return { data: [], message: 'Chưa có lịch học' };
+
+    const dateFilter: any = {};
+    if (startDate) dateFilter.gte = new Date(startDate);
+    if (endDate) dateFilter.lte = new Date(endDate);
+
+    const sessions = await this.prisma.classSession.findMany({
+      where: {
+        classId: { in: classIds },
+        ...(startDate || endDate ? { sessionDate: dateFilter } : {}),
+        status: 'scheduled',
+      },
+      include: {
+        class: { 
+          include: { 
+            subject: true,
+            teacherClassAssignments: {
+              where: { status: 'active' },
+              include: {
+                teacher: {
+                  include: {
+                    user: { select: { fullName: true } }
+                  }
+                }
+              }
+            }
+          } 
+        },
+        room: true,
+      },
+      orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+    });
+
+    const result = sessions.map((s) => ({
+      id: s.id,
+      classId: s.classId,
+      sessionDate: s.sessionDate.toISOString(),
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room ? { id: s.room.id, name: s.room.name, capacity: s.room.capacity ?? 0 } : undefined,
+      status: s.status,
+      class: {
+        id: s.class.id,
+        name: s.class.name,
+        subject: { id: s.class.subject.id, name: s.class.subject.name },
+        teacher: s.class.teacherClassAssignments?.[0]?.teacher ? {
+          id: s.class.teacherClassAssignments[0].teacher.id,
+          fullName: s.class.teacherClassAssignments[0].teacher.user?.fullName || null,
+        } : undefined,
+        maxStudents: s.class.maxStudents ?? 0,
+        currentStudents: 0,
+      },
+    }));
+
+    return { data: result, message: 'Lấy lịch học thành công' };
+  }
+
   async getChildGradesForParent(userId: string, childId: string, subject?: string) {
     const parent = await this.prisma.parent.findUnique({
       where: { userId },

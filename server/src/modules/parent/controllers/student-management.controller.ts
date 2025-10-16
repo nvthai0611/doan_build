@@ -32,6 +32,19 @@ export class StudentManagementController {
     return result;
   }
 
+  @Get('children/:childId/schedule')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lịch học của học sinh' })
+  async getChildSchedule(
+    @Req() req: any,
+    @Param('childId') childId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const userId = req.user?.userId;
+    return await this.service.getChildScheduleForParent(userId, childId, startDate, endDate);
+  }
+
   @Get('children/:childId/grades')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Điểm số của học sinh' })
