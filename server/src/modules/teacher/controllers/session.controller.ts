@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SessionService } from '../services/session.service';
 import { SessionDetailResponseDto } from '../dto/session/session-detail-response.dto';
 import { RescheduleSessionDto } from '../dto/session/reschedule-session.dto';
+import { CreateSessionDto } from '../dto/session/create-session.dto';
 
 @ApiTags('Teacher Session')
 @Controller('session')
@@ -62,6 +63,27 @@ export class SessionController {
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Post('create')
+  @ApiOperation({ summary: 'Tạo buổi học mới cho lớp' })
+  @ApiResponse({ status: 200, description: 'Tạo buổi học thành công' })
+  async createSession(
+    @Request() req: any,
+    @Body() dto: CreateSessionDto,
+  ) {
+    try {
+      const teacherId = req.user.teacherId
+      const result = await this.sessionService.createSession(teacherId, dto)
+      return {
+        success: true,
+        data: result,
+        message: 'Tạo buổi học thành công',
+      }
+    } catch (error) {
+      if (error instanceof HttpException) throw error
+      throw new Error(error.message);
     }
   }
 

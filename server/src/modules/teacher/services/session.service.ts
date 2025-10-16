@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { SessionDetailResponseDto, StudentInSessionDto } from '../dto/session/session-detail-response.dto';
 import { RescheduleSessionDto } from '../dto/session/reschedule-session.dto';
+import { CreateSessionDto } from '../dto/session/create-session.dto';
 
 @Injectable()
 export class SessionService {
@@ -246,6 +247,81 @@ export class SessionService {
       };
     } catch (error) {
       throw new Error(`Lỗi khi dời lịch buổi học: ${error.message}`);
+    }
+  }
+
+  async createSession(teacherId: string, dto: CreateSessionDto) {
+    try {
+      // Verify teacher assignment to the class and get academicYear
+      const assignment = await this.prisma.teacherClassAssignment.findFirst({
+        where: { classId: dto.classId, teacherId, status: 'active' },
+        select: { id: true, academicYear: true }
+      })
+      if (!assignment) {
+        throw new Error('Bạn không được phân công lớp này hoặc lớp không hoạt động')
+      }
+
+      // Validate time range conflict: room conflict (if roomId)
+      if (dto.roomId) {
+        const conflictRoom = await this.prisma.classSession.findFirst({
+          where: {
+            roomId: dto.roomId,
+            sessionDate: new Date(dto.sessionDate),
+            startTime: { lte: dto.endTime },
+            endTime: { gte: dto.startTime },
+          }
+        })
+        if (conflictRoom) {
+          throw new Error('Phòng học đã được sử dụng trong khoảng thời gian này')
+        }
+      }
+
+      // Validate teacher time conflict across classes
+      const conflictTeacher = await this.prisma.classSession.findFirst({
+        where: {
+          sessionDate: new Date(dto.sessionDate),
+          startTime: { lte: dto.endTime },
+          endTime: { gte: dto.startTime },
+          class: {
+            teacherClassAssignments: {
+              some: { teacherId }
+            }
+          }
+        }
+      })
+      if (conflictTeacher) {
+        throw new Error('Bạn đã có buổi dạy khác trùng khung giờ này')
+      }
+
+      // const data = {
+      //   classId: dto.classId,
+      //   academicYear: assignment.academicYear,
+      //   sessionDate: new Date(dto.sessionDate),
+      //   startTime: dto.startTime,
+      //   endTime: dto.endTime,
+      //   roomId: dto.roomId,
+      //   notes: dto.notes,
+      // };
+      // console.log(data);
+
+      const created = await this.prisma.classSession.create({
+        data: {
+          classId: dto.classId,
+          academicYear: assignment.academicYear,
+          sessionDate: new Date(dto.sessionDate),
+          startTime: dto.startTime,
+          endTime: dto.endTime,
+          roomId: dto.roomId,
+          notes: dto.notes,
+        },
+        include: {
+          room: { select: { name: true } }
+        }
+      })
+
+      return created
+    } catch (error) {
+      throw error
     }
   }
 

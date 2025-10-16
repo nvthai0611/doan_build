@@ -215,6 +215,9 @@ export function ClassDetailsPage() {
         setEditAssessmentOpen={setEditAssessmentOpen}
         selectedItem={selectedItem}
         classData={classData}
+        classId={classDetails?.id}
+        teacherClassAssignmentId={teacherClassAssignmentId as string}
+        classDetails={classDetails}
       />
 
       {/* Delete Confirmation Modal */}
