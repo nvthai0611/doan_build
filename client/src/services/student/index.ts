@@ -23,3 +23,21 @@ export type {
   UpdateProfileRequest,
   ChangePasswordRequest
 } from './profile/profile.types'
+
+// Grades / Transcript
+export { studentGradesService } from './grades/grades.service'
+export type {
+  TranscriptFilters,
+  TranscriptResponse,
+  TranscriptEntry,
+  StudentSubjectGrade,
+  StudentTermResult,
+} from './grades/grades.types'
+
+// Materials
+export { studentMaterialsService } from './materials/materials.service'
+export type {
+  StudentMaterial,
+  StudentMaterialsResponse,
+  GetStudentMaterialsParams,
+} from './materials/materials.types'
