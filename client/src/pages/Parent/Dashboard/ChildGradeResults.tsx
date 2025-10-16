@@ -3,9 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CalendarIcon, User } from "lucide-react"
-import { useState } from "react"
-import type { Child } from "./ListChildren"
+import { CalendarIcon, User, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { parentChildService } from "../../../services/parent/child-management/child.service"
+import type { Child, ChildGrade } from "../../../services/parent/child-management/child.types"
+
 
 interface ChildExamResultsProps {
   child: Child
@@ -14,41 +17,22 @@ interface ChildExamResultsProps {
 export function ChildExamResults({ child }: ChildExamResultsProps) {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
 
-  const mockExamResults = [
-    {
-      id: "1",
-      subject: "Toán học",
-      examName: "Kiểm tra giữa kỳ",
-      date: "15/09/2025",
-      score: 8.5,
-      maxScore: 10,
-      status: "excellent",
-      teacher: "Nguyễn Văn Giáo",
-      feedback: "Em làm bài rất tốt, cần chú ý thêm phần hình học không gian",
-    },
-    {
-      id: "2",
-      subject: "Vật lý",
-      examName: "Kiểm tra 15 phút",
-      date: "18/09/2025",
-      score: 7.0,
-      maxScore: 10,
-      status: "good",
-      teacher: "Lê Thị Hoa",
-      feedback: "Cần ôn lại phần điện học",
-    },
-    {
-      id: "3",
-      subject: "Hóa học",
-      examName: "Kiểm tra thực hành",
-      date: "20/09/2025",
-      score: 9.0,
-      maxScore: 10,
-      status: "excellent",
-      teacher: "Phạm Văn Nam",
-      feedback: "Thực hành tốt, kỹ năng quan sát chính xác",
-    },
-  ]
+  // Fetch grades data from API
+  const { 
+    data: gradesData, 
+    isLoading, 
+    isError, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['childGrades', child.id, selectedSubject],
+    queryFn: () => parentChildService.getChildGrades(child.id, selectedSubject || undefined),
+    enabled: !!child.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
+  })
+
+  const examResults: ChildGrade[] = gradesData || []
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -63,11 +47,29 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
     }
   }
 
-  const filteredResults = selectedSubject
-    ? mockExamResults.filter((result) => result.subject === selectedSubject)
-    : mockExamResults
+  const subjects = Array.from(new Set(examResults.map((r) => r.subject)))
 
-  const subjects = Array.from(new Set(mockExamResults.map((r) => r.subject)))
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Đang tải điểm số...</span>
+      </div>
+    )
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-500 mb-4">Có lỗi xảy ra khi tải điểm số</p>
+        <Button onClick={() => refetch()} variant="outline">
+          Thử lại
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -98,13 +100,22 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
 
       {/* Exam Results List */}
       <div className="space-y-4">
-        {filteredResults.map((result) => (
+        {examResults.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground">Chưa có điểm số nào</p>
+            </CardContent>
+          </Card>
+        ) : (
+          examResults.map((result) => (
           <Card key={result.id}>
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{result.score}</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {result.score !== null ? result.score : 'N/A'}
+                    </div>
                     <div className="text-xs text-muted-foreground">/{result.maxScore}</div>
                   </div>
                 </div>
@@ -123,7 +134,7 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <CalendarIcon className="w-4 h-4" />
-                      <span>{result.date}</span>
+                      <span>{new Date(result.date).toLocaleDateString('vi-VN')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <User className="w-4 h-4" />
@@ -142,7 +153,8 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,75 +8,54 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Filter, MoreVertical, Phone, CalendarIcon, ChevronRight } from "lucide-react"
 import { ChildDetailView } from "./ChildDetailView"
+import { useQuery } from "@tanstack/react-query"
+import { parentChildService } from "../../../services"
 
-export interface Child {
+type ChildRow = {
   id: string
   name: string
-  avatar: string
-  class: string
-  studentId: string
-  dateOfBirth: string
-  gender: string
-  phone: string
-  email: string
-  gpa: number
-  rank: number
-  totalStudents: number
-  attendance: number
-  status: string
+  avatar?: string
+  classNames: string
+  studentCode?: string
+  dateOfBirth?: string
+  gender?: string
+  phone?: string
+  email?: string
 }
-
-const mockChildren: Child[] = [
-  {
-    id: "1",
-    name: "Trần Minh Khang",
-    avatar: "/placeholder.svg?height=80&width=80",
-    class: "Lớp 10A",
-    studentId: "HS2025001",
-    dateOfBirth: "15/03/2010",
-    gender: "Nam",
-    phone: "0386828929",
-    email: "khang.tran@student.edu.vn",
-    gpa: 7.8,
-    rank: 5,
-    totalStudents: 32,
-    attendance: 95,
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Trần Minh Anh",
-    avatar: "/placeholder.svg?height=80&width=80",
-    class: "Lớp 8B",
-    studentId: "HS2025002",
-    dateOfBirth: "20/08/2012",
-    gender: "Nữ",
-    phone: "0386828930",
-    email: "anh.tran@student.edu.vn",
-    gpa: 8.5,
-    rank: 2,
-    totalStudents: 28,
-    attendance: 98,
-    status: "active",
-  },
-]
 
 export function ParentDashboard() {
   const [selectedChild, setSelectedChild] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
-  const child = mockChildren.find((c) => c.id === selectedChild)
+  const { data, isLoading } = useQuery({
+    queryKey: ["parent-children", { search: searchQuery }],
+    queryFn: () => parentChildService.getChildren({ search: searchQuery, limit: 50, page: 1 }),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const rows: ChildRow[] = useMemo(() => {
+    const list = Array.isArray(data) ? data : []
+    return list.map((s: any) => ({
+      id: s.id,
+      name: s.user?.fullName ?? s.user?.username ?? "",
+      avatar: s.user?.avatar,
+      classNames: (s.enrollments ?? []).map((e: any) => e.class?.name).filter(Boolean).join(", ") || "—",
+      studentCode: s.studentCode,
+      dateOfBirth: s.dateOfBirth?.slice(0, 10),
+      gender: s.gender,
+      phone: s.user?.phone,
+      email: s.user?.email,
+    }))
+  }, [data])
+
+  const child = rows.find((c) => c.id === selectedChild)
 
   if (child) {
-    return <ChildDetailView child={child} onBack={() => setSelectedChild(null)} />
+    return <ChildDetailView childId={child.id} onBack={() => setSelectedChild(null)} />
   }
 
-  const filteredChildren = mockChildren.filter(
-    (child) =>
-      child.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child.class.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredChildren = rows
 
   return (
     <div className="p-6 space-y-6">
@@ -109,9 +88,7 @@ export function ParentDashboard() {
       <div className="flex items-center gap-6 border-b">
         <button className="pb-3 border-b-2 border-primary text-primary font-medium">
           Tất cả
-          <Badge variant="secondary" className="ml-2">
-            {mockChildren.length}
-          </Badge>
+          <Badge variant="secondary" className="ml-2">{rows.length}</Badge>
         </button>
       </div>
 
@@ -147,8 +124,9 @@ export function ParentDashboard() {
                         </Avatar>
                         <div>
                           <p className="font-medium text-primary hover:underline">{child.name}</p>
-                          <p className="text-xs text-muted-foreground">{child.studentId}</p>
-                          <p className="text-xs text-muted-foreground">***{child.studentId.slice(-4)}</p>
+                          {child.studentCode ? (
+                            <p className="text-xs text-muted-foreground">{child.studentCode}</p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -171,15 +149,10 @@ export function ParentDashboard() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <Badge variant="outline">{child.class}</Badge>
+                      <Badge variant="outline">{child.classNames}</Badge>
                     </td>
                     <td className="p-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-primary">{child.gpa}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Hạng {child.rank}/{child.totalStudents}
-                        </div>
-                      </div>
+                      <div className="text-center text-xs text-muted-foreground">—</div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -201,7 +174,7 @@ export function ParentDashboard() {
           {/* Pagination */}
           <div className="flex items-center justify-between p-4 border-t">
             <div className="text-sm text-muted-foreground">
-              1-{filteredChildren.length} trong {mockChildren.length}
+              1-{filteredChildren.length} trong {rows.length}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" disabled>
