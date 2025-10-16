@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Child } from "./ListChildren"
+import type { Child } from "../../../services/parent/child-management/child.types"
 
 interface ChildAttendanceProps {
   child: Child

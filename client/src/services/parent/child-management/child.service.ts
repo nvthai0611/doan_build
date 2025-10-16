@@ -43,4 +43,12 @@ export const parentChildService = {
     const response = await ApiService.get(`/student-management/children/${childId}/report`, { period })
     return response.data as any
   },
+
+  getChildSchedule: async (
+    childId: string,
+    params?: { startDate?: string; endDate?: string }
+  ): Promise<any[]> => {
+    const response = await ApiService.get<any[]>(`/student-management/children/${childId}/schedule`, params)
+    return (response.data as any).data ?? (response.data as any)
+  }
 }
