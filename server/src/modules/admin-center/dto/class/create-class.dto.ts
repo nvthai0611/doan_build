@@ -47,4 +47,12 @@ export class CreateClassDto {
   @IsOptional()
   @IsDateString()
   expectedStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualEndDate?: string;
 }

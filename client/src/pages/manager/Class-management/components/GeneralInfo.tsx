@@ -1,185 +1,657 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Users, BookOpen, MapPin, Edit, Calendar as CalendarIcon } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import {
+  Calendar,
+  Clock,
+  Users,
+  BookOpen,
+  MapPin,
+  Edit,
+  Calendar as CalendarIcon,
+  Share2,
+  Copy,
+  QrCode,
+  RefreshCw,
+  X,
+  Check,
+  Undo,
+} from 'lucide-react';
 import { formatSchedule } from '../../../../utils/format';
 import { getStatusBadge } from '../const/statusBadge';
+import { useState, useEffect } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { EditScheduleSheet } from './EditScheduleSheet';
+import { classService } from '../../../../services/center-owner/class-management/class.service';
+import { useToast } from '../../../../hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../../../utils/clientAxios';
+import { GRADE_LEVEL_OPTIONS } from '../../../../lib/gradeConstants';
 
 interface GeneralInfoProps {
   classData: any;
 }
 
 export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isShareEnabled, setIsShareEnabled] = useState(false);
+  const [sharePassword, setSharePassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+  
+  // Fetch subjects and rooms như trong AddClass.tsx
+  const { data: subjectsData } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const response = await apiClient.get('/subjects');
+      return response;
+    },
+  });
 
+  const { data: roomsData } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: async () => {
+      const response = await apiClient.get('/rooms');
+      return response;
+    },
+  });
+
+  const subjects = (subjectsData as any)?.data || [];
+  const rooms = (roomsData as any)?.data || [];
+  
+  console.log('classData:', classData);
+  console.log('classData.subjectId:', classData.subjectId);
+  console.log('subjects:', subjects);
+
+  // Sync editData when classData changes
+  useEffect(() => {
+    setEditData({
+      name: classData.name || '',
+      roomId: classData.roomId || classData.room?.id || '',
+      grade: classData.grade || '',
+      expectedStartDate: classData.expectedStartDate || '',
+      description: classData.description || '',
+      status: classData.status || 'draft',
+      academicYear: classData.academicYear || '',
+    });
+  }, [classData]);
+  
+  const [editData, setEditData] = useState({
+    name: classData.name || '',
+    roomId: classData.roomId || classData.room?.id || '',
+    grade: classData.grade || '',
+    expectedStartDate: classData.expectedStartDate || '',
+    description: classData.description || '',
+    status: classData.status || 'draft',
+    academicYear: classData.academicYear || '',
+  });
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setErrors({}); // Clear errors when starting to edit
+  };
+
+  // Validation functions
+  const validateRequired = (value: string): boolean => {
+    return value.trim().length > 0;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Validate name
+    if (!validateRequired(editData.name)) {
+      newErrors.name = 'Tên lớp là bắt buộc';
+    }
+
+    // Note: subjectId không được edit
+
+    // Validate room
+    if (!editData.roomId || editData.roomId === 'none') {
+      newErrors.roomId = 'Chọn phòng học là bắt buộc';
+    }
+
+    // Validate expected start date
+    if (editData.expectedStartDate) {
+      const expectedDate = new Date(editData.expectedStartDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      
+      if (expectedDate < today) {
+        newErrors.expectedStartDate = 'Ngày khai giảng không được là ngày trong quá khứ';
+      }
+    }
+
+    // Note: Ngày bắt đầu thực tế và ngày kết thúc không được edit
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!classData.id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy ID lớp học",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate form trước khi submit
+    if (!validateForm()) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng kiểm tra lại thông tin đã nhập",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const updateData = {
+        name: editData.name.trim(),
+        description: editData.description,
+        roomId: editData.roomId === 'none' ? undefined : editData.roomId,
+        grade: editData.grade,
+        expectedStartDate: editData.expectedStartDate,
+        status: editData.status,
+        academicYear: editData.academicYear,
+      };
+
+      await classService.updateClass(classData.id, updateData);
+      
+      toast({
+        title: "Thành công",
+        description: "Cập nhật thông tin lớp học thành công",
+      });
+      
+      setIsEditing(false);
+      // Refresh class data - có thể emit event hoặc callback để parent component refetch
+      window.location.reload(); // Temporary solution
+    } catch (error: any) {
+      console.error('Error updating class:', error);
+      toast({
+        title: "Lỗi",
+        description: error.response?.data?.message || "Có lỗi xảy ra khi cập nhật lớp học",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setEditData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Clear error khi user nhập
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const handleCancel = () => {
+    setEditData({
+      name: classData.name || '',
+      roomId: classData.roomId || classData.room?.id || '',
+      grade: classData.grade || '',
+      expectedStartDate: classData.expectedStartDate || '',
+      description: classData.description || '',
+      status: classData.status || 'draft',
+      academicYear: classData.academicYear || '',
+    });
+    setErrors({});
+    setIsEditing(false);
+  };
+
+  const handleScheduleUpdate = async (schedules: any[]) => {
+    if (!classData.id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy ID lớp học",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsScheduleLoading(true);
+    try {
+      // Cập nhật lịch học với format đúng theo backend
+      const scheduleData = {
+        schedules: schedules, // Backend mong đợi 'schedules' không phải 'recurringSchedule'
+        // Thêm teacherId và academicYear nếu có để cập nhật đúng teacher assignment
+        ...(classData.teacherId && { teacherId: classData.teacherId }),
+        ...(classData.academicYear && { academicYear: classData.academicYear }),
+      };
+
+      await classService.updateClassSchedule(classData.id, scheduleData);
+      
+      toast({
+        title: "Thành công",
+        description: "Cập nhật lịch học thành công",
+      });
+      
+      setIsScheduleModalOpen(false);
+      // Refresh class data
+      window.location.reload(); // Temporary solution
+    } catch (error: any) {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: "Lỗi",
+        description: error.response?.data?.message || "Có lỗi xảy ra khi cập nhật lịch học",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScheduleLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Thành công",
+        description: "Đã sao chép link vào clipboard",
+      });
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      toast({
+        title: "Lỗi",
+        description: "Không thể sao chép link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper component để hiển thị error message
+  const ErrorMessage = ({ field }: { field: string }) => {
+    return errors[field] ? (
+      <p className="text-sm text-red-500 mt-1">{errors[field]}</p>
+    ) : null;
+  };
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
+      {/* Chi tiết lớp học */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              Thông tin lớp học
+              Chi tiết lớp học
             </CardTitle>
-            <Button variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Chỉnh sửa
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Thông tin chính */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Tên lớp</label>
-                <p className="text-lg font-semibold">{classData.name}</p>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-500">Môn học</label>
-                <p className="text-base">{classData.subjectName || 'Chưa xác định'}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">Khối lớp</label>
-                <p className="text-base">{classData.grade ? `Khối ${classData.grade}` : 'Chưa xác định'}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">Năm học</label>
-                <p className="text-base">{classData.academicYear || 'Chưa xác định'}</p>
-              </div>
-            </div>
-
-            {/* Thông tin phụ */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Trạng thái</label>
-                <div className="mt-1">
-                  {getStatusBadge(classData.status)}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsShareModalOpen(true)}>
+                <Share2 className="h-4 w-4" />
+              </Button>
+              {isEditing ? (
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleCancel}>
+                    <Undo className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleSave}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">Phòng học</label>
-                <p className="text-base flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {classData.roomName || 'Chưa phân công'}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">Sĩ số</label>
-                <p className="text-base flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  {classData.currentStudents || 0}/{classData?.room?.capacity || '∞'}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">Ngày khai giảng dự kiến</label>
-                <p className="text-base flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  {classData.expectedStartDate ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN') : 'Chưa xác định'}
-                </p>
-              </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={handleEdit}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
-
-          {/* Mô tả */}
-          {classData.description && (
-            <div>
-              <label className="text-sm font-medium text-gray-500">Mô tả</label>
-              <p className="text-base mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                {classData.description}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Lịch học */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Lịch học
-          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {classData.recurringSchedule ? (
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  {formatSchedule(classData.recurringSchedule)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Cột trái */}
+            <div className="space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Tên lớp học <span className="text-red-500">*</span>
+                </label>
+                {isEditing ? (
+                  <Input
+                    value={editData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`mt-1 ${errors.name ? "border-red-500" : ""}`}
+                    placeholder="Nhập tên lớp học"
+                  />
+                ) : (
+                  <p className="text-lg font-semibold mt-1">{classData.name}</p>
+                )}
+                <ErrorMessage field="name" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Khối lớp
+                </label>
+                {isEditing ? (
+                  <Select
+                    value={editData.grade}
+                    onValueChange={(value) => handleInputChange('grade', value)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Chọn khối lớp" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GRADE_LEVEL_OPTIONS.map(grade => (
+                        <SelectItem key={grade.value} value={grade.value}>
+                          {grade.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-base mt-1">
+                    {classData.grade ? `Khối ${classData.grade}` : 'Chưa xác định'}
+                  </p>
+                )}
+              </div>
+            
+
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Chọn phòng học <span className="text-red-500">*</span>
+                </label>
+                {isEditing ? (
+                  <Select
+                    value={editData.roomId}
+                    onValueChange={(value) => handleInputChange('roomId', value)}
+                  >
+                    <SelectTrigger className={`mt-1 ${errors.roomId ? "border-red-500" : ""}`}>
+                      <SelectValue placeholder="Chọn phòng học" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Chọn phòng học</SelectItem>
+                      {rooms &&
+                        rooms.length > 0 &&
+                        rooms.map((room: any) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            {room.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-base mt-1">
+                    {classData.roomName || classData.room?.name || 'Chưa phân công'}
+                  </p>
+                )}
+                <ErrorMessage field="roomId" />
+              </div>
+
+              {/* Lịch học hàng tuần */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-500">
+                    Lịch học hàng tuần
+                  </label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    disabled={isScheduleLoading}
+                  >
+                    {isScheduleLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Edit className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {classData.recurringSchedule ? (
+                    <div className="space-y-2">
+                      {formatSchedule(classData.recurringSchedule).split('\n').map((schedule, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+                          <span className="text-sm">{schedule}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic text-sm">Chưa có lịch học</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Cột phải */}
+            <div className="space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Khoá học
+                </label>
+                <p className="text-base mt-1">
+                  {classData.subjectName || classData.subject?.name || 'Chưa xác định'}
                 </p>
               </div>
-            ) : (
-              <p className="text-gray-500 italic">Chưa có lịch học</p>
-            )}
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Ngày khai giảng dự kiến
+                </label>
+                {isEditing ? (
+                  <Input
+                    type="date"
+                    value={editData.expectedStartDate}
+                    onChange={(e) => handleInputChange('expectedStartDate', e.target.value)}
+                    className={`mt-1 ${errors.expectedStartDate ? "border-red-500" : ""}`}
+                  />
+                ) : (
+                  <p className="text-base mt-1">
+                    {classData.expectedStartDate
+                      ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN')
+                      : 'Chưa xác định'}
+                  </p>
+                )}
+                <ErrorMessage field="expectedStartDate" />
+              </div>
+           
+
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Ngày kết thúc
+                </label>
+                <p className="text-base mt-1">
+                  {classData.actualEndDate
+                    ? new Date(classData.actualEndDate).toLocaleDateString('vi-VN')
+                    : 'Chưa xác định'}
+                </p>
+              </div>
+
+
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Mô tả
+                </label>
+                {isEditing ? (
+                  <div className="border rounded-lg overflow-hidden mt-1">
+                    <ReactQuill
+                      value={editData.description}
+                      onChange={(value) => handleInputChange('description', value)}
+                      placeholder="Nhập gì đó tại đây"
+                      style={{ height: '200px' }}
+                      modules={{
+                        toolbar: [
+                          [{ 'header': [1, 2, 3, false] }],
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                          [{ 'indent': '-1' }, { 'indent': '+1' }],
+                          [{ 'align': [] }],
+                          ['link', 'image'],
+                          ['clean']
+                        ],
+                      }}
+                      formats={[
+                        'header', 'bold', 'italic', 'underline', 'strike',
+                        'list', 'bullet', 'indent', 'align', 'link', 'image'
+                      ]}
+                      theme="snow"
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className="text-base mt-1 text-gray-500 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ 
+                      __html: classData.description || 'Chưa có mô tả' 
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Thống kê */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Học viên</p>
-                <p className="text-2xl font-bold">{classData.currentStudents || 0}</p>
+      {/* Modal chia sẻ lớp học */}
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Chia sẻ lớp học</DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setIsShareModalOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Kích hoạt chia sẻ */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Kích hoạt chia sẻ</span>
+              <Switch
+                checked={isShareEnabled}
+                onCheckedChange={(checked) => {
+                  setIsShareEnabled(checked);
+                  if (checked) {
+                    toast({
+                      title: "Thông báo",
+                      description: "Lớp học đã được kích hoạt chia sẻ",
+                    });
+                  } else {
+                    toast({
+                      title: "Thông báo", 
+                      description: "Lớp học đã tắt chia sẻ",
+                    });
+                  }
+                }}
+              />
+            </div>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Buổi học</p>
-                <p className="text-2xl font-bold">{classData.totalSessions || 0}</p>
+            {/* Link chia sẻ */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Link chia sẻ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={`https://staging.studentup.vn/student-app/classes/${classData.id || '276ebec0-c8cf-4c'}`}
+                  readOnly
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(`https://staging.studentup.vn/student-app/classes/${classData.id || '276ebec0-c8cf-4c'}`)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <BookOpen className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Bài kiểm tra</p>
-                <p className="text-2xl font-bold">{classData.totalAssessments || 0}</p>
-              </div>
+            {/* Mật khẩu */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Mật khẩu</Label>
+              <Input
+                value={sharePassword}
+                onChange={(e) => setSharePassword(e.target.value)}
+                placeholder="Nhập mật khẩu"
+                type="password"
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Tài liệu</p>
-                <p className="text-2xl font-bold">{classData.totalMaterials || 0}</p>
+            {/* Danh sách yêu cầu truy cập */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Danh sách yêu cầu truy cập vào lớp học</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">0 người</span>
+                <Button variant="ghost" size="sm">
+                  →
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            {/* QR Code */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Mã QR của lớp học</h3>
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600">1. Mở ứng dụng camera trên máy điện thoại</p>
+                <p className="text-xs text-gray-600">2. Di chuyển camera và quét mã QR để đăng ký nhanh</p>
+              </div>
+              <div className="flex justify-center">
+                <div className="border-2 border-dashed border-purple-500 p-4 rounded-lg">
+                  <div className="w-32 h-32 bg-black flex items-center justify-center">
+                    <QrCode className="h-16 w-16 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Schedule Sheet */}
+      <EditScheduleSheet
+        open={isScheduleModalOpen}
+        onOpenChange={setIsScheduleModalOpen}
+        classData={classData}
+        onSubmit={handleScheduleUpdate}
+        isLoading={isScheduleLoading}
+      />
     </div>
   );
 };

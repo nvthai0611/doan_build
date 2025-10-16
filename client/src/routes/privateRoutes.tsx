@@ -30,6 +30,13 @@ import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail"
 import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import StudentMaterialsPage from "../pages/Student/MyMaterials/StudentMaterials";
+import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
+import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
+import IncidentHandlePage from "../pages/manager/Incident-handle/IncidentHandle";
+import { ParentDashboard } from "../pages/Parent/Dashboard/ListChildren";
+import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
+import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
+import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
 
 
 export const privateRoutes = (
@@ -51,6 +58,11 @@ export const privateRoutes = (
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="teachers/schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
+        <Route path="permission-test" element={<PermissionTestPage />} />
+        <Route path="incidents" element={<IncidentHandlePage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="parents" element={<ParentManagement />} />
+        <Route path="parents/:id" element={<ParentDetailPage />} />
       </Route>
 
       {/* Giáo viên */}
@@ -64,6 +76,9 @@ export const privateRoutes = (
         <Route path="attendance" element={<AttendanceTable />} />
         <Route path="documents/upload" element={<FileUpload />} />
         <Route path="documents/manage" element={<FileManage />} />
+        <Route path="incidents/report" element={<IncidentReportPage />} />
+        <Route path="incidents/manage" element={<IncidentManagePage />} />
+
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
         <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
@@ -86,7 +101,7 @@ export const privateRoutes = (
       {/* Phụ huynh */}
       <Route path="/parent" element={<AuthMiddleware allowedRoles={['parent']} />}>
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
-        <Route path="children" element={<div>Children Management - Coming Soon</div>} />
+        <Route path="children" element={<ParentDashboard />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
       </Route>
 

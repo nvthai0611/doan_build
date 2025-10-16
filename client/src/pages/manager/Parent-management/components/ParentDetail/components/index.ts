@@ -1,0 +1,6 @@
+export { ParentSidebar } from './ParentSidebar'
+export { ParentInfoCard } from './ParentInfoCard'
+export { ParentStudentsTab } from './ParentStudentsTab'
+export { ParentPaymentsTab } from './ParentPaymentsTab'
+export { ParentScheduleTab } from './ParentScheduleTab'
+export { ParentTuitionTab } from './ParentTuitionTab'

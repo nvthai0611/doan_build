@@ -52,7 +52,7 @@ const centerOwnerMenuItems = [
         href: "/center-qn/students",
         children: [
             { title: "Danh sách học sinh", href: "/center-qn/students" },
-            { title: "Thông tin phụ huynh", href: "/center-qn/students/parents" },
+            { title: "Thông tin phụ huynh", href: "/center-qn/parents" },
             { title: "Phân lớp tự động", href: "/center-qn/students/auto-assign" },
             { title: "Học bạ nội bộ", href: "/center-qn/students/records" },
             { title: "Kết quả học tập", href: "/center-qn/students/results" },
@@ -217,32 +217,59 @@ const studentMenuItems = [
         href: "/student/profile",
         children: undefined,
     },
+<<<<<<< HEAD
+=======
+
+>>>>>>> development
     {
         title: "Lớp học của tôi",
         icon: Users,
         href: "/student/my-classes",
         children: undefined,
     },
-    
+
     {
         title: "Bảng điểm",
         icon: Target,
         href: "/student/my-grades",
         children: undefined,
     },
-    
+
     {
         title: "Tài liệu học tập",
         icon: Upload,
         href: "/student/my-documents",
         children: undefined,
     },
-    
+
     {
         title: "Lịch học",
         icon: Calendar,
         href: "/student/my-schedule",
         children: undefined,
+    },
+]
+
+const parentMenuItems = [
+    {
+        title: "Tổng quan",
+        icon: Home,
+        href: "/parent/profile",
+    },
+    {
+        title: "Đăng ký khoá học",
+        icon: Target,
+        href: "/parent/courses",
+    },
+    {
+        title: "Các con của tôi",
+        icon: Users,
+        href: "/parent/children",
+    },
+    {
+        title: "Tài liệu học tập",
+        icon: Upload,
+        href: "/parent/my-documents",
     },
 ]
 
@@ -252,8 +279,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const navigate = useNavigate()
     const { pathname } = useLocation()
-    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : studentMenuItems
-
+    const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems
     const toggleExpanded = (title: string) => {
         setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
     }

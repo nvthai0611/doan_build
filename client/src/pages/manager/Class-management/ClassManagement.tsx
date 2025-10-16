@@ -149,9 +149,9 @@ export const ClassManagement = () => {
     // Tabs
     const tabs = [
         { key: 'all', label: 'Tất cả', count: meta.total },
-        { key: 'active', label: 'Đang hoạt động', count: stats.activeClasses },
-        { key: 'draft', label: 'Nháp', count: stats.draftClasses },
-        { key: 'completed', label: 'Hoàn thành', count: stats.completedClasses }
+        { key: 'active', label: 'Đang diễn ra', count: stats.activeClasses },
+        { key: 'draft', label: 'Chưa cập nhật', count: stats.draftClasses },
+        { key: 'completed', label: 'Đã kết thúc', count: stats.completedClasses }
     ];
 
     // Handlers
@@ -401,7 +401,7 @@ export const ClassManagement = () => {
         {
             key: 'teachers',
             width: '290px',
-            header: 'Giáo viên',
+            header: 'Giáo viên phụ trách',
             render: (item: any) => {
                 if (item.teachers && item.teachers.length > 0) {
                     const teacher = item.teachers[0];
@@ -427,7 +427,7 @@ export const ClassManagement = () => {
                                             <p className="text-sm text-gray-600 dark:text-gray-300">{teacher.email}</p>
                                             <div className="mt-2">
                                                 <Badge variant="outline" className="text-xs">
-                                                    Giáo viên chính
+                                                    Giáo viên 
                                                 </Badge>
                                             </div>
                                         </div>
@@ -457,7 +457,7 @@ export const ClassManagement = () => {
                             alt="Giáo viên" 
                             className="w-8 h-8 rounded-full object-cover opacity-50"
                         />
-                        <span className="text-sm text-gray-400">Chưa phân công</span>
+                        <span className="text-sm text-gray-400">Chưa cập nhật</span>
                     </div>
                 );
             }
@@ -481,11 +481,10 @@ export const ClassManagement = () => {
             render: (item: any) => (
                 <div className="text-sm space-y-1">
                     <div>
-                        {item.actualStartDate ? formatDate(item.actualStartDate) : 
-                         item.expectedStartDate ? formatDate(item.expectedStartDate) : 'Chưa xác định'}
+                        {item.actualStartDate ? formatDate(item.actualStartDate) : '-'}
                     </div>
                     <div>
-                        {item.actualEndDate ? formatDate(item.actualEndDate) : 'Chưa xác định'}
+                        {item.actualEndDate ? formatDate(item.actualEndDate) : '-'}
                     </div>
                 </div>
             )
