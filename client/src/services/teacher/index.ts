@@ -27,8 +27,7 @@ export { teacherScheduleService } from './schedule/schedule.service'
 export type {
   TeacherSchedule,
   TeacherSession,
-  ScheduleFilters,
-  CreateSessionRequest
+  ScheduleFilters,  
 } from './schedule/schedule.types'
 
 // Profile
@@ -36,7 +35,6 @@ export { teacherProfileService } from './profile/profile.service'
 export type {
   TeacherProfile,
   TeacherDocument,
-  TeacherClass,
   UpdateProfileRequest,
   ChangePasswordRequest
 } from './profile/profile.types'

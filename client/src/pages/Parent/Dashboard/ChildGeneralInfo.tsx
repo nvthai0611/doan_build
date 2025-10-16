@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { User, Phone, CalendarIcon } from "lucide-react"
-import type { Child } from "./ListChildren"
+import type { Child } from "../../../services/parent"
 
 interface ChildGeneralInfoProps {
   child: Child
@@ -18,33 +18,33 @@ export function ChildGeneralInfo({ child }: ChildGeneralInfoProps) {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-start gap-6">
-            <Avatar className="w-24 h-24 border-4 border-background">
-              <AvatarImage src={child.avatar || "/placeholder.svg"} />
-              <AvatarFallback>{child.name.charAt(0)}</AvatarFallback>
+              <Avatar className="w-24 h-24 border-4 border-background">
+              <AvatarImage src={child.user?.avatar || "/placeholder.svg"} />
+              <AvatarFallback>{child.user?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{child.name}</h2>
+                  <h2 className="text-2xl font-bold">{child.user.fullName}</h2>
                   <Badge variant="secondary" className="mt-2">
                     Học sinh
                   </Badge>
                   <div className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <span>📧</span>
-                      <span>{child.email}</span>
+                      <span>{child.user.email}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4" />
-                      <span>{child.phone}</span>
+                      <span>{child.user.phone}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      <span>{child.studentId}</span>
+                      <span>{child.studentCode}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="w-4 h-4" />
-                      <span>{child.dateOfBirth}</span>
+                      <span>{child.dateOfBirth?.slice(0,10)}</span>
                     </div>
                   </div>
                 </div>
