@@ -23,11 +23,11 @@ import MyRequests from "../pages/Teacher/My-request/MyRequests";
 import FileUpload from "../pages/Teacher/FileManagement/FileUpload";
 import FileManage from "../pages/Teacher/FileManagement/FileManagement";
 import SessionDetails from "../pages/Teacher/Session-details/SessionDetails";
-// import StudentHomepage from "../pages/Student/StudentHomepage";
+import StudentHomepage from "../pages/Student/StudentHomepage";
 import StudentSchedule from "../pages/Student/MySchedule/StudentSchedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
-import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
+// import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
@@ -89,8 +89,7 @@ export const privateRoutes = (
 
       {/* Học sinh */}
       <Route path="/student" element={<AuthMiddleware allowedRoles={['student']} />}>
-        <Route index element={<StudentProfilePage />} />
-        <Route path="profile" element={<StudentProfilePage />} />
+        <Route index element={<StudentHomepage />} />
         <Route path="my-schedule" element={<StudentSchedule />} />
         <Route path="my-classes" element={<StudentClassesPage />} />
         <Route path="my-classes/:classId" element={<StudentClassDetailPage />} />
