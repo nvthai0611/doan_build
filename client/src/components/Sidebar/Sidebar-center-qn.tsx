@@ -212,9 +212,9 @@ const teacherMenuItems = [
 ]
 const studentMenuItems = [
     {
-        title: "Hồ Sơ",
-        icon: UserCog,
-        href: "/student/profile",
+        title: "Tổng quan",
+        icon: Home,
+        href: "/student",
         children: undefined,
     },
     {
@@ -323,7 +323,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                     {menuItems.map((item) => (
                         <div key={item.title}>
                             {(() => {
-                                const isTopActive = pathname === item.href || (item.children?.some((c) => c.href === pathname) ?? false)
+                                const isTopActive = pathname === item.href || (((item as any).children?.some((c: any) => c.href === pathname)) ?? false)
                                 return (
                                     <Button
                                         variant="ghost"
@@ -333,7 +333,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                             isTopActive && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
                                         )}
                                         onClick={() => {
-                                            if (item.children) {
+                                            if ((item as any).children) {
                                                 if (!isCollapsed) toggleExpanded(item.title)
                                             } else {
                                                 navigate(item.href)
@@ -344,7 +344,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                         {!isCollapsed && (
                                             <>
                                                 <span className="flex-1 text-left">{item.title}</span>
-                                                {item.children && (
+                                                {(item as any).children && (
                                                     <ChevronDown
                                                         className={cn(
                                                             "w-4 h-4 transition-transform",
@@ -359,9 +359,9 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             })()}
 
 
-                            {!isCollapsed && item.children && expandedItems.includes(item.title) && (
+                            {!isCollapsed && (item as any).children && expandedItems.includes(item.title) && (
                                 <div className="ml-7 space-y-1 mt-1">
-                                    {item.children.map((child) => {
+                                    {(item as any).children.map((child: any) => {
                                         const isActive = pathname === child.href
                                         return (
                                             <Button

@@ -33,8 +33,8 @@ const RoleBasedRedirect = () => {
       console.log("RoleBasedRedirect: Redirecting to /teacher/profile");
       return <Navigate to="/teacher/profile" replace />;
     case 'student':
-      console.log("RoleBasedRedirect: Redirecting to /student/profile");
-      return <Navigate to="/student/profile" replace />;
+      console.log("RoleBasedRedirect: Redirecting to /student");
+      return <Navigate to="/student" replace />;
     case 'parent':
       console.log("RoleBasedRedirect: Redirecting to /parent");
       return <Navigate to="/parent" replace />;

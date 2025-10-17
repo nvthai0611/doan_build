@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BookOpen, Users, FileText } from "lucide-react"
+import { BookOpen, Users, FileText, Calendar } from "lucide-react"
 
 interface ClassNavigationProps {
   activeTab: string
@@ -15,6 +15,7 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
   const tabs = [
     { id: "thong-tin-chung", label: "Thông tin chung", icon: BookOpen },
     { id: "hoc-vien", label: "Học viên", icon: Users },
+    { id: "buoi-hoc", label: "Buổi học", icon: Calendar },
     { id: "tai-lieu", label: "Tài liệu", icon: FileText },
   ]
 

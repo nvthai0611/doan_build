@@ -22,7 +22,7 @@ import { BuoiHocTab } from "./tabs/buoi-hoc-tab"
 import { CongViecTab } from "./tabs/cong-viec-tab"
 import ClassAttendancePage from "./tabs/lich-su-diem-danh"
 import { ClassModals } from "./modals/class-modals"
-import { useLocation, useParams, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
 import { daysOfWeek } from "../../../../utils/commonData"
@@ -50,7 +50,7 @@ export function ClassDetailsPage() {
   const [editAssessmentOpen, setEditAssessmentOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any>(null)
-
+  const navigate = useNavigate()
   const classData = {
     name: "Hóa 6",
     code: "HOA6",
@@ -110,6 +110,10 @@ export function ClassDetailsPage() {
     setSelectedItem({ ...item, type })
     setDeleteConfirmOpen(true)
   }
+  const handleViewDetailSession = (session: any) => {
+    setSelectedItem(session)
+    navigate(`/teacher/classes/${teacherClassAssignmentId}/session/${session.id}`)
+  }
   const renderTabContent = () => {
     switch (activeTab) {
       case "thong-tin-chung":
@@ -129,8 +133,8 @@ export function ClassDetailsPage() {
         return (
           <HocVienTab
             onAddStudent={() => setAddStudentOpen(true)}
-            onEditStudent={(student) => handleEdit("student", student)}
-            onDeleteStudent={(student) => handleDelete("student", student)}
+            onEditStudent={(student: any) => handleEdit("student", student)}
+            onDeleteStudent={(student: any) => handleDelete("student", student)}
             teacherClassAssignmentId= {teacherClassAssignmentId as string}
           />
         )
@@ -146,8 +150,9 @@ export function ClassDetailsPage() {
         return (
           <BuoiHocTab
             onAddSession={() => setAddSessionOpen(true)}
-            onEditSession={(session) => handleEdit("session", session)}
+            onViewDetailSession={(session) => handleViewDetailSession(session)}
             onDeleteSession={(session) => handleDelete("session", session)}
+            teacherClassAssignmentId={teacherClassAssignmentId as string}
           />
         )
       case "cong-viec":
@@ -214,6 +219,9 @@ export function ClassDetailsPage() {
         setEditAssessmentOpen={setEditAssessmentOpen}
         selectedItem={selectedItem}
         classData={classData}
+        classId={classDetails?.id}
+        teacherClassAssignmentId={teacherClassAssignmentId as string}
+        classDetails={classDetails}
       />
 
       {/* Delete Confirmation Modal */}

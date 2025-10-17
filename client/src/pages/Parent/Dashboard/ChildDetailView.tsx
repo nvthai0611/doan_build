@@ -3,20 +3,27 @@
 import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
 import { useState } from "react"
-import type { Child } from "./ListChildren"
+import { useQuery } from "@tanstack/react-query"
+import { parentChildService } from "../../../services"
 import { ChildGeneralInfo } from "./ChildGeneralInfo"
 import { ChildTimetable } from "./ChildTimetable"
-import { ChildExamResults } from "./ChildExamResults"
+import { ChildExamResults } from "./ChildGradeResults"
 import { ChildProgressReports } from "./ChildProgressReports"
 import { ChildAttendance } from "./ChildAttendance"
 
 interface ChildDetailViewProps {
-  child: Child
+  childId: string
   onBack: () => void
 }
 
-export function ChildDetailView({ child, onBack }: ChildDetailViewProps) {
+export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const [activeTab, setActiveTab] = useState("info")
+  const { data: child } = useQuery({
+    queryKey: ["parent-child", childId],
+    queryFn: () => parentChildService.getChildById(childId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
 
   return (
     <div className="p-6 space-y-6">
@@ -25,7 +32,7 @@ export function ChildDetailView({ child, onBack }: ChildDetailViewProps) {
         <Button variant="ghost" onClick={onBack} className="mb-4">
           ← Quay lại
         </Button>
-        <h1 className="text-3xl font-bold text-balance">Chi tiết học sinh {child.name}</h1>
+        <h1 className="text-3xl font-bold text-balance">Chi tiết học sinh {child?.user?.fullName}</h1>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
           <span>Dashboard</span>
           <ChevronRight className="w-4 h-4" />
@@ -90,11 +97,11 @@ export function ChildDetailView({ child, onBack }: ChildDetailViewProps) {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "info" && <ChildGeneralInfo child={child} />}
-      {activeTab === "timetable" && <ChildTimetable child={child} />}
-      {activeTab === "exams" && <ChildExamResults child={child} />}
-      {activeTab === "progress" && <ChildProgressReports child={child} />}
-      {activeTab === "attendance" && <ChildAttendance child={child} />}
+      {activeTab === "info" && child && <ChildGeneralInfo child={child} />}
+      {activeTab === "timetable" && child && <ChildTimetable child={child} />}
+      {activeTab === "exams" && child && <ChildExamResults child={child} />}
+      {activeTab === "progress" && child && <ChildProgressReports child={child} />}
+      {activeTab === "attendance" && child && <ChildAttendance child={child} />}
     </div>
   )
 }

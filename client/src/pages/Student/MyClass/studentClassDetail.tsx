@@ -11,6 +11,7 @@ import { ClassNavigation } from "./components/ClassNavigation"
 import { GeneralInfoTab } from "./components/tabs/GeneralInfoTab"
 import { StudentsTab } from "./components/tabs/StudentsTab"
 import { MaterialsTab } from "./components/tabs/MaterialsTab"
+import { SessionsTab } from "./components/tabs/SessionsTab"
 
 export default function StudentClassDetailPage() {
   const [activeTab, setActiveTab] = useState("thong-tin-chung")
@@ -32,6 +33,13 @@ export default function StudentClassDetailPage() {
         return <GeneralInfoTab classData={detail} classId={classId as string} />
       case "hoc-vien":
         return <StudentsTab classId={classId as string} />
+      case "buoi-hoc":
+        return <SessionsTab 
+          classId={classId as string} 
+          classStartDate={detail?.startDate}
+          classEndDate={detail?.endDate}
+          classInfo={detail}
+        />
       case "tai-lieu":
         return <MaterialsTab classId={classId as string} />
       default:
