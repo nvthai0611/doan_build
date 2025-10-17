@@ -231,12 +231,6 @@ const studentMenuItems = [
         children: undefined,
     },
 
-    {
-        title: "Tài liệu học tập",
-        icon: Upload,
-        href: "/student/my-documents",
-        children: undefined,
-    },
 
     {
         title: "Lịch học",

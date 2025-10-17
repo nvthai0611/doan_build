@@ -29,7 +29,6 @@ import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
 import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
-import StudentMaterialsPage from "../pages/Student/MyMaterials/StudentMaterials";
 import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
 import IncidentHandlePage from "../pages/manager/Incident-handle/IncidentHandle";
@@ -96,7 +95,6 @@ export const privateRoutes = (
         <Route path="my-classes" element={<StudentClassesPage />} />
         <Route path="my-classes/:classId" element={<StudentClassDetailPage />} />
         <Route path="my-grades" element={<StudentTranscriptPage />} />
-        <Route path="my-documents" element={<StudentMaterialsPage />} />
       </Route>
 
       {/* Phụ huynh */}
