@@ -24,6 +24,7 @@ export class ClassManagementService {
                 sortBy = 'createdAt',
                 sortOrder = 'desc'
             } = queryDto;
+            const grades = (queryDto as any)?.grades;
             
             const skip = (page - 1) * limit;
             const take = limit;
@@ -47,7 +48,18 @@ export class ClassManagementService {
             };
             
             if (status && status !== 'all') where.status = status;
-            if (grade) where.grade = grade;
+            // Support both `grades` and `grade` being arrays or strings
+            if (grades && Array.isArray((grades as any))) {
+                where.grade = { in: grades as any };
+            } else if (typeof grades === 'string') {
+                // support comma-separated string
+                const arr = (grades as string).split(',').map(s => s.trim()).filter(Boolean);
+                if (arr.length > 0) where.grade = { in: arr };
+            } else if (Array.isArray((grade as any))) {
+                where.grade = { in: grade as any };
+            } else if (grade) {
+                where.grade = grade;
+            }
             if (subjectId) where.subjectId = subjectId;
             if (roomId) where.roomId = roomId;
             
@@ -431,6 +443,8 @@ export class ClassManagementService {
         }
     }
 
+
+
     // Cập nhật lớp học
     async update(id: string, updateClassDto: UpdateClassDto) {
         try {
@@ -506,7 +520,9 @@ export class ClassManagementService {
                     ...(updateClassDto.status && { status: updateClassDto.status }),
                     ...(updateClassDto.recurringSchedule !== undefined && { recurringSchedule: updateClassDto.recurringSchedule }),
                     ...(updateClassDto.academicYear !== undefined && { academicYear: updateClassDto.academicYear }),
-                    ...(updateClassDto.expectedStartDate !== undefined && { expectedStartDate: updateClassDto.expectedStartDate ? new Date(updateClassDto.expectedStartDate) : null })
+                    ...(updateClassDto.expectedStartDate !== undefined && { expectedStartDate: updateClassDto.expectedStartDate ? new Date(updateClassDto.expectedStartDate) : null }),
+                    ...(updateClassDto.actualEndDate !== undefined && { actualEndDate: updateClassDto.actualEndDate ? new Date(updateClassDto.actualEndDate) : null }),
+                    ...(updateClassDto.actualStartDate !== undefined && { actualStartDate: updateClassDto.actualStartDate ? new Date(updateClassDto.actualStartDate) : null })
                 } as any,
                 include: {
                     subject: true,
@@ -540,11 +556,12 @@ export class ClassManagementService {
                 startDate,
                 endDate,
                 sessionCount,
-                sessionInterval = 1, // Số ngày giữa các buổi học
-                sessionDuration = 180, // Thời lượng buổi học (phút)
-                generateForFullYear = true
+                generateForFullYear = true,
+                overwrite = false
             } = body;
 
+            console.log("body", body);
+            
             // Validate UUID
             if (!this.isValidUUID(classId)) {
                 throw new HttpException(
@@ -556,6 +573,26 @@ export class ClassManagementService {
                 );
             }
 
+            if (!startDate || !endDate) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Ngày bắt đầu và ngày kết thúc là bắt buộc'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+            if (startDate >= endDate) {
+                console.log("đã vào");
+                
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Ngày bắt đầu phải trước ngày kết thúc'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
             // Lấy thông tin lớp học (JSON recurringSchedule là thuộc tính trực tiếp của class)
             const classInfo = await this.prisma.class.findUnique({
                 where: { id: classId },
@@ -593,13 +630,34 @@ export class ClassManagementService {
             let sessionEndDate: Date;
 
             if (generateForFullYear) {
-                // Ưu tiên khoảng thời gian thực tế nếu có; nếu không, mặc định 1 năm kể từ start
+                // Ưu tiên khoảng thời gian thực tế nếu có; nếu không, mặc định 9 tháng kể từ start
                 sessionStartDate = classInfo.actualStartDate || classInfo.expectedStartDate || new Date();
-                sessionEndDate = classInfo.actualEndDate || new Date(sessionStartDate.getFullYear() + 1, sessionStartDate.getMonth(), sessionStartDate.getDate());
+                const nineMonthsLater = new Date(sessionStartDate);
+                nineMonthsLater.setMonth(nineMonthsLater.getMonth() + 9);
+                sessionEndDate = classInfo.actualEndDate || nineMonthsLater;
             } else {
                 // Sử dụng ngày từ request body
                 sessionStartDate = new Date(startDate);
                 sessionEndDate = new Date(endDate);
+            }
+            // If overwrite requested, ensure class hasn't started, then delete existing sessions in range
+            if (overwrite) {
+                const classStart = classInfo.actualStartDate || classInfo.expectedStartDate;
+                if (classStart && new Date() >= new Date(classStart)) {
+                    throw new HttpException(
+                        {
+                            success: false,
+                            message: 'Lớp đã bắt đầu học, không thể cập nhật lịch cũ'
+                        },
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
+                await this.prisma.classSession.deleteMany({
+                    where: {
+                        classId,
+                        sessionDate: { gte: sessionStartDate, lte: sessionEndDate }
+                    }
+                });
             }
 
             // Validate dates
@@ -655,7 +713,7 @@ export class ClassManagementService {
                 // Lấy tất cả schedule của ngày này (có thể nhiều ca)
                 const daySchedules = scheduleDays.filter((s: any) => (s.day || '').toLowerCase() === dayName);
                 if (daySchedules.length === 0) continue;
-
+                
                 for (const s of daySchedules) {
                     // Nếu schedule có phạm vi startDate/endDate riêng, kiểm tra trong phạm vi
                     const schedStart = s.startDate ? new Date(s.startDate) : overallStart;
@@ -668,7 +726,7 @@ export class ClassManagementService {
 
                     sessions.push({
                         classId,
-                        academicYear: classInfo.academicYear || new Date().getFullYear().toString(),
+                        academicYear: classInfo.academicYear || new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
                         sessionDate: new Date(d),
                         startTime,
                         endTime,
@@ -706,6 +764,17 @@ export class ClassManagementService {
                 data: filteredSessions,
                 skipDuplicates: true
             });
+
+            // Cập nhật lại ngày thực tế của lớp học (nếu có start/end trong body)
+            if (startDate && endDate) {
+                await this.prisma.class.update({
+                    where: { id: classId },
+                    data: {
+                        actualStartDate: new Date(startDate),
+                        actualEndDate: new Date(endDate)
+                    }
+                });
+            }
 
             return {
                 success: true,
@@ -746,6 +815,7 @@ export class ClassManagementService {
                 status,
                 startDate,
                 endDate,
+                academicYear,
                 sortBy = 'sessionDate',
                 sortOrder = 'desc'
             } = query;
@@ -757,6 +827,11 @@ export class ClassManagementService {
             const where: any = {
                 classId: classId
             };
+
+            // Add academicYear filter - chỉ lấy sessions có cùng academicYear với lớp
+            if (academicYear) {
+                where.academicYear = academicYear;
+            }
 
             // Add search filter
             if (search) {
@@ -931,6 +1006,18 @@ export class ClassManagementService {
                 );
             }
 
+            // Không cho phép cập nhật lịch nếu lớp đã có buổi học
+            const existingSessions = await this.prisma.classSession.count({ where: { classId: id } });
+            if (existingSessions > 0) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Lớp đã có buổi học, không thể cập nhật lịch học'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
             // Validate schedule data
             if (!body.schedules || !Array.isArray(body.schedules) || body.schedules.length === 0) {
                 throw new HttpException(
@@ -1090,7 +1177,7 @@ export class ClassManagementService {
             // Soft delete by updating status
             await this.prisma.class.update({
                 where: { id },
-                data: { status: 'deleted' }
+                data: { status: 'cancelled' }
             });
 
             return {

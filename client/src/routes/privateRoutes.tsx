@@ -34,6 +34,7 @@ import { ParentDashboard } from "../pages/Parent/Dashboard/ListChildren";
 import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
+import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 
 
 export const privateRoutes = (
@@ -49,6 +50,7 @@ export const privateRoutes = (
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
+        <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="classes/create" element={<CreateClass />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />

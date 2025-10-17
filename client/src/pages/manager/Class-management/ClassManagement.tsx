@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/clientAxios';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -32,6 +33,7 @@ import { ClassType } from '../../../services/center-owner/class-management/class
 import { EnrollmentType } from '../../../services/center-owner/enrollment/enrollment.types';
 import { usePagination } from '../../../hooks/usePagination';
 import { getStatusBadge } from './const/statusBadge';
+import { ClassStatus, CLASS_STATUS_LABELS } from '../../../lib/constants';
 
 
 
@@ -57,6 +59,7 @@ export const ClassManagement = () => {
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
     const [filterRating, setFilterRating] = useState('');
+    const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isEditScheduleSheetOpen, setIsEditScheduleSheetOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -87,6 +90,7 @@ export const ClassManagement = () => {
         // Add other filters as needed
         dayOfWeek: selectedDay !== 'all' ? selectedDay : undefined,
         shift: selectedShift !== 'all' ? selectedShift : undefined,
+        grade: selectedGrades && selectedGrades.length > 0 ? selectedGrades.join(',') : undefined,
     };
 
     // Queries - optimized with caching
@@ -141,17 +145,17 @@ export const ClassManagement = () => {
     // Stats
     const stats = {
         totalClasses: meta.total,
-        activeClasses: classes.filter((c: any) => c.status === 'active').length,
-        draftClasses: classes.filter((c: any) => c.status === 'draft').length,
-        completedClasses: classes.filter((c: any) => c.status === 'completed').length
+        activeClasses: classes.filter((c: any) => c.status === ClassStatus.ACTIVE).length,
+        draftClasses: classes.filter((c: any) => c.status === ClassStatus.DRAFT).length,
+        completedClasses: classes.filter((c: any) => c.status === ClassStatus.COMPLETED).length
     };
 
     // Tabs
     const tabs = [
-        { key: 'all', label: 'Tất cả', count: meta.total },
-        { key: 'active', label: 'Đang diễn ra', count: stats.activeClasses },
-        { key: 'draft', label: 'Chưa cập nhật', count: stats.draftClasses },
-        { key: 'completed', label: 'Đã kết thúc', count: stats.completedClasses }
+        { key: ClassStatus.ALL, label: 'Tất cả', count: meta.total },
+        { key: ClassStatus.ACTIVE, label: CLASS_STATUS_LABELS[ClassStatus.ACTIVE], count: stats.activeClasses },
+        { key: ClassStatus.DRAFT, label: CLASS_STATUS_LABELS[ClassStatus.DRAFT], count: stats.draftClasses },
+        { key: ClassStatus.COMPLETED, label: CLASS_STATUS_LABELS[ClassStatus.COMPLETED], count: stats.completedClasses }
     ];
 
     // Handlers
@@ -192,7 +196,7 @@ export const ClassManagement = () => {
 
     const handleEditSchedule = (classItem: any) => {
         // Kiểm tra status trước khi cho phép chỉnh sửa
-        if (classItem.status === 'active') {
+        if (classItem.status === ClassStatus.ACTIVE) {
             toast.error('Không thể chỉnh sửa lịch học cho lớp đang hoạt động. Vui lòng chuyển lớp sang trạng thái khác trước.');
             return;
         }
@@ -650,6 +654,23 @@ export const ClassManagement = () => {
                                         </Button>
                                     </div>
                                     <div className="space-y-3">
+                                        {/* Khối lớp (đa chọn) */}
+                                        <div>
+                                            <label className="text-sm text-gray-600 dark:text-gray-300 mb-2 block">Khối lớp</label>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {['6','7','8','9'].map(g => (
+                                                    <label key={g} className="flex items-center gap-2 text-sm">
+                                                        <Checkbox 
+                                                            checked={selectedGrades.includes(g)} 
+                                                            onCheckedChange={(checked: boolean) => {
+                                                                setSelectedGrades(prev => checked ? Array.from(new Set([...prev, g])) : prev.filter(x => x !== g));
+                                                            }}
+                                                        />
+                                                        <span>Khối {g}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
                                         {/* Giáo viên phụ trách */}
                                         <div>
                                             <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Giáo viên phụ trách</label>

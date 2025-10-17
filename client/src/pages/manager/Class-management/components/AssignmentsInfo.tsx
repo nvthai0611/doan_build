@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClipboardList, Plus, MoreHorizontal, Users, Calendar, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { AssignmentStatus, ASSIGNMENT_STATUS_LABELS, ASSIGNMENT_STATUS_COLORS } from '../../../../lib/constants';
 
 interface AssignmentsInfoProps {
   classId: string;
@@ -13,7 +14,7 @@ interface AssignmentsInfoProps {
 }
 
 export const AssignmentsInfo = ({ classId, classData }: AssignmentsInfoProps) => {
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'overdue'>('all');
+  const [filter, setFilter] = useState<AssignmentStatus>(AssignmentStatus.ALL);
   
   // Sử dụng data thật từ props hoặc mock data
   const assignments = classData?.assessments || [
@@ -68,36 +69,36 @@ export const AssignmentsInfo = ({ classId, classData }: AssignmentsInfoProps) =>
   ];
 
   const filteredAssignments = assignments.filter((assignment: any) => {
-    if (filter === 'all') return true;
-    if (filter === 'active') return assignment.status === 'active';
-    if (filter === 'completed') return assignment.status === 'completed';
-    if (filter === 'overdue') {
-      return assignment.status === 'active' && new Date(assignment.dueDate) < new Date();
+    if (filter === AssignmentStatus.ALL) return true;
+    if (filter === AssignmentStatus.ACTIVE) return assignment.status === AssignmentStatus.ACTIVE;
+    if (filter === AssignmentStatus.COMPLETED) return assignment.status === AssignmentStatus.COMPLETED;
+    if (filter === AssignmentStatus.OVERDUE) {
+      return assignment.status === AssignmentStatus.ACTIVE && new Date(assignment.dueDate) < new Date();
     }
     return true;
   });
 
   const getStatusBadge = (status: string, dueDate: string) => {
-    const isOverdue = status === 'active' && new Date(dueDate) < new Date();
+    const isOverdue = status === AssignmentStatus.ACTIVE && new Date(dueDate) < new Date();
     
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
-      active: { 
+      [AssignmentStatus.ACTIVE]: { 
         variant: isOverdue ? 'destructive' : 'default', 
-        label: isOverdue ? 'Quá hạn' : 'Đang mở',
-        className: isOverdue ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200'
+        label: isOverdue ? ASSIGNMENT_STATUS_LABELS[AssignmentStatus.OVERDUE] : ASSIGNMENT_STATUS_LABELS[AssignmentStatus.ACTIVE],
+        className: isOverdue ? ASSIGNMENT_STATUS_COLORS[AssignmentStatus.OVERDUE] : ASSIGNMENT_STATUS_COLORS[AssignmentStatus.ACTIVE]
       },
-      upcoming: { 
+      [AssignmentStatus.UPCOMING]: { 
         variant: 'secondary', 
-        label: 'Sắp tới',
-        className: 'bg-gray-100 text-gray-800 border-gray-200'
+        label: ASSIGNMENT_STATUS_LABELS[AssignmentStatus.UPCOMING],
+        className: ASSIGNMENT_STATUS_COLORS[AssignmentStatus.UPCOMING]
       },
-      completed: { 
+      [AssignmentStatus.COMPLETED]: { 
         variant: 'outline', 
-        label: 'Đã hoàn thành',
-        className: 'bg-green-100 text-green-800 border-green-200'
+        label: ASSIGNMENT_STATUS_LABELS[AssignmentStatus.COMPLETED],
+        className: ASSIGNMENT_STATUS_COLORS[AssignmentStatus.COMPLETED]
       }
     };
-    const config = variants[status] || variants.active;
+    const config = variants[status] || variants[AssignmentStatus.ACTIVE];
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
   };
 

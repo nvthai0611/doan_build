@@ -10,11 +10,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check } from 'lucide-react';
-import { format, addYears } from 'date-fns';
+import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
+import { toast } from 'sonner';
+import { SessionStatus, SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '../../../../lib/constants';
 
 interface LessonsInfoProps {
   classId: string;
@@ -22,7 +24,7 @@ interface LessonsInfoProps {
 }
 
 export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
-  const [filter, setFilter] = useState<'all' | 'scheduled' | 'in_progress' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -56,18 +58,19 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['classSessions', classId, debouncedSearchTerm, filter, startDate, endDate, pagination.currentPage, pagination.itemsPerPage],
+    queryKey: ['classSessions', classId, classData?.academicYear, debouncedSearchTerm, filter, startDate, endDate, pagination.currentPage, pagination.itemsPerPage],
     queryFn: () => classService.getClassSessions(classId, {
       search: debouncedSearchTerm || undefined,
       status: filter !== 'all' ? filter : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      academicYear: classData?.academicYear, // Chỉ lấy sessions cùng academicYear
       page: pagination.currentPage,
       limit: pagination.itemsPerPage,
       sortBy: "sessionDate",
       sortOrder: "asc",
     }),
-    enabled: !!classId,
+    enabled: !!classId && !!classData?.academicYear,
     staleTime: 3000,
     refetchOnWindowFocus: true
   });
@@ -93,40 +96,34 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 
   // Status filters với counts
   const statusFilters = [
-    { key: 'all', label: 'Tất cả', count: totalCount },
-    { key: 'scheduled', label: 'Chưa diễn ra', count: sessions.filter((s: any) => s.status === 'scheduled').length },
-    { key: 'in_progress', label: 'Đang diễn ra', count: sessions.filter((s: any ) => s.status === 'in_progress').length },
-    { key: 'completed', label: 'Đã kết thúc', count: sessions.filter((s: any) => s.status === 'completed').length }
+    { key: SessionStatus.ALL, label: SESSION_STATUS_LABELS[SessionStatus.ALL], count: totalCount },
+    { key: SessionStatus.SCHEDULED, label: SESSION_STATUS_LABELS[SessionStatus.SCHEDULED], count: sessions.filter((s: any) => s.status === SessionStatus.SCHEDULED).length },
+    { key: SessionStatus.COMPLETED, label: SESSION_STATUS_LABELS[SessionStatus.COMPLETED], count: sessions.filter((s: any) => s.status === SessionStatus.COMPLETED).length },
+    { key: SessionStatus.CANCELLED, label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED], count: sessions.filter((s: any) => s.status === SessionStatus.CANCELLED).length }
   ];
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
-      completed: { 
+      [SessionStatus.COMPLETED]: { 
         variant: 'default', 
-        label: 'Đã hoàn thành', 
-        className: 'bg-green-100 text-green-800 border-green-200',
+        label: SESSION_STATUS_LABELS[SessionStatus.COMPLETED], 
+        className: SESSION_STATUS_COLORS[SessionStatus.COMPLETED],
         icon: CheckCircle
       },
-      scheduled: { 
+      [SessionStatus.SCHEDULED]: { 
         variant: 'secondary', 
-        label: 'Sắp tới',
-        className: 'bg-blue-100 text-blue-800 border-blue-200',
+        label: SESSION_STATUS_LABELS[SessionStatus.SCHEDULED],
+        className: SESSION_STATUS_COLORS[SessionStatus.SCHEDULED],
         icon: Clock
       },
-      cancelled: { 
+      [SessionStatus.CANCELLED]: { 
         variant: 'destructive', 
-        label: 'Đã hủy',
-        className: 'bg-red-100 text-red-800 border-red-200',
+        label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED],
+        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED],
         icon: XCircle
-      },
-      in_progress: { 
-        variant: 'outline', 
-        label: 'Đang diễn ra',
-        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        icon: AlertCircle
       }
     };
-    const config = variants[status] || variants.upcoming;
+    const config = variants[status] || variants[SessionStatus.SCHEDULED];
     const Icon = config.icon;
     return (
       <Badge variant={config.variant} className={config.className}>
@@ -387,6 +384,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               </SheetHeader>
               <AddLessonForm
                 classId={classId}
+                expectedStartDate={classData?.expectedStartDate}
                 actualStartDate={classData?.actualStartDate}
                 actualEndDate={classData?.actualEndDate}
                 onClose={() => setIsAddLessonOpen(false)}
@@ -504,19 +502,28 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 // Add Lesson Form Component
 const AddLessonForm = ({
   classId,
+  expectedStartDate,
   actualStartDate,
   actualEndDate,
   onClose,
   onGenerated
 }: {
   classId: string;
+  expectedStartDate?: string;
   actualStartDate?: string;
   actualEndDate?: string;
   onClose: () => void;
   onGenerated?: () => void;
 }) => {
-  const initialStart = actualStartDate ? new Date(actualStartDate) : new Date();
-  const initialEnd = actualEndDate ? new Date(actualEndDate) : addYears(initialStart, 1);
+  const hasActualDates = Boolean(actualStartDate || actualEndDate);
+  console.log(hasActualDates);
+  
+  const initialStart = actualStartDate ? new Date(actualStartDate) : (expectedStartDate ? new Date(expectedStartDate) : new Date());
+  const initialEnd = (() => {
+    const base = actualEndDate ? new Date(actualEndDate) : new Date(new Date(initialStart).setMonth(initialStart.getMonth() + 9));
+    base.setHours(23, 59, 59, 999);
+    return base;
+  })();
 
   const [startDate, setStartDate] = useState<Date>(initialStart);
   const [endDate, setEndDate] = useState<Date>(initialEnd);
@@ -536,20 +543,45 @@ const AddLessonForm = ({
           size="sm"
           onClick={async () => {
             try {
+              if(startDate.getTime() >= endDate.getTime()) {
+                toast.error("Ngày bắt đầu phải trước ngày kết thúc");
+                return;
+              }
+              // Kiểm tra lịch hiện có trong khoảng để xác nhận ghi đè
+              let overwrite = false;
+              const existing = await classService.getClassSessions(classId, {
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                page: 1,
+                limit: 1,
+              });
+              const totalExisting = (existing as any)?.meta?.total || 0;
+              if (totalExisting > 0) {
+                // Chỉ cho phép ghi đè nếu lớp chưa bắt đầu học
+                const classStart = actualStartDate || expectedStartDate;
+                if (classStart && new Date() >= new Date(classStart)) {
+                  toast.error('Lớp đã bắt đầu học, không thể cập nhật lịch cũ.');
+                  return;
+                }
+                const confirmOverwrite = window.confirm('Đã có lịch trong khoảng thời gian này. Bạn có muốn cập nhật (ghi đè) lịch cũ?');
+                if (!confirmOverwrite) return;
+                overwrite = true;
+              }
               setIsGenerating(true);
               const payload = actualStartDate || actualEndDate
                 ? {
                     generateForFullYear: false,
                     startDate: startDate.toISOString(),
                     endDate: endDate.toISOString(),
-                    sessionInterval: 1,
                     sessionCount: lessonCount,
+                    overwrite,
                   }
                 : {
                     generateForFullYear: true,
-                    sessionInterval: 1,
                     startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
                     sessionCount: lessonCount,
+                    overwrite,
                   };
               await classService.generateSessions(classId, payload);
               onGenerated && onGenerated();
@@ -577,7 +609,7 @@ const AddLessonForm = ({
       {/* Start Date */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          Thời gian bắt đầu tạo buổi học
+          {hasActualDates ? 'Ngày bắt đầu' : 'Ngày khai giảng dự kiến'}
         </label>
         <div className="flex items-center gap-2">
           <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -597,9 +629,12 @@ const AddLessonForm = ({
                 onSelect={(date: Date | undefined) => {
                   if (date) {
                     setStartDate(date);
-                    // nếu người dùng chưa set endDate thủ công, cập nhật mặc định 1 năm sau
+                    // nếu người dùng chưa set endDate thủ công, cập nhật mặc định +9 tháng
                     if (!(actualStartDate || actualEndDate)) {
-                      setEndDate(addYears(date, 1));
+                      const nineMonthsLater = new Date(date);
+                      nineMonthsLater.setMonth(nineMonthsLater.getMonth() + 9);
+                      nineMonthsLater.setHours(23, 59, 59, 999);
+                      setEndDate(nineMonthsLater);
                     }
                     setIsCalendarOpen(false);
                   }
@@ -613,7 +648,7 @@ const AddLessonForm = ({
       </div>
 
       {/* End Date - chỉ hiện khi lớp thiếu actualStartDate/actualEndDate */}
-      {!(actualStartDate && actualEndDate) && (
+      {(
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
             Ngày kết thúc
@@ -635,7 +670,9 @@ const AddLessonForm = ({
                   selected={endDate}
                   onSelect={(date: Date | undefined) => {
                     if (date) {
-                      setEndDate(date);
+                      const endOfDay = new Date(date);
+                      endOfDay.setHours(23, 59, 59, 999);
+                      setEndDate(endOfDay);
                       setIsEndCalendarOpen(false);
                     }
                   }}
