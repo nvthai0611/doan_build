@@ -23,6 +23,8 @@
     "prisma:studio": "prisma studio",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seeder/seed.js",
+    "prisma:seed:auth": "node prisma/seeder/seed-auth.js",
+    "prisma:seed:permissions": "node prisma/seeder/seed-permissions.js",
     "prisma:reset": "prisma migrate reset --force && npm run prisma:seed"
   },
   "dependencies": {

@@ -70,28 +70,109 @@ export const STUDENT_STATUS_MAPPING: Record<string, StudentStatus> = {
 
 // ==================== CLASS STATUS ====================
 export enum ClassStatus {
-  ACTIVE = 'active',          // Đang hoạt động
-  COMPLETED = 'completed',    // Đã hoàn thành
-  DRAFT = 'draft',           // Nháp
-  CANCELLED = 'cancelled',   // Đã hủy
-  ALL = 'all'                // Tất cả (dùng cho filter)
+  DRAFT = 'draft',           // Lớp nháp - chưa đủ thông tin cần thiết
+  READY = 'ready',           // Sẵn sàng - đã đủ thông tin, chờ khai giảng
+  ACTIVE = 'active',         // Đang hoạt động - đang trong thời gian học
+  COMPLETED = 'completed',   // Đã hoàn thành - kết thúc khóa học
+  SUSPENDED = 'suspended',   // Tạm dừng - tạm thời dừng hoạt động
+  CANCELLED = 'cancelled',   // Đã hủy - hủy lớp học
+  ALL = 'all'               // Tất cả (dùng cho filter)
 }
 
 export const CLASS_STATUS_LABELS: Record<ClassStatus, string> = {
   [ClassStatus.ALL]: 'Tất cả',
+  [ClassStatus.DRAFT]: 'Chưa cập nhật',
+  [ClassStatus.READY]: 'Sẵn sàng',
   [ClassStatus.ACTIVE]: 'Đang hoạt động',
   [ClassStatus.COMPLETED]: 'Đã hoàn thành',
-  [ClassStatus.DRAFT]: 'Nháp',
+  [ClassStatus.SUSPENDED]: 'Tạm dừng',
   [ClassStatus.CANCELLED]: 'Đã hủy'
 }
 
 export const CLASS_STATUS_COLORS: Record<ClassStatus, string> = {
   [ClassStatus.ALL]: 'border-blue-500 text-blue-700 bg-blue-50',
-  [ClassStatus.ACTIVE]: 'border-green-500 text-green-700 bg-green-50',
-  [ClassStatus.COMPLETED]: 'border-emerald-500 text-emerald-700 bg-emerald-50',
   [ClassStatus.DRAFT]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [ClassStatus.READY]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [ClassStatus.ACTIVE]: 'border-green-500 text-green-700 bg-green-50',
+  [ClassStatus.COMPLETED]: '',
+  [ClassStatus.SUSPENDED]: 'border-orange-500 text-orange-700 bg-orange-50',
   [ClassStatus.CANCELLED]: 'border-red-500 text-red-700 bg-red-50'
 }
+
+export const CLASS_STATUS_BADGE_COLORS: Record<ClassStatus, string> = {
+  [ClassStatus.ALL]: 'bg-blue-100 text-blue-800',
+  [ClassStatus.DRAFT]: 'bg-gray-100 text-gray-800',
+  [ClassStatus.READY]: 'bg-yellow-100 text-yellow-800',
+  [ClassStatus.ACTIVE]: 'bg-green-100 text-green-800',
+  [ClassStatus.COMPLETED]: 'bg-red-100 text-red-800',
+  [ClassStatus.SUSPENDED]: 'bg-orange-100 text-orange-800',
+  [ClassStatus.CANCELLED]: 'bg-red-100 text-red-800'
+}
+
+// ==================== CLASS STATUS TRANSITION RULES ====================
+/**
+ * Định nghĩa các quy tắc chuyển đổi trạng thái lớp học
+ * Mỗi trạng thái có thể chuyển sang các trạng thái khác theo quy tắc nghiệp vụ
+ */
+export const CLASS_STATUS_TRANSITIONS: Record<ClassStatus, ClassStatus[]> = {
+  [ClassStatus.DRAFT]: [
+    ClassStatus.READY,     // Chuyển sang sẵn sàng khi đủ điều kiện
+    ClassStatus.CANCELLED  // Hủy lớp nháp
+  ],
+  [ClassStatus.READY]: [
+    ClassStatus.ACTIVE,    // Bắt đầu lớp học
+    ClassStatus.CANCELLED  // Hủy lớp trước khi bắt đầu
+  ],
+  [ClassStatus.ACTIVE]: [
+    ClassStatus.COMPLETED, // Kết thúc lớp học
+    ClassStatus.SUSPENDED, // Tạm dừng lớp học
+    ClassStatus.CANCELLED  // Hủy lớp đang hoạt động
+  ],
+  [ClassStatus.COMPLETED]: [
+    // Không thể chuyển sang trạng thái khác từ completed
+  ],
+  [ClassStatus.SUSPENDED]: [
+    ClassStatus.ACTIVE,    // Tiếp tục lớp học
+    ClassStatus.CANCELLED  // Hủy lớp đã tạm dừng
+  ],
+  [ClassStatus.CANCELLED]: [
+    // Không thể chuyển sang trạng thái khác từ cancelled
+  ],
+  [ClassStatus.ALL]: []
+}
+
+/**
+ * Điều kiện để chuyển từ DRAFT sang READY
+ * Lớp phải có đầy đủ thông tin cần thiết
+ */
+export const DRAFT_TO_READY_CONDITIONS = {
+  requiredFields: ['name', 'subjectId', 'grade', 'roomId'],
+  requiredSchedule: true,  // Phải có recurringSchedule
+  requiredTeacher: true,   // Phải có giáo viên được phân công
+  requiredDates: ['expectedStartDate'] // Phải có ngày khai giảng dự kiến
+}
+
+/**
+ * Điều kiện để chuyển từ READY sang ACTIVE
+ * Lớp đã sẵn sàng và đến ngày khai giảng
+ */
+export const READY_TO_ACTIVE_CONDITIONS = {
+  hasActualStartDate: true, // Phải có ngày bắt đầu thực tế
+  startDateReached: true,   // Ngày bắt đầu <= ngày hiện tại
+  hasSessions: false        // Chưa có sessions (sẽ tạo sau khi active)
+}
+
+/**
+ * Điều kiện để chuyển từ ACTIVE sang COMPLETED
+ * Lớp đã kết thúc và hoàn thành tất cả buổi học
+ */
+export const ACTIVE_TO_COMPLETED_CONDITIONS = {
+  hasActualEndDate: true,   // Phải có ngày kết thúc
+  endDatePassed: true,      // Ngày kết thúc < ngày hiện tại
+  allSessionsCompleted: true // Tất cả sessions đã completed hoặc cancelled
+}
+
+
 
 // ==================== SESSION STATUS ====================
 export enum SessionStatus {
@@ -184,6 +265,31 @@ export const REQUEST_STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
   [RequestStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
   [RequestStatus.PROCESSING]: 'border-blue-500 text-blue-700 bg-blue-50'
+}
+
+// ==================== ASSIGNMENT STATUS ====================
+export enum AssignmentStatus {
+  ACTIVE = 'active',          // Đang mở
+  UPCOMING = 'upcoming',      // Sắp tới
+  COMPLETED = 'completed',    // Đã hoàn thành
+  OVERDUE = 'overdue',        // Quá hạn
+  ALL = 'all'                // Tất cả (dùng cho filter)
+}
+
+export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentStatus, string> = {
+  [AssignmentStatus.ALL]: 'Tất cả',
+  [AssignmentStatus.ACTIVE]: 'Đang mở',
+  [AssignmentStatus.UPCOMING]: 'Sắp tới',
+  [AssignmentStatus.COMPLETED]: 'Đã hoàn thành',
+  [AssignmentStatus.OVERDUE]: 'Quá hạn'
+}
+
+export const ASSIGNMENT_STATUS_COLORS: Record<AssignmentStatus, string> = {
+  [AssignmentStatus.ALL]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [AssignmentStatus.ACTIVE]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [AssignmentStatus.UPCOMING]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [AssignmentStatus.COMPLETED]: 'border-green-500 text-green-700 bg-green-50',
+  [AssignmentStatus.OVERDUE]: 'border-red-500 text-red-700 bg-red-50'
 }
 
 // ==================== CONTRACT STATUS ====================

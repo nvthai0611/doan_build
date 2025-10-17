@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Users, Plus, Search, MoreHorizontal, Mail, Phone, Calendar, ChevronLeft, ChevronRight, Filter, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
+import { StudentStatus, STUDENT_STATUS_LABELS, STUDENT_STATUS_COLORS } from '../../../../lib/constants';
 
 interface StudentsInfoProps {
   classId: string;
@@ -84,31 +85,31 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
 
   // Status filters với counts
   const statusFilters = [
-    { key: 'all', label: 'Tất cả', count: students.length },
-    { key: 'schedule_not_updated', label: 'Chưa cập nhật lịch học', count: 0 },
-    { key: 'upcoming', label: 'Sắp học', count: students.filter((s: any) => s.status === 'upcoming').length },
-    { key: 'studying', label: 'Đang học', count: students.filter((s: any) => s.status === 'studying').length },
-    { key: 'reserved', label: 'Bảo lưu', count: students.filter((s: any) => s.status === 'reserved').length },
-    { key: 'stopped', label: 'Dừng học', count: students.filter((s: any) => s.status === 'stopped').length },
-    { key: 'graduated', label: 'Tốt nghiệp', count: students.filter((s: any) => s.status === 'graduated').length }
+    { key: StudentStatus.ALL, label: STUDENT_STATUS_LABELS[StudentStatus.ALL], count: students.length },
+    { key: StudentStatus.PENDING, label: STUDENT_STATUS_LABELS[StudentStatus.PENDING], count: students.filter((s: any) => s.status === StudentStatus.PENDING).length },
+    { key: StudentStatus.UPCOMING, label: STUDENT_STATUS_LABELS[StudentStatus.UPCOMING], count: students.filter((s: any) => s.status === StudentStatus.UPCOMING).length },
+    { key: StudentStatus.STUDYING, label: STUDENT_STATUS_LABELS[StudentStatus.STUDYING], count: students.filter((s: any) => s.status === StudentStatus.STUDYING).length },
+    { key: StudentStatus.RESERVED, label: STUDENT_STATUS_LABELS[StudentStatus.RESERVED], count: students.filter((s: any) => s.status === StudentStatus.RESERVED).length },
+    { key: StudentStatus.STOPPED, label: STUDENT_STATUS_LABELS[StudentStatus.STOPPED], count: students.filter((s: any) => s.status === StudentStatus.STOPPED).length },
+    { key: StudentStatus.GRADUATED, label: STUDENT_STATUS_LABELS[StudentStatus.GRADUATED], count: students.filter((s: any) => s.status === StudentStatus.GRADUATED).length }
   ];
 
   // Filter students based on active filter
   const filteredStudents = students.filter((student: any) => {
-    if (activeStatusFilter === 'all') return true;
-    if (activeStatusFilter === 'schedule_not_updated') return false; // Mock: no students with this status
+    if (activeStatusFilter === StudentStatus.ALL) return true;
     return student.status === activeStatusFilter;
   });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
-      studying: { variant: 'default', label: 'Đang học', className: 'bg-green-100 text-green-800 border-green-200' },
-      upcoming: { variant: 'secondary', label: 'Sắp học', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-      reserved: { variant: 'outline', label: 'Bảo lưu', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      stopped: { variant: 'destructive', label: 'Dừng học', className: 'bg-red-100 text-red-800 border-red-200' },
-      graduated: { variant: 'default', label: 'Tốt nghiệp', className: 'bg-purple-100 text-purple-800 border-purple-200' }
+      [StudentStatus.STUDYING]: { variant: 'default', label: STUDENT_STATUS_LABELS[StudentStatus.STUDYING], className: STUDENT_STATUS_COLORS[StudentStatus.STUDYING] },
+      [StudentStatus.UPCOMING]: { variant: 'secondary', label: STUDENT_STATUS_LABELS[StudentStatus.UPCOMING], className: STUDENT_STATUS_COLORS[StudentStatus.UPCOMING] },
+      [StudentStatus.RESERVED]: { variant: 'outline', label: STUDENT_STATUS_LABELS[StudentStatus.RESERVED], className: STUDENT_STATUS_COLORS[StudentStatus.RESERVED] },
+      [StudentStatus.STOPPED]: { variant: 'destructive', label: STUDENT_STATUS_LABELS[StudentStatus.STOPPED], className: STUDENT_STATUS_COLORS[StudentStatus.STOPPED] },
+      [StudentStatus.GRADUATED]: { variant: 'default', label: STUDENT_STATUS_LABELS[StudentStatus.GRADUATED], className: STUDENT_STATUS_COLORS[StudentStatus.GRADUATED] },
+      [StudentStatus.PENDING]: { variant: 'outline', label: STUDENT_STATUS_LABELS[StudentStatus.PENDING], className: STUDENT_STATUS_COLORS[StudentStatus.PENDING] }
     };
-    const config = variants[status] || variants.studying;
+    const config = variants[status] || variants[StudentStatus.STUDYING];
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
   };
 
