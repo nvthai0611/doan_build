@@ -217,10 +217,6 @@ const studentMenuItems = [
         href: "/student/profile",
         children: undefined,
     },
-<<<<<<< HEAD
-=======
-
->>>>>>> development
     {
         title: "Lớp học của tôi",
         icon: Users,
@@ -235,12 +231,6 @@ const studentMenuItems = [
         children: undefined,
     },
 
-    {
-        title: "Tài liệu học tập",
-        icon: Upload,
-        href: "/student/my-documents",
-        children: undefined,
-    },
 
     {
         title: "Lịch học",
