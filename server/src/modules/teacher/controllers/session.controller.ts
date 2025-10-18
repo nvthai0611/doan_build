@@ -88,11 +88,11 @@ export class SessionController {
   }
 
   @Post(':id/reschedule')
-  @ApiOperation({ summary: 'Dời lịch buổi học' })
+  @ApiOperation({ summary: 'Tạo yêu cầu dời lịch buổi học' })
   @ApiParam({ name: 'id', description: 'ID của buổi học' })
   @ApiResponse({ 
     status: 200, 
-    description: 'Dời lịch buổi học thành công',
+    description: 'Tạo yêu cầu dời lịch thành công',
     type: SessionDetailResponseDto
   })
   async rescheduleSession(
@@ -121,7 +121,7 @@ export class SessionController {
       return {
         success: true,
         data: result,
-        message: 'Dời lịch buổi học thành công',
+        message: 'Yêu cầu dời lịch buổi học đã được tạo thành công. Vui lòng chờ phê duyệt.',
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -131,7 +131,7 @@ export class SessionController {
       throw new HttpException(
         {
           success: false,
-          message: 'Có lỗi xảy ra khi dời lịch buổi học',
+          message: 'Có lỗi xảy ra khi tạo yêu cầu dời lịch buổi học',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
