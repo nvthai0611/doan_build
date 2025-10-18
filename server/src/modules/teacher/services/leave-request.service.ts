@@ -36,14 +36,7 @@ export class LeaveRequestService {
           gte: start,
           lte: end,
         },
-        class: {
-          teacherClassAssignments: {
-            some: {
-              teacherId,
-              status: 'active',
-            },
-          },
-        },
+        teacherId: teacherId,
       },
       select: {
         id: true,
@@ -100,10 +93,6 @@ export class LeaveRequestService {
         class: {
           include: {
             subject: true,
-            teacherClassAssignments: {
-              where: { teacherId: requestingTeacherId, status: 'active' },
-              include: { teacher: { include: { user: true } } }
-            }
           }
         }
       }
@@ -111,6 +100,11 @@ export class LeaveRequestService {
 
     if (!session) {
       throw new HttpException('Không tìm thấy buổi học', HttpStatus.NOT_FOUND);
+    }
+
+    // Kiểm tra xem session có thuộc về teacher đang request không
+    if (session.teacherId !== requestingTeacherId) {
+      throw new HttpException('Bạn không có quyền truy cập buổi học này', HttpStatus.FORBIDDEN);
     }
 
     const subjectName = session.class.subject.name;
@@ -132,12 +126,9 @@ export class LeaveRequestService {
             phone: true,
           }
         },
-        teacherClassAssignments: {
-          where: { status: 'active' },
+        classes: {
           include: {
-            class: {
-              include: { subject: true }
-            }
+            subject: true
           }
         }
       }
@@ -151,6 +142,7 @@ export class LeaveRequestService {
       const hasConflict = await this.prisma.classSession.findFirst({
         where: {
           sessionDate: new Date(date),
+          teacherId: teacher.id,
           OR: [
             {
               AND: [
@@ -164,15 +156,7 @@ export class LeaveRequestService {
                 { endTime: { gte: endTime } }
               ]
             }
-          ],
-          class: {
-            teacherClassAssignments: {
-              some: {
-                teacherId: teacher.id,
-                status: 'active'
-              }
-            }
-          }
+          ]
         }
       });
 
@@ -212,15 +196,15 @@ export class LeaveRequestService {
     }
     
     // Điểm thêm nếu có kinh nghiệm dạy môn này
-    const hasExperience = teacher.teacherClassAssignments.some(
-      (assignment: any) => assignment.class.subject.name === subjectName
+    const hasExperience = teacher.classes.some(
+      (classItem: any) => classItem.subject.name === subjectName
     );
     if (hasExperience) {
       score += 2;
     }
     
     // Điểm thêm nếu có ít lịch dạy (linh hoạt hơn)
-    const currentClasses = teacher.teacherClassAssignments.length;
+    const currentClasses = teacher.classes.length;
     if (currentClasses <= 2) {
       score += 1;
     }
@@ -235,14 +219,14 @@ export class LeaveRequestService {
       reasons.push(`Có thể dạy môn ${subjectName}`);
     }
     
-    const hasExperience = teacher.teacherClassAssignments.some(
-      (assignment: any) => assignment.class.subject.name === subjectName
+    const hasExperience = teacher.classes.some(
+      (classItem: any) => classItem.subject.name === subjectName
     );
     if (hasExperience) {
       reasons.push('Có kinh nghiệm dạy môn này');
     }
     
-    const currentClasses = teacher.teacherClassAssignments.length;
+    const currentClasses = teacher.classes.length;
     if (currentClasses <= 2) {
       reasons.push('Lịch dạy linh hoạt');
     }

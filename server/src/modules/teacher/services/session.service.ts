@@ -20,11 +20,7 @@ export class SessionService {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         },
         include: {
           class: {
@@ -42,6 +38,11 @@ export class SessionService {
             }
           },
           room: { select: { name: true } },
+          teacher: {
+            include: {
+              user: { select: { fullName: true } }
+            }
+          },
           attendances: {
             include: {
               student: {
@@ -59,21 +60,6 @@ export class SessionService {
       }
 
       console.log(session);
-
-      // Lấy thông tin giáo viên
-      const teacherAssignment = await this.prisma.teacherClassAssignment.findFirst({
-        where: {
-          classId: session.classId,
-          teacherId
-        },
-        include: {
-          teacher: {
-            include: {
-              user: { select: { fullName: true } }
-            }
-          }
-        }
-      });
 
       // Tạo danh sách học viên với trạng thái điểm danh
       const students: StudentInSessionDto[] = session.class.enrollments.map(enrollment => {
@@ -98,8 +84,8 @@ export class SessionService {
         status: session.status,
         notes: session.notes || undefined,
         type: 'regular',
-        teacherId,
-        teacherName: teacherAssignment?.teacher.user.fullName || undefined,
+        teacherId: session.teacherId,
+        teacherName: session.teacher?.user.fullName || undefined,
         students,
         createdAt: session.createdAt,
         updatedAt: session.createdAt
@@ -119,11 +105,7 @@ export class SessionService {
       const existingSession = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         }
       });
 
@@ -189,6 +171,11 @@ export class SessionService {
             }
           },
           room: { select: { name: true } },
+          teacher: {
+            include: {
+              user: { select: { fullName: true } }
+            }
+          },
           attendances: {
             include: {
               student: {
@@ -201,20 +188,6 @@ export class SessionService {
         }
       });
 
-      // Lấy thông tin giáo viên
-      const teacherAssignment = await this.prisma.teacherClassAssignment.findFirst({
-        where: {
-          classId: updatedSession.classId,
-          teacherId
-        },
-        include: {
-          teacher: {
-            include: {
-              user: { select: { fullName: true } }
-            }
-          }
-        }
-      });
 
       // Tạo danh sách học viên
       const students: StudentInSessionDto[] = updatedSession.class.enrollments.map(enrollment => {
@@ -239,8 +212,8 @@ export class SessionService {
         status: updatedSession.status,
         notes: updatedSession.notes || undefined,
         type: 'regular',
-        teacherId,
-        teacherName: teacherAssignment?.teacher.user.fullName || undefined,
+        teacherId: updatedSession.teacherId,
+        teacherName: updatedSession.teacher?.user.fullName || undefined,
         students,
         createdAt: updatedSession.createdAt,
         updatedAt: updatedSession.createdAt
@@ -253,11 +226,11 @@ export class SessionService {
   async createSession(teacherId: string, dto: CreateSessionDto) {
     try {
       // Verify teacher assignment to the class and get academicYear
-      const assignment = await this.prisma.teacherClassAssignment.findFirst({
-        where: { classId: dto.classId, teacherId, status: 'active' },
+      const classInfo = await this.prisma.class.findFirst({
+        where: { id: dto.classId, teacherId: teacherId },
         select: { id: true, academicYear: true }
       })
-      if (!assignment) {
+      if (!classInfo) {
         throw new Error('Bạn không được phân công lớp này hoặc lớp không hoạt động')
       }
 
@@ -282,11 +255,7 @@ export class SessionService {
           sessionDate: new Date(dto.sessionDate),
           startTime: { lte: dto.endTime },
           endTime: { gte: dto.startTime },
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         }
       })
       if (conflictTeacher) {
@@ -307,7 +276,8 @@ export class SessionService {
       const created = await this.prisma.classSession.create({
         data: {
           classId: dto.classId,
-          academicYear: assignment.academicYear,
+          teacherId: teacherId,
+          academicYear: classInfo.academicYear || '2024-2025',
           sessionDate: new Date(dto.sessionDate),
           startTime: dto.startTime,
           endTime: dto.endTime,
@@ -330,11 +300,7 @@ export class SessionService {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         },
         include: {
           class: {

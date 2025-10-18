@@ -6,15 +6,15 @@ export class CommonService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Lấy danh sách học sinh trong lớp thông qua teacher class assignment
+   * Lấy danh sách học sinh trong lớp thông qua classId và teacherId
    */
-  async getListStudentOfClass(assignmentId: string) {
+  async getListStudentOfClass(classId: string, teacherId: string) {
     try {
-      console.log(`🔍 Getting students for assignment: ${assignmentId}`);
+      console.log(`🔍 Getting students for class: ${classId}, teacher: ${teacherId}`);
 
       const students = await this.prisma.enrollment.findMany({
         where: {
-          teacherClassAssignmentId: assignmentId,
+          classId: classId,
           status: 'active', // Enrollment active
           student: {
             user: {
@@ -23,9 +23,7 @@ export class CommonService {
           },
           class: {
             status: 'active', // Class active
-          },
-          teacherClassAssignment: {
-            status: 'active', // Teacher assignment active
+            teacherId: teacherId, // Teacher assignment
           },
         },
         include: {
@@ -72,6 +70,7 @@ export class CommonService {
               id: true,
               name: true,
               grade: true,
+              academicYear: true,
               subject: {
                 select: {
                   id: true,
@@ -79,13 +78,6 @@ export class CommonService {
                   code: true,
                 },
               },
-            },
-          },
-          teacherClassAssignment: {
-            select: {
-              id: true,
-              semester: true,
-              academicYear: true,
               teacher: {
                 include: {
                   user: {
@@ -105,7 +97,7 @@ export class CommonService {
       });
 
       console.log(
-        `📚 Found ${students.length} active students for assignment ${assignmentId}`,
+        `📚 Found ${students.length} active students for class ${classId}`,
       );
 
       return {
@@ -120,27 +112,27 @@ export class CommonService {
   }
 
   /**
-   * Lấy danh sách buổi học theo assignment và năm học hiện tại
+   * Lấy danh sách buổi học theo classId và năm học hiện tại
    */
-  async getClassSessionsByAssignment(assignmentId: string) {
+  async getClassSessionsByAssignment(classId: string, academicYear?: string) {
     try {
-      // Tìm assignment để lấy classId và academicYear
-      const assignment = await this.prisma.teacherClassAssignment.findUnique({
-        where: { id: assignmentId },
-        select: { classId: true, academicYear: true }
+      // Lấy thông tin class để verify
+      const classInfo = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { id: true, academicYear: true }
       });
 
-      if (!assignment) {
+      if (!classInfo) {
         return {
           success: false,
-          message: 'Không tìm thấy phân công lớp học (assignment)'
+          message: 'Không tìm thấy lớp học'
         };
       }
 
       const sessions = await this.prisma.classSession.findMany({
         where: {
-          classId: assignment.classId,
-          academicYear: assignment.academicYear
+          classId: classId,
+          academicYear: academicYear || classInfo.academicYear
         },
         select: {
           id: true,
@@ -166,7 +158,7 @@ export class CommonService {
   /**
    * Lấy chi tiết thông tin học sinh trong lớp
    */
-  async getDetailStudentOfClass(studentId: string, assignmentId?: string) {
+  async getDetailStudentOfClass(studentId: string, classId?: string, teacherId?: string) {
     try {
       const whereCondition: any = {
         studentId: studentId,
@@ -181,8 +173,12 @@ export class CommonService {
         },
       };
 
-      if (assignmentId) {
-        whereCondition.teacherClassAssignmentId = assignmentId;
+      if (classId) {
+        whereCondition.classId = classId;
+      }
+
+      if (teacherId) {
+        whereCondition.class.teacherId = teacherId;
       }
 
       const studentDetail = await this.prisma.enrollment.findFirst({
@@ -263,6 +259,10 @@ export class CommonService {
               name: true,
               grade: true,
               description: true,
+              academicYear: true,
+              expectedStartDate: true,
+              actualStartDate: true,
+              actualEndDate: true,
               subject: {
                 select: {
                   id: true,
@@ -271,16 +271,6 @@ export class CommonService {
                   description: true,
                 },
               },
-            },
-          },
-          teacherClassAssignment: {
-            select: {
-              id: true,
-              semester: true,
-              academicYear: true,
-              startDate: true,
-              endDate: true,
-              status: true,
               teacher: {
                 include: {
                   user: {
@@ -319,13 +309,13 @@ export class CommonService {
   /**
    * Lấy thống kê tổng quan về lớp học
    */
-  async getClassStatistics(assignmentId: string) {
+  async getClassStatistics(classId: string, teacherId: string) {
     try {
       const [totalStudents, attendanceStats, gradeStats] = await Promise.all([
         // Tổng số học sinh active
         this.prisma.enrollment.count({
           where: {
-            teacherClassAssignmentId: assignmentId,
+            classId: classId,
             status: 'active',
             student: {
               user: {
@@ -334,9 +324,7 @@ export class CommonService {
             },
             class: {
               status: 'active',
-            },
-            teacherClassAssignment: {
-              status: 'active',
+              teacherId: teacherId,
             },
           },
         }),
@@ -350,13 +338,11 @@ export class CommonService {
               },
               enrollments: {
                 some: {
-                  teacherClassAssignmentId: assignmentId,
+                  classId: classId,
                   status: 'active',
                   class: {
                     status: 'active',
-                  },
-                  teacherClassAssignment: {
-                    status: 'active',
+                    teacherId: teacherId,
                   },
                 },
               },
@@ -375,13 +361,11 @@ export class CommonService {
               },
               enrollments: {
                 some: {
-                  teacherClassAssignmentId: assignmentId,
+                  classId: classId,
                   status: 'active',
                   class: {
                     status: 'active',
-                  },
-                  teacherClassAssignment: {
-                    status: 'active',
+                    teacherId: teacherId,
                   },
                 },
               },
@@ -399,7 +383,7 @@ export class CommonService {
         }),
       ]);
 
-      console.log(`📊 Class statistics for assignment ${assignmentId}:`);
+      console.log(`📊 Class statistics for class ${classId}:`);
       console.log(`   - Total active students: ${totalStudents}`);
       console.log(`   - Attendance stats:`, attendanceStats);
       console.log(`   - Grade stats:`, gradeStats);
@@ -433,16 +417,12 @@ export class CommonService {
               email: true,
             },
           },
-          teacherClassAssignments: {
+          classes: {
             include: {
-              class: {
-                include: {
-                  subject: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
+              subject: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
