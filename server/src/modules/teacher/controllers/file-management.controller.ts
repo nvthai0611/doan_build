@@ -28,6 +28,7 @@ import {
 import { FileManagementService } from '../services/file-management.service';
 import { UploadMaterialDto, GetMaterialsDto } from '../dto/upload/upload-material.dto';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+import { PrismaService } from '../../../db/prisma.service';
 
 @ApiTags('Teacher - File Management')
 @Controller('file-management')
@@ -35,6 +36,7 @@ export class FileManagementController {
   constructor(
     private readonly fileManagementService: FileManagementService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('upload')
@@ -76,9 +78,25 @@ export class FileManagementController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     try {
-      const teacherId = req.user?.teacherId;
+      const userId = req.user?.userId;
       
-      if (!teacherId) {
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng',
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
         throw new HttpException(
           {
             success: false,
@@ -89,7 +107,7 @@ export class FileManagementController {
       }
 
       const data = await this.fileManagementService.uploadMaterial(
-        teacherId,
+        teacher.id,
         dto,
         file,
       );
@@ -124,9 +142,25 @@ export class FileManagementController {
   })
   async getMaterials(@Req() req: any, @Query() query: GetMaterialsDto) {
     try {
-      const teacherId = req.user?.teacherId;
+      const userId = req.user?.userId;
 
-      if (!teacherId) {
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng',
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
         throw new HttpException(
           {
             success: false,
@@ -137,7 +171,7 @@ export class FileManagementController {
       }
 
       const data = await this.fileManagementService.getMaterials(
-        teacherId,
+        teacher.id,
         {
           ...query,
           page: query.page ? Number(query.page) : 1,
@@ -170,9 +204,25 @@ export class FileManagementController {
   })
   async getTeacherClasses(@Req() req: any) {
     try {
-      const teacherId = req.user?.teacherId;
+      const userId = req.user?.userId;
 
-      if (!teacherId) {
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng',
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
         throw new HttpException(
           {
             success: false,
@@ -182,7 +232,7 @@ export class FileManagementController {
         );
       }
 
-      const data = await this.fileManagementService.getTeacherClasses(teacherId);
+      const data = await this.fileManagementService.getTeacherClasses(teacher.id);
 
       return {
         success: true,
@@ -217,9 +267,25 @@ export class FileManagementController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     try {
-      const teacherId = req.user?.teacherId;
+      const userId = req.user?.userId;
 
-      if (!teacherId) {
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng',
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
         throw new HttpException(
           {
             success: false,
@@ -230,7 +296,7 @@ export class FileManagementController {
       }
 
       const data = await this.fileManagementService.deleteMaterial(
-        teacherId,
+        teacher.id,
         id,
       );
 

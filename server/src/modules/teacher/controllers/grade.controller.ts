@@ -152,22 +152,22 @@ export class GradeController {
         console.log('🎓 API getStudents called with classId:', classId);
         console.log('🎓 Request user:', request.user);
         
-        const teacherId = request.user?.teacherId;
-        console.log('🎓 Teacher ID:', teacherId);
+        const userId = request.user?.userId;
+        console.log('🎓 User ID:', userId);
         
-        if (!teacherId) {
-            console.log('❌ No teacher ID found');
+        if (!userId) {
+            console.log('❌ No user ID found');
             return { 
                 success: false, 
                 status: HttpStatus.UNAUTHORIZED, 
                 data: [], 
-                message: 'Không tìm thấy thông tin giáo viên', 
+                message: 'Không tìm thấy thông tin người dùng', 
                 meta: null 
             };
         }
         
         try {
-            const data = await this.gradeService.getStudentsOfClass(teacherId, classId);
+            const data = await this.gradeService.getStudentsOfClass(userId, classId);
             console.log('🎓 Service returned data:', data);
             console.log('🎓 Data length:', data?.length || 0);
             
@@ -188,8 +188,8 @@ export class GradeController {
     @ApiOperation({ summary: 'Danh sách assessments của lớp' })
     @ApiQuery({ name: 'classId', required: true })
     async getAssessments(@Req() request: any, @Query('classId') classId: string) {
-        const teacherId = request.user?.teacherId;
-        const data = await this.gradeService.listAssessments(teacherId, classId);
+        const userId = request.user?.userId;
+        const data = await this.gradeService.listAssessments(userId, classId);
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 
@@ -197,16 +197,16 @@ export class GradeController {
     @ApiOperation({ summary: 'Danh sách loại kiểm tra (distinct type) trong các lớp giáo viên đang dạy hoặc theo class' })
     @ApiQuery({ name: 'classId', required: false })
     async getAssessmentTypes(@Req() request: any, @Query('classId') classId?: string) {
-        const teacherId = request.user?.teacherId;
-        const data = await this.gradeService.listAssessmentTypes(teacherId, classId);
+        const userId = request.user?.userId;
+        const data = await this.gradeService.listAssessmentTypes(userId, classId);
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 
     @Get('assessments/:assessmentId/grades')
     @ApiOperation({ summary: 'Lấy điểm theo assessment' })
     async getAssessmentGrades(@Req() request: any, @Param('assessmentId') assessmentId: string) {
-        const teacherId = request.user?.teacherId;
-        const data = await this.gradeService.getAssessmentGrades(teacherId, assessmentId);
+        const userId = request.user?.userId;
+        const data = await this.gradeService.getAssessmentGrades(userId, assessmentId);
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 
@@ -292,8 +292,8 @@ export class GradeController {
     @Put('update')
     @ApiOperation({ summary: 'Cập nhật điểm một học sinh cho một assessment' })
     async update(@Req() request: any, @Body() payload: UpdateGradeDto) {
-        const teacherId = request.user?.teacherId;
-        const data = await this.gradeService.updateGrade(teacherId, payload);
+        const userId = request.user?.userId;
+        const data = await this.gradeService.updateGrade(userId, payload);
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 

@@ -32,16 +32,15 @@ export class FileManagementService {
       throw new NotFoundException('Không tìm thấy lớp học');
     }
 
-    // Kiểm tra giáo viên có quyền upload cho lớp này không
-    const teacherAssignment = await this.prisma.teacherClassAssignment.findFirst({
+    // Kiểm tra giáo viên có quyền upload cho lớp này không (qua quan hệ trực tiếp)
+    const classWithTeacher = await this.prisma.class.findFirst({
       where: {
+        id: dto.classId,
         teacherId: teacherId,
-        classId: dto.classId,
-        status: 'active',
       },
     });
 
-    if (!teacherAssignment) {
+    if (!classWithTeacher) {
       throw new BadRequestException('Bạn không có quyền upload tài liệu cho lớp này');
     }
 
@@ -222,22 +221,20 @@ export class FileManagementService {
    * Lấy danh sách lớp học của giáo viên (để chọn khi upload)
    */
   async getTeacherClasses(teacherId: string) {
-    const assignments = await this.prisma.teacherClassAssignment.findMany({
+    const classes = await this.prisma.class.findMany({
       where: {
         teacherId: teacherId,
-        status: 'active',
       },
       include: {
-        class: {
+        grade: {
           select: {
-            id: true,
             name: true,
-            grade: true,
-            subject: {
-              select: {
-                name: true,
-              },
-            },
+            level: true,
+          },
+        },
+        subject: {
+          select: {
+            name: true,
           },
         },
       },
@@ -246,11 +243,12 @@ export class FileManagementService {
       },
     });
 
-    return assignments.map((assignment) => ({
-      id: assignment.class.id,
-      name: assignment.class.name,
-      grade: assignment.class.grade,
-      subject: assignment.class.subject.name,
+    return classes.map((classItem) => ({
+      id: classItem.id,
+      name: classItem.name,
+      grade: classItem.grade?.name || 'N/A',
+      gradeLevel: classItem.grade?.level || null,
+      subject: classItem.subject.name,
     }));
   }
 
