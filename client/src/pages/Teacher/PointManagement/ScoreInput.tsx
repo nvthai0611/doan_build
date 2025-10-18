@@ -55,8 +55,7 @@ export default function GradeInputPage() {
             id: c.id,
             name: c.name,
             subject: { name: c.subject?.name || 'N/A' },
-            studentCount: c.studentCount || 0,
-            assignmentId: c.assignmentId // Thêm assignmentId vào mapping
+            studentCount: c.studentCount || 0
           }
         }) as TeacherClassItem[]
         console.log('📋 Mapped classes:', items)
@@ -85,37 +84,14 @@ export default function GradeInputPage() {
         return
       }
 
-      // Tìm lớp được chọn để lấy assignmentId
-      const classData = classes.find(c => c.id === selectedClass)
-      const assignmentId = classData?.assignmentId
-
       console.log('🎓 Selected class:', selectedClass)
-      console.log('🎓 Assignment ID:', assignmentId)
-
-      if (!assignmentId) {
-        console.error('⚠️ Không tìm thấy assignmentId cho lớp này')
-        // Fallback về API cũ nếu không có assignmentId
-        try {
-          setLoading(true)
-          const data = await teacherPointService.getClassStudents(selectedClass)
-          setStudents(data || [])
-        } catch (e: any) {
-          console.error('❌ Fetch students error', e)
-          setStudents([])
-        } finally {
-          setLoading(false)
-        }
-        return
-      }
-
-      setSelectedAssignment(assignmentId)
 
       try {
         setLoading(true)
-        console.log('🎓 Calling API /teacher/common/assignment/${assignmentId}/students')
+        console.log('🎓 Calling API /teacher/common/class/${selectedClass}/students')
 
-        // Gọi API mới thông qua service chung
-        const response = await teacherCommonService.getListStudentOfClass(assignmentId)
+        // Gọi API mới sử dụng classId trực tiếp
+        const response = await teacherCommonService.getListStudentOfClass(selectedClass)
 
         // Kiểm tra response structure
         let studentsArray = null

@@ -468,7 +468,7 @@ export default function DocumentUploadPage() {
                     <SelectContent>
                       {classes.map((cls: TeacherClass) => (
                         <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name} - {cls.subject} {cls.grade ? `(Khối ${cls.grade})` : ''}
+                          {cls.name} - {cls.subject} {cls.grade ? `(Khối ${cls.grade})` : ''} {cls.gradeLevel ? `- Lớp ${cls.gradeLevel}` : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -18,8 +18,8 @@ export const teacherCommonService = {
   /**
    * Lấy danh sách học sinh trong lớp
    */
-  getListStudentOfClass: async (assignmentId: string): Promise<StudentListResponse> => {
-    const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/students`)
+  getListStudentOfClass: async (classId: string): Promise<StudentListResponse> => {
+    const response = await apiClient.get(`/teacher/common/class/${classId}/students`)
     // API trả về object có structure {success, data, message}
     return response.data as StudentListResponse
   },
@@ -27,9 +27,9 @@ export const teacherCommonService = {
   /**
    * Lấy chi tiết học sinh trong lớp
    */
-  getDetailStudentOfClass: async (studentId: string, assignmentId?: string): Promise<any> => {
-    const url = assignmentId 
-      ? `/teacher/common/student/${studentId}?assignmentId=${assignmentId}`
+  getDetailStudentOfClass: async (studentId: string, classId?: string): Promise<any> => {
+    const url = classId 
+      ? `/teacher/common/student/${studentId}?classId=${classId}`
       : `/teacher/common/student/${studentId}`
     
     const response = await apiClient.get(url)
@@ -39,16 +39,16 @@ export const teacherCommonService = {
   /**
    * Lấy thống kê lớp học
    */
-  getClassStatistics: async (assignmentId: string): Promise<ClassStatisticsResponse> => {
-    const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/statistics`)
+  getClassStatistics: async (classId: string): Promise<ClassStatisticsResponse> => {
+    const response = await apiClient.get(`/teacher/common/statistics/${classId}`)
     return response.data as ClassStatisticsResponse
   },
 
   /**
-   * Lấy danh sách buổi học theo assignment và năm học hiện tại
+   * Lấy danh sách buổi học theo class và năm học hiện tại
    */
-  getClassSessions: async (assignmentId: string): Promise<any> => {
-    const response = await apiClient.get(`/teacher/common/assignment/${assignmentId}/sessions`)
+  getClassSessions: async (classId: string): Promise<any> => {
+    const response = await apiClient.get(`/teacher/common/class/${classId}/sessions`)
     // Trả về trực tiếp mảng sessions để BuoiHocTab dùng (data || [])
     return (response.data ?? []) as any
   },
