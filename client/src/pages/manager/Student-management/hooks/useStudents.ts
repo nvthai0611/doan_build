@@ -140,3 +140,17 @@ export const useStudentDetail = (studentId: string | undefined) => {
     refetchOnWindowFocus: false
   })
 }
+  export const useToggleStudentStatus = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+      mutationFn: (studentId: string) => centerOwnerStudentService.toggleStudentStatus(studentId),
+      onSuccess: (data: any) => {
+        toast.success(data?.data?.message || 'Cập nhật trạng thái thành công')
+        queryClient.invalidateQueries({ queryKey: ['students'] })
+        queryClient.invalidateQueries({ queryKey: ['studentCounts'] })
+      },
+      onError: (error: any) => {
+        toast.error(error?.message || 'Lỗi cập nhật trạng thái')
+      }
+    })
+}

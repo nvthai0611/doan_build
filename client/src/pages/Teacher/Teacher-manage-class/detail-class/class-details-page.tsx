@@ -12,22 +12,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import ClassHeader from "./class-header"
-import ClassNavigation from "./class-navigation"
-import DashboardTab from "./tabs/dashboard-tab"
-import ThongTinChungTab from "./tabs/thong-tin-chung-tab"
-import BuoiHocTab from "./tabs/buoi-hoc-tab"
-import HocVienTab from "./tabs/hoc-vien-tab"
-import GiaoVienTab from "./tabs/giao-vien-tab"
-import CongViecTab from "./tabs/cong-viec-tab"
-import LichSuDiemDanhTab from "./tabs/lich-su-diem-danh"
-import { ClassModals } from "./modals/class-modals"
+import { ClassHeader } from "../../../teacher/Teacher-manage-class/detail-class/class-header"
+import { ClassNavigation } from "../../../teacher/Teacher-manage-class/detail-class/class-navigation"
+import { ClassModals } from "../../../teacher/Teacher-manage-class/detail-class/modals/class-modals"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
 import { daysOfWeek } from "../../../../utils/commonData"
 import Loading from "../../../../components/Loading/LoadingPage"
 import { Loader2 } from "lucide-react"
+import DashboardTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/dashboard-tab"
+import { ThongTinChungTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/thong-tin-chung-tab"
+import { BuoiHocTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/buoi-hoc-tab"
+import { HocVienTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/hoc-vien-tab"
+import GiaoVienTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/giao-vien-tab"
+import CongViecTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/cong-viec-tab"
+import LichSuDiemDanhTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/lich-su-diem-danh"
 
 const TABS = [
   { id: "dashboard", label: "Tổng Quan", icon: "📊" },
@@ -157,8 +157,10 @@ export function ClassDetailsPage() {
       case "sessions":
         return (
           <BuoiHocTab
-            classId={classId ?? ""}
-            classData={classDetail.data}
+            onAddSession={() => setAddSessionOpen(true)}
+            onViewDetailSession={handleViewDetailSession}
+            onDeleteSession={(session) => handleDelete("session", session)}
+            teacherClassAssignmentId={classId ?? ""}
           />
         )
       case "students":
@@ -180,8 +182,7 @@ export function ClassDetailsPage() {
       case "attendance":
         return (
           <LichSuDiemDanhTab
-            classId={classId ?? ""}
-            classData={classDetail.data}
+            teacherClassAssignmentId={classId ?? ""}
           />
         )
       default:

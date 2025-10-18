@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { useNavigate, useParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
-import { useStudentDetail, useUpdateStudentStatus, useToggleStudentStatus } from "../../hooks/useStudents"
+import { useStudentDetail, useToggleStudentStatus, useUpdateStudentStatus } from "../../hooks/useStudents"
 
 // Import components
 import {
