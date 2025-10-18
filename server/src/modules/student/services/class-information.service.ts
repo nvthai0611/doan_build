@@ -42,11 +42,7 @@ export class ClassInformationService {
       include: {
         subject: true,
         room: true,
-        teacherClassAssignments: {
-          orderBy: { startDate: 'desc' },
-          take: 1,
-          include: { teacher: { include: { user: true } } },
-        },
+        teacher: { include: { user: true } },
         _count: { select: { enrollments: true } },
       },
     });
@@ -57,12 +53,11 @@ export class ClassInformationService {
       description: cls.description,
       subject: cls.subject,
       room: cls.room,
-      startDate: (cls as any).startDate ?? cls.teacherClassAssignments?.[0]?.startDate ?? null,
-      endDate: (cls as any).endDate ?? cls.teacherClassAssignments?.[0]?.endDate ?? null,
-      maxStudents: cls.maxStudents ?? cls.teacherClassAssignments?.[0]?.maxStudents ?? null,
-      currentStudents:
-        (cls as any).currentStudents ?? cls.teacherClassAssignments?.[0]?.currentStudents ?? cls._count?.enrollments ?? 0,
-      teacher: cls.teacherClassAssignments?.[0]?.teacher ?? null,
+      startDate: (cls as any).startDate ?? cls.expectedStartDate ?? null,
+      endDate: (cls as any).endDate ?? cls.actualEndDate ?? null,
+      maxStudents: cls.maxStudents ?? null,
+      currentStudents: cls._count?.enrollments ?? 0,
+      teacher: cls.teacher ?? null,
     };
   }
 }

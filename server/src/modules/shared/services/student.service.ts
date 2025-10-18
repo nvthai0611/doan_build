@@ -65,15 +65,11 @@ export class StudentSharedService {
                 class: {
                   include: {
                     subject: true,
-                    teacherClassAssignments: {
+                    teacher: {
                       include: {
-                        teacher: {
-                          include: {
-                            user: {
-                              select: {
-                                fullName: true,
-                              }
-                            }
+                        user: {
+                          select: {
+                            fullName: true,
                           }
                         }
                       }
@@ -121,7 +117,7 @@ export class StudentSharedService {
             // Teacher chỉ thấy student trong class mình dạy
             enrollments: {
               where: {
-                teacherClassAssignment: {
+                class: {
                   teacherId: this.getCurrentTeacherId(currentUser),
                 }
               },
@@ -137,11 +133,7 @@ export class StudentSharedService {
               where: {
                 assessment: {
                   class: {
-                    teacherClassAssignments: {
-                      some: {
-                        teacherId: this.getCurrentTeacherId(currentUser),
-                      }
-                    }
+                    teacherId: this.getCurrentTeacherId(currentUser),
                   }
                 }
               },
@@ -161,11 +153,7 @@ export class StudentSharedService {
               where: {
                 session: {
                   class: {
-                    teacherClassAssignments: {
-                      some: {
-                        teacherId: this.getCurrentTeacherId(currentUser),
-                      }
-                    }
+                    teacherId: this.getCurrentTeacherId(currentUser),
                   }
                 }
               },
@@ -190,15 +178,11 @@ export class StudentSharedService {
                 class: {
                   include: {
                     subject: true,
-                    teacherClassAssignments: {
+                    teacher: {
                       include: {
-                        teacher: {
-                          include: {
-                            user: {
-                              select: {
-                                fullName: true,
-                              }
-                            }
+                        user: {
+                          select: {
+                            fullName: true,
                           }
                         }
                       }
@@ -248,15 +232,11 @@ export class StudentSharedService {
                 class: {
                   include: {
                     subject: true,
-                    teacherClassAssignments: {
+                    teacher: {
                       include: {
-                        teacher: {
-                          include: {
-                            user: {
-                              select: {
-                                fullName: true,
-                              }
-                            }
+                        user: {
+                          select: {
+                            fullName: true,
                           }
                         }
                       }
@@ -305,18 +285,16 @@ export class StudentSharedService {
             
           case 'teacher':
             // Teacher chỉ xem được student trong class mình dạy
-            const teacherAssignments = await this.prisma.teacherClassAssignment.findMany({
+            const enrollments = await this.prisma.enrollment.findMany({
               where: {
-                teacherId: this.getCurrentTeacherId(currentUser),
-                enrollments: {
-                  some: {
-                    studentId: student.id
-                  }
+                studentId: student.id,
+                class: {
+                  teacherId: this.getCurrentTeacherId(currentUser)
                 }
               }
             });
             
-            if (teacherAssignments.length === 0) {
+            if (enrollments.length === 0) {
               throw new ForbiddenException('You can only view students in your classes');
             }
             break;
