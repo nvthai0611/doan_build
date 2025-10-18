@@ -36,7 +36,7 @@ export interface CreateLeaveRequestDto {
   startDate: string
   endDate: string
   reason: string
-  image?: File
+  imageUrl?: string
   affectedSessions: AffectedSessionItem[]
 }
 

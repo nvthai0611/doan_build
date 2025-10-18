@@ -9,7 +9,7 @@ import {
   Trash2,
   Copy,
   ArrowRight,
-  Calendar, // Thêm icon Calendar
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,13 +37,13 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
 import { useNavigate } from 'react-router-dom';
 
-//draft, active, completed, cancelled
+// Status colors
 const statusColors = {
   draft: 'bg-gray-100 dark:bg-gray-800 text-gray-700',
   active: 'bg-green-100 text-green-700',
   completed: 'bg-blue-100 text-blue-700',
   cancelled: 'bg-red-100 text-red-700',
-}
+};
 
 const daysOfWeek = [
   { value: 'all', label: 'Tất cả' },
@@ -56,22 +56,22 @@ const daysOfWeek = [
   { value: 'sunday', label: 'Chủ Nhật' },
 ];
 
-const fetchClassData = async ( 
-  { status, page, limit, searchQuery, academicYear }: { 
-    status: string,
-    page: number,
-    limit: number,
-    searchQuery?: string,
-    academicYear?: string,
+const fetchClassData = async (
+  { status, page, limit, searchQuery, academicYear }: {
+    status: string;
+    page: number;
+    limit: number;
+    searchQuery?: string;
+    academicYear?: string;
   }
 ) => {
-  const res = await getClassByTeacherId( status, page, limit, searchQuery, academicYear);
+  const res = await getClassByTeacherId(status, page, limit, searchQuery, academicYear);
   return res;
 };
 
 const fetchCountData = async () => {
   const res = await getCountByStatus();
-  return res.data;
+  return res?.data || {};
 };
 
 export default function ClassManagement() {
@@ -79,22 +79,22 @@ export default function ClassManagement() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('all'); // Thêm state cho academic year
-  const [debouncedAcademicYear, setDebouncedAcademicYear] = useState('all'); // Debounced academic year
-  const navigate = useNavigate()
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('all');
+  const [debouncedAcademicYear, setDebouncedAcademicYear] = useState('all');
+  const navigate = useNavigate();
 
   const [underlineStyle, setUnderlineStyle] = useState({ width: 0, left: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  
 
-    const academicYears = [
+  const academicYears = [
     { value: 'all', label: 'Tất cả năm học' },
     { value: '2024-2025', label: '2024-2025' },
     { value: '2023-2024', label: '2023-2024' },
     { value: '2022-2023', label: '2022-2023' },
   ];
+
   useEffect(() => {
     const activeTabElement = tabRefs.current[activeTab];
     if (activeTabElement) {
@@ -110,7 +110,7 @@ export default function ClassManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 200); // 200ms delay
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -119,43 +119,43 @@ export default function ClassManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedAcademicYear(selectedAcademicYear);
-    }, 200); // 200ms delay
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [selectedAcademicYear]);
 
-  // Reset trang khi đổi tab hoặc thay đổi filter
+  // Reset page khi đổi filter
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, debouncedSearchQuery, debouncedAcademicYear]); // Thêm debouncedAcademicYear
+  }, [activeTab, debouncedSearchQuery, debouncedAcademicYear]);
 
-  // Query để lấy danh sách lớp học
-  const { 
-    data: listClassResponse, 
-    isLoading, 
+  // Query lấy danh sách lớp học
+  const {
+    data: listClassResponse ,
+    isLoading,
     isError,
-    isFetching 
+    isFetching,
   } = useQuery({
-    queryKey: ["class", activeTab, currentPage, pageSize, debouncedSearchQuery, debouncedAcademicYear], // Thêm academic year vào queryKey
+    queryKey: ["class", activeTab, currentPage, pageSize, debouncedSearchQuery, debouncedAcademicYear],
     queryFn: () => fetchClassData({
-      status: activeTab, 
-      page: currentPage, 
+      status: activeTab,
+      page: currentPage,
       limit: pageSize,
       searchQuery: debouncedSearchQuery,
-      academicYear: debouncedAcademicYear === 'all' ? undefined : debouncedAcademicYear // Thêm academic year
+      academicYear: debouncedAcademicYear === 'all' ? undefined : debouncedAcademicYear,
     }),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes  
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Tắt refetch khi component mount
-    refetchOnReconnect: false, // Tắt refetch khi reconnect
-    retry: 1, // Only retry once if failed
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 
-  // Query để lấy số lượng theo trạng thái
-  const { 
+  // Query lấy số lượng theo trạng thái
+  const {
     data: countData,
-    isLoading: isCountLoading 
+    isLoading: isCountLoading,
   } = useQuery({
     queryKey: ["classCount"],
     queryFn: () => fetchCountData(),
@@ -167,24 +167,23 @@ export default function ClassManagement() {
 
   // Tạo statusTabs từ dữ liệu API
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: countData?.total || 0, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700' },
-    { key: 'active', label: 'Đang diễn ra', count: countData?.active || 0, color: 'bg-green-100 text-green-700' },
-    { key: 'completed', label: 'Đã kết thúc', count: countData?.completed || 0, color: 'bg-blue-100 text-blue-700' },
-    { key: 'draft', label: 'Chưa diễn ra', count: countData?.draft || 0, color: 'bg-yellow-100 text-yellow-700' },
-    { key: 'cancelled', label: 'Đã Hủy', count: countData?.cancelled || 0, color: 'bg-red-100 text-red-700' },
+    { key: 'all', label: 'Tất cả', count: countData?.total ?? 0, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700' },
+    { key: 'active', label: 'Đang diễn ra', count: countData?.active ?? 0, color: 'bg-green-100 text-green-700' },
+    { key: 'completed', label: 'Đã kết thúc', count: countData?.completed ?? 0, color: 'bg-blue-100 text-blue-700' },
+    { key: 'draft', label: 'Chưa diễn ra', count: countData?.draft ?? 0, color: 'bg-yellow-100 text-yellow-700' },
+    { key: 'cancelled', label: 'Đã Hủy', count: countData?.cancelled ?? 0, color: 'bg-red-100 text-red-700' },
   ];
 
-  // Khi có lỗi hoặc không có dữ liệu, hiển thị danh sách rỗng
+  // Xử lý dữ liệu với optional chaining
   const classesToRender = (isError || !listClassResponse?.data) ? [] : (Array.isArray(listClassResponse.data) ? listClassResponse.data : []);
-  const pagination = listClassResponse?.meta?.pagination || null;
-  const appliedFilters = listClassResponse?.meta?.filters || null;
-  
-  // Debug info
-  
-  const formatDayToVietnamese = (dateStr: string)=> {
+  const pagination = listClassResponse?.pagination || null;
+  const appliedFilters = listClassResponse?.filters || null;
+
+  // Format ngày thành tiếng Việt
+  const formatDayToVietnamese = (dateStr: string) => {
     const dayFormat = daysOfWeek.find(day => day.value === dateStr);
-    return dayFormat ? dayFormat.label : dateStr;
-  }
+    return dayFormat?.label ?? dateStr;
+  };
 
   // Columns configuration cho DataTable
   const columns: Column<any>[] = useMemo(() => [
@@ -202,11 +201,11 @@ export default function ClassManagement() {
       searchable: true,
       searchPlaceholder: 'Tìm theo tên lớp...',
       render: (item: any) => (
-        <div 
-          onClick={() => navigate(`/teacher/classes/${item.assignmentId}`)} 
+        <div
+          onClick={() => navigate(`/teacher/classes/${item?.id}`)}
           className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200"
         >
-          {item.name}
+          {item?.name ?? 'N/A'}
         </div>
       ),
     },
@@ -215,30 +214,36 @@ export default function ClassManagement() {
       header: 'Lịch học',
       render: (item: any) => (
         <div className="space-y-1">
-          {item?.schedule?.schedules?.map((schedule: any, idx: number) => (
-            <div
-              key={idx}
-              className="flex items-center gap-1 text-sm"
-            >
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>
-                {formatDayToVietnamese(schedule?.day)} - {schedule?.startTime} <ArrowRight className="inline-block" size={14} /> {schedule?.endTime}
-              </span>
-            </div>
-          ))}
+          {item?.schedule?.schedules && Array.isArray(item.schedule.schedules) ? (
+            item.schedule.schedules.map((schedule: any, idx: number) => (
+              <div
+                key={idx}
+                className="flex items-center gap-1 text-sm"
+              >
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span>
+                  {formatDayToVietnamese(schedule?.day ?? '')} - {schedule?.startTime ?? '--'}
+                  <ArrowRight className="inline-block mx-1" size={14} />
+                  {schedule?.endTime ?? '--'}
+                </span>
+              </div>
+            ))
+          ) : (
+            <span className="text-sm text-gray-500">Không có lịch</span>
+          )}
         </div>
       ),
     },
     {
-      key: 'assignmentStatus',
+      key: 'status',
       header: 'Trạng thái',
       sortable: true,
       render: (item: any) => (
         <Badge
           variant="secondary"
-          className={`${statusColors[item.assignmentStatus as keyof typeof statusColors]} hover:bg-red-200 transition-colors duration-200`}
+          className={`${statusColors[item?.status as keyof typeof statusColors] ?? 'bg-gray-100'} hover:bg-opacity-80 transition-colors duration-200`}
         >
-          {statusTabs.find(tab => tab.key === item.assignmentStatus)?.label || item.assignmentStatus}
+          {statusTabs.find(tab => tab.key === item?.status)?.label ?? item?.status ?? 'N/A'}
         </Badge>
       ),
     },
@@ -247,8 +252,8 @@ export default function ClassManagement() {
       header: 'Ngày bắt đầu / Ngày kết thúc',
       render: (item: any) => (
         <div className="text-sm space-y-1">
-          <div>{formatDate(item.startDate)}</div>
-          <div>{formatDate(item.endDate)}</div>
+          <div>{item?.expectedStartDate ? formatDate(item.expectedStartDate) : 'N/A'}</div>
+          <div>{item?.actualEndDate ? formatDate(item.actualEndDate) : 'N/A'}</div>
         </div>
       ),
     },
@@ -257,34 +262,33 @@ export default function ClassManagement() {
       header: 'Số học sinh trong lớp',
       align: 'center',
       render: (item: any) => (
-        <span className="font-medium">{item.enrollmentStatus.current}/{item.enrollmentStatus.max}</span>
+        <span className="font-medium">
+          {item?.studentCount ?? 0}/{item?.maxStudents ?? 0}
+        </span>
       ),
     },
-  ], [currentPage, pageSize, navigate, statusTabs])
+  ], [currentPage, pageSize, navigate, statusTabs]);
 
-  // Hàm xử lý chuyển trang với smooth scroll
+  // Xử lý chuyển trang
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    // Scroll to top of table
     document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Hàm xóa tất cả filter
+  // Xóa tất cả filter
   const handleClearFilters = () => {
     setSearchQuery('');
-    setSelectedAcademicYear('all'); // Reset academic year
+    setSelectedAcademicYear('all');
     setActiveTab('all');
     setCurrentPage(1);
   };
 
-  console.log(classesToRender);
-  
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <h1  className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-semibold text-foreground">
             Danh sách lớp học
           </h1>
 
@@ -294,10 +298,6 @@ export default function ClassManagement() {
               Dashboard
             </span>
             <span>•</span>
-            {/* <span className="hover:text-foreground cursor-pointer transition-colors duration-200">
-              Tài khoản
-            </span>
-            <span>•</span> */}
             <span className="text-foreground">Danh sách lớp học</span>
           </nav>
         </div>
@@ -308,7 +308,7 @@ export default function ClassManagement() {
         </Button>
       </div>
 
-      {/* Search and Filters Section - CẬP NHẬT */}
+      {/* Search and Filters Section */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors duration-200" />
@@ -325,11 +325,11 @@ export default function ClassManagement() {
           )}
         </div>
 
-        {/* Academic Year Filter - MỚI */}
+        {/* Academic Year Filter */}
         <div className="relative min-w-[200px]">
           <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
-          <Select 
-            value={selectedAcademicYear} 
+          <Select
+            value={selectedAcademicYear}
             onValueChange={setSelectedAcademicYear}
           >
             <SelectTrigger className="pl-10 transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white">
@@ -353,7 +353,7 @@ export default function ClassManagement() {
           Bộ lọc
         </Button>
 
-        {/* Clear Filters Button - CẬP NHẬT */}
+        {/* Clear Filters Button */}
         {(searchQuery || activeTab !== 'all' || selectedAcademicYear !== 'all') && (
           <Button
             variant="outline"
@@ -365,7 +365,7 @@ export default function ClassManagement() {
         )}
       </div>
 
-      {/* Filter Status Info - CẬP NHẬT */}
+      {/* Filter Status Info */}
       {(debouncedSearchQuery || debouncedAcademicYear !== 'all') && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <div className="flex items-center justify-between">
@@ -384,7 +384,7 @@ export default function ClassManagement() {
               )}
             </div>
             <div className="text-sm text-blue-600">
-              {pagination ? `${pagination.totalCount} kết quả` : '0 kết quả'}
+              {pagination?.totalCount ?? 0} kết quả
             </div>
           </div>
         </div>
@@ -405,9 +405,6 @@ export default function ClassManagement() {
               }`}
             >
               <span className="transition-all duration-200">{tab.label}</span>
-              {activeTab === tab.key && isFetching && (
-                <></>
-              )}
               <span
                 className={`text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center transition-all duration-200 ${
                   tab.color
@@ -435,15 +432,15 @@ export default function ClassManagement() {
           loading={isLoading && classesToRender.length === 0}
           error={isError ? "Không thể tải dữ liệu lớp học" : null}
           emptyMessage="Không có lớp học nào"
-          rowKey="assignmentId"
+          rowKey="id"
           hoverable={true}
           striped={false}
-          enableSearch={false} // Disable built-in search vì đã có search riêng
-          enableSort={false} // Disable built-in sort vì đã có sort riêng
+          enableSearch={false}
+          enableSort={false}
           pagination={{
             currentPage,
-            totalPages: pagination?.totalPages || 1,
-            totalItems: pagination?.totalCount || 0,
+            totalPages: pagination?.totalPages ?? 1,
+            totalItems: pagination?.totalCount ?? 0,
             itemsPerPage: pageSize,
             onPageChange: handlePageChange,
             onItemsPerPageChange: (newSize) => {
@@ -474,7 +471,7 @@ export default function ClassManagement() {
               Thu gọn
             </label>
           </div>
-          
+
           {/* Loading indicator */}
           {(isLoading || isFetching) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

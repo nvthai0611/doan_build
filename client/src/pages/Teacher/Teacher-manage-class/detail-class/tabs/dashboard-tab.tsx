@@ -1,165 +1,160 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, BarChart3, UserCheck } from "lucide-react"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Users, Clock, CheckCircle2 } from 'lucide-react';
 
-export function DashboardTab(props: any) {
-  const { classData } = props
+interface DashboardTabProps {
+  classData: any;
+}
 
-  // Dữ liệu cho pie chart từ classData
+const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#6b7280'];
+
+export default function DashboardTab({ classData }: DashboardTabProps) {
+  const classSession = classData?.classSession ?? {
+    total: 0,
+    completed: 0,
+    upcoming: 0,
+    attendanceRate: 0,
+    totalPresentCount: 0,
+    totalAbsentCount: 0,
+    totalExcusedCount: 0,
+  };
+
   const attendanceData = [
+    { name: 'Có mặt', value: classSession?.totalPresentCount ?? 0 },
+    { name: 'Vắng', value: classSession?.totalAbsentCount ?? 0 },
+    { name: 'Xin phép', value: classSession?.totalExcusedCount ?? 0 },
+  ];
+
+  const stats = [
     {
-      name: 'Có mặt',
-      value: classData?.classSession?.totalPresentCount || 0,
-      color: '#22c55e'
+      icon: Users,
+      label: 'Tổng học sinh',
+      value: classData?.studentCount ?? 0,
+      bgColor: 'bg-blue-100',
+      textColor: 'text-blue-600',
     },
     {
-      name: 'Vắng mặt',
-      value: classData?.classSession?.totalAbsentCount || 0,
-      color: '#ef4444'
+      icon: Clock,
+      label: 'Buổi học hoàn thành',
+      value: classSession?.completed ?? 0,
+      bgColor: 'bg-green-100',
+      textColor: 'text-green-600',
     },
     {
-      name: 'Có phép',
-      value: classData?.classSession?.totalExcusedCount || 0,
-      color: '#f59e0b'
-    }
-  ]
-
-  const totalAttendance = attendanceData.reduce((sum, item) => sum + item.value, 0)
-
-  const renderCustomLabel = (entry: any) => {
-    const percent = totalAttendance > 0 ? ((entry.value / totalAttendance) * 100).toFixed(1) : 0
-    return `${percent}%`
-  }
+      icon: AlertCircle,
+      label: 'Buổi học sắp tới',
+      value: classSession?.upcoming ?? 0,
+      bgColor: 'bg-yellow-100',
+      textColor: 'text-yellow-600',
+    },
+    {
+      icon: CheckCircle2,
+      label: 'Tỷ lệ tham gia',
+      value: `${classSession?.attendanceRate ?? 0}%`,
+      bgColor: 'bg-purple-100',
+      textColor: 'text-purple-600',
+    },
+  ];
 
   return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div> 
-                <p className="text-sm font-medium text-muted-foreground">Tổng học viên</p>
-                <p className="text-2xl font-bold">{classData?.studentCount || 0}</p>
-              </div>
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Buổi học hoàn thành</p>
-                <p className="text-2xl font-bold">{classData?.classSession?.completed || 0}/{classData?.classSession?.total || 0}</p>
-              </div>
-              <Calendar className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Tỷ lệ tham gia</p>
-                <p className="text-2xl font-bold">{classData?.classSession?.attendanceRate || 0}%</p>
-              </div>
-              <BarChart3 className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={idx} className="hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      {stat.label}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div className={`${stat.bgColor} p-3 rounded-lg`}>
+                    <Icon className={`w-6 h-6 ${stat.textColor}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
-      
+
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        {/* Attendance Chart */}
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardHeader>
             <CardTitle>Thống kê điểm danh</CardTitle>
           </CardHeader>
           <CardContent>
-            {totalAttendance > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={attendanceData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {attendanceData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => [value, 'Số lượng']}
-                  />
-                  <Legend 
-                    formatter={(value, entry: any) => (
-                      <span style={{ color: entry.color }}>
-                        {value}: {entry.payload.value}
-                      </span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Chưa có dữ liệu điểm danh
-              </div>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={attendanceData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {attendanceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Session Info */}
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardHeader>
-            <CardTitle>Chi tiết điểm danh</CardTitle>
+            <CardTitle>Thông tin buổi học</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="font-medium">Có mặt</span>
-                </div>
-                <span className="text-lg font-bold text-green-600">
-                  {classData?.classSession?.totalPresentCount || 0}
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Tổng buổi học:</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {classSession?.total ?? 0}
                 </span>
               </div>
-              
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="font-medium">Vắng mặt</span>
-                </div>
-                <span className="text-lg font-bold text-red-600">
-                  {classData?.classSession?.totalAbsentCount || 0}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Buổi đã hoàn thành:</span>
+                <span className="font-medium text-green-600">
+                  {classSession?.completed ?? 0}
                 </span>
               </div>
-              
-              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="font-medium">Có phép</span>
-                </div>
-                <span className="text-lg font-bold text-yellow-600">
-                  {classData?.classSession?.totalExcusedCount || 0}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Buổi sắp tới:</span>
+                <span className="font-medium text-yellow-600">
+                  {classSession?.upcoming ?? 0}
                 </span>
               </div>
-              
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Tổng cộng</span>
-                  <span className="text-lg font-bold">
-                    {totalAttendance}
-                  </span>
-                </div>
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Tỷ lệ tham gia trung bình:</span>
+                <span className="font-medium text-purple-600">
+                  {classSession?.attendanceRate ?? 0}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Số người tham gia trung bình:</span>
+                <span className="font-medium text-blue-600">
+                  {classSession?.averageAttendancePerSession ?? 0}
+                </span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

@@ -65,6 +65,7 @@ export default function SessionDetails() {
     notes: ''
   })
   const [isStudentsListOpen, setIsStudentsListOpen] = useState(false)
+  const [route, setRoute] = useState<string>('')
 
   useEffect(() => {
     const fetchSessionDetails = async () => {
@@ -87,7 +88,7 @@ export default function SessionDetails() {
         setLoading(false)
       }
     }
-
+    setRoute(window.location.pathname)
     fetchSessionDetails()
   }, [sessionId])
 
@@ -195,14 +196,21 @@ export default function SessionDetails() {
       <div>
         <div className="mb-8">
           <div className="flex items-center gap-2 mt-4">
-            <span
-              onClick={() => navigate('/teacher/schedule')}
-              className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
-            >
-              Lịch dạy
-            </span>
-            <span className="text-gray-400"> &gt; </span>
-            <span className="text-gray-900 font-medium">Chi tiết buổi học</span>
+            {route.includes('/teacher/session-details') ? (
+              <>
+                <span className="text-gray-600 text-base cursor-pointer hover:text-blue-600" onClick={() => navigate('/teacher/schedule')}>Lịch dạy</span>
+                <span className="text-gray-400"> &gt; </span>
+                <span className="text-gray-900 font-medium">Chi tiết buổi học</span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-600 text-base cursor-pointer hover:text-blue-600" onClick={() => navigate('/teacher/classes')}>Danh sách lớp học</span>
+                <span className="text-gray-400"> &gt; </span>
+                <span className="text-gray-600 text-base cursor-pointer hover:text-blue-600" onClick={() => navigate(route.split('session')[0])}>Lớp học</span>
+                <span className="text-gray-400"> &gt; </span>
+                <span className="text-gray-900 font-medium">Chi tiết buổi học</span>
+              </>
+            )}
           </div>
         </div>
       </div>

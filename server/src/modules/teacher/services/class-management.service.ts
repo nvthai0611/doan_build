@@ -34,48 +34,43 @@ export class ClassManagementService {
             }
 
             // Xử lý status parameter
-            let assignmentStatus = undefined;
+            let classStatus = undefined;
             if (status && status !== 'all' && status.trim() !== '') {
-                assignmentStatus = status;
+                classStatus = status;
             }
 
             // Tính offset cho phân trang
             const offset = (page - 1) * limit;
 
-            // Xây dựng điều kiện where cho TeacherAssignment
+            // Xây dựng điều kiện where cho Class
             const whereCondition: any = {
                 teacherId,
-                ...(assignmentStatus && { status: assignmentStatus }),
-                class: {
-                    // Chỉ filter class theo 'active' khi KHÔNG có status hoặc status khác 'all'
-                    ...((!status || (status !== 'all' && !assignmentStatus)) && { status: 'active' }),
-                    ...(search && search.trim() !== '' && {
-                        name: {
-                            contains: search.trim(),
-                            mode: 'insensitive'
-                        }
-                    })
-                }
+                ...(classStatus && { status: classStatus }),
+                ...(search && search.trim() !== '' && {
+                    name: {
+                        contains: search.trim(),
+                        mode: 'insensitive'
+                    }
+                })
             };
 
-            // Nếu không có status parameter, mặc định lấy assignment active
+            // Nếu không có status parameter, mặc định lấy class active
             if (!status) {
                 whereCondition.status = 'active';
             }
-            // Nếu status là 'all', không filter theo assignment status (bỏ điều kiện status)
 
             // Validate page và limit
             if (page < 1) page = 1;
             if (limit < 1) limit = 10;
             if (limit > 100) limit = 100;
             
-            // Lấy tổng số assignment để tính tổng số trang
-            const totalCount = await this.prisma.teacherClassAssignment.count({
+            // Lấy tổng số class để tính tổng số trang
+            const totalCount = await this.prisma.class.count({
                 where: whereCondition
             });
 
-            // Lấy dữ liệu assignments với thông tin class
-            const assignments = await this.prisma.teacherClassAssignment.findMany({
+            // Lấy dữ liệu classes
+            const classes = await this.prisma.class.findMany({
                 where: whereCondition,
                 include: { 
                     teacher: {
@@ -90,15 +85,12 @@ export class ClassManagementService {
                             }
                         }
                     },
-                    class: {
-                        include: {
-                            subject: true,
-                            room: true,
-                            feeStructure: true
-                        }
-                    },
-                    _count:{
-                        select:{
+                    subject: true,
+                    room: true,
+                    feeStructure: true,
+                    grade: true,
+                    _count: {
+                        select: {
                             enrollments: true
                         }
                     }
@@ -106,24 +98,24 @@ export class ClassManagementService {
                 skip: offset,
                 take: limit,
                 orderBy: [
-                    { status: 'asc' }, // Active assignments trước
-                    { startDate: 'desc' } // Assignments mới nhất trước
+                    { status: 'asc' },
+                    { createdAt: 'desc' }
                 ]
             });
 
-            if (!assignments.length) {
+            if (!classes.length) {
                 throw new HttpException(
                     'Không tìm thấy lớp học được phân công',
                     HttpStatus.NOT_FOUND
                 );
             }
 
-            // Tính toán số lượng học sinh active cho mỗi assignment
-            const assignmentsWithActiveStudents = await Promise.all(
-                assignments.map(async (assignment) => {
+            // Tính toán số lượng học sinh active cho mỗi class
+            const classesWithActiveStudents = await Promise.all(
+                classes.map(async (classItem) => {
                     const activeStudentCount = await this.prisma.enrollment.count({
                         where: {
-                            teacherClassAssignmentId: assignment.id,
+                            classId: classItem.id,
                             status: 'active',
                             completedAt: null,
                             student: {
@@ -134,70 +126,65 @@ export class ClassManagementService {
                         }
                     });
                 
-                    
                     return {
-                        ...assignment,
+                        ...classItem,
                         activeStudentCount
                     };
                 })
             );
 
             // Transform data để trả về format phù hợp
-            const transformedClasses = assignmentsWithActiveStudents.map(assignment => ({
-                // Assignment info
-                assignmentId: assignment.id,
-                assignmentStatus: assignment.status,
-                startDate: assignment.startDate,
-                endDate: assignment.endDate,
-                semester: assignment.semester,
-                academicYear: assignment.academicYear,
-                notes: assignment.notes,
-                
-                // Class info (giữ nguyên structure cũ để không break frontend)
-                id: assignment.class.id,
-                name: assignment.class.name,
-                description: assignment.class.description,
-                grade: assignment.class.grade,
-                maxStudents: assignment.class.maxStudents,
-                status: assignment.class.status,
-                createdAt: assignment.class.createdAt,
-                updatedAt: assignment.class.updatedAt,
+            const transformedClasses = classesWithActiveStudents.map(classItem => ({
+                // Class info
+                id: classItem.id,
+                name: classItem.name,
+                description: classItem.description,
+                grade: classItem.grade,
+                maxStudents: classItem.maxStudents,
+                status: classItem.status,
+                academicYear: classItem.academicYear,
+                expectedStartDate: classItem.expectedStartDate,
+                actualStartDate: classItem.actualStartDate,
+                actualEndDate: classItem.actualEndDate,
+                createdAt: classItem.createdAt,
+                updatedAt: classItem.updatedAt,
                 
                 // Teacher info
-                teacherName: assignment.teacher?.user?.fullName || 'N/A',
-                teacherEmail: assignment.teacher?.user?.email || 'N/A',
+                teacherName: classItem.teacher?.user?.fullName || 'N/A',
+                teacherEmail: classItem.teacher?.user?.email || 'N/A',
+                teacherId: classItem.teacher?.id,
                 
                 // Subject info
-                subject: assignment.class.subject,
-                subjectId: assignment.class.subjectId,
+                subject: classItem.subject,
+                subjectId: classItem.subjectId,
                 
                 // Room info
-                room: assignment.class.room,
-                roomId: assignment.class.roomId,
+                room: classItem.room,
+                roomId: classItem.roomId,
                 
                 // Student count (chỉ học sinh active)
-                studentCount: assignment.activeStudentCount,
+                studentCount: classItem.activeStudentCount,
                 
                 // Fee structure
-                feeStructure: assignment.class.feeStructure,
-                feeStructureId: assignment.class.feeStructureId,
+                feeStructure: classItem.feeStructure,
+                feeStructureId: classItem.feeStructureId,
                 
                 // Schedule (parse JSON)
-                schedule: assignment.recurringSchedule ? 
-                    (typeof assignment.recurringSchedule === 'string' ? 
-                        JSON.parse(assignment.recurringSchedule) : 
-                        assignment.recurringSchedule) : null,
+                schedule: classItem.recurringSchedule ? 
+                    (typeof classItem.recurringSchedule === 'string' ? 
+                        JSON.parse(classItem.recurringSchedule) : 
+                        classItem.recurringSchedule) : null,
 
                 // Enrollment info (chỉ học sinh active)
                 enrollmentStatus: {
-                    current: assignment.activeStudentCount,
-                    max: assignment.class.maxStudents,
-                    percentage: assignment.class.maxStudents > 0 ? 
-                        Math.round((assignment.activeStudentCount / assignment.class.maxStudents) * 100) : 0,
-                    available: Math.max(0, assignment.class.maxStudents - assignment.activeStudentCount),
-                    isFull: assignment.activeStudentCount >= assignment.class.maxStudents,
-                    status: assignment.activeStudentCount >= assignment.class.maxStudents ? 'full' : 
-                            assignment.activeStudentCount >= assignment.class.maxStudents * 0.8 ? 'nearly_full' : 'available'
+                    current: classItem.activeStudentCount,
+                    max: classItem.maxStudents,
+                    percentage: classItem.maxStudents > 0 ? 
+                        Math.round((classItem.activeStudentCount / classItem.maxStudents) * 100) : 0,
+                    available: Math.max(0, classItem.maxStudents - classItem.activeStudentCount),
+                    isFull: classItem.activeStudentCount >= classItem.maxStudents,
+                    status: classItem.activeStudentCount >= classItem.maxStudents ? 'full' : 
+                            classItem.activeStudentCount >= classItem.maxStudents * 0.8 ? 'nearly_full' : 'available'
                 },
             }));
             
@@ -225,10 +212,8 @@ export class ClassManagementService {
             return result;
 
         } catch (error) {
-            // Nếu đã là HttpException thì ném lại
             if (error instanceof HttpException) throw error;
 
-            // Còn lại là lỗi từ Prisma hoặc runtime khác
             throw new HttpException(
                 {
                     success: false,
@@ -261,30 +246,18 @@ export class ClassManagementService {
                 );
             }
 
-            // Đếm theo status của TeacherAssignment với class active
-            const activeAssignmentCounts = await this.prisma.teacherClassAssignment.groupBy({
+            // Đếm classes theo status
+            const classCounts = await this.prisma.class.groupBy({
                 by: ['status'],
                 where: { 
                     teacherId
-                },
-                _count: {
-                    status: true
-                }
-            });
-
-            // Đếm tổng tất cả assignment (không filter class status)
-            const totalAssignmentCounts = await this.prisma.teacherClassAssignment.groupBy({
-                by: ['status'],
-                where: { 
-                    teacherId
-                    // Không filter class status để có tổng thực tế
                 },
                 _count: {
                     status: true
                 }
             });
             
-            if (!activeAssignmentCounts.length && !totalAssignmentCounts.length) {
+            if (!classCounts.length) {
                 throw new HttpException(
                     'Không tìm thấy lớp học nào cho giáo viên này',
                     HttpStatus.NOT_FOUND
@@ -295,24 +268,20 @@ export class ClassManagementService {
             const result = {
                 total: 0,
                 active: 0,
+                draft: 0,
                 completed: 0,
-                cancelled: 0,
-                // Thêm thông tin về class status
-                activeClassOnly: {
-                    total: 0,
-                    active: 0,
-                    completed: 0,
-                    cancelled: 0
-                }
+                cancelled: 0
             };
 
-            // Tính tổng từ tất cả assignment (bao gồm cả class inactive)
-            totalAssignmentCounts.forEach(item => {
+            // Tính tổng
+            classCounts.forEach(item => {
                 const count = item._count.status;
                 result.total += count;
                 
                 if (item.status === 'active') {
                     result.active = count;
+                } else if (item.status === 'draft') {
+                    result.draft = count;
                 } else if (item.status === 'completed') {
                     result.completed = count;
                 } else if (item.status === 'cancelled') {
@@ -320,27 +289,11 @@ export class ClassManagementService {
                 }
             });
 
-            // Tính từ assignment với class active only
-            activeAssignmentCounts.forEach(item => {
-                const count = item._count.status;
-                result.activeClassOnly.total += count;
-                
-                if (item.status === 'active') {
-                    result.activeClassOnly.active = count;
-                } else if (item.status === 'completed') {
-                    result.activeClassOnly.completed = count;
-                } else if (item.status === 'cancelled') {
-                    result.activeClassOnly.cancelled = count;
-                }
-            });
-
             return result;
 
         } catch (error) {
-            // Nếu đã là HttpException thì ném lại
             if (error instanceof HttpException) throw error;
             
-            // Còn lại là lỗi từ Prisma hoặc runtime khác
             throw new HttpException(
                 'Có lỗi xảy ra khi lấy số lượng lớp học theo trạng thái',
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -348,28 +301,26 @@ export class ClassManagementService {
         }
     }
 
-    async getClassDetail(teacherId: string, teacherClassAssignmentId: string){
+    async getClassDetail(teacherId: string, classId: string){
         try {
-            if(!checkId(teacherId) || !checkId(teacherClassAssignmentId)){
+            if(!checkId(teacherId) || !checkId(classId)){
                 throw new HttpException(
                     'ID không hợp lệ',
                     HttpStatus.BAD_REQUEST
                 );
             }
             
-            // Tìm assignment của teacher với class này
-            const assignment = await this.prisma.teacherClassAssignment.findFirst({
+            // Tìm class của teacher
+            const classItem = await this.prisma.class.findFirst({
                 where: { 
-                    id:teacherClassAssignmentId
+                    id: classId,
+                    teacherId: teacherId
                 },
                 include: {
-                    class: {
-                        include: {
-                            room: true,
-                            subject: true,
-                            feeStructure: true,                         
-                        }
-                    },
+                    room: true,
+                    subject: true,
+                    feeStructure: true,
+                    grade: true,
                     teacher: {
                         select: {
                             id: true,
@@ -382,21 +333,25 @@ export class ClassManagementService {
                             }
                         }
                     },
-                    _count:{
-                        select:{
+                    _count: {
+                        select: {
                             enrollments: true
                         }
                     }
-                },
-                orderBy: {
-                    startDate: 'desc' // Lấy assignment mới nhất
                 }
             });
+
+            if(!classItem){
+                throw new HttpException(
+                    'Lớp học không tồn tại hoặc bạn không có quyền truy cập',
+                    HttpStatus.NOT_FOUND
+                );
+            }
 
             // Tính toán số lượng học sinh active
             const activeStudentCount = await this.prisma.enrollment.count({
                 where: {
-                    teacherClassAssignmentId: assignment.id,
+                    classId: classItem.id,
                     status: 'active',
                     completedAt: null,
                     student: {
@@ -407,16 +362,10 @@ export class ClassManagementService {
                 }
             });
 
-            // Thêm activeStudentCount vào assignment object
-            const assignmentWithActiveCount = {
-                ...assignment,
-                activeStudentCount
-            };
-
             const classSessionInfo = await this.prisma.classSession.findMany({
                 where: {
-                    classId: assignment?.classId,
-                    academicYear: assignment?.academicYear,
+                    classId: classItem.id,
+                    academicYear: classItem.academicYear,
                 },
                 include: {
                     attendances: {
@@ -432,98 +381,77 @@ export class ClassManagementService {
             let totalAttendanceRate = 0;
             let totalSessions = classSessionInfo.length;
             
-            if (totalSessions > 0) {
-                const totalStudents = assignmentWithActiveCount.activeStudentCount;
+            if (totalSessions > 0 && activeStudentCount > 0) {
+                let totalPresentCount = 0;
+                let totalPossibleAttendances = totalSessions * activeStudentCount;
                 
-                if (totalStudents > 0) {
-                    let totalPresentCount = 0;
-                    let totalPossibleAttendances = totalSessions * totalStudents;
-                    
-                    classSessionInfo.forEach(session => {
-                        const presentCount = session.attendances.filter(
-                            attendance => attendance.status === 'present'
-                        ).length;
-                        totalPresentCount += presentCount;
-                    });
-                    
-                    totalAttendanceRate = totalPossibleAttendances > 0 ? 
-                        Math.round((totalPresentCount / totalPossibleAttendances) * 100) : 0;
-                }
+                classSessionInfo.forEach(session => {
+                    const presentCount = session.attendances.filter(
+                        attendance => attendance.status === 'present'
+                    ).length;
+                    totalPresentCount += presentCount;
+                });
+                
+                totalAttendanceRate = totalPossibleAttendances > 0 ? 
+                    Math.round((totalPresentCount / totalPossibleAttendances) * 100) : 0;
             }
 
-            //Lấy tổng số lượng attendance với status 'present'
-
+            // Lấy tổng số lượng attendance theo từng status
             const totalPresentCount = classSessionInfo.reduce((total, session) => {
                 return total + session.attendances.filter(attendance => attendance.status === 'present').length;
             }, 0);
-
-            // //Lấy tổng số lượng attendance với status 'absent'
 
             const totalAbsentCount = classSessionInfo.reduce((total, session) => {
                 return total + session.attendances.filter(attendance => attendance.status === 'absent').length;
             }, 0);
 
-            // Lấy tổng số lượng attendance với status 'excused'
             const totalExcusedCount = classSessionInfo.reduce((total, session) => {
                 return total + session.attendances.filter(attendance => attendance.status === 'excused').length;
             }, 0);
 
-            
-            if(!assignment){
-                throw new HttpException(
-                    'Lớp học không tồn tại hoặc bạn không có quyền truy cập',
-                    HttpStatus.NOT_FOUND
-                );
-            }
-            
             // Transform data để trả về format tương tự cũ
             const result = {
-                // Assignment info
-                assignmentId: assignment.id,
-                assignmentStatus: assignment.status,
-                startDate: assignment.startDate,
-                endDate: assignment.endDate,
-                semester: assignment.semester,
-                academicYear: assignment.academicYear,
-                assignmentNotes: assignment.notes,
-                
                 // Class info
-                id: assignment.class.id,
-                name: assignment.class.name,
-                description: assignment.class.description,
-                grade: assignment.class.grade,
-                maxStudents: assignment.class.maxStudents,
-                status: assignment.class.status,
-                createdAt: assignment.class.createdAt,
-                updatedAt: assignment.class.updatedAt,
+                id: classItem.id,
+                name: classItem.name,
+                description: classItem.description,
+                grade: classItem.grade,
+                maxStudents: classItem.maxStudents,
+                status: classItem.status,
+                academicYear: classItem.academicYear,
+                expectedStartDate: classItem.expectedStartDate,
+                actualStartDate: classItem.actualStartDate,
+                actualEndDate: classItem.actualEndDate,
+                createdAt: classItem.createdAt,
+                updatedAt: classItem.updatedAt,
                 
                 // Relations
-                room: assignment.class.room,
-                subject: assignment.class.subject,
+                room: classItem.room,
+                subject: classItem.subject,
                 
                 // Counts (chỉ học sinh active)
-                studentCount: assignmentWithActiveCount.activeStudentCount,
+                studentCount: activeStudentCount,
 
                 // Class sessions với tỷ lệ tham gia
-                classSession:{
+                classSession: {
                     total: classSessionInfo.length,
                     completed: classSessionInfo.filter(session => session.status === 'completed').length,
                     upcoming: classSessionInfo.filter(session => session.status === 'scheduled' && new Date(session.sessionDate) > new Date()).length,
-                    attendanceRate: totalAttendanceRate, // Tỷ lệ tham gia tổng thể (%)
-                    averageAttendancePerSession: totalSessions > 0 && assignmentWithActiveCount.activeStudentCount > 0 ? 
+                    attendanceRate: totalAttendanceRate,
+                    averageAttendancePerSession: totalSessions > 0 && activeStudentCount > 0 ? 
                         Math.round((classSessionInfo.reduce((sum, session) => {
                             return sum + session.attendances.filter(att => att.status === 'present').length;
                         }, 0) / totalSessions)) : 0,
-                    totalPresentCount: totalPresentCount,
-                    totalAbsentCount: totalAbsentCount,
-                    totalExcusedCount: totalExcusedCount
+                    totalPresentCount,
+                    totalAbsentCount,
+                    totalExcusedCount
                 },
                 
                 // Schedule
-                recurringSchedule: assignment.recurringSchedule ? 
-                    (typeof assignment.recurringSchedule === 'string' ? 
-                        JSON.parse(assignment.recurringSchedule) : 
-                        assignment.recurringSchedule) : null
+                schedule: classItem.recurringSchedule ? 
+                    (typeof classItem.recurringSchedule === 'string' ? 
+                        JSON.parse(classItem.recurringSchedule) : 
+                        classItem.recurringSchedule) : null
             };
             
             return result;
@@ -538,83 +466,54 @@ export class ClassManagementService {
         }
     }
 
-    // Thêm method để lấy lịch sử assignments của một class
-    async getClassAssignmentHistory(teacherId: string, classId: string) {
+    async getHistoryAttendanceOfClass(teacherId: string, classId: string){
         try {
             if(!checkId(teacherId) || !checkId(classId)){
-                throw new HttpException(
-                    'ID không hợp lệ',
-                    HttpStatus.BAD_REQUEST
-                );
+                throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
             }
 
-            const assignments = await this.prisma.teacherClassAssignment.findMany({
-                where: { classId },
+            // Validate class thuộc về teacher này
+            const classItem = await this.prisma.class.findFirst({
+                where: {
+                    id: classId,
+                    teacherId: teacherId
+                }
+            });
+
+            if(!classItem){
+                throw new HttpException('Lớp học không tồn tại hoặc bạn không có quyền truy cập', HttpStatus.NOT_FOUND);
+            }
+
+            // Lấy danh sách của classSessions với academic year của lớp
+            const classSessions = await this.prisma.classSession.findMany({
+                where: {
+                    classId: classId,
+                    academicYear: classItem.academicYear
+                },
                 include: {
-                    teacher: {
-                        select: {
-                            id: true,
-                            user: {
+                    attendances: {
+                        include: {
+                            student: {
                                 select: {
-                                    fullName: true,
-                                    email: true
+                                    id: true,
+                                    user: true
                                 }
                             }
                         }
                     }
                 },
                 orderBy: {
-                    startDate: 'desc'
+                    sessionDate: 'desc'
                 }
             });
 
-            return assignments;
-
-        } catch (error) {
-            if(error instanceof HttpException) throw error;
-
-            throw new HttpException(
-                'Có lỗi xảy ra khi lấy lịch sử phân công lớp học',
-                HttpStatus.INTERNAL_SERVER_ERROR
-            );
-        }
-    }
-
-    async getHistoryAttendanceOfClass(teacherClassAssignmentId: string, teacherId: string){
-        try{
-        if(!checkId(teacherClassAssignmentId)){
-            throw new HttpException('Id không hợp lệ', HttpStatus.BAD_REQUEST);
-        }
-        // Lấy Id của class và academicYear của teacherClassAssignmentId
-        const findTeacherClassAssignment = await this.prisma.teacherClassAssignment.findUnique({
-            where: {id: teacherClassAssignmentId, teacherId: teacherId},
-        })
-        if(!findTeacherClassAssignment){
-            throw new HttpException('Không tìm lấy lớp học theo teacherClassAssignmentId', HttpStatus.NOT_FOUND);
-        }
-        // Từ Id của class và academicYear lấy danh sách của classSessions
-        const classSessions = await this.prisma.classSession.findMany({
-            where:{
-                classId: findTeacherClassAssignment.classId,
-                academicYear: findTeacherClassAssignment.academicYear
-            },
-            include:{
-                attendances:{ // lấy attendance của từng buổi học
-                    include:{
-                        student:{ // lấy thông tin của học sinh
-                            select:{ 
-                                user:true // nối đến bằng user để lấy thông tin chi tiết                           
-                        }
-                    }
-                }
+            if(classSessions.length === 0){
+                throw new HttpException('Không tìm thấy buổi học nào của lớp này', HttpStatus.NOT_FOUND);
             }
-        }})
 
-        if(classSessions.length == 0){
-            throw new HttpException('Không tìm thấy buổi học nào của lớp này', HttpStatus.NOT_FOUND);
-        }
-        return classSessions;
-        }catch(error){
+            return classSessions;
+
+        } catch(error) {
             if(error instanceof HttpException) throw error;
 
             throw new HttpException(

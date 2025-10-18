@@ -120,7 +120,7 @@ export const teacherClassService = {
    * Tạo buổi học mới
    */
   createSession: async (data: CreateSessionRequest): Promise<ClassSession> => {
-    const response = await ApiService.post<ClassSession>("/teacher/class-management/sessions", data)
+    const response = await ApiService.post<ClassSession>("/teacher/session/create", data)
     return response.data as any
   },
 

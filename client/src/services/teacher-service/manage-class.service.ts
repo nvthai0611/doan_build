@@ -8,7 +8,7 @@ const getClassByTeacherId = async(
     limit: number = 10,
     searchQuery?: string,
     academicYear?: string // Thêm tham số
-): Promise<ApiResponse<any>> => {
+): Promise<any> => {
     try {
         // Xây dựng query string thủ công để tránh vấn đề serialization
         const queryParams = new URLSearchParams();
