@@ -26,11 +26,7 @@ export class ScheduleService {
             gte: startDate,
             lte: endDate
           },
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         },
         include: {
           class: {
@@ -58,7 +54,8 @@ export class ScheduleService {
         status: session.status,
         notes: session.notes,
         type: 'regular',
-        teacherId,
+        teacherId: session.teacherId,
+        academicYear: session.academicYear,
         createdAt: session.createdAt,
         updatedAt: session.createdAt
       }));
@@ -79,11 +76,7 @@ export class ScheduleService {
             gte: startDate,
             lte: endDate
           },
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          },
+          teacherId: teacherId
         },
         include: {
           class: {
@@ -108,7 +101,8 @@ export class ScheduleService {
         status: session.status,
         notes: session.notes,
         type: 'regular',
-        teacherId,
+        teacherId: session.teacherId,
+        academicYear: session.academicYear,
         createdAt: session.createdAt,
         updatedAt: session.createdAt,
       }));
@@ -122,11 +116,7 @@ export class ScheduleService {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: scheduleId,
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         },
         include: {
           class: {
@@ -154,7 +144,8 @@ export class ScheduleService {
         status: session.status,
         notes: session.notes,
         type: 'regular',
-        teacherId,
+        teacherId: session.teacherId,
+        academicYear: session.academicYear,
         createdAt: session.createdAt,
         updatedAt: session.createdAt
       };
@@ -173,11 +164,7 @@ export class ScheduleService {
       const existingSession = await this.prisma.classSession.findFirst({
         where: {
           id: scheduleId,
-          class: {
-            teacherClassAssignments: {
-              some: { teacherId }
-            }
-          }
+          teacherId: teacherId
         },
         include: {
           class: {
@@ -221,7 +208,8 @@ export class ScheduleService {
         status: updatedSession.status,
         notes: updatedSession.notes,
         type: 'regular',
-        teacherId,
+        teacherId: updatedSession.teacherId,
+        academicYear: updatedSession.academicYear,
         createdAt: updatedSession.createdAt,
         updatedAt: updatedSession.createdAt
       };
