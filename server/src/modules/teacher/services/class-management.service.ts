@@ -466,12 +466,13 @@ export class ClassManagementService {
         }
     }
 
-    async getHistoryAttendanceOfClass(teacherId: string, classId: string){
+    async getHistoryAttendanceOfClass(classId: string, teacherId: string){
         try {
             if(!checkId(teacherId) || !checkId(classId)){
                 throw new HttpException('ID không hợp lệ', HttpStatus.BAD_REQUEST);
             }
-
+            
+            
             // Validate class thuộc về teacher này
             const classItem = await this.prisma.class.findFirst({
                 where: {
@@ -479,7 +480,6 @@ export class ClassManagementService {
                     teacherId: teacherId
                 }
             });
-
             if(!classItem){
                 throw new HttpException('Lớp học không tồn tại hoặc bạn không có quyền truy cập', HttpStatus.NOT_FOUND);
             }

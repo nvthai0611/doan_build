@@ -198,7 +198,7 @@ export default function AttendanceTable() {
             </div>
         );
     }
-
+    
     return (
       <div>
         <div className="mb-8">

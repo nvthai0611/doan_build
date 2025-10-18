@@ -71,7 +71,7 @@ export const privateRoutes = (
         <Route path="profile" element={<TeacherProfilePage />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
-        <Route path="classes/:teacherClassAssignmentId" element={<ClassDetailsPage />} />
+        <Route path="classes/:classId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
         <Route path="attendance" element={<AttendanceTable />} />

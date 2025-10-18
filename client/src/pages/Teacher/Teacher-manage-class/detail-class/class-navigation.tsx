@@ -20,7 +20,7 @@ export function ClassNavigation({
   tabs,
   activeTab,
   onTabChange,
-}: ClassNavigationProps) {
+}: any) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
   const tabsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 
@@ -34,8 +34,8 @@ export function ClassNavigation({
     { id: "history-attendance-class", label: "Lịch sử điểm danh", icon: CalendarCheck2 },
   ]
 
+  // const finalTabs = tabs.length > 0 ? tabs : defaultTabs
   const finalTabs = tabs.length > 0 ? tabs : defaultTabs
-
   useEffect(() => {
     const activeTabElement = tabsRef.current[activeTab]
     if (activeTabElement) {
@@ -58,7 +58,7 @@ export function ClassNavigation({
               width: `${indicatorStyle.width}px`,
             }}
           />
-          {finalTabs.map((tab) => {
+          {finalTabs.map((tab: any) => {
             const IconComponent = tab.icon
             return (
               <button
@@ -72,9 +72,9 @@ export function ClassNavigation({
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 )}
               >
-                <span className="mr-2">
+                {/* <span className="mr-2">
                   <IconComponent className="h-4 w-4" />
-                </span>
+                </span> */}
                 {tab.label}
               </button>
             )

@@ -34,8 +34,8 @@ const TABS = [
   { id: "info", label: "Thông Tin Chung", icon: "ℹ️" },
   { id: "sessions", label: "Buổi Học", icon: "📅" },
   { id: "students", label: "Học Viên", icon: "👥" },
-  { id: "teacher", label: "Giáo Viên", icon: "👨‍🏫" },
-  { id: "tasks", label: "Công Việc", icon: "✓" },
+  // { id: "teacher", label: "Giáo Viên", icon: "👨‍🏫" },
+  // { id: "tasks", label: "Công Việc", icon: "✓" },
   { id: "attendance", label: "Lịch Sử Điểm Danh", icon: "📋" },
 ]
 
@@ -105,14 +105,14 @@ export function ClassDetailsPage() {
     )
   }
 
-  if (!classDetail?.data) {
+  if (!classDetail ) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-gray-500">Không tìm thấy lớp học</p>
       </div>
     )
   }
-
+  
   const handleEdit = (type: string, item?: any) => {
     setSelectedItem(item)
     switch (type) {
@@ -151,9 +151,9 @@ export function ClassDetailsPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardTab classData={classDetail.data} />
+        return <DashboardTab classData={classDetail} />
       case "info":
-        return <ThongTinChungTab classData={classDetail.data} />
+        return <ThongTinChungTab classData={classDetail} />
       case "sessions":
         return (
           <BuoiHocTab
@@ -167,16 +167,16 @@ export function ClassDetailsPage() {
         return (
           <HocVienTab
             classId={classId ?? ""}
-            classData={classDetail.data}
+            classData={classDetail}
           />
         )
       case "teacher":
-        return <GiaoVienTab classData={classDetail.data} />
+        return <GiaoVienTab classData={classDetail} />
       case "tasks":
         return (
           <CongViecTab
             classId={classId ?? ""}
-            classData={classDetail.data}
+            classData={classDetail}
           />
         )
       case "attendance":
@@ -192,7 +192,7 @@ export function ClassDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <ClassHeader classData={classDetail.data} />
+      <ClassHeader classData={classDetail} />
       <ClassNavigation tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="p-6">{renderTabContent()}</div>
 
