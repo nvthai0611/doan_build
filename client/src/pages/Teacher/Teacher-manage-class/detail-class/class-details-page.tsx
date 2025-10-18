@@ -12,30 +12,37 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import { ClassHeader } from "./class-header"
-import { ClassNavigation } from "./class-navigation"
-import { ThongTinChungTab } from "./tabs/thong-tin-chung-tab"
-import { DashboardTab } from "./tabs/dashboard-tab"
-import { HocVienTab } from "./tabs/hoc-vien-tab"
-import { GiaoVienTab } from "./tabs/giao-vien-tab"
-import { BuoiHocTab } from "./tabs/buoi-hoc-tab"
-import { CongViecTab } from "./tabs/cong-viec-tab"
-import ClassAttendancePage from "./tabs/lich-su-diem-danh"
+import ClassHeader from "./class-header"
+import ClassNavigation from "./class-navigation"
+import DashboardTab from "./tabs/dashboard-tab"
+import ThongTinChungTab from "./tabs/thong-tin-chung-tab"
+import BuoiHocTab from "./tabs/buoi-hoc-tab"
+import HocVienTab from "./tabs/hoc-vien-tab"
+import GiaoVienTab from "./tabs/giao-vien-tab"
+import CongViecTab from "./tabs/cong-viec-tab"
+import LichSuDiemDanhTab from "./tabs/lich-su-diem-danh"
 import { ClassModals } from "./modals/class-modals"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
 import { daysOfWeek } from "../../../../utils/commonData"
 import Loading from "../../../../components/Loading/LoadingPage"
+import { Loader2 } from "lucide-react"
 
-const fetchData = async (teacherClassAssignmentId :string) =>{
-  const response = await getClassDetail(teacherClassAssignmentId)
-  return response
-}
+const TABS = [
+  { id: "dashboard", label: "Tổng Quan", icon: "📊" },
+  { id: "info", label: "Thông Tin Chung", icon: "ℹ️" },
+  { id: "sessions", label: "Buổi Học", icon: "📅" },
+  { id: "students", label: "Học Viên", icon: "👥" },
+  { id: "teacher", label: "Giáo Viên", icon: "👨‍🏫" },
+  { id: "tasks", label: "Công Việc", icon: "✓" },
+  { id: "attendance", label: "Lịch Sử Điểm Danh", icon: "📋" },
+]
+
 export function ClassDetailsPage() {
-  const [activeTab, setActiveTab] = useState("thong-tin-chung")
+  const { classId } = useParams<{ classId: string }>()
+  const [activeTab, setActiveTab] = useState("dashboard")
   const [description, setDescription] = useState("")
-  const { teacherClassAssignmentId } = useParams()
   const [editClassOpen, setEditClassOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [addStudentOpen, setAddStudentOpen] = useState(false)
@@ -66,19 +73,46 @@ export function ClassDetailsPage() {
   }
   const allDays = daysOfWeek
 
- const {data : classDetails, isLoading, isError} = useQuery({
-    queryKey:['classDetails',teacherClassAssignmentId],
-    queryFn: () => fetchData(teacherClassAssignmentId as string),
-    retry: false, // Không retry khi lỗi
-    refetchOnWindowFocus: false,
-    enabled: !!teacherClassAssignmentId,
+  const {
+    data: classDetail,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["classDetail", classId],
+    queryFn: () => getClassDetail(classId ?? ""),
+    enabled: !!classId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 
-  if(isLoading){
+  if (isLoading) {
     return (
-      <Loading />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
     )
   }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-2">
+          <p className="text-red-600 font-medium">Có lỗi xảy ra</p>
+          <p className="text-gray-500">{(error as any)?.message || "Không thể tải chi tiết lớp học"}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!classDetail?.data) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">Không tìm thấy lớp học</p>
+      </div>
+    )
+  }
+
   const handleEdit = (type: string, item?: any) => {
     setSelectedItem(item)
     switch (type) {
@@ -112,85 +146,54 @@ export function ClassDetailsPage() {
   }
   const handleViewDetailSession = (session: any) => {
     setSelectedItem(session)
-    navigate(`/teacher/classes/${teacherClassAssignmentId}/session/${session.id}`)
+    navigate(`/teacher/classes/${classId}/session/${session.id}`)
   }
   const renderTabContent = () => {
     switch (activeTab) {
-      case "thong-tin-chung":
-        return (
-          <ThongTinChungTab
-            classData={classDetails}
-            description={description}
-            setDescription={setDescription}
-            onEditClass={() => handleEdit("class")}
-            onEditSchedule={() => handleEdit("schedule")}
-            allDays={allDays}
-          />
-        )
       case "dashboard":
-        return <DashboardTab classData={classDetails} />
-      case "hoc-vien":
-        return (
-          <HocVienTab
-            onAddStudent={() => setAddStudentOpen(true)}
-            onEditStudent={(student: any) => handleEdit("student", student)}
-            onDeleteStudent={(student: any) => handleDelete("student", student)}
-            teacherClassAssignmentId= {teacherClassAssignmentId as string}
-          />
-        )
-      case "giao-vien":
-        return (
-          <GiaoVienTab
-            onAddTeacher={() => setAddTeacherOpen(true)}
-            onEditTeacher={(teacher) => handleEdit("teacher", teacher)}
-            onDeleteTeacher={(teacher) => handleDelete("teacher", teacher)}
-          />
-        )
-      case "buoi-hoc":
+        return <DashboardTab classData={classDetail.data} />
+      case "info":
+        return <ThongTinChungTab classData={classDetail.data} />
+      case "sessions":
         return (
           <BuoiHocTab
-            onAddSession={() => setAddSessionOpen(true)}
-            onViewDetailSession={(session) => handleViewDetailSession(session)}
-            onDeleteSession={(session) => handleDelete("session", session)}
-            teacherClassAssignmentId={teacherClassAssignmentId as string}
+            classId={classId ?? ""}
+            classData={classDetail.data}
           />
         )
-      case "cong-viec":
+      case "students":
+        return (
+          <HocVienTab
+            classId={classId ?? ""}
+            classData={classDetail.data}
+          />
+        )
+      case "teacher":
+        return <GiaoVienTab classData={classDetail.data} />
+      case "tasks":
         return (
           <CongViecTab
-            onAddTask={() => setAddTaskOpen(true)}
-            onEditTask={(task) => handleEdit("task", task)}
-            onDeleteTask={(task) => handleDelete("task", task)}
+            classId={classId ?? ""}
+            classData={classDetail.data}
           />
         )
-      case "history-attendance-class":
+      case "attendance":
         return (
-          <ClassAttendancePage teacherClassAssignmentId={teacherClassAssignmentId as string} />
+          <LichSuDiemDanhTab
+            classId={classId ?? ""}
+            classData={classDetail.data}
+          />
         )
       default:
-        return (
-          <ThongTinChungTab
-            classData={classData}
-            description={description}
-            setDescription={setDescription}
-            onEditClass={() => handleEdit("class")}
-            onEditSchedule={() => handleEdit("schedule")}
-            allDays={allDays}
-          />
-        )
+        return null
     }
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <ClassHeader className={classDetails?.name} />
-
-      <ClassNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        <div>{renderTabContent()}</div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <ClassHeader classData={classDetail.data} />
+      <ClassNavigation tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="p-6">{renderTabContent()}</div>
 
       <ClassModals
         editClassOpen={editClassOpen}
@@ -219,9 +222,9 @@ export function ClassDetailsPage() {
         setEditAssessmentOpen={setEditAssessmentOpen}
         selectedItem={selectedItem}
         classData={classData}
-        classId={classDetails?.id}
-        teacherClassAssignmentId={teacherClassAssignmentId as string}
-        classDetails={classDetails}
+        classId={classDetail?.id}
+        teacherClassAssignmentId={classId as string}
+        classDetails={classDetail}
       />
 
       {/* Delete Confirmation Modal */}

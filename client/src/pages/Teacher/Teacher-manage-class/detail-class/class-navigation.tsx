@@ -2,17 +2,29 @@
 
 import { useEffect, useRef, useState } from "react"
 import { BookOpen, BarChart3, Users, GraduationCap, Calendar, CheckSquare, UserCheck, CalendarCheck2 } from "lucide-react"
+import { cn } from '@/lib/utils';
 
-interface ClassNavigationProps {
-  activeTab: string
-  onTabChange: (tabId: string) => void
+interface Tab {
+  id: string;
+  label: string;
+  icon: string;
 }
 
-export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps) {
+interface ClassNavigationProps {
+  tabs: Tab[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+}
+
+export function ClassNavigation({
+  tabs,
+  activeTab,
+  onTabChange,
+}: ClassNavigationProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
   const tabsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 
-  const tabs = [
+  const defaultTabs = [
     { id: "thong-tin-chung", label: "Thông tin chung", icon: BookOpen },
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "hoc-vien", label: "Học viên", icon: Users },
@@ -21,6 +33,8 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
     // { id: "cong-viec", label: "Công việc", icon: CheckSquare },
     { id: "history-attendance-class", label: "Lịch sử điểm danh", icon: CalendarCheck2 },
   ]
+
+  const finalTabs = tabs.length > 0 ? tabs : defaultTabs
 
   useEffect(() => {
     const activeTabElement = tabsRef.current[activeTab]
@@ -34,9 +48,9 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
   }, [activeTab])
 
   return (
-    <div className="border-b bg-card relative">
-      <div className="container mx-auto px-6">
-        <div className="flex gap-2 overflow-x-auto relative">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <div className="px-6">
+        <div className="flex items-center gap-8 overflow-x-auto">
           <div
             className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ease-in-out"
             style={{
@@ -44,20 +58,23 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
               width: `${indicatorStyle.width}px`,
             }}
           />
-          {tabs.map((tab) => {
+          {finalTabs.map((tab) => {
             const IconComponent = tab.icon
             return (
               <button
                 key={tab.id}
                 ref={(el) => (tabsRef.current[tab.id] = el)}
                 onClick={() => onTabChange(tab.id)}
-                className={`py-4 px-2 text-sm font-medium whitespace-nowrap transition-all duration-300 ease-in-out flex items-center gap-2 ${
+                className={cn(
+                  'py-4 px-2 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap',
                   activeTab === tab.id
-                    ? "text-primary transform scale-105"
-                    : "text-muted-foreground hover:text-foreground hover:scale-102"
-                }`}
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                )}
               >
-                <IconComponent className="h-4 w-4" />
+                <span className="mr-2">
+                  <IconComponent className="h-4 w-4" />
+                </span>
                 {tab.label}
               </button>
             )

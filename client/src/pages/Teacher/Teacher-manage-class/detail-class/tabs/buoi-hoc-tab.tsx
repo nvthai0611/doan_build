@@ -1,9 +1,11 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Calendar, Plus, Edit, Trash2, Eye } from "lucide-react"
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus, Calendar } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/utils/format';
 import { useQuery } from "@tanstack/react-query"
 import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
 
@@ -40,18 +42,63 @@ export function BuoiHocTab({ onAddSession, onViewDetailSession, onDeleteSession,
     }
   })
 
+  const classSession = {
+    total: data?.length || 0,
+    completed: sessions.filter((s) => s.status === 'Hoàn thành').length,
+    upcoming: sessions.filter((s) => s.status === 'Sắp tới').length,
+  };
+
+  const stats = [
+    {
+      label: 'Tổng buổi học',
+      value: classSession.total,
+      color: 'bg-blue-100 text-blue-700',
+    },
+    {
+      label: 'Buổi đã hoàn thành',
+      value: classSession.completed,
+      color: 'bg-green-100 text-green-700',
+    },
+    {
+      label: 'Buổi sắp tới',
+      value: classSession.upcoming,
+      color: 'bg-yellow-100 text-yellow-700',
+    },
+  ];
+
   return (
-    <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {stats.map((stat, idx) => (
+          <Card key={idx} className="hover:shadow-lg transition-shadow duration-200">
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                {stat.label}
+              </p>
+              <p className={`text-3xl font-bold ${stat.color} p-2 rounded`}>
+                {stat.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Add Session Button */}
+      <div className="flex justify-end">
+        <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddSession}>
+          <Plus className="w-4 h-4" />
+          Thêm buổi học
+        </Button>
+      </div>
+
+      {/* Sessions List */}
+      <Card className="hover:shadow-lg transition-shadow duration-200">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <Calendar className="w-5 h-5 text-blue-600" />
             Danh sách buổi học
           </CardTitle>
-          <Button onClick={onAddSession}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm buổi học
-          </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -63,7 +110,7 @@ export function BuoiHocTab({ onAddSession, onViewDetailSession, onDeleteSession,
                   {sessions.length === 0 ? (
                     <div className="text-sm text-muted-foreground">Chưa có buổi học nào</div>
                   ) : (
-                    sessions.map((session: any) => (
+                    sessions.map((session: any, idx: number) => (
                       <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <p className="font-medium">{session.title}</p>

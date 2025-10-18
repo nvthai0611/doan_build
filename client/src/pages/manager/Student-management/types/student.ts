@@ -1,35 +1,98 @@
-export interface Student {
-    id: number
-    name: string
+export interface StudentUser {
+  id: string
+  email: string
+  fullName: string
+  phone?: string
+  avatar?: string
+  isActive: boolean
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  birthDate?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ParentUser {
+  id: string
+  fullName: string
+  email: string
+  phone?: string
+  avatar?: string
+}
+
+export interface Parent {
+  id: string
+  user: ParentUser
+  createdAt: string
+  updatedAt: string
+}
+
+export interface School {
+  id: string
+  name: string
+  address?: string
+  phone?: string
+}
+
+export interface Teacher {
+  id: string
+  user: {
+    id: string
+    fullName: string
     email: string
-    phone: string
-    username: string
-    code: string
-    status: "Đang học" | "Chờ xếp lớp" | "Dừng học" | "Chưa cập nhật lịch học" | "Sắp học" | "Bảo lưu" | "Tốt nghiệp"
-    course: string
-    class: string
-    averageScore: number
-    totalFee: number
-    walletBalance: number
-    gender: string
-    birthDate?: string
-    avatar?: string
   }
-  
-  export interface Tab {
-    key: string
-    label: string
-    count: number
+}
+
+export interface Subject {
+  id: string
+  name: string
+  code: string
+}
+
+export interface Class {
+  id: string
+  name: string
+  status: string
+  subject: Subject
+  teacher: Teacher | null
+}
+
+export interface Enrollment {
+  id: string
+  status: string
+  enrolledAt: string
+  completedAt?: string
+  finalGrade?: number
+  completionStatus?: string
+  class: Class
+  teacher: Teacher | null
+}
+
+export interface Student {
+  id: string
+  studentCode: string
+  address?: string
+  grade?: string
+  createdAt: string
+  updatedAt: string
+  user: StudentUser
+  parent: Parent | null
+  school: School
+  enrollments: Enrollment[]
+}
+
+export interface StudentListResponse {
+  students: Student[]
+  pagination: {
+    currentPage: number
+    totalPages: number
+    totalCount: number
+    limit: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
   }
-  
-  export interface FilterState {
-    birthDate?: string
-    birthMonth?: string
-    birthYear?: string
-    course?: string
-    class?: string
-    gender?: string
-    accountStatus?: string
-    customerConnection?: string
-  }
-  
+}
+
+export interface StudentCountResponse {
+  total: number
+  counts: Record<string, number>
+}
