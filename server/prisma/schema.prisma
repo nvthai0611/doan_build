@@ -20,8 +20,8 @@ model User {
   updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   username              String                     @unique
   id                    String                     @id @default(uuid()) @db.Uuid
-  birthDate             DateTime?                  @map("birth_date") @db.Date
   gender                Gender?                    @map("gender")
+  birthDate             DateTime?                  @map("birth_date") @db.Date
   auditLogs             AuditLog[]                 @relation("PerformedBy")
   approvedLeaveRequests LeaveRequest[]             @relation("ApprovedBy")
   createdLeaveRequests  LeaveRequest[]             @relation("CreatedBy")
@@ -38,38 +38,37 @@ model User {
 }
 
 model Parent {
-  id              String           @id @default(uuid()) @db.Uuid
-  userId          String           @unique @map("user_id") @db.Uuid
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  contractUploads ContractUpload[]
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments        Payment[]
-  students        Student[]
+  id                          String                       @id @default(uuid()) @db.Uuid
+  userId                      String                       @unique @map("user_id") @db.Uuid
+  createdAt                   DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contractUploads             ContractUpload[]
+  user                        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments                    Payment[]
+  students                    Student[]
 
   @@map("parents")
 }
 
 model Teacher {
-  id                  String                        @id @default(uuid()) @db.Uuid
-  userId              String                        @unique @map("user_id") @db.Uuid
-  schoolId            String?                       @map("school_id") @db.Uuid
-  subjects            String[]
-  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  class_sessions      ClassSession[]
-  classes             Class[]
-  contractUploads     ContractUpload[]
-  contracts           Contract[]
-  reportedIncidents   IncidentReport[]
-  replacementSessions LeaveRequestAffectedSession[]
-  leaveRequests       LeaveRequest[]
-  uploadedMaterials   Material[]                    @relation("UploadedBy")
-  payrolls            Payroll[]
-  documents           TeacherDocument[]
-  school              School?                       @relation(fields: [schoolId], references: [id])
-  user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id                          String                        @id @default(uuid()) @db.Uuid
+  userId                      String                        @unique @map("user_id") @db.Uuid
+  schoolId                    String?                       @map("school_id") @db.Uuid
+  subjects                    String[]
+  createdAt                   DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contractUploads             ContractUpload[]
+  contracts                   Contract[]
+  leaveRequests               LeaveRequest[]
+  payrolls                    Payroll[]
+  documents                   TeacherDocument[]
+  uploadedMaterials           Material[]                    @relation("UploadedBy")
+  classes                     Class[]
+  school                      School?                       @relation(fields: [schoolId], references: [id])
+  user                        User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacementSessions         LeaveRequestAffectedSession[]
+  reportedIncidents           IncidentReport[]
+  classSessions               ClassSession[]
   @@map("teachers")
 }
 
@@ -121,36 +120,46 @@ model Subject {
   @@map("subjects")
 }
 
+model Grade {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String
+  level       Int     @unique  // 6, 7, 8, 9
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+  classes     Class[]
+  @@map("grades")
+}
+
 model Class {
-  id                String                @id @default(uuid()) @db.Uuid
-  roomId            String?               @map("room_id") @db.Uuid
-  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  description       String?
-  feeStructureId    String?               @map("fee_structure_id") @db.Uuid
-  maxStudents       Int?                  @map("max_students")
-  name              String
-  status            String                @default("draft")
-  subjectId         String                @map("subject_id") @db.Uuid
-  academicYear      String?               @map("academic_year")
-  recurringSchedule Json?                 @map("recurring_schedule")
-  expectedStartDate DateTime?             @map("expected_start_date") @db.Date
-  actualEndDate     DateTime?             @map("actual_end_date") @db.Date
-  actualStartDate   DateTime?             @map("actual_start_date") @db.Date
-  grade_id          String?               @db.Uuid
-  teacher_id        String?               @db.Uuid
-  assessments       Assessment[]
-  sessions          ClassSession[]
-  feeStructure      FeeStructure?         @relation(fields: [feeStructureId], references: [id])
-  grades            grades?               @relation(fields: [grade_id], references: [id])
-  room              Room?                 @relation(fields: [roomId], references: [id])
-  subject           Subject               @relation(fields: [subjectId], references: [id])
-  teachers          Teacher?              @relation(fields: [teacher_id], references: [id])
-  enrollments       Enrollment[]
-  incidentReports   IncidentReport[]
-  materials         Material[]
-  scheduleChanges   ScheduleChange[]
-  classRequests     StudentClassRequest[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  roomId                  String?                  @map("room_id") @db.Uuid
+  teacherId               String?                  @map("teacher_id") @db.Uuid
+  description             String?
+  feeStructureId          String?                  @map("fee_structure_id") @db.Uuid
+  gradeId                 String?                  @map("grade_id") @db.Uuid
+  maxStudents             Int?                     @map("max_students")
+  name                    String
+  status                  String                   @default("draft")
+  subjectId               String                   @map("subject_id") @db.Uuid
+  recurringSchedule       Json?                    @map("recurring_schedule")
+  academicYear            String?                  @map("academic_year")
+  expectedStartDate       DateTime?                @map("expected_start_date") @db.Date
+  actualStartDate         DateTime?                @map("actual_start_date") @db.Date
+  actualEndDate           DateTime?                @map("actual_end_date") @db.Date
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assessments             Assessment[]
+  sessions                ClassSession[]
+  feeStructure            FeeStructure?            @relation(fields: [feeStructureId], references: [id])
+  room                    Room?                    @relation(fields: [roomId], references: [id])
+  teacher                 Teacher?                 @relation(fields: [teacherId], references: [id])
+  subject                 Subject                  @relation(fields: [subjectId], references: [id])
+  enrollments             Enrollment[]
+  materials               Material[]
+  scheduleChanges         ScheduleChange[]
+  classRequests           StudentClassRequest[]
+  grade                   Grade?                     @relation(fields: [gradeId], references: [id])
+  incidentReports         IncidentReport[]
 
   @@map("classes")
 }
@@ -158,6 +167,8 @@ model Class {
 model ClassSession {
   id                           String                        @id @default(uuid()) @db.Uuid
   classId                      String                        @map("class_id") @db.Uuid
+  teacherId                    String?                       @map("teacher_id") @db.Uuid
+  academicYear                 String                        @map("academic_year")
   sessionDate                  DateTime                      @map("session_date") @db.Date
   startTime                    String                        @map("start_time")
   endTime                      String                        @map("end_time")
@@ -165,14 +176,12 @@ model ClassSession {
   status                       String                        @default("scheduled")
   createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   notes                        String?
-  academicYear                 String                        @map("academic_year")
-  teacher_id                   String?                       @db.Uuid
   class                        Class                         @relation(fields: [classId], references: [id], onDelete: Cascade)
   room                         Room?                         @relation(fields: [roomId], references: [id])
-  teachers                     Teacher?                      @relation(fields: [teacher_id], references: [id])
-  leaveRequestAffectedSessions LeaveRequestAffectedSession[]
+  teacher                      Teacher?                      @relation(fields: [teacherId], references: [id])
   attendances                  StudentSessionAttendance[]
-
+  leaveRequestAffectedSessions LeaveRequestAffectedSession[]
+  
   @@map("class_sessions")
 }
 
@@ -191,20 +200,19 @@ model Room {
 }
 
 model Enrollment {
-  id               BigInt           @id @default(autoincrement())
-  studentId        String           @map("student_id") @db.Uuid
-  classId          String           @map("class_id") @db.Uuid
-  enrolledAt       DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
-  status           String           @default("active")
-  semester         String?
-  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
-  finalGrade       String?          @map("final_grade")
-  completionStatus String?          @map("completion_status")
-  completionNotes  String?          @map("completion_notes")
-  contractUploads  ContractUpload[]
-  class            Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
-  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
+  id                       BigInt                  @id @default(autoincrement())
+  studentId                String                  @map("student_id") @db.Uuid
+  classId                  String                  @map("class_id") @db.Uuid
+  enrolledAt               DateTime                @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  status                   String                  @default("active")
+  semester                 String?
+  completedAt              DateTime?               @map("completed_at") @db.Timestamptz(6)
+  finalGrade               String?                 @map("final_grade")
+  completionStatus         String?                 @map("completion_status")
+  completionNotes          String?                 @map("completion_notes")
+  contractUploads          ContractUpload[]
+  class                    Class                   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student                  Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
   @@unique([studentId, classId])
   @@map("enrollments")
 }
@@ -274,6 +282,8 @@ model Material {
   id                BigInt   @id @default(autoincrement())
   classId           String   @map("class_id") @db.Uuid
   title             String
+  fileName          String   @map("file_name")
+  category          String?  @default("Other")
   uploadedBy        String   @map("uploaded_by") @db.Uuid
   uploadedAt        DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
   description       String?
@@ -281,8 +291,6 @@ model Material {
   fileType          String?  @map("file_type")
   fileUrl           String?  @map("file_url")
   downloads         Int      @default(0)
-  category          String?  @default("Other")
-  fileName          String   @map("file_name")
   class             Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   uploadedByTeacher Teacher  @relation("UploadedBy", fields: [uploadedBy], references: [id], onDelete: Cascade)
 
@@ -382,13 +390,13 @@ model LeaveRequest {
   approvedBy       String?                       @map("approved_by") @db.Uuid
   approvedAt       DateTime?                     @map("approved_at") @db.Timestamptz(6)
   notes            String?
-  createdAt        DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   imageUrl         String?                       @map("image_url")
-  affectedSessions LeaveRequestAffectedSession[]
+  createdAt        DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   approvedByUser   User?                         @relation("ApprovedBy", fields: [approvedBy], references: [id])
   createdByUser    User                          @relation("CreatedBy", fields: [createdBy], references: [id])
   student          Student?                      @relation(fields: [studentId], references: [id])
   teacher          Teacher?                      @relation(fields: [teacherId], references: [id])
+  affectedSessions LeaveRequestAffectedSession[]
 
   @@map("leave_requests")
 }
@@ -551,44 +559,61 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+
+
 model ContractUpload {
-  id                String      @id @default(uuid()) @db.Uuid
-  enrollmentId      BigInt?     @map("enrollment_id")
-  parentId          String?     @map("parent_id") @db.Uuid
-  teacherId         String?     @map("teacher_id") @db.Uuid
-  contractType      String      @map("contract_type")
-  uploadedImageUrl  String      @map("uploaded_image_url")
-  uploadedImageName String?     @map("uploaded_image_name")
-  uploadedAt        DateTime    @default(now()) @map("uploaded_at") @db.Timestamptz(6)
-  enrollment        Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  parent            Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  teacher           Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id                  String                       @id @default(uuid()) @db.Uuid
+  enrollmentId        BigInt?                      @map("enrollment_id")
+  parentId            String?                      @map("parent_id") @db.Uuid
+  teacherId           String?                      @map("teacher_id") @db.Uuid
+  contractType        String                       @map("contract_type")
+  uploadedImageUrl    String                       @map("uploaded_image_url")
+  uploadedImageName   String?                      @map("uploaded_image_name")
+  
+  uploadedAt          DateTime                     @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  enrollment          Enrollment?                  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent              Parent?                      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  teacher             Teacher?                     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("contract_uploads")
 }
 
+
+
 model AcademicYear {
   id        String   @id @default(cuid())
-  year      String   @unique
+  year      String   @unique // "2023-2024", "2024-2025"
   startDate DateTime
   endDate   DateTime
-  isActive  Boolean  @default(false)
+  isActive  Boolean  @default(false) // chỉ 1 năm học active tại 1 thời điểm
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relations với các bảng khác cần filter theo năm học
+  // students  Student[]
+  // courses   Course[]
 
   @@map("academic_years")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 model LeaveRequestAffectedSession {
-  id                   String       @id @default(uuid()) @db.Uuid
-  leaveRequestId       String       @map("leave_request_id") @db.Uuid
-  sessionId            String       @map("session_id") @db.Uuid
-  replacementTeacherId String?      @map("replacement_teacher_id") @db.Uuid
+  id                   String   @id @default(uuid()) @db.Uuid
+  leaveRequestId       String   @map("leave_request_id") @db.Uuid
+  sessionId            String   @map("session_id") @db.Uuid
+  replacementTeacherId String?  @map("replacement_teacher_id") @db.Uuid
   notes                String?
-  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  leaveRequest         LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
-  replacementTeacher   Teacher?     @relation(fields: [replacementTeacherId], references: [id])
-  session              ClassSession @relation(fields: [sessionId], references: [id])
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  leaveRequest       LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  session            ClassSession @relation(fields: [sessionId], references: [id])
+  replacementTeacher Teacher?     @relation(fields: [replacementTeacherId], references: [id])
 
   @@map("leave_request_affected_sessions")
 }
@@ -605,27 +630,15 @@ model IncidentReport {
   studentsInvolved String?
   witnessesPresent String?
   status           String   @default("PENDING")
-  classId          String?  @map("class_id") @db.Uuid
-  reportedById     String   @map("reported_by") @db.Uuid
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  class            Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  reportedBy       Teacher  @relation(fields: [reportedById], references: [id], onDelete: Cascade)
+
+  classId String? @map("class_id") @db.Uuid
+  class   Class? @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  reportedById String  @map("reported_by") @db.Uuid
+  reportedBy   Teacher @relation(fields: [reportedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("incident_reports")
-}
-
-model grades {
-  id          String  @id @db.Uuid
-  name        String
-  level       Int     @unique
-  description String?
-  is_active   Boolean @default(true)
-  classes     Class[]
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
 }

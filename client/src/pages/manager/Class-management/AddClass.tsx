@@ -44,10 +44,12 @@ export const CreateClass = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    grade: '',
+    gradeId: '',
     subjectId: '',
     maxStudents: '',
     roomId: '',
+    teacherId: '',
+    feeStructureId: '',
     expectedStartDate: '',
     description: '',
     status: 'draft',
@@ -61,7 +63,7 @@ export const CreateClass = () => {
   // State để quản lý validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fetch subjects and rooms
+  // Fetch subjects, rooms, grades, teachers, and fee structures
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
@@ -78,8 +80,35 @@ export const CreateClass = () => {
     },
   });
 
+  const { data: gradesData } = useQuery({
+    queryKey: ['grades'],
+    queryFn: async () => {
+      const response = await apiClient.get('/grades');
+      return response;
+    },
+  });
+
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin-center/teachers');
+      return response;
+    },
+  });
+
+  const { data: feeStructuresData } = useQuery({
+    queryKey: ['fee-structures'],
+    queryFn: async () => {
+      const response = await apiClient.get('/fee-structures');
+      return response;
+    },
+  });
+
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
+  const grades = (gradesData as any)?.data || [];
+  const teachers = (teachersData as any)?.data?.data || [];
+  const feeStructures = (feeStructuresData as any)?.data || [];
 
 
   const handleAddSchedule = () => {
@@ -189,18 +218,13 @@ export const CreateClass = () => {
     const gradeMatch = lowerClassName.match(/(\d+)/);
     if (gradeMatch) {
       const gradeNumber = parseInt(gradeMatch[1]);
-      // Mapping số thành khối lớp (chỉ hỗ trợ khối 6-9)
-      const gradeMapping: Record<number, string> = {
-        6: '6',
-        7: '7',
-        8: '8',
-        9: '9'
-      };
-      
-      if (gradeMapping[gradeNumber]) {
-        selectedGrade = gradeMapping[gradeNumber];
-        const gradeLabel = GRADE_LEVEL_OPTIONS.find(grade => grade.value === gradeMapping[gradeNumber])?.label || `Khối ${gradeNumber}`;
-        notification += `Đã tự động chọn khối lớp: ${gradeLabel}.`;
+      // Tìm grade trong danh sách grades
+      const matchedGrade = grades.find((grade: any) => 
+        grade.level === gradeNumber
+      );
+      if (matchedGrade) {
+        selectedGrade = matchedGrade.id;
+        notification += `Đã tự động chọn khối lớp: ${matchedGrade.name}.`;
       }
     }
 
@@ -229,7 +253,7 @@ export const CreateClass = () => {
         setFormData(prev => ({
           ...prev,
           ...(selectedSubjectId && { subjectId: selectedSubjectId }),
-          ...(selectedGrade && { grade: selectedGrade })
+          ...(selectedGrade && { gradeId: selectedGrade })
         }));
 
         // Clear errors cho các field được auto-select
@@ -237,7 +261,7 @@ export const CreateClass = () => {
           setErrors(prev => ({
             ...prev,
             ...(selectedSubjectId && { subjectId: '' }),
-            ...(selectedGrade && { grade: '' })
+            ...(selectedGrade && { gradeId: '' })
           }));
         }
 
@@ -290,6 +314,8 @@ export const CreateClass = () => {
       ...formData,
       subjectId: formData.subjectId === 'none' ? undefined : formData.subjectId,
       roomId: formData.roomId === 'none' ? undefined : formData.roomId,
+      teacherId: formData.teacherId === 'none' ? undefined : formData.teacherId,
+      feeStructureId: formData.feeStructureId === 'none' ? undefined : formData.feeStructureId,
       maxStudents: formData.maxStudents
         ? parseInt(formData.maxStudents)
         : undefined,
@@ -409,20 +435,20 @@ export const CreateClass = () => {
               {/* Mã lớp & Khoá học */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="grade" className="text-sm font-medium">
+                  <Label htmlFor="gradeId" className="text-sm font-medium">
                     Khối lớp
                   </Label>
                   <Select 
-                    value={formData.grade} 
-                    onValueChange={(value) => handleInputChange("grade", value)}
+                    value={formData.gradeId} 
+                    onValueChange={(value) => handleInputChange("gradeId", value)}
                   >
                     <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Chọn khối lớp (6-9)" />
+                      <SelectValue placeholder="Chọn khối lớp" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRADE_LEVEL_OPTIONS.map(grade => (
-                        <SelectItem key={grade.value} value={grade.value}>
-                          {grade.label}
+                      {grades && grades.length > 0 && grades.map((grade: any) => (
+                        <SelectItem key={grade.id} value={grade.id}>
+                          {grade.name} (Khối {grade.level})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -524,6 +550,52 @@ export const CreateClass = () => {
                   </SelectContent>
                 </Select>
                 <ErrorMessage field="academicYear" />
+              </div>
+
+              {/* Giáo viên & Cấu trúc phí */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="teacherId" className="text-sm font-medium">
+                    Giáo viên
+                  </Label>
+                  <Select
+                    value={formData.teacherId}
+                    onValueChange={(value) => handleInputChange("teacherId", value)}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Chọn giáo viên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Chưa chọn giáo viên</SelectItem>
+                      {teachers && teachers.length > 0 && teachers.map((teacher: any) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.name || teacher.user?.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="feeStructureId" className="text-sm font-medium">
+                    Cấu trúc phí
+                  </Label>
+                  <Select
+                    value={formData.feeStructureId}
+                    onValueChange={(value) => handleInputChange("feeStructureId", value)}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Chọn cấu trúc phí" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Chưa chọn cấu trúc phí</SelectItem>
+                      {feeStructures && feeStructures.length > 0 && feeStructures.map((feeStructure: any) => (
+                        <SelectItem key={feeStructure.id} value={feeStructure.id}>
+                          {feeStructure.name} - {feeStructure.amount?.toLocaleString()}đ
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Lịch học hàng tuần */}

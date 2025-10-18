@@ -45,6 +45,7 @@ import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../../utils/clientAxios';
 import { GRADE_LEVEL_OPTIONS } from '../../../../lib/gradeConstants';
+import { ClassStatus, CLASS_STATUS_LABELS, CLASS_STATUS_COLORS, CLASS_STATUS_BADGE_COLORS } from '../../../../lib/constants';
 
 interface GeneralInfoProps {
   classData: any;
@@ -61,7 +62,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   
-  // Fetch subjects and rooms như trong AddClass.tsx
+  // Fetch subjects and rooms
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
@@ -78,12 +79,52 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     },
   });
 
+  // Fetch sessions data để kiểm tra lớp đã có lịch học chưa
+  const { data: sessionsData } = useQuery({
+    queryKey: ['classSessions', classData.id, classData.academicYear],
+    queryFn: () => classService.getClassSessions(classData.id, {
+      page: 1,
+      limit: 1, // Chỉ cần kiểm tra có sessions hay không
+      academicYear: classData.academicYear, // Chỉ lấy sessions cùng academicYear
+    }),
+    enabled: !!classData.id && !!classData.academicYear,
+    staleTime: 3000,
+    refetchOnWindowFocus: true
+  });
+
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
+  const sessions = (sessionsData as any)?.data || [];
+  const hasSessions = sessions.length > 0;
+  
+  // Logic kiểm tra có thể edit hay không dựa trên status
+  const hasActualDates = Boolean(classData.actualStartDate || classData.actualEndDate);
+  const isClassActive = classData.status === ClassStatus.ACTIVE;
+  const isClassCompleted = classData.status === ClassStatus.COMPLETED;
+  const isClassCancelled = classData.status === ClassStatus.CANCELLED;
+  const isClassSuspended = classData.status === ClassStatus.SUSPENDED;
+  
+  // Logic mới: Quyết định edit dựa trên status
+  // - DRAFT, READY: Có thể edit tất cả
+  // - ACTIVE: Không thể edit (trừ khi có quyền đặc biệt)
+  // - COMPLETED, CANCELLED: Không thể edit
+  // - SUSPENDED: Có thể edit một số thông tin
+  const canEditGeneralInfo = classData.status === ClassStatus.DRAFT || 
+                            classData.status === ClassStatus.READY ||
+                            classData.status === ClassStatus.SUSPENDED ||
+                            classData.status === ClassStatus.COMPLETED; 
+  
+  const canEditActualDates = canEditGeneralInfo && hasActualDates && !hasSessions;
+  const canEditExpectedDates = canEditGeneralInfo;
   
   console.log('classData:', classData);
   console.log('classData.subjectId:', classData.subjectId);
   console.log('subjects:', subjects);
+  console.log('hasSessions:', hasSessions);
+  console.log('isClassActive:', isClassActive);
+  console.log('isClassCompleted:', isClassCompleted);
+  console.log('canEditActualDates:', canEditActualDates);
+  console.log('canEditExpectedDates:', canEditExpectedDates);
 
   // Sync editData when classData changes
   useEffect(() => {
@@ -92,8 +133,10 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       roomId: classData.roomId || classData.room?.id || '',
       grade: classData.grade || '',
       expectedStartDate: classData.expectedStartDate || '',
+      actualStartDate: classData.actualStartDate || '',
+      actualEndDate: classData.actualEndDate || '',
       description: classData.description || '',
-      status: classData.status || 'draft',
+      status: classData.status || ClassStatus.DRAFT,
       academicYear: classData.academicYear || '',
     });
   }, [classData]);
@@ -103,6 +146,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     roomId: classData.roomId || classData.room?.id || '',
     grade: classData.grade || '',
     expectedStartDate: classData.expectedStartDate || '',
+    actualStartDate: classData.actualStartDate || '',
+    actualEndDate: classData.actualEndDate || '',
     description: classData.description || '',
     status: classData.status || 'draft',
     academicYear: classData.academicYear || '',
@@ -133,18 +178,50 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       newErrors.roomId = 'Chọn phòng học là bắt buộc';
     }
 
-    // Validate expected start date
-    if (editData.expectedStartDate) {
-      const expectedDate = new Date(editData.expectedStartDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      
-      if (expectedDate < today) {
-        newErrors.expectedStartDate = 'Ngày khai giảng không được là ngày trong quá khứ';
+    // Logic validation theo status
+    if (canEditExpectedDates) {
+      // Có thể edit expectedStartDate -> validate expectedStartDate
+      if (editData.expectedStartDate) {
+        const expectedDate = new Date(editData.expectedStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+        
+        if (expectedDate < today) {
+          newErrors.expectedStartDate = 'Ngày khai giảng không được là ngày trong quá khứ';
+        }
       }
     }
+    
+    if (canEditActualDates) {
+      // Có thể edit actualDates -> validate actualStartDate và actualEndDate
+      if (editData.actualStartDate) {
+        const actualStartDate = new Date(editData.actualStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (actualStartDate < today) {
+          newErrors.actualStartDate = 'Ngày bắt đầu không được là ngày trong quá khứ';
+        }
+      }
 
-    // Note: Ngày bắt đầu thực tế và ngày kết thúc không được edit
+      if (editData.actualEndDate) {
+        const actualEndDate = new Date(editData.actualEndDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (actualEndDate < today) {
+          newErrors.actualEndDate = 'Ngày kết thúc không được là ngày trong quá khứ';
+        }
+        
+        // Validate end date is after start date
+        if (editData.actualStartDate) {
+          const actualStartDate = new Date(editData.actualStartDate);
+          if (actualEndDate <= actualStartDate) {
+            newErrors.actualEndDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+          }
+        }
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -172,14 +249,21 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
     setIsLoading(true);
     try {
+      // Logic gửi dữ liệu theo status
       const updateData = {
         name: editData.name.trim(),
         description: editData.description,
         roomId: editData.roomId === 'none' ? undefined : editData.roomId,
         grade: editData.grade,
-        expectedStartDate: editData.expectedStartDate,
         status: editData.status,
         academicYear: editData.academicYear,
+        // Gửi expectedStartDate nếu được phép edit
+        ...(canEditExpectedDates ? { expectedStartDate: editData.expectedStartDate } : {}),
+        // Gửi actualDates nếu được phép edit
+        ...(canEditActualDates ? {
+          actualStartDate: editData.actualStartDate,
+          actualEndDate: editData.actualEndDate,
+        } : {}),
       };
 
       await classService.updateClass(classData.id, updateData);
@@ -196,7 +280,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       console.error('Error updating class:', error);
       toast({
         title: "Lỗi",
-        description: error.response?.data?.message || "Có lỗi xảy ra khi cập nhật lớp học",
+        description: error.response?.message || "Có lỗi xảy ra khi cập nhật lớp học",
         variant: "destructive",
       });
     } finally {
@@ -225,8 +309,10 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       roomId: classData.roomId || classData.room?.id || '',
       grade: classData.grade || '',
       expectedStartDate: classData.expectedStartDate || '',
+      actualStartDate: classData.actualStartDate || '',
+      actualEndDate: classData.actualEndDate || '',
       description: classData.description || '',
-      status: classData.status || 'draft',
+      status: classData.status || ClassStatus.DRAFT,
       academicYear: classData.academicYear || '',
     });
     setErrors({});
@@ -267,7 +353,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       console.error('Error updating schedule:', error);
       toast({
         title: "Lỗi",
-        description: error.response?.data?.message || "Có lỗi xảy ra khi cập nhật lịch học",
+        description: error.message || "Có lỗi xảy ra khi cập nhật lịch học",
         variant: "destructive",
       });
     } finally {
@@ -335,7 +421,13 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   </Button>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={handleEdit}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEdit}
+                  disabled={!canEditGeneralInfo}
+                  title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
               )}
@@ -426,12 +518,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-500">
                     Lịch học hàng tuần
+                    
                   </label>
                   <Button 
                     variant="ghost" 
                     size="sm"
                     onClick={() => setIsScheduleModalOpen(true)}
-                    disabled={isScheduleLoading}
+                    disabled={isScheduleLoading || !canEditGeneralInfo}
+                    title={!canEditGeneralInfo ? `Không thể chỉnh sửa lịch học khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                   >
                     {isScheduleLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -467,38 +561,117 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   {classData.subjectName || classData.subject?.name || 'Chưa xác định'}
                 </p>
               </div>
+
+              {/* Trạng thái hoạt động */}
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Ngày khai giảng dự kiến
+                  Trạng thái hoạt động
                 </label>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={editData.expectedStartDate}
-                    onChange={(e) => handleInputChange('expectedStartDate', e.target.value)}
-                    className={`mt-1 ${errors.expectedStartDate ? "border-red-500" : ""}`}
-                  />
-                ) : (
-                  <p className="text-base mt-1">
-                    {classData.expectedStartDate
-                      ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN')
-                      : 'Chưa xác định'}
-                  </p>
-                )}
-                <ErrorMessage field="expectedStartDate" />
+                <div className="mt-1">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${CLASS_STATUS_BADGE_COLORS[classData.status as ClassStatus]}`}>
+                    {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
+                  </span>
+                </div>
               </div>
+              {/* Logic hiển thị ngày dựa trên status */}
+              {(() => {
+                // Hiển thị expectedStartDate cho các lớp DRAFT, READY
+                if (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY) {
+                  return (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Ngày khai giảng dự kiến
+                        <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                          {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
+                        </span>
+                      </label>
+                      {isEditing && canEditExpectedDates ? (
+                        <Input
+                          type="date"
+                          value={editData.expectedStartDate}
+                          onChange={(e) => handleInputChange('expectedStartDate', e.target.value)}
+                          className={`mt-1 ${errors.expectedStartDate ? "border-red-500" : ""}`}
+                        />
+                      ) : (
+                        <p className="text-base mt-1">
+                          {classData.expectedStartDate
+                            ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN')
+                            : 'Chưa xác định'}
+                        </p>
+                      )}
+                      <ErrorMessage field="expectedStartDate" />
+                    </div>
+                  );
+                }
+                
+                // Hiển thị actualStartDate cho các lớp ACTIVE, SUSPENDED, COMPLETED
+                if (classData.status === ClassStatus.ACTIVE || 
+                    classData.status === ClassStatus.SUSPENDED || 
+                    classData.status === ClassStatus.COMPLETED) {
+                  return (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Ngày bắt đầu thực tế
+                      </label>
+                      {isEditing && canEditActualDates ? (
+                        <Input
+                          type="date"
+                          value={editData.actualStartDate}
+                          onChange={(e) => handleInputChange('actualStartDate', e.target.value)}
+                          className={`mt-1 ${errors.actualStartDate ? "border-red-500" : ""}`}
+                        />
+                      ) : (
+                        <p className="text-base mt-1">
+                          {classData.actualStartDate
+                            ? new Date(classData.actualStartDate).toLocaleDateString('vi-VN')
+                            : 'Chưa xác định'}
+                        </p>
+                      )}
+                      <ErrorMessage field="actualStartDate" />
+                    </div>
+                  );
+                }
+                
+                // Hiển thị cho các status khác (CANCELLED)
+                return (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Ngày khai giảng
+                      <span className={`ml-2 text-xs px-2 py-1 rounded ${CLASS_STATUS_COLORS[classData.status as ClassStatus]}`}>
+                        {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
+                      </span>
+                    </label>
+                    <p className="text-base mt-1">
+                      {classData.expectedStartDate
+                        ? new Date(classData.expectedStartDate).toLocaleDateString('vi-VN')
+                        : 'Chưa xác định'}
+                    </p>
+                  </div>
+                );
+              })()}
            
 
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Ngày kết thúc
-                </label>
-                <p className="text-base mt-1">
-                  {classData.actualEndDate
-                    ? new Date(classData.actualEndDate).toLocaleDateString('vi-VN')
-                    : 'Chưa xác định'}
-                </p>
-              </div>
+              {/* Ngày kết thúc - hiển thị dựa trên status */}
+              {classData.actualEndDate && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">
+                    Ngày kết thúc
+                  </label>
+                  {isEditing && canEditActualDates ? (
+                    <Input
+                      type="date"
+                      value={editData.actualEndDate}
+                      onChange={(e) => handleInputChange('actualEndDate', e.target.value)}
+                      className={`mt-1 ${errors.actualEndDate ? "border-red-500" : ""}`}
+                    />
+                  ) : (
+                    <p className="text-base mt-1">
+                      {new Date(classData.actualEndDate).toLocaleDateString('vi-VN')}
+                    </p>
+                  )}
+                  <ErrorMessage field="actualEndDate" />
+                </div>
+              )}
 
 
               <div>

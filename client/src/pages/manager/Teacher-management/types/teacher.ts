@@ -5,7 +5,7 @@ export interface Teacher {
     phone: string
     username: string
     code: string
-    role: "Giáo viên" | "Chủ trung tâm"
+    role: "teacher" | "admin" | "center_owner"
     gender: "MALE" | "FEMALE" | "OTHER"
     birthDate?: string
     status: boolean
@@ -17,6 +17,26 @@ export interface Teacher {
     contractEnd?: string
     subjects?: string[]
     salary?: number
+    // New fields from updated schema
+    school?: {
+      id: string
+      name: string
+      address?: string
+      phone?: string
+    }
+    classes?: {
+      id: string
+      name: string
+      subject: {
+        id: string
+        name: string
+      }
+      grade: {
+        id: string
+        name: string
+        level: number
+      }
+    }[]
   }
   
   export interface Tab {

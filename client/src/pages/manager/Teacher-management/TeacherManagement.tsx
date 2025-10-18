@@ -62,7 +62,7 @@ export default function TeacherQnmsManagement() {
   const roleMap: { [key: string]: string } = {
     "Giáo viên": "teacher",
     "Chủ trung tâm": "center_owner",
-    // "Giáo vụ": "admin"
+    "Admin": "admin"
   }
 
   const statusMap: { [key: string]: string } = {
