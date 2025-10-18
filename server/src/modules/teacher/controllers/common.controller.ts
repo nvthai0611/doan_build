@@ -4,25 +4,29 @@ import { CommonService } from "../services/common.service";
 import { StudentListResponseDto } from '../dto/common/student-list-response.dto';
 import { StudentDetailResponseDto } from '../dto/common/student-detail-response.dto';
 import { ClassStatisticsResponseDto } from '../dto/common/class-statistics-response.dto';
+import { PrismaService } from '../../../db/prisma.service';
 
 @ApiTags('Common - Quản lý chung')
 @Controller('common')
 export class CommonController {
-  constructor(private readonly commonService: CommonService) {}
+  constructor(
+    private readonly commonService: CommonService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * Lấy danh sách học sinh trong lớp (endpoint mới cho frontend)
-   * GET /common/assignment/:assignmentId/students
+   * GET /common/class/:classId/students
    */
-  @Get('assignment/:assignmentId/students')
+  @Get('class/:classId/students')
   @ApiOperation({
     summary: 'Lấy danh sách học sinh trong lớp (Frontend API)',
     description:
       'API endpoint cho frontend để lấy danh sách học sinh trong lớp',
   })
   @ApiParam({
-    name: 'assignmentId',
-    description: 'ID phân công giáo viên - lớp học',
+    name: 'classId',
+    description: 'ID lớp học',
     example: 'uuid-string',
   })
   @ApiResponse({
@@ -38,10 +42,33 @@ export class CommonController {
     status: 401,
     description: 'Không có quyền truy cập',
   })
-  async getStudentsByAssignment(@Param('assignmentId') assignmentId: string) {
+  async getStudentsByClass(@Param('classId') classId: string, @Req() req: any) {
     try {
-      const result =
-        await this.commonService.getListStudentOfClass(assignmentId);
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng',
+          data: null,
+        };
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin giáo viên',
+          data: null,
+        };
+      }
+
+      const result = await this.commonService.getListStudentOfClass(classId, teacher.id);
       return result;
     } catch (error) {
       return {
@@ -54,17 +81,17 @@ export class CommonController {
 
   /**
    * Lấy danh sách học sinh trong lớp
-   * GET /common/students/:assignmentId
+   * GET /common/students/:classId
    */
-  @Get('students/:assignmentId')
+  @Get('students/:classId')
   @ApiOperation({
     summary: 'Lấy danh sách học sinh trong lớp',
     description:
-      'Lấy danh sách tất cả học sinh đang học trong lớp thông qua teacher class assignment ID',
+      'Lấy danh sách tất cả học sinh đang học trong lớp thông qua class ID',
   })
   @ApiParam({
-    name: 'assignmentId',
-    description: 'ID phân công giáo viên - lớp học',
+    name: 'classId',
+    description: 'ID lớp học',
     example: 'uuid-string',
   })
   @ApiResponse({
@@ -80,10 +107,33 @@ export class CommonController {
     status: 401,
     description: 'Không có quyền truy cập',
   })
-  async getListStudentOfClass(@Param('assignmentId') assignmentId: string) {
+  async getListStudentOfClass(@Param('classId') classId: string, @Req() req: any) {
     try {
-      const result =
-        await this.commonService.getListStudentOfClass(assignmentId);
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng',
+          data: null,
+        };
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin giáo viên',
+          data: null,
+        };
+      }
+
+      const result = await this.commonService.getListStudentOfClass(classId, teacher.id);
       return result;
     } catch (error) {
       return {
@@ -96,7 +146,7 @@ export class CommonController {
 
   /**
    * Lấy chi tiết thông tin học sinh trong lớp
-   * GET /common/student/:studentId?assignmentId=xxx
+   * GET /common/student/:studentId?classId=xxx
    */
   @Get('student/:studentId')
   @ApiOperation({
@@ -110,8 +160,8 @@ export class CommonController {
     example: 'uuid-string',
   })
   @ApiQuery({
-    name: 'assignmentId',
-    description: 'ID phân công giáo viên - lớp học (tùy chọn)',
+    name: 'classId',
+    description: 'ID lớp học (tùy chọn)',
     required: false,
     example: 'uuid-string',
   })
@@ -126,12 +176,38 @@ export class CommonController {
   })
   async getDetailStudentOfClass(
     @Param('studentId') studentId: string,
-    @Query('assignmentId') assignmentId?: string,
+    @Req() req: any,
+    @Query('classId') classId?: string,
   ) {
     try {
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng',
+          data: null,
+        };
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin giáo viên',
+          data: null,
+        };
+      }
+
       const result = await this.commonService.getDetailStudentOfClass(
         studentId,
-        assignmentId,
+        classId,
+        teacher.id,
       );
       return result;
     } catch (error) {
@@ -145,17 +221,17 @@ export class CommonController {
 
   /**
    * Lấy thống kê tổng quan về lớp học
-   * GET /common/statistics/:assignmentId
+   * GET /common/statistics/:classId
    */
-  @Get('statistics/:assignmentId')
+  @Get('statistics/:classId')
   @ApiOperation({
     summary: 'Lấy thống kê lớp học',
     description:
       'Lấy thống kê tổng quan về lớp học bao gồm số lượng học sinh, thống kê điểm danh, điểm số',
   })
   @ApiParam({
-    name: 'assignmentId',
-    description: 'ID phân công giáo viên - lớp học',
+    name: 'classId',
+    description: 'ID lớp học',
     example: 'uuid-string',
   })
   @ApiResponse({
@@ -167,9 +243,33 @@ export class CommonController {
     status: 400,
     description: 'Lỗi request không hợp lệ',
   })
-  async getClassStatistics(@Param('assignmentId') assignmentId: string) {
+  async getClassStatistics(@Param('classId') classId: string, @Req() req: any) {
     try {
-      const result = await this.commonService.getClassStatistics(assignmentId);
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng',
+          data: null,
+        };
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin giáo viên',
+          data: null,
+        };
+      }
+
+      const result = await this.commonService.getClassStatistics(classId, teacher.id);
       return result;
     } catch (error) {
       return {
@@ -187,9 +287,31 @@ export class CommonController {
   })
   async getTeacherInfo(@Req() req: any) {
     try {
-      const result = await this.commonService.getTeacherInfo(
-        req.user?.teacherId,
-      );
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng',
+          data: null,
+        };
+      }
+
+      // Lấy teacherId từ userId
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { userId: userId },
+        select: { id: true }
+      });
+
+      if (!teacher) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin giáo viên',
+          data: null,
+        };
+      }
+
+      const result = await this.commonService.getTeacherInfo(teacher.id);
       return result;
     } catch (error) {
       return {
@@ -201,27 +323,27 @@ export class CommonController {
   }
 
   /**
-   * Lấy danh sách buổi học theo assignment và năm học hiện tại
-   * GET /common/assignment/:assignmentId/sessions
+   * Lấy danh sách buổi học theo class và năm học hiện tại
+   * GET /common/class/:classId/sessions
    */
-  @Get('assignment/:assignmentId/sessions')
+  @Get('class/:classId/sessions')
   @ApiOperation({
     summary: 'Lấy danh sách buổi học theo năm học hiện tại',
     description:
-      'Trả về danh sách buổi học của lớp theo assignment và academicYear hiện tại',
+      'Trả về danh sách buổi học của lớp theo class ID và academicYear hiện tại',
   })
   @ApiParam({
-    name: 'assignmentId',
-    description: 'ID phân công giáo viên - lớp học',
+    name: 'classId',
+    description: 'ID lớp học',
     example: 'uuid-string',
   })
   @ApiResponse({
     status: 200,
     description: 'Lấy danh sách buổi học thành công',
   })
-  async getClassSessionsByAssignment(@Param('assignmentId') assignmentId: string) {
+  async getClassSessionsByClass(@Param('classId') classId: string) {
     try {
-      const result = await this.commonService.getClassSessionsByAssignment(assignmentId);
+      const result = await this.commonService.getClassSessionsByAssignment(classId);
       return result;
     } catch (error) {
       return {

@@ -23,7 +23,7 @@ export class CommonService {
           },
           class: {
             status: 'active', // Class active
-            teacherId: teacherId, // Teacher assignment
+            teacherId: teacherId, // Teacher assignment (quan hệ trực tiếp)
           },
         },
         include: {
@@ -69,8 +69,14 @@ export class CommonService {
             select: {
               id: true,
               name: true,
-              grade: true,
               academicYear: true,
+              grade: {
+                select: {
+                  id: true,
+                  name: true,
+                  level: true,
+                },
+              },
               subject: {
                 select: {
                   id: true,
@@ -257,12 +263,18 @@ export class CommonService {
             select: {
               id: true,
               name: true,
-              grade: true,
               description: true,
               academicYear: true,
               expectedStartDate: true,
               actualStartDate: true,
               actualEndDate: true,
+              grade: {
+                select: {
+                  id: true,
+                  name: true,
+                  level: true,
+                },
+              },
               subject: {
                 select: {
                   id: true,
