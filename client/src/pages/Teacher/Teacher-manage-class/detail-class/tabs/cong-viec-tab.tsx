@@ -1,71 +1,102 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CheckSquare, Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Trash2, Edit, CheckCircle2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 
 interface CongViecTabProps {
-  onAddTask: () => void
-  onEditTask: (task: any) => void
-  onDeleteTask: (task: any) => void
+  classId: string
+  classData: any
 }
 
-export function CongViecTab({ onAddTask, onEditTask, onDeleteTask }: CongViecTabProps) {
-  const tasks = [
-    { id: 1, title: "Chuẩn bị tài liệu buổi học 3", dueDate: "01/08/2025", status: "Đang thực hiện", priority: "Cao" },
-    {
-      id: 2,
-      title: "Chấm bài kiểm tra giữa kỳ",
-      dueDate: "05/08/2025",
-      status: "Chưa bắt đầu",
-      priority: "Trung bình",
-    },
-    { id: 3, title: "Họp phụ huynh", dueDate: "10/08/2025", status: "Hoàn thành", priority: "Thấp" },
-  ]
+export default function CongViecTab({ classId, classData }: CongViecTabProps) {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [tasks, setTasks] = useState<any[]>([])
 
   return (
-    <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+    <div className="space-y-6">
+      {/* Search and Add Button */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Tìm kiếm công việc..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+          <Plus className="w-4 h-4" />
+          Thêm công việc
+        </Button>
+      </div>
+
+      {/* Tasks List */}
+      <Card className="hover:shadow-lg transition-shadow duration-200">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckSquare className="h-5 w-5" />
+            <CheckCircle2 className="w-5 h-5 text-blue-600" />
             Danh sách công việc
           </CardTitle>
-          <Button onClick={onAddTask}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm công việc
-          </Button>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-sm text-muted-foreground">Hạn: {task.dueDate}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Badge
-                    variant={
-                      task.priority === "Cao" ? "destructive" : task.priority === "Trung bình" ? "default" : "secondary"
-                    }
-                  >
-                    {task.priority}
-                  </Badge>
-                  <Badge variant={task.status === "Hoàn thành" ? "default" : "outline"}>{task.status}</Badge>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => onEditTask(task)}>
-                      <Edit className="h-4 w-4" />
+          {tasks.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">Chưa có công việc nào</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((task: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
+                >
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white">
+                      {task?.title ?? "Không tên"}
+                    </h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {task?.description ?? ""}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className={
+                        task?.status === "completed"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }
+                    >
+                      {task?.status === "completed" ? "Hoàn thành" : "Chưa hoàn thành"}
+                    </Badge>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 hover:bg-blue-50"
+                    >
+                      <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onDeleteTask(task)}>
-                      <Trash2 className="h-4 w-4" />
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

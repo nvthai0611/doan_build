@@ -27,6 +27,7 @@ import { teacherCommonService } from "../../../../../services/teacher/common/com
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { toast } from "sonner"
 import { useState } from "react"
+import { Input } from "@/components/ui/input"
 
 interface HocVienTabProps {
   onAddStudent: () => void
@@ -342,6 +343,8 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
 export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teacherClassAssignmentId }: any) {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [students, setStudents] = useState<any[]>([])
 
   const { data: listStudents, isLoading, error } = useQuery({
     queryKey: ['students', teacherClassAssignmentId],
@@ -365,6 +368,11 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
     setSelectedStudentId(null)
   }
 
+  const filteredStudents = listStudents?.filter((student: any) => {
+    return student.student?.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
+      || student.student?.studentCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  })
+
   if (isLoading) {
     return <Loading />
   }
@@ -385,8 +393,26 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {listStudents && listStudents.length > 0 ? (
-              listStudents.map((student: any) => (
+            {/* Search and Add Button */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Tìm kiếm học sinh..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddStudent}>
+                <Plus className="w-4 h-4" />
+                Thêm học sinh
+              </Button>
+            </div>
+
+            {filteredStudents && filteredStudents.length > 0 ? (
+              filteredStudents.map((student: any) => (
                 <div 
                   key={student.id} 
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
