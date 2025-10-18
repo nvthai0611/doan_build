@@ -131,7 +131,7 @@ export class SessionController {
       throw new HttpException(
         {
           success: false,
-          message: 'Có lỗi xảy ra khi tạo yêu cầu dời lịch buổi học',
+          message: error.message || 'Có lỗi xảy ra khi tạo yêu cầu dời lịch buổi học',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
