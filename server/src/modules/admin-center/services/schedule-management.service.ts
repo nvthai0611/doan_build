@@ -14,7 +14,7 @@ export class ScheduleManagementService {
             startTime: session.startTime,
             endTime: session.endTime,
             roomName: session.room?.name || null,
-            teacherName: session.class?.teacherClassAssignments?.[0]?.teacher?.user?.fullName || '',
+            teacherName: session.class?.teacher?.user?.fullName || '',
             subjectName: session.class?.subject?.name || '',
             studentCount:
                 (session.class?._count && session.class._count.enrollments) || 0,
@@ -36,11 +36,14 @@ export class ScheduleManagementService {
                         name: true,
                         maxStudents: true,
                         subject: { select: { name: true } },
-                        teacherClassAssignments: {
-                            select: {
-                                teacher: { select: { user: { select: { fullName: true } } } }
-                            },
-                            take: 1
+                        teacher: { 
+                            select: { 
+                                user: { 
+                                    select: { 
+                                        fullName: true 
+                                    } 
+                                } 
+                            } 
                         },
                         _count: { select: { enrollments: true } },
                     },
@@ -65,11 +68,14 @@ export class ScheduleManagementService {
                         name: true,
                         maxStudents: true,
                         subject: { select: { name: true } },
-                        teacherClassAssignments: {
-                            select: {
-                                teacher: { select: { user: { select: { fullName: true } } } }
-                            },
-                            take: 1
+                        teacher: { 
+                            select: { 
+                                user: { 
+                                    select: { 
+                                        fullName: true 
+                                    } 
+                                } 
+                            } 
                         },
                         _count: { select: { enrollments: true } },
                     },
@@ -96,11 +102,14 @@ export class ScheduleManagementService {
                         name: true,
                         maxStudents: true,
                         subject: { select: { name: true } },
-                        teacherClassAssignments: {
-                            select: {
-                                teacher: { select: { user: { select: { fullName: true } } } }
-                            },
-                            take: 1
+                        teacher: { 
+                            select: { 
+                                user: { 
+                                    select: { 
+                                        fullName: true 
+                                    } 
+                                } 
+                            } 
                         },
                         _count: { select: { enrollments: true } },
                     },

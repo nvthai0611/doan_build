@@ -12,7 +12,7 @@ export class QueryClassDto {
 
   @IsOptional()
   @IsString()
-  grade?: string;
+  gradeId?: string;
 
   @IsOptional()
   @IsString()
@@ -21,6 +21,14 @@ export class QueryClassDto {
   @IsOptional()
   @IsString()
   roomId?: string;
+
+  @IsOptional()
+  @IsString()
+  teacherId?: string;
+
+  @IsOptional()
+  @IsString()
+  feeStructureId?: string;
 
   @IsOptional()
   @IsString()

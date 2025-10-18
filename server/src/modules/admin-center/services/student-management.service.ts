@@ -413,9 +413,7 @@ export class StudentManagementService {
                       code: true
                     }
                   }
-                }
-              },
-              teacherClassAssignment: {
+                },
                 include: {
                   teacher: {
                     include: {
@@ -468,7 +466,7 @@ export class StudentManagementService {
           finalGrade: enrollment.finalGrade,
           completionStatus: enrollment.completionStatus,
           class: enrollment.class,
-          teacher: enrollment.teacherClassAssignment?.teacher || null
+          teacher: enrollment.class?.teacher || null
         })),
         password: undefined
       };

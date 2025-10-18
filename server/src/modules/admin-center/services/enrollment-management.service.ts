@@ -92,8 +92,7 @@ export class EnrollmentManagementService {
                     studentId: body.studentId,
                     classId: body.classId,
                     semester: body.semester || null,
-                    status: body.status || 'active',
-                    teacherClassAssignmentId: body.teacherClassAssignmentId || null
+                    status: body.status || 'active'
                 },
                 include: {
                     student: {
@@ -114,17 +113,8 @@ export class EnrollmentManagementService {
                 }
             });
 
-            // Update currentStudents count in TeacherClassAssignment if provided
-            if (body.teacherClassAssignmentId) {
-                await this.prisma.teacherClassAssignment.update({
-                    where: { id: body.teacherClassAssignmentId },
-                    data: {
-                        currentStudents: {
-                            increment: 1
-                        }
-                    }
-                });
-            }
+            // Note: currentStudents count is now managed through _count.enrollments in Class model
+            // No need to manually update teacherClassAssignment since it no longer exists
 
             return {
                 success: true,
@@ -248,22 +238,11 @@ export class EnrollmentManagementService {
                             studentId,
                             classId: body.classId,
                             semester: body.semester || null,
-                            status: 'active',
-                            teacherClassAssignmentId: body.teacherClassAssignmentId || null
+                            status: 'active'
                         }
                     });
 
-                    // Update currentStudents count
-                    if (body.teacherClassAssignmentId) {
-                        await this.prisma.teacherClassAssignment.update({
-                            where: { id: body.teacherClassAssignmentId },
-                            data: {
-                                currentStudents: {
-                                    increment: 1
-                                }
-                            }
-                        });
-                    }
+                    // Note: currentStudents count is now managed through _count.enrollments in Class model
 
                     results.success.push({
                         studentId,
@@ -515,17 +494,8 @@ export class EnrollmentManagementService {
                 }
             });
 
-            // Update currentStudents count if changing from/to active
-            if (enrollment.status === 'active' && body.status !== 'active' && enrollment.teacherClassAssignmentId) {
-                await this.prisma.teacherClassAssignment.update({
-                    where: { id: enrollment.teacherClassAssignmentId },
-                    data: {
-                        currentStudents: {
-                            decrement: 1
-                        }
-                    }
-                });
-            }
+            // Note: currentStudents count is now managed through _count.enrollments in Class model
+            // No need to manually update teacherClassAssignment since it no longer exists
 
             return {
                 success: true,
@@ -639,17 +609,8 @@ export class EnrollmentManagementService {
                 }
             });
 
-            // Decrement currentStudents in old assignment
-            if (enrollment.teacherClassAssignmentId) {
-                await this.prisma.teacherClassAssignment.update({
-                    where: { id: enrollment.teacherClassAssignmentId },
-                    data: {
-                        currentStudents: {
-                            decrement: 1
-                        }
-                    }
-                });
-            }
+            // Note: currentStudents count is now managed through _count.enrollments in Class model
+            // No need to manually update teacherClassAssignment since it no longer exists
 
             // Create new enrollment
             const newEnrollment = await this.prisma.enrollment.create({
@@ -657,22 +618,11 @@ export class EnrollmentManagementService {
                     studentId: enrollment.studentId,
                     classId: body.newClassId,
                     semester: body.semester || enrollment.semester,
-                    status: 'active',
-                    teacherClassAssignmentId: body.newTeacherClassAssignmentId || null
+                    status: 'active'
                 }
             });
 
-            // Increment currentStudents in new assignment
-            if (body.newTeacherClassAssignmentId) {
-                await this.prisma.teacherClassAssignment.update({
-                    where: { id: body.newTeacherClassAssignmentId },
-                    data: {
-                        currentStudents: {
-                            increment: 1
-                        }
-                    }
-                });
-            }
+            // Note: currentStudents count is now managed through _count.enrollments in Class model
 
             return {
                 success: true,
@@ -719,17 +669,8 @@ export class EnrollmentManagementService {
                 where: { id: parseInt(id) }
             });
 
-            // Decrement currentStudents count if was active
-            if (enrollment.status === 'active' && enrollment.teacherClassAssignmentId) {
-                await this.prisma.teacherClassAssignment.update({
-                    where: { id: enrollment.teacherClassAssignmentId },
-                    data: {
-                        currentStudents: {
-                            decrement: 1
-                        }
-                    }
-                });
-            }
+            // Note: currentStudents count is now managed through _count.enrollments in Class model
+            // No need to manually update teacherClassAssignment since it no longer exists
 
             return {
                 success: true,
