@@ -85,19 +85,12 @@ export class TeacherManagementService {
       if (createTeacherDto.contractImage) {
         console.log("Contract image received:", createTeacherDto.contractImage);
         
-        // Tạo templateId hợp lệ hoặc skip nếu không có
-        const templateId = '00000000-0000-0000-0000-000000000000'; // UUID hợp lệ
-        
         await prisma.contractUpload.create({
           data: {
             teacherId: teacher.id,
-            templateId: templateId,
             contractType: 'teacher_contract',
             uploadedImageUrl: createTeacherDto.contractImage.filename || 'temp-filename',
-            uploadedImageName: createTeacherDto.contractImage.originalname,
-            uploadedAt: new Date(),
-            isSigned: false,
-            status: 'pending'
+            uploadedImageName: createTeacherDto.contractImage.originalname
           }
         });
       }
@@ -225,9 +218,12 @@ export class TeacherManagementService {
       where: { id },
       include: {
         user: true,
-        teacherClassAssignments: {
+        school: true,
+        classes: {
           include: {
-            class: true
+            subject: true,
+            grade: true,
+            room: true
           }
         }
       }
@@ -349,37 +345,33 @@ export class TeacherManagementService {
       where: { id },
       include: { 
         user: true,
-        teacherClassAssignments: {
+        classes: {
           include: {
-            class: {
+            room: true,
+            subject: true,
+            sessions: {
+              where: year && month ? {
+                sessionDate: {
+                  gte: new Date(year, month - 1, 1),
+                  lt: new Date(year, month, 1)
+                }
+              } : undefined,
               include: {
-                room: true,
-                subject: true,
-                sessions: {
-                  where: year && month ? {
-                    sessionDate: {
-                      gte: new Date(year, month - 1, 1),
-                      lt: new Date(year, month, 1)
-                    }
-                  } : undefined,
+                attendances: {
                   include: {
-                    attendances: {
+                    student: {
                       include: {
-                        student: {
-                          include: {
-                            user: true
-                          }
-                        }
+                        user: true
                       }
                     }
-                  },
-                  orderBy: {
-                    sessionDate: 'asc'
                   }
                 }
+              },
+              orderBy: {
+                sessionDate: 'asc'
               }
             }
-          } 
+          }
         }
       },
     });
@@ -389,15 +381,15 @@ export class TeacherManagementService {
     }
 
     // Chuyển đổi dữ liệu thành format phù hợp với frontend
-    const sessions = teacher.teacherClassAssignments.flatMap(assignment => 
-      assignment.class.sessions.map(session => ({
+    const sessions = teacher.classes.flatMap(cls => 
+      cls.sessions.map(session => ({
         id: session.id,
         date: session.sessionDate,
-        title: `Buổi ${assignment.class.name}`,
+        title: `Buổi ${cls.name}`,
         time: `${session.startTime}-${session.endTime}`,
-        subject: assignment.class.subject.name,
-        class: assignment.class.name,
-        room: assignment.class.room?.name || 'Chưa xác định',
+        subject: cls.subject.name,
+        class: cls.name,
+        room: cls.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
         status: session.status as "scheduled" | "completed" | "cancelled",
         teacher: teacher.user.fullName || 'Chưa xác định',

@@ -13,8 +13,8 @@ export class CreateClassDto {
   subjectId?: string;
 
   @IsOptional()
-  @IsString()
-  grade?: string;
+  @IsUUID()
+  gradeId?: string;
 
   @IsOptional()
   @IsNumber()
@@ -23,6 +23,14 @@ export class CreateClassDto {
   @IsOptional()
   @IsUUID()
   roomId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  teacherId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  feeStructureId?: string;
 
   @IsOptional()
   @IsString()

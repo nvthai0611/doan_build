@@ -227,10 +227,6 @@ async function createTeachers(schools) {
       data: {
         userId: user.id,
         schoolId: faker.helpers.arrayElement(schools).id,
-        subjects: faker.helpers.arrayElements(
-          SUBJECTS.map(s => s.name),
-          faker.number.int({ min: 1, max: 3 })
-        ),
       },
     });
 

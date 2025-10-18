@@ -36,6 +36,8 @@ async function main() {
       role: 'teacher',
       phone: '0987654321',
       isActive: true,
+      gender: 'MALE',
+      birthDate: new Date('1990-05-15'),
     },
   });
 
@@ -51,6 +53,8 @@ async function main() {
       role: 'student',
       phone: '0369258147',
       isActive: true,
+      gender: 'MALE',
+      birthDate: new Date('2005-03-20'),
     },
   });
 
@@ -103,11 +107,6 @@ async function main() {
     create: {
       userId: teacher.id,
       schoolId: school.id,
-      subjects: ['Toán', 'Lý', 'Hóa'],
-      hireDate: new Date('2024-01-01'),
-      salary: 15000000,
-      birthDate: new Date('1990-05-15'),
-      gender: 'MALE',
     },
   });
 
@@ -119,8 +118,6 @@ async function main() {
       userId: student.id,
       schoolId: school.id,
       studentCode: 'ST001',
-      birthDate: new Date('2005-03-20'),
-      gender: 'MALE',
       address: '456 Đường XYZ, Quận 2, TP.HCM',
       grade: '12',
     },
@@ -144,19 +141,11 @@ async function main() {
     where: { userId: parent.id }
   });
 
-  await prisma.studentParentRelationship.upsert({
-    where: {
-      studentId_parentId: {
-        studentId: studentProfile.id,
-        parentId: parentProfile.id,
-      },
-    },
-    update: {},
-    create: {
-      studentId: studentProfile.id,
+  // Update student with parentId
+  await prisma.student.update({
+    where: { id: studentProfile.id },
+    data: {
       parentId: parentProfile.id,
-      relation: 'Mẹ',
-      primaryContact: true,
     },
   });
 
