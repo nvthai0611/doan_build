@@ -7,8 +7,9 @@ import Loading from "../../../../../components/Loading/LoadingPage"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar } from 'lucide-react';
-import { formatDate } from '@/utils/format';
-import { getHistoryAttendanceOfClass } from '../../../../services/teacher-service/manage-class.service';
+import { formatDate } from '../../../../../utils/format';
+import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
+
 
 // Mock data for demonstration - COMMENTED OUT
 // const mockStudents = [
@@ -153,7 +154,7 @@ export function LichSuDiemDanhTab({
     error,
   } = useQuery({
     queryKey: ['attendanceHistory', classId],
-    queryFn: () => getHistoryAttendanceOfClass(classId),
+    queryFn: () => teacherCommonService.getHistoryAttendanceOfClass(classId),
     enabled: !!classId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,

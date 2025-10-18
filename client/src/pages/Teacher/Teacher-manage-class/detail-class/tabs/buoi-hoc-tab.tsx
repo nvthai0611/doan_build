@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/utils/format';
+import { formatDate } from '../../../../../utils/format';
 import { useQuery } from "@tanstack/react-query"
 import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
 
@@ -44,8 +44,8 @@ export function BuoiHocTab({ onAddSession, onViewDetailSession, onDeleteSession,
 
   const classSession = {
     total: data?.length || 0,
-    completed: sessions.filter((s) => s.status === 'Hoàn thành').length,
-    upcoming: sessions.filter((s) => s.status === 'Sắp tới').length,
+    completed: sessions.filter((s: any) => s.status === 'Hoàn thành').length,
+    upcoming: sessions.filter((s: any) => s.status === 'Sắp tới').length,
   };
 
   const stats = [

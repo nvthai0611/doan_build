@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { formatDate } from "@/utils/format"
+import { formatDate } from "../../../../../utils/format"
 import { MapPin, Users, BookOpen, Clock, User } from "lucide-react"
 
 interface ThongTinChungTabProps {

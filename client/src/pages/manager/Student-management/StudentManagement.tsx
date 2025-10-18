@@ -33,7 +33,6 @@ import {
   ChevronLeft,
   ChevronRightIcon,
 } from "lucide-react"
-import type { Student, Tab, FilterState } from "./types/student"
 import { toast } from "sonner"
 import { centerOwnerStudentService } from "../../../services/center-owner/student-management/student.service"
 import { useQuery } from "@tanstack/react-query"
@@ -41,7 +40,8 @@ import { DataTable } from "../../../components/common/Table/DataTable"
 import { StudentDetailModal } from "./components/student-detail-modal"
 import { CreateStudentModal } from "./components/CreateStudentModal"
 import { useNavigate } from "react-router-dom"
-import { useUpdateStudentStatus, useToggleStudentStatus } from "./hooks/useStudents"
+import { useUpdateStudentStatus } from "./hooks/useStudents"
+import { FilterState, Tab } from "../Teacher-management/types/teacher"
 
 const fetchData = async (params: any) => {
   const resDataStudent = await centerOwnerStudentService.getStudents(params)
@@ -85,7 +85,7 @@ export default function StudentManagement() {
   
   // Mutations for status change
   const updateStudentStatusMutation = useUpdateStudentStatus()
-  const toggleStudentStatusMutation = useToggleStudentStatus()
+  // const toggleStudentStatusMutation = useToggleStudentStatus()
 
   const status: any = {
     active: "Đang học",
@@ -343,12 +343,12 @@ export default function StudentManagement() {
   }
 
   const handleMonthChange = (month: string) => {
-    setFilterState(prev => ({ ...prev, birthMonth: month != "all" ? month : undefined }))
+    setFilterState((prev: any) => ({ ...prev, birthMonth: month != "all" ? month : undefined }))
     setCurrentPage(1)
   }
 
   const handleYearChange = (year: string) => {
-    setFilterState(prev => ({ ...prev, birthYear: year != "all" ? year : undefined }))
+    setFilterState((prev: any) => ({ ...prev, birthYear: year != "all" ? year : undefined }))
     setCurrentPage(1)
   }
 
@@ -813,7 +813,7 @@ export default function StudentManagement() {
 
       {/* Student Detail Modal */}
       <StudentDetailModal
-        studentId={selectedStudentId}
+        student={studentData}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
