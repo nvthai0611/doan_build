@@ -664,8 +664,22 @@ model IncidentReport {
   @@map("incident_reports")
 }
 
+
 enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  group       String
+  value       Json
+  description String?
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("system_settings")
 }
