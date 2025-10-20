@@ -209,7 +209,6 @@ export class ClassManagementService {
                     totalPages: Math.ceil(totalBeforeFilter / limit)
                 }
             };
-    
         } catch (error) {
             throw new HttpException(
                 {

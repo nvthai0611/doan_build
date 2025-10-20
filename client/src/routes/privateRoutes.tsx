@@ -37,6 +37,11 @@ import { StudentDetailPage } from "../pages/manager/Student-management/component
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+import { CenterInfoSetting } from "../pages/manager/Settings/CenterInfoSetting";
+import { HolidaySetting } from "../pages/manager/Settings/HolidaySetting";
+import { ScoreSetting } from "../pages/manager/Settings/ScoreSetting";
+import { NotificationSetting } from "../pages/manager/Settings/NotiSetting";
+import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 
 
 export const privateRoutes = (
@@ -48,7 +53,10 @@ export const privateRoutes = (
       </Route>
 
       {/* Chủ trung tâm */}
-      <Route path="/center-qn" element={<AuthMiddleware allowedRoles={['center_owner']} />}>
+      <Route
+        path="/center-qn"
+        element={<AuthMiddleware allowedRoles={['center_owner']} />}
+      >
         <Route index element={<CenterOwnerDashboard />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
@@ -64,10 +72,18 @@ export const privateRoutes = (
         <Route path="students/:id" element={<StudentDetailPage />} />
         <Route path="parents" element={<ParentManagement />} />
         <Route path="parents/:id" element={<ParentDetailPage />} />
+        <Route path="settings/center-info-setting" element={<CenterInfoSetting />} />
+        <Route path="settings/holidays-setting" element={<HolidaySetting />} />
+        <Route path="settings/score-setting" element={<ScoreSetting />} />
+        <Route path="settings/notifications-setting" element={<NotificationSetting />} />
+        <Route path="settings/tuition-setting" element={<TuitionSetting />} />
       </Route>
 
       {/* Giáo viên */}
-      <Route path="/teacher" element={<AuthMiddleware allowedRoles={['teacher']} />}>
+      <Route
+        path="/teacher"
+        element={<AuthMiddleware allowedRoles={['teacher']} />}
+      >
         <Route path="profile" element={<TeacherProfilePage />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
@@ -79,37 +95,60 @@ export const privateRoutes = (
         <Route path="documents/manage" element={<FileManage />} />
         <Route path="incidents/report" element={<IncidentReportPage />} />
         <Route path="incidents/manage" element={<IncidentManagePage />} />
-        <Route path="classes/:teacherClassAssignmentId/session/:sessionId" element={<SessionDetails />} />
-
+        <Route
+          path="classes/:teacherClassAssignmentId/session/:sessionId"
+          element={<SessionDetails />}
+        />
 
         {/* Hợp nhất conflict: Giữ cả hai route attendance & leave */}
-        <Route path="schedule/attendance/:classSessionId" element={<AttendanceTable />} />
+        <Route
+          path="schedule/attendance/:classSessionId"
+          element={<AttendanceTable />}
+        />
         <Route path="session-details/:sessionId" element={<SessionDetails />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
       </Route>
 
       {/* Học sinh */}
-      <Route path="/student" element={<AuthMiddleware allowedRoles={['student']} />}>
+      <Route
+        path="/student"
+        element={<AuthMiddleware allowedRoles={['student']} />}
+      >
         <Route index element={<StudentHomepage />} />
         <Route path="my-schedule" element={<StudentSchedule />} />
         <Route path="my-classes" element={<StudentClassesPage />} />
-        <Route path="my-classes/:classId" element={<StudentClassDetailPage />} />
+        <Route
+          path="my-classes/:classId"
+          element={<StudentClassDetailPage />}
+        />
         <Route path="my-grades" element={<StudentTranscriptPage />} />
       </Route>
 
       {/* Phụ huynh */}
-      <Route path="/parent" element={<AuthMiddleware allowedRoles={['parent']} />}>
+      <Route
+        path="/parent"
+        element={<AuthMiddleware allowedRoles={['parent']} />}
+      >
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
       </Route>
 
       {/* Admin */}
-      <Route path="/admin" element={<AuthMiddleware allowedRoles={['admin']} />}>
+      <Route
+        path="/admin"
+        element={<AuthMiddleware allowedRoles={['admin']} />}
+      >
         <Route index element={<div>Admin Dashboard - Coming Soon</div>} />
-        <Route path="users" element={<div>User Management - Coming Soon</div>} />
-        <Route path="system" element={<div>System Settings - Coming Soon</div>} />
+        <Route
+          path="users"
+          element={<div>User Management - Coming Soon</div>}
+        />
+        <Route
+          path="system"
+          element={<div>System Settings - Coming Soon</div>}
+        />
       </Route>
     </Route>
   </>

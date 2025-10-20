@@ -355,18 +355,13 @@ export class EnrollmentManagementService {
     // Lấy danh sách học sinh trong lớp
     async findByClass(classId: string, query: any = {}) {
         try {
-            const {search, page = 1, limit = 50 } = query;
+            const { status = 'active', page = 1, limit = 50 } = query;
+
             const skip = (parseInt(page) - 1) * parseInt(limit);
             const take = parseInt(limit);
 
             const where: any = { classId };
-
-            if (search) where.student = {
-                OR: [
-                    { user: { fullName: { contains: search, mode: 'insensitive' } } },
-                    { user: { email: { contains: search, mode: 'insensitive' } } }
-                ]
-            };
+            if (status) where.status = status;
 
             const total = await this.prisma.enrollment.count({ where });
 
@@ -376,12 +371,7 @@ export class EnrollmentManagementService {
                 take,
                 include: {
                     student: {
-                            include: {
-                            parent: {
-                                include: {
-                                    user: true,
-                                }
-                            },
+                        include: {
                             user: {
                                 select: {
                                     id: true,
@@ -400,7 +390,15 @@ export class EnrollmentManagementService {
             return {
                 success: true,
                 message: 'Lấy danh sách học sinh thành công',
-                data: enrollments,
+                data: enrollments.map(e => ({
+                    enrollmentId: e.id,
+                    studentId: e.student.id,
+                    ...e.student.user,
+                    studentCode: e.student.studentCode,
+                    enrolledAt: e.enrolledAt,
+                    status: e.status,
+                    semester: e.semester
+                })),
                 meta: {
                     total,
                     page: parseInt(page),

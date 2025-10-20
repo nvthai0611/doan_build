@@ -1,5 +1,4 @@
 <<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # GitLab CI/CD Pipeline cho dự án SEP - Hệ thống quản lý trung tâm giáo dục
 # Frontend: React + TypeScript + Vite + Tailwind CSS
 # Backend: NestJS + TypeScript + Prisma + PostgreSQL
@@ -279,8 +278,6 @@ performance_test:
     - main
     - master
 =======
-=======
->>>>>>> Stashed changes
 stages:
   - deploy
 
@@ -295,7 +292,4 @@ deploy_to_vercel:
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
   only:
     - main
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
 >>>>>>> Stashed changes

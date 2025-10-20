@@ -41,108 +41,114 @@ interface SidebarProps {
 }
 
 const centerOwnerMenuItems = [
-    {
-        title: "Tổng quan",
-        icon: Home,
-        href: "/center-qn",
-    },
-    {
-        title: "Quản lý học sinh",
-        icon: Users,
-        href: "/center-qn/students",
-        children: [
-            { title: "Danh sách học sinh", href: "/center-qn/students" },
-            { title: "Thông tin phụ huynh", href: "/center-qn/parents" },
-            { title: "Phân lớp tự động", href: "/center-qn/students/auto-assign" },
-            { title: "Học bạ nội bộ", href: "/center-qn/students/records" },
-            { title: "Kết quả học tập", href: "/center-qn/students/results" },
-            { title: "Chuyên cần", href: "/center-qn/students/attendance" },
-        ],
-    },
-    {
-        title: "Quản lý giáo viên",
-        icon: GraduationCap,
-        href: "/center-qn/teachers",
-        children: [
-            { title: "Danh sách giáo viên", href: "/center-qn/teachers" },
-            { title: "Thông tin chuyên môn", href: "/center-qn/teachers/expertise" },
-            { title: "Lịch dạy", href: "/center-qn/teachers/schedule" },
-            { title: "Hợp đồng & Nhân sự", href: "/center-qn/teachers/contracts" },
-            { title: "Quản lý lương", href: "/center-qn/teachers/salary" },
-            { title: "Đánh giá từ PH/HS", href: "/center-qn/teachers/reviews" },
-            { title: "Đổi lịch dạy", href: "/center-qn/teachers/schedule-changes" },
-        ],
-    },
-    {
-        title: "Lớp học & Khóa học",
-        icon: BookOpen,
-        href: "/center-qn/classes",
-        children: [
-            { title: "Quản lý lớp học", href: "/center-qn/classes" },
-            { title: "Tạo khóa học mới", href: "/courses/create" },
-            { title: "Quản lý khóa học", href: "/courses" },
-            { title: "Thời khóa biểu", href: "/courses/timetable" },
-            { title: "Quản lý phòng học", href: "/courses/rooms" },
-            { title: "Cảnh báo xung đột", href: "/courses/conflicts" },
-            { title: "Clone khóa học", href: "/courses/clone" },
-        ],
-    },
-    {
-        title: "Tài chính",
-        icon: DollarSign,
-        href: "/finance",
-        children: [
-            { title: "Định nghĩa học phí", href: "/finance/tuition" },
-            { title: "Phiếu thu - chi", href: "/finance/receipts" },
-            { title: "Thanh toán online", href: "/finance/online-payment" },
-            { title: "Báo cáo thu chi", href: "/finance/reports" },
-            { title: "Nợ học phí", href: "/finance/debts" },
-            { title: "Học bổng & Giảm phí", href: "/finance/scholarships" },
-        ],
-    },
-    {
-        title: "Báo cáo - Thống kê",
-        icon: BarChart3,
-        href: "/reports",
-        children: [
-            { title: "Dashboard trực quan", href: "/reports/dashboard" },
-            { title: "Báo cáo sĩ số", href: "/reports/enrollment" },
-            { title: "Báo cáo chuyên cần", href: "/reports/attendance" },
-            { title: "Báo cáo học phí", href: "/reports/tuition" },
-            { title: "Báo cáo doanh thu", href: "/reports/revenue" },
-            { title: "Thống kê kết quả", href: "/reports/results" },
-            { title: "Xuất PDF/Excel", href: "/reports/export" },
-        ],
-    },
-    {
-        title: "Truyền thông",
-        icon: MessageSquare,
-        href: "/communication",
-        children: [
-            { title: "Thông báo chung", href: "/communication/announcements" },
-            { title: "Quản lý sự kiện", href: "/communication/events" },
-            { title: "Họp phụ huynh", href: "/communication/parent-meetings" },
-            { title: "Hoạt động ngoại khóa", href: "/communication/activities" },
-            { title: "Thông báo tự động", href: "/communication/auto-notifications" },
-        ],
-    },
-    {
-        title: "Quản lý người dùng",
-        icon: UserCog,
-        href: "/users",
-    },
-    {
-        title: "Báo cáo sự cố",
-        icon: AlertTriangle,
-        href: "/center-qn/incidents",
-
-    },
-    {
-        title: "Cài đặt",
-        icon: Settings,
-        href: "/settings",
-    },
-]
+  {
+    title: 'Tổng quan',
+    icon: Home,
+    href: '/center-qn',
+  },
+  {
+    title: 'Quản lý học sinh',
+    icon: Users,
+    href: '/center-qn/students',
+    children: [
+      { title: 'Danh sách học sinh', href: '/center-qn/students' },
+      { title: 'Thông tin phụ huynh', href: '/center-qn/parents' },
+      { title: 'Phân lớp tự động', href: '/center-qn/students/auto-assign' },
+      { title: 'Học bạ nội bộ', href: '/center-qn/students/records' },
+      { title: 'Kết quả học tập', href: '/center-qn/students/results' },
+      { title: 'Chuyên cần', href: '/center-qn/students/attendance' },
+    ],
+  },
+  {
+    title: 'Quản lý giáo viên',
+    icon: GraduationCap,
+    href: '/center-qn/teachers',
+    children: [
+      { title: 'Danh sách giáo viên', href: '/center-qn/teachers' },
+      { title: 'Thông tin chuyên môn', href: '/center-qn/teachers/expertise' },
+      { title: 'Lịch dạy', href: '/center-qn/teachers/schedule' },
+      { title: 'Hợp đồng & Nhân sự', href: '/center-qn/teachers/contracts' },
+      { title: 'Quản lý lương', href: '/center-qn/teachers/salary' },
+      { title: 'Đánh giá từ PH/HS', href: '/center-qn/teachers/reviews' },
+      { title: 'Đổi lịch dạy', href: '/center-qn/teachers/schedule-changes' },
+    ],
+  },
+  {
+    title: 'Lớp học & Khóa học',
+    icon: BookOpen,
+    href: '/center-qn/classes',
+    children: [
+      { title: 'Quản lý lớp học', href: '/center-qn/classes' },
+      { title: 'Tạo khóa học mới', href: '/courses/create' },
+      { title: 'Quản lý khóa học', href: '/courses' },
+      { title: 'Thời khóa biểu', href: '/courses/timetable' },
+      { title: 'Quản lý phòng học', href: '/courses/rooms' },
+      { title: 'Cảnh báo xung đột', href: '/courses/conflicts' },
+      { title: 'Clone khóa học', href: '/courses/clone' },
+    ],
+  },
+  {
+    title: 'Tài chính',
+    icon: DollarSign,
+    href: '/finance',
+    children: [
+      { title: 'Định nghĩa học phí', href: '/finance/tuition' },
+      { title: 'Phiếu thu - chi', href: '/finance/receipts' },
+      { title: 'Thanh toán online', href: '/finance/online-payment' },
+      { title: 'Báo cáo thu chi', href: '/finance/reports' },
+      { title: 'Nợ học phí', href: '/finance/debts' },
+      { title: 'Học bổng & Giảm phí', href: '/finance/scholarships' },
+    ],
+  },
+  {
+    title: 'Báo cáo - Thống kê',
+    icon: BarChart3,
+    href: '/reports',
+    children: [
+      { title: 'Dashboard trực quan', href: '/reports/dashboard' },
+      { title: 'Báo cáo sĩ số', href: '/reports/enrollment' },
+      { title: 'Báo cáo chuyên cần', href: '/reports/attendance' },
+      { title: 'Báo cáo học phí', href: '/reports/tuition' },
+      { title: 'Báo cáo doanh thu', href: '/reports/revenue' },
+      { title: 'Thống kê kết quả', href: '/reports/results' },
+      { title: 'Xuất PDF/Excel', href: '/reports/export' },
+    ],
+  },
+  {
+    title: 'Truyền thông',
+    icon: MessageSquare,
+    href: '/communication',
+    children: [
+      { title: 'Thông báo chung', href: '/communication/announcements' },
+      { title: 'Quản lý sự kiện', href: '/communication/events' },
+      { title: 'Họp phụ huynh', href: '/communication/parent-meetings' },
+      { title: 'Hoạt động ngoại khóa', href: '/communication/activities' },
+      { title: 'Thông báo tự động', href: '/communication/auto-notifications' },
+    ],
+  },
+  {
+    title: 'Quản lý người dùng',
+    icon: UserCog,
+    href: '/users',
+  },
+  {
+    title: 'Báo cáo sự cố',
+    icon: AlertTriangle,
+    href: '/center-qn/incidents',
+  },
+  {
+    title: 'Cài đặt',
+    icon: Settings,
+    href: '/center-qn/settings',
+    children: [
+      { title: 'Thông tin trung tâm', href: '/center-qn/settings/center-info-setting' },
+      { title: 'Ngày nghỉ', href: '/center-qn/settings/holidays-setting' },
+      { title: 'Học phí', href: '/center-qn/settings/tuition-setting' },
+      { title: 'Điểm thành phần', href: '/center-qn/settings/score-setting' },
+      { title: 'Thông báo', href: '/center-qn/settings/notifications-setting' },
+    ],
+  },
+];
 
 const teacherMenuItems = [
     {
