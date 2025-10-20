@@ -578,6 +578,7 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+
 model ContractUpload {
   id                String      @id @default(uuid()) @db.Uuid
   enrollmentId      BigInt?     @map("enrollment_id")

@@ -23,8 +23,8 @@ export const enrollmentService = {
 
     // Get students by class
     getStudentsByClass: async (classId: string, params?: any) => {
-        const response = await apiClient.get(`${BASE_URL}/class/${classId}`, { params });
-        return response.data;
+        const response = await apiClient.get(`${BASE_URL}/class/${classId}`,params);
+        return response;
     },
 
     // Get enrollments by student
