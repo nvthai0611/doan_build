@@ -114,7 +114,6 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
       email: teacher.email,
       phone: teacher.phone,  
       username: teacher.username,
-      role: teacher.role === "Giáo viên" ? "teacher" : teacher.role === "Chủ trung tâm" ? "admin" : "center_owner",
       isActive: teacher.status,
       notes: teacher.notes,
     })

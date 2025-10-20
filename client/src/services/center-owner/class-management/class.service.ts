@@ -84,7 +84,6 @@ export const classService = {
       const response = await apiClient.post(`${BASE_URL}/${classId}/generate-sessions`, data);
       return response;
     } catch (error) {
-      console.error('Error generating sessions:', error);
       const anyErr: any = error as any;
       const message = anyErr?.response?.message || anyErr?.message || 'Lỗi không xác định';
       const status = anyErr?.response?.status ?? 0;

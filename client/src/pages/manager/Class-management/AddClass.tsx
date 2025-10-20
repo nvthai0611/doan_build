@@ -42,6 +42,18 @@ export const CreateClass = () => {
   const navigate = useNavigate();
   const { createClass } = useClassMutations();
 
+  // Helper function để tạo ngày mặc định 15/8
+  const getDefaultStartDate = () => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    
+    // Nếu hiện tại đã qua tháng 8, dùng năm tiếp theo
+    const targetYear = currentMonth > 8 ? currentYear + 1 : currentYear;
+    
+    const defaultDate = new Date(targetYear, 7, 15); // Tháng 8 (index 7), ngày 15
+    return defaultDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     gradeId: '',
@@ -49,8 +61,7 @@ export const CreateClass = () => {
     maxStudents: '',
     roomId: '',
     teacherId: '',
-    feeStructureId: '',
-    expectedStartDate: '',
+    expectedStartDate: getDefaultStartDate(),
     description: '',
     status: 'draft',
     academicYear: '',
@@ -83,7 +94,7 @@ export const CreateClass = () => {
   const { data: gradesData } = useQuery({
     queryKey: ['grades'],
     queryFn: async () => {
-      const response = await apiClient.get('/grades');
+      const response = await apiClient.get('/shared/grades');
       return response;
     },
   });
@@ -96,25 +107,28 @@ export const CreateClass = () => {
     },
   });
 
-  const { data: feeStructuresData } = useQuery({
-    queryKey: ['fee-structures'],
-    queryFn: async () => {
-      const response = await apiClient.get('/fee-structures');
-      return response;
-    },
-  });
+  // const { data: feeStructuresData } = useQuery({
+  //   queryKey: ['fee-structures'],
+  //   queryFn: async () => {
+  //     const response = await apiClient.get('/fee-structures');
+  //     return response;
+  //   },
+  // });
 
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
   const grades = (gradesData as any)?.data || [];
-  const teachers = (teachersData as any)?.data?.data || [];
-  const feeStructures = (feeStructuresData as any)?.data || [];
 
 
   const handleAddSchedule = () => {
+    // Tìm thứ tiếp theo chưa được sử dụng theo thứ tự logic
+    const usedDays = schedules.map(s => s.day);
+    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const nextAvailableDay = dayOrder.find(day => !usedDays.includes(day)) || 'monday';
+    
     const newSchedule: ScheduleItem = {
       id: Date.now().toString(),
-      day: 'monday',
+      day: nextAvailableDay,
       startTime: '08:00',
       duration: 90,
     };
@@ -153,20 +167,25 @@ export const CreateClass = () => {
       newErrors.subjectId = 'Khoá học là bắt buộc';
     }
 
+    // Validate grade
+    if (!formData.gradeId || formData.gradeId === 'none') {
+      newErrors.gradeId = 'Khối lớp là bắt buộc';
+    }
+
     // Validate start date
     if (!validateRequired(formData.expectedStartDate)) {
       newErrors.expectedStartDate = 'Ngày khai giảng là bắt buộc';
     }
 
-    // Validate room
-    if (!formData.roomId || formData.roomId === 'none') {
-      newErrors.roomId = 'Chọn phòng học là bắt buộc';
-    }
+    // // Validate room
+    // if (!formData.roomId || formData.roomId === 'none') {
+    //   newErrors.roomId = 'Chọn phòng học là bắt buộc';
+    // }
 
-    // Validate academic year
-    if (!validateRequired(formData.academicYear)) {
-      newErrors.academicYear = 'Năm học là bắt buộc';
-    }
+    // // Validate academic year
+    // if (!validateRequired(formData.academicYear)) {
+    //   newErrors.academicYear = 'Năm học là bắt buộc';
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -315,7 +334,6 @@ export const CreateClass = () => {
       subjectId: formData.subjectId === 'none' ? undefined : formData.subjectId,
       roomId: formData.roomId === 'none' ? undefined : formData.roomId,
       teacherId: formData.teacherId === 'none' ? undefined : formData.teacherId,
-      feeStructureId: formData.feeStructureId === 'none' ? undefined : formData.feeStructureId,
       maxStudents: formData.maxStudents
         ? parseInt(formData.maxStudents)
         : undefined,
@@ -436,7 +454,7 @@ export const CreateClass = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="gradeId" className="text-sm font-medium">
-                    Khối lớp
+                    Khối lớp <span className="text-red-500">*</span>
                   </Label>
                   <Select 
                     value={formData.gradeId} 
@@ -453,6 +471,10 @@ export const CreateClass = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {errors.gradeId && (
+                    <p className="text-sm text-red-500 mt-1">{errors.gradeId}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="subjectId" className="text-sm font-medium">
@@ -484,7 +506,7 @@ export const CreateClass = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                     <Label htmlFor="expectedStartDate" className="text-sm font-medium">
-                    Ngày khai giảng (dự kiến) <span className="text-red-500">*</span>
+                    Ngày tuyển sinh (dự kiến) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="expectedStartDate"
@@ -498,7 +520,7 @@ export const CreateClass = () => {
                 </div>
                 <div>
                   <Label htmlFor="roomId" className="text-sm font-medium">
-                    Chọn phòng học <span className="text-red-500">*</span>
+                    Chọn phòng học 
                   </Label>
                   <Select
                     value={formData.roomId}
@@ -525,7 +547,8 @@ export const CreateClass = () => {
               {/* Năm học */}
               <div>
                 <Label htmlFor="academicYear" className="text-sm font-medium">
-                  Năm học <span className="text-red-500">*</span>
+                  Năm học 
+                  {/* <span className="text-red-500">*</span> */}
                 </Label>
                 <Select
                   value={formData.academicYear}
@@ -552,51 +575,7 @@ export const CreateClass = () => {
                 <ErrorMessage field="academicYear" />
               </div>
 
-              {/* Giáo viên & Cấu trúc phí */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="teacherId" className="text-sm font-medium">
-                    Giáo viên
-                  </Label>
-                  <Select
-                    value={formData.teacherId}
-                    onValueChange={(value) => handleInputChange("teacherId", value)}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Chọn giáo viên" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Chưa chọn giáo viên</SelectItem>
-                      {teachers && teachers.length > 0 && teachers.map((teacher: any) => (
-                        <SelectItem key={teacher.id} value={teacher.id}>
-                          {teacher.name || teacher.user?.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="feeStructureId" className="text-sm font-medium">
-                    Cấu trúc phí
-                  </Label>
-                  <Select
-                    value={formData.feeStructureId}
-                    onValueChange={(value) => handleInputChange("feeStructureId", value)}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Chọn cấu trúc phí" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Chưa chọn cấu trúc phí</SelectItem>
-                      {feeStructures && feeStructures.length > 0 && feeStructures.map((feeStructure: any) => (
-                        <SelectItem key={feeStructure.id} value={feeStructure.id}>
-                          {feeStructure.name} - {feeStructure.amount?.toLocaleString()}đ
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+       
 
               {/* Lịch học hàng tuần */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">

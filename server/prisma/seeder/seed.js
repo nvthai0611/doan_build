@@ -341,12 +341,24 @@ async function createClasses(subjects, rooms, grades) {
         actualStartDate: faker.datatype.boolean({ probability: 0.7 }) ? faker.date.recent() : null,
         actualEndDate: faker.datatype.boolean({ probability: 0.3 }) ? faker.date.future({ months: 6 }) : null,
         recurringSchedule: {
-          days: faker.helpers.arrayElements(
-            ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-            faker.number.int({ min: 1, max: 3 })
-          ),
-          startTime: faker.helpers.arrayElement(['07:00', '08:00', '14:00', '15:00']),
-          endTime: faker.helpers.arrayElement(['09:00', '10:00', '16:00', '17:00'])
+          schedules: faker.helpers.arrayElements(
+            [
+              { day: 'monday', startTime: '07:00', endTime: '09:00' },
+              { day: 'monday', startTime: '14:00', endTime: '16:00' },
+              { day: 'tuesday', startTime: '08:00', endTime: '10:00' },
+              { day: 'tuesday', startTime: '15:00', endTime: '17:00' },
+              { day: 'wednesday', startTime: '07:30', endTime: '09:30' },
+              { day: 'wednesday', startTime: '14:30', endTime: '16:30' },
+              { day: 'thursday', startTime: '08:30', endTime: '10:30' },
+              { day: 'thursday', startTime: '15:30', endTime: '17:30' },
+              { day: 'friday', startTime: '07:00', endTime: '09:00' },
+              { day: 'friday', startTime: '14:00', endTime: '16:00' },
+              { day: 'saturday', startTime: '08:00', endTime: '10:00' },
+              { day: 'saturday', startTime: '15:00', endTime: '17:00' },
+              { day: 'sunday', startTime: '09:00', endTime: '11:00' }
+            ],
+            faker.number.int({ min: 2, max: 4 })
+          )
         }
       },
     });

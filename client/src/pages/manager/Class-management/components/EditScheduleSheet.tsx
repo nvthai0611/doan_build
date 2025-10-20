@@ -91,9 +91,14 @@ export const EditScheduleSheet = ({
     
 
     const handleAddSchedule = () => {
+        // Tìm thứ tiếp theo chưa được sử dụng theo thứ tự logic
+        const usedDays = schedules.map(s => s.day);
+        const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const nextAvailableDay = dayOrder.find(day => !usedDays.includes(day)) || 'monday';
+        
         const newSchedule: ScheduleItem = {
             id: Date.now().toString(),
-            day: 'monday',
+            day: nextAvailableDay,
             startTime: '08:00',
             endTime: '09:30',
             duration: 90
@@ -176,7 +181,7 @@ export const EditScheduleSheet = ({
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                                             <Calendar className="h-4 w-4" />
-                                            <span>{classData.subjectName} - {classData.grade}</span>
+                                            <span>{classData.subjectName} - {classData.gradeName || classData.grade?.name || 'Chưa xác định'}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                                             <User className="h-4 w-4" />
