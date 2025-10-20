@@ -53,3 +53,7 @@ export type {
   ScheduleTemplate,
   ScheduleReport
 } from './center-schedule/schedule.types'
+
+// Settings
+export { settingsService } from './settings-management/settings.service'
+
