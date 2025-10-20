@@ -37,6 +37,7 @@ import { StudentDetailPage } from "../pages/manager/Student-management/component
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
+import ParentMyDocumentsPage from "../pages/Parent/MyDocuments";
 
 
 export const privateRoutes = (
@@ -102,6 +103,8 @@ export const privateRoutes = (
       <Route path="/parent" element={<AuthMiddleware allowedRoles={['parent']} />}>
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
+        <Route path="my-documents/:childId" element={<ParentMyDocumentsPage />} />
+        <Route path="my-documents" element={<ParentMyDocumentsPage />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
       </Route>
 

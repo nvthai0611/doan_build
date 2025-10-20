@@ -21,3 +21,11 @@ export type {
   Notification,
   Announcement
 } from './communication/communication.types'
+
+// Materials
+export { parentMaterialsService } from './materials/materials.service'
+export type {
+  ParentMaterial,
+  ParentMaterialsResponse,
+  GetParentMaterialsParams
+} from './materials/materials.types'
