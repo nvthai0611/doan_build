@@ -35,7 +35,6 @@ export const EditScheduleSheet = ({
     
     // Load schedules from classData when component opens
     useEffect(() => {
-        console.log(classData);
         
         if (open && classData) {
             let scheduleData = null;

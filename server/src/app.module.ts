@@ -29,11 +29,21 @@ import { StudentModule } from './modules/student/student.module';
 import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { SharedModule } from './modules/shared/shared.module';
+import { BullModule } from '@nestjs/bull';
 // ...existing code...
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    // Cấu hình Bull với Redis
+    BullModule.forRoot({
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT) || 6379,
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: parseInt(process.env.REDIS_DB) || 0,
+      },
+    }),
     AuthModule,
     TeacherModule,
     StudentModule,
