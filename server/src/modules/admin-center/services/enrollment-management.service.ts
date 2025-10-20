@@ -390,15 +390,7 @@ export class EnrollmentManagementService {
             return {
                 success: true,
                 message: 'Lấy danh sách học sinh thành công',
-                data: enrollments.map(e => ({
-                    enrollmentId: e.id,
-                    studentId: e.student.id,
-                    ...e.student.user,
-                    studentCode: e.student.studentCode,
-                    enrolledAt: e.enrolledAt,
-                    status: e.status,
-                    semester: e.semester
-                })),
+                data: enrollments,
                 meta: {
                     total,
                     page: parseInt(page),
