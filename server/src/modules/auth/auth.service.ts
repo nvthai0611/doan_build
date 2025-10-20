@@ -12,12 +12,14 @@ export class AuthService {
   ) {}
 
   async getUserByField(field: string = 'id', value: string) {
+    console.log(field, value);
+    
     return this.prisma.user.findFirst({
       where: {
         [field]: value,
       },
       include: {
-        // teacher: true,
+        teacher: true,
         student: true,
         parent: true,
         roleData: {
@@ -66,7 +68,8 @@ export class AuthService {
     });
     console.log(accessToken);
     const refreshToken = JWT.createRefreshToken();
-
+    console.log(refreshToken);
+    
     // Lưu refresh token vào database
     await this.prisma.userSession.create({
       data: {
@@ -75,6 +78,9 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
+
+    console.log("step last");
+    
 
     return {
       accessToken,

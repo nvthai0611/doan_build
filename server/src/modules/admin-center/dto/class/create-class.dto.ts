@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject, IsDateString, ValidateIf } from 'class-validator';
 
 export class CreateClassDto {
   @IsString()
@@ -25,19 +25,15 @@ export class CreateClassDto {
   roomId?: string;
 
   @IsOptional()
+  @ValidateIf((o) => o.teacherId !== undefined && o.teacherId !== null && o.teacherId !== '')
   @IsUUID()
   teacherId?: string;
 
   @IsOptional()
-  @IsUUID()
-  feeStructureId?: string;
-
-  @IsOptional()
-  @IsString()
   description?: string;
 
   @IsOptional()
-  @IsEnum(['draft', 'active', 'completed', 'cancelled'])
+  @IsEnum(['draft', 'ready','active', 'completed', 'cancelled'])
   status?: string = 'draft';
 
   @IsOptional()

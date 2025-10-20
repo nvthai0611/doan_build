@@ -82,7 +82,7 @@ export enum ClassStatus {
 export const CLASS_STATUS_LABELS: Record<ClassStatus, string> = {
   [ClassStatus.ALL]: 'Tất cả',
   [ClassStatus.DRAFT]: 'Chưa cập nhật',
-  [ClassStatus.READY]: 'Sẵn sàng',
+  [ClassStatus.READY]: 'Đang tuyển sinh',
   [ClassStatus.ACTIVE]: 'Đang hoạt động',
   [ClassStatus.COMPLETED]: 'Đã hoàn thành',
   [ClassStatus.SUSPENDED]: 'Tạm dừng',
