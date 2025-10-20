@@ -663,6 +663,7 @@ model IncidentReport {
   @@map("incident_reports")
 }
 
+
 enum Gender {
   MALE
   FEMALE
