@@ -56,7 +56,7 @@ export class MaterialsService {
 
     const statsAgg = await this.prisma.material.aggregate({
       where,
-      _sum: { fileSize: true, downloads: true },
+      _sum: { fileSize: true },
     });
     const recentUploads = await this.prisma.material.count({
       where: { ...where, uploadedAt: { gte: weekAgo } },
@@ -101,7 +101,6 @@ export class MaterialsService {
       },
       stats: {
         totalSize: Number(statsAgg._sum.fileSize || 0),
-        totalDownloads: Number(statsAgg._sum.downloads || 0),
         recentUploads,
       },
     };

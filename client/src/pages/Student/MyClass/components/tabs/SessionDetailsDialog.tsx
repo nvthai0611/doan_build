@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDays } from "lucide-react"
+import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDays, UserCheck, XCircle, AlertCircle } from "lucide-react"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentScheduleService } from "../../../../../services/student/schedule/schedule.service"
 import type { StudentSession } from "../../../../../services/student/schedule/schedule.types"
@@ -81,6 +81,38 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
   const getClassName = () => (session as any)?.class?.name || classInfo?.name || (session as any)?.className || 'Lớp học'
   const getTeacherName = () => (session as any)?.class?.teacher?.user?.fullName || classInfo?.teacher?.user?.fullName || (session as any)?.teacherName || 'Giáo viên'
 
+  const getAttendanceBadge = (status?: string | null) => {
+    switch (status) {
+      case 'present':
+        return <Badge className="bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" />
+          Có mặt
+        </Badge>
+      case 'absent':
+        return <Badge className="bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
+          <XCircle className="w-3 h-3" />
+          Vắng mặt
+        </Badge>
+      case 'late':
+        return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          Đi muộn
+        </Badge>
+      case 'excused':
+        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
+          <UserCheck className="w-3 h-3" />
+          Có phép
+        </Badge>
+      case null:
+      case undefined:
+      default:
+        return <Badge variant="secondary" className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          Chưa điểm danh
+        </Badge>
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -103,6 +135,7 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
               </div>
               <div className="flex items-center gap-2">
                 <Badge className={getStatusColor(session?.status)}>{statusTextVi(session?.status)}</Badge>
+                {getAttendanceBadge((session as any)?.attendanceStatus)}
               </div>
             </div>
 
@@ -155,6 +188,48 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Thông tin điểm danh */}
+                {(session as any)?.attendanceStatus && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <UserCheck className="w-4 h-4" />
+                        Thông tin điểm danh
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Trạng thái:</span>
+                        {getAttendanceBadge((session as any)?.attendanceStatus)}
+                      </div>
+                      
+                      {(session as any)?.attendanceRecordedAt && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Thời gian điểm danh:</span>
+                          <span className="text-sm font-medium">
+                            {new Date((session as any).attendanceRecordedAt).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {(session as any)?.attendanceRecordedBy && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Điểm danh bởi:</span>
+                          <span className="text-sm font-medium">{(session as any).attendanceRecordedBy.fullName}</span>
+                        </div>
+                      )}
+                      
+                      {(session as any)?.attendanceNote && (
+                        <div className="mt-3 p-3 bg-yellow-50 rounded-lg border-l-2 border-yellow-400">
+                          <div className="text-sm text-yellow-800">
+                            <span className="font-medium">Ghi chú:</span> {(session as any).attendanceNote}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </div>

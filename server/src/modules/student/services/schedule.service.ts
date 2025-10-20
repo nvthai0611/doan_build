@@ -25,11 +25,50 @@ export class StudentScheduleService {
         },
       },
       include: {
-        class: { include: { subject: true } },
+        class: { 
+          include: { 
+            subject: true,
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
+              }
+            }
+          } 
+        },
         room: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
         attendances: {
           where: { studentId },
-          select: { id: true, status: true, note: true, recordedAt: true },
+          select: { 
+            id: true, 
+            status: true, 
+            note: true, 
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
           take: 1,
         },
       },
@@ -39,10 +78,12 @@ export class StudentScheduleService {
       ],
     });
 
-
     return sessions.map((s: any) => ({
       ...s,
       attendanceStatus: s.attendances?.[0]?.status ?? null,
+      attendanceNote: s.attendances?.[0]?.note ?? null,
+      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
     }));
   }
 
@@ -64,11 +105,50 @@ export class StudentScheduleService {
         },
       },
       include: {
-        class: { include: { subject: true } },
+        class: { 
+          include: { 
+            subject: true,
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
+              }
+            }
+          } 
+        },
         room: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
         attendances: {
           where: { studentId },
-          select: { id: true, status: true, note: true, recordedAt: true },
+          select: { 
+            id: true, 
+            status: true, 
+            note: true, 
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
           take: 1,
         },
       },
@@ -78,10 +158,12 @@ export class StudentScheduleService {
       ],
     });
 
-
     return sessions.map((s: any) => ({
       ...s,
       attendanceStatus: s.attendances?.[0]?.status ?? null,
+      attendanceNote: s.attendances?.[0]?.note ?? null,
+      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
     }));
   }
 
@@ -108,15 +190,49 @@ export class StudentScheduleService {
         class: {
           include: {
             subject: true,
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
+              }
+            }
           },
         },
         room: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
         attendances: {
           where: { studentId },
-          select: { id: true, status: true, note: true, recordedAt: true },
+          select: { 
+            id: true, 
+            status: true, 
+            note: true, 
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
           take: 1,
         },
-        
       },
       orderBy: [
         { sessionDate: 'asc' },
@@ -124,31 +240,172 @@ export class StudentScheduleService {
       ],
     });
 
-
     // Chuẩn hoá output: gắn trực tiếp attendanceStatus (nếu có) cho tiện frontend
     return sessions.map((s: any) => ({
       ...s,
       attendanceStatus: s.attendances?.[0]?.status ?? null,
+      attendanceNote: s.attendances?.[0]?.note ?? null,
+      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
     }));
   }
 
   async getSessionById(studentId: string, sessionId: string) {
-    if (!studentId) return null;
-    // Gợi ý query thực tế:
-    // return this.prisma.classSession.findUnique({
-    //   where: { id: sessionId },
-    //   include: {
-    //     class: { include: { subject: true, teacher: { include: { user: true } } } },
-    //     room: true,
-    //     attendances: { where: { studentId }, take: 1 },
-    //   },
-    // });
-    return null;
+    if (!studentId || !sessionId) return null;
+    
+    const session = await this.prisma.classSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { 
+          include: { 
+            subject: true, 
+            teacher: { 
+              include: { 
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true
+                  }
+                } 
+              } 
+            } 
+          } 
+        },
+        room: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        attendances: { 
+          where: { studentId }, 
+          select: {
+            id: true,
+            status: true,
+            note: true,
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
+          take: 1 
+        },
+      },
+    });
+
+    if (!session) return null;
+
+    // Kiểm tra xem học sinh có được ghi danh vào lớp này không
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: {
+        studentId,
+        classId: session.classId,
+        status: 'active'
+      }
+    });
+
+    if (!enrollment) {
+      throw new Error('Học sinh không được ghi danh vào lớp này');
+    }
+
+    return {
+      ...session,
+      attendanceStatus: session.attendances?.[0]?.status ?? null,
+      attendanceNote: session.attendances?.[0]?.note ?? null,
+      attendanceRecordedAt: session.attendances?.[0]?.recordedAt ?? null,
+      attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
+    };
   }
 
   async getScheduleDetail(studentId: string, id: string) {
     if (!studentId || !id) return null;
-    // TODO: Query thực tế
-    return null;
+    
+    // Tìm session theo id và kiểm tra quyền truy cập
+    const session = await this.prisma.classSession.findUnique({
+      where: { id },
+      include: {
+        class: { 
+          include: { 
+            subject: true,
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
+              }
+            }
+          } 
+        },
+        room: true,
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        attendances: { 
+          where: { studentId }, 
+          select: {
+            id: true,
+            status: true,
+            note: true,
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
+          take: 1 
+        },
+      },
+    });
+
+    if (!session) return null;
+
+    // Kiểm tra xem học sinh có được ghi danh vào lớp này không
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: {
+        studentId,
+        classId: session.classId,
+        status: 'active'
+      }
+    });
+
+    if (!enrollment) {
+      throw new Error('Học sinh không được ghi danh vào lớp này');
+    }
+
+    return {
+      ...session,
+      attendanceStatus: session.attendances?.[0]?.status ?? null,
+      attendanceNote: session.attendances?.[0]?.note ?? null,
+      attendanceRecordedAt: session.attendances?.[0]?.recordedAt ?? null,
+      attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
+    };
   }
 }
