@@ -197,7 +197,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     setErrors({}); // Clear errors when starting to edit
   };
 
-  console.log(editData);
   
 
   // Validation functions
@@ -208,61 +207,21 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Validate name
+    // Chỉ validate các trường bắt buộc: tên, khối lớp, môn học
+    // Validate name - bắt buộc
     if (!validateRequired(editData.name)) {
       newErrors.name = 'Tên lớp là bắt buộc';
     }
 
-    // Note: subjectId không được edit
-
-    // Validate room
-    if (!editData.roomId || editData.roomId === 'none') {
-      newErrors.roomId = 'Chọn phòng học là bắt buộc';
+    // Validate grade - bắt buộc
+    if (!editData.gradeId || editData.gradeId === 'none') {
+      newErrors.gradeId = 'Chọn khối lớp là bắt buộc';
     }
 
-    // Logic validation theo status
-    if (canEditExpectedDates) {
-      // Có thể edit expectedStartDate -> validate expectedStartDate
-      if (editData.expectedStartDate) {
-        const expectedDate = new Date(editData.expectedStartDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time to start of day
-        
-        if (expectedDate < today) {
-          newErrors.expectedStartDate = 'Ngày khai giảng không được là ngày trong quá khứ';
-        }
-      }
-    }
-    
-    if (canEditActualDates) {
-      // Có thể edit actualDates -> validate actualStartDate và actualEndDate
-      if (editData.actualStartDate) {
-        const actualStartDate = new Date(editData.actualStartDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (actualStartDate < today) {
-          newErrors.actualStartDate = 'Ngày bắt đầu không được là ngày trong quá khứ';
-        }
-      }
-
-      if (editData.actualEndDate) {
-        const actualEndDate = new Date(editData.actualEndDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (actualEndDate < today) {
-          newErrors.actualEndDate = 'Ngày kết thúc không được là ngày trong quá khứ';
-        }
-        
-        // Validate end date is after start date
-        if (editData.actualStartDate) {
-          const actualStartDate = new Date(editData.actualStartDate);
-          if (actualEndDate <= actualStartDate) {
-            newErrors.actualEndDate = 'Ngày kết thúc phải sau ngày bắt đầu';
-          }
-        }
-      }
+    // Validate subject - bắt buộc
+    const subjectId = classData.subjectId || classData.subject?.id;
+    if (!subjectId) {
+      newErrors.subjectId = 'Môn học là bắt buộc';
     }
 
     setErrors(newErrors);
@@ -295,8 +254,10 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const updateData = {
         name: editData.name.trim(),
         description: editData.description,
-        roomId: editData.roomId === 'none' ? undefined : editData.roomId,
-        gradeId: editData.gradeId === 'none' ? undefined : editData.gradeId,
+        // Xử lý roomId: chỉ gửi nếu có giá trị hợp lệ, không gửi nếu rỗng hoặc 'none'
+        ...(editData.roomId && editData.roomId !== 'none' && editData.roomId !== '' ? { roomId: editData.roomId } : {}),
+        // Xử lý gradeId: chỉ gửi nếu có giá trị hợp lệ
+        ...(editData.gradeId && editData.gradeId !== 'none' ? { gradeId: editData.gradeId } : {}),
         status: editData.status,
         academicYear: editData.academicYear,
         // Gửi expectedStartDate nếu được phép edit
@@ -308,6 +269,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         } : {}),
       };
 
+      console.log('Sending update data:', updateData);
       await classService.updateClass(classData.id, updateData);
       
       toast({
@@ -319,10 +281,13 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       // Refresh class data - có thể emit event hoặc callback để parent component refetch
       window.location.reload(); // Temporary solution
     } catch (error: any) {
-      console.error('Error updating class:', error);
+      // Hiển thị chi tiết lỗi validation từ backend
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.message || 
+                          "Có lỗi xảy ra khi cập nhật lớp học";
       toast({
         title: "Lỗi",
-        description: error.response?.message || "Có lỗi xảy ra khi cập nhật lớp học",
+        description: Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -449,7 +414,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       
       toast({
         title: "Thành công",
-        description: "Gán giáo viên cho lớp học thành công",
+        description: "Gán giáo viên cho lớp học thành công. Email thông báo đã được gửi cho giáo viên.",
       });
       
       setIsAssignTeacherModalOpen(false);
@@ -583,14 +548,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Khối lớp
+                  Khối lớp <span className="text-red-500">*</span>
                 </label>
                 {isEditing ? (
                   <Select
                     value={editData.gradeId}
                     onValueChange={(value) => handleInputChange('gradeId', value)}
                   >
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className={`mt-1 ${errors.gradeId ? "border-red-500" : ""}`}>
                       <SelectValue placeholder="Chọn khối lớp" />
                     </SelectTrigger>
                     <SelectContent>
@@ -607,19 +572,20 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     {classData.gradeName || classData.grade?.name ? `Khối ${classData.gradeLevel || classData.grade?.level}` : 'Chưa xác định'}
                   </p>
                 )}
+                <ErrorMessage field="gradeId" />
               </div>
             
 
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Chọn phòng học <span className="text-red-500">*</span>
+                  Chọn phòng học
                 </label>
                 {isEditing ? (
                   <Select
                     value={editData.roomId}
                     onValueChange={(value) => handleInputChange('roomId', value)}
                   >
-                    <SelectTrigger className={`mt-1 ${errors.roomId ? "border-red-500" : ""}`}>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Chọn phòng học" />
                     </SelectTrigger>
                     <SelectContent>
@@ -638,7 +604,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     {classData.roomName || classData.room?.name || 'Chưa phân công'}
                   </p>
                 )}
-                <ErrorMessage field="roomId" />
               </div>
 
               {/* Lịch học hàng tuần */}
@@ -683,11 +648,12 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
             <div className="space-y-6">
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Môn học
+                  Môn học <span className="text-red-500">*</span>
                 </label>
                 <p className="text-base mt-1">
                   {classData.subjectName || classData.subject?.name || 'Chưa xác định'}
                 </p>
+                <ErrorMessage field="subjectId" />
               </div>
 
               {/* Trạng thái hoạt động */}

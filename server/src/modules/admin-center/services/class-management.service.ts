@@ -3,10 +3,16 @@ import { PrismaService } from '../../../db/prisma.service';
 import { CreateClassDto } from '../dto/class/create-class.dto';
 import { UpdateClassDto } from '../dto/class/update-class.dto';
 import { QueryClassDto } from '../dto/class/query-class.dto';
+import { EmailQueueService } from '../../shared/services/email-queue.service';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
 
 @Injectable()
 export class ClassManagementService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private emailQueueService: EmailQueueService,
+        private emailNotificationService: EmailNotificationService
+    ) {}
     // Lấy danh sách tất cả lớp học với filters và pagination
     async findAll(queryDto: QueryClassDto) {
         try {
@@ -1409,6 +1415,17 @@ export class ClassManagementService {
                 );
             }
 
+            // Gửi email hủy lớp cho giáo viên cũ (nếu có)
+            if (classItem.teacherId) {
+                try {
+                    await this.emailNotificationService.sendTeacherCancellationEmailDirect(classId, classItem.teacherId);
+                    console.log(`📧 Email hủy lớp đã được gửi cho giáo viên cũ ${classItem.teacherId}`);
+                } catch (emailError) {
+                    console.error('Failed to send cancellation email to old teacher:', emailError);
+                    // Không throw error để không làm fail toàn bộ operation
+                }
+            }
+
             // Update class with new teacher
             const updatedClass = await this.prisma.class.update({
                 where: { id: classId },
@@ -1430,7 +1447,16 @@ export class ClassManagementService {
                     }
                 }
             });
-
+            // Gửi email thông báo cho giáo viên
+            try {
+                    // Gửi email trực tiếp
+                    await this.emailNotificationService.sendTeacherAssignmentEmailDirect(classId, body.teacherId);
+                    console.log(`📧 Email đã được gửi trực tiếp cho giáo viên ${body.teacherId} và lớp ${classId}`);
+            } catch (emailError) {
+                // Log lỗi email nhưng không làm fail toàn bộ operation
+                console.error('Failed to send email notification:', emailError);
+                // Có thể thêm vào response để frontend biết email không gửi được
+            }
             return {
                 success: true,
                 message: 'Phân công giáo viên thành công',
@@ -1477,6 +1503,15 @@ export class ClassManagementService {
                     },
                     HttpStatus.NOT_FOUND
                 );
+            }
+
+            // Gửi email hủy lớp cho giáo viên trước khi xóa
+            try {
+                await this.emailNotificationService.sendTeacherCancellationEmailDirect(classId, teacherId);
+                console.log(`📧 Email hủy lớp đã được gửi cho giáo viên ${teacherId}`);
+            } catch (emailError) {
+                console.error('Failed to send cancellation email to teacher:', emailError);
+                // Không throw error để không làm fail toàn bộ operation
             }
 
             // Remove teacher assignment by setting teacherId to null
