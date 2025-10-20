@@ -386,7 +386,7 @@ export const ClassManagement = () => {
                                 </div>
                             ))
                         ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-gray-400">Chưa có lịch</span>
                         )}
                     </div>
                 );
@@ -412,27 +412,27 @@ export const ClassManagement = () => {
             header: 'Giáo viên phụ trách',
             render: (item: any) => {
                 if (item.teacher) {
-                    console.log(item.teacher);
+                    const teacher = item.teacher;
                     return (
                         <div className="flex items-center gap-2">
                             <Popover>
-                                <PopoverTrigger asChild>    
+                                <PopoverTrigger asChild>
                                     <img 
-                                        src={item?.teacher?.avatar || "https://picsum.photos/200/300"} 
-                                        alt={item?.teacher?.name || "Giáo viên"} 
+                                        src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                        alt={teacher.user?.fullName || "Giáo viên"} 
                                         className="w-8 h-8 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all"
                                     />
                                 </PopoverTrigger>
                                 <PopoverContent className="w-80 p-4" align="start">
                                     <div className="flex items-center gap-3">
                                         <img 
-                                            src={item?.teacher?.avatar || "https://picsum.photos/200/300"} 
-                                            alt={item?.teacher?.name || "Giáo viên"} 
+                                            src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                            alt={teacher.user?.fullName || "Giáo viên"} 
                                             className="w-16 h-16 rounded-full object-cover"
                                         />
-                                        <div className="flex-1">    
-                                            <h4 className="font-semibold text-lg">{item?.teacher?.name}</h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">{item?.teacher?.email}</p>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg">{teacher.user?.fullName}</h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">{teacher.user?.email}</p>
                                             <div className="mt-2">
                                                 <Badge variant="outline" className="text-xs">
                                                     Giáo viên 
@@ -454,7 +454,7 @@ export const ClassManagement = () => {
                                     </div>
                                 </PopoverContent>
                             </Popover>
-                            <span className="text-sm">{item?.teacher?.name}</span>
+                            <span className="text-sm">{teacher.user?.fullName}</span>
                         </div>
                     );
                 }
@@ -844,5 +844,3 @@ export const ClassManagement = () => {
     );
 };
 export default ClassManagement;
-
-

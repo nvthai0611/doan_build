@@ -19,7 +19,7 @@ export const GENDER_LABELS: Record<Gender, string> = {
 // ==================== STUDENT STATUS ====================
 export enum StudentStatus {
   PENDING = 'pending',        // Chờ xếp lớp
-  UPCOMING = 'upcoming',      // Sắp học
+  // UPCOMING = 'upcoming',      // Sắp học
   STUDYING = 'studying',      // Đang học
   RESERVED = 'reserved',      // Bảo lưu
   STOPPED = 'stopped',        // Dừng học
@@ -29,8 +29,8 @@ export enum StudentStatus {
 
 export const STUDENT_STATUS_LABELS: Record<StudentStatus, string> = {
   [StudentStatus.ALL]: 'Tất cả',
-  [StudentStatus.PENDING]: 'Chờ xếp lớp',
-  [StudentStatus.UPCOMING]: 'Sắp học',
+  [StudentStatus.PENDING]: 'Chưa cập nhật lịch học',
+  // [StudentStatus.UPCOMING]: 'Sắp học',
   [StudentStatus.STUDYING]: 'Đang học',
   [StudentStatus.RESERVED]: 'Bảo lưu',
   [StudentStatus.STOPPED]: 'Dừng học',
@@ -40,7 +40,7 @@ export const STUDENT_STATUS_LABELS: Record<StudentStatus, string> = {
 export const STUDENT_STATUS_COLORS: Record<StudentStatus, string> = {
   [StudentStatus.ALL]: 'border-blue-500 text-blue-700 bg-blue-50',
   [StudentStatus.PENDING]: 'border-orange-500 text-orange-700 bg-orange-50',
-  [StudentStatus.UPCOMING]: 'border-purple-500 text-purple-700 bg-purple-50',
+  // [StudentStatus.UPCOMING]: 'border-purple-500 text-purple-700 bg-purple-50',
   [StudentStatus.STUDYING]: 'border-green-500 text-green-700 bg-green-50',
   [StudentStatus.RESERVED]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
   [StudentStatus.STOPPED]: 'border-red-500 text-red-700 bg-red-50',
@@ -50,7 +50,7 @@ export const STUDENT_STATUS_COLORS: Record<StudentStatus, string> = {
 export const STUDENT_STATUS_COUNT_COLORS: Record<StudentStatus, string> = {
   [StudentStatus.ALL]: 'bg-blue-100 text-blue-800',
   [StudentStatus.PENDING]: 'bg-orange-100 text-orange-800',
-  [StudentStatus.UPCOMING]: 'bg-purple-100 text-purple-800',
+  // [StudentStatus.UPCOMING]: 'bg-purple-100 text-purple-800',
   [StudentStatus.STUDYING]: 'bg-green-100 text-green-800',
   [StudentStatus.RESERVED]: 'bg-yellow-100 text-yellow-800',
   [StudentStatus.STOPPED]: 'bg-red-100 text-red-800',
@@ -60,7 +60,7 @@ export const STUDENT_STATUS_COUNT_COLORS: Record<StudentStatus, string> = {
 // Mapping từ status tiếng Việt sang enum
 export const STUDENT_STATUS_MAPPING: Record<string, StudentStatus> = {
   'Chờ xếp lớp': StudentStatus.PENDING,
-  'Sắp học': StudentStatus.UPCOMING,
+  // 'Sắp học': StudentStatus.UPCOMING,
   'Đang học': StudentStatus.STUDYING,
   'Bảo lưu': StudentStatus.RESERVED,
   'Dừng học': StudentStatus.STOPPED,

@@ -82,7 +82,7 @@ export function LoginForm() {
                 <strong>Giáo viên:</strong> teacher@qne.edu.vn / 123456
               </p>
               <p>
-                <strong>Học sinh:</strong> student@qne.edu.vn / 123456
+                <strong>Học sinh:</strong> student@qne.edu.vn / password
               </p>
               <p>
                 <strong>Phụ huynh:</strong> parent@qne.edu.vn / 123456

@@ -209,6 +209,7 @@ export class ClassManagementService {
                     totalPages: Math.ceil(totalBeforeFilter / limit)
                 }
             };
+    
         } catch (error) {
             throw new HttpException(
                 {
@@ -1289,8 +1290,6 @@ export class ClassManagementService {
             );
         }
     }
-
-    
     // Xóa lớp học (soft delete bằng cách đổi status)
     async delete(id: string) {
         try {
