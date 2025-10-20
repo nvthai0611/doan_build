@@ -1,10 +1,245 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from "src/db/prisma.service";
-import  hash from '../../../utils/hasing.util';
+import hash from '../../../utils/hasing.util';
 
 @Injectable()
 export class ParentManagementService {
     constructor(private readonly prisma: PrismaService){}
+
+    /**
+     * Tạo mới parent kèm student
+     */
+    async createParentWithStudents(createParentData: {
+        fullName: string;
+        username: string;
+        email: string;
+        phone?: string;
+        gender?: 'MALE' | 'FEMALE' | 'OTHER';
+        birthDate?: string;
+        password?: string;
+        students?: Array<{
+            fullName: string;
+            username: string;
+            studentCode: string;
+            email?: string;
+            phone?: string;
+            gender?: 'MALE' | 'FEMALE' | 'OTHER';
+            birthDate?: string;
+            address?: string;
+            grade?: string;
+            schoolId: string;
+        }>;
+    }) {
+        try {
+            // Check if parent username already exists
+            const existingUsername = await this.prisma.user.findUnique({
+                where: { username: createParentData.username + "@qne.edu.vn" }
+            });
+
+            if (existingUsername) {
+                throw new Error('Username phụ huynh đã được sử dụng');
+            }
+
+            // Check if parent email already exists
+            const existingEmail = await this.prisma.user.findUnique({
+                where: { email: createParentData.email }
+            });
+
+            if (existingEmail) {
+                throw new Error('Email phụ huynh đã được sử dụng');
+            }
+
+            // Check if parent phone already exists (if provided)
+            if (createParentData.phone) {
+                const existingPhone = await this.prisma.user.findFirst({
+                    where: { phone: createParentData.phone }
+                });
+
+                if (existingPhone) {
+                    throw new Error('Số điện thoại phụ huynh đã được sử dụng');
+                }
+            }
+
+            // Validate students if provided
+            if (createParentData.students && createParentData.students.length > 0) {
+                for (const student of createParentData.students) {
+                    // fullName, username, studentCode and schoolId are required
+                    if (!student.fullName || !student.username || !student.studentCode || !student.schoolId) {
+                        throw new Error('Thông tin học sinh không đầy đủ (cần: fullName, username, studentCode, schoolId)');
+                    }
+
+                    // Check if student username already exists
+                    const existingStudentUsername = await this.prisma.user.findUnique({
+                        where: { username: student.username + "@student.qne.edu.vn" }
+                    });
+
+                    if (existingStudentUsername) {
+                        throw new Error(`Username học sinh "${student.username}" đã được sử dụng`);
+                    }
+
+                    // Check if student code already exists (REQUIRED & UNIQUE)
+                    const existingStudentCode = await this.prisma.student.findUnique({
+                        where: { studentCode: student.studentCode }
+                    });
+
+                    if (existingStudentCode) {
+                        throw new Error(`Mã học sinh "${student.studentCode}" đã tồn tại`);
+                    }
+
+                    // Check if student email already exists (if provided)
+                    if (student.email) {
+                        const existingStudentEmail = await this.prisma.user.findUnique({
+                            where: { email: student.email }
+                        });
+
+                        if (existingStudentEmail) {
+                            throw new Error(`Email học sinh ${student.email} đã được sử dụng`);
+                        }
+                    }
+
+                    // Check if phone already exists (if provided)
+                    if (student.phone) {
+                        const existingStudentPhone = await this.prisma.user.findFirst({
+                            where: { phone: student.phone }
+                        });
+
+                        if (existingStudentPhone) {
+                            throw new Error(`Số điện thoại ${student.phone} đã được sử dụng`);
+                        }
+                    }
+                }
+            }
+
+            // Default password if not provided
+            const defaultPassword = createParentData.password || '123456';
+
+            // Create parent user first
+            const newUser = await this.prisma.user.create({
+                data: {
+                    email: createParentData.email,
+                    username: createParentData.username,
+                    fullName: createParentData.fullName,
+                    phone: createParentData.phone,
+                    gender: createParentData.gender || 'OTHER',
+                    birthDate: createParentData.birthDate ? new Date(createParentData.birthDate) : null,
+                    password: hash.make(defaultPassword),
+                    isActive: true,
+                    role: 'parent'
+                }
+            });
+
+            // Create parent
+            const newParent = await this.prisma.parent.create({
+                data: {
+                    userId: newUser.id
+                }
+            });
+
+            // Create students if provided
+            const createdStudents = [];
+            if (createParentData.students && createParentData.students.length > 0) {
+                for (const studentData of createParentData.students) {
+                    // Use provided username with student domain
+                    const studentUsername = studentData.username;
+
+                    // Generate email if not provided (based on username)
+                    const studentEmail = studentData.email || 
+                        studentData.username + "@temp.qne.edu.vn";
+
+                    // Create student user
+                    const studentUser = await this.prisma.user.create({
+                        data: {
+                            email: studentEmail,
+                            username: studentUsername,
+                            fullName: studentData.fullName,
+                            phone: studentData.phone || null,
+                            gender: studentData.gender || 'OTHER',
+                            birthDate: studentData.birthDate ? new Date(studentData.birthDate) : null,
+                            password: hash.make(defaultPassword),
+                            isActive: true,
+                            role: 'student'
+                        }
+                    });
+
+                    // Create student record with REQUIRED studentCode
+                    const newStudent = await this.prisma.student.create({
+                        data: {
+                            userId: studentUser.id,
+                            parentId: newParent.id,
+                            studentCode: studentData.studentCode, // REQUIRED
+                            address: studentData.address || null,
+                            grade: studentData.grade || null,
+                            schoolId: studentData.schoolId
+                        },
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    email: true,
+                                    username: true,
+                                    phone: true,
+                                    avatar: true
+                                }
+                            }
+                        }
+                    });
+
+                    createdStudents.push({
+                        id: newStudent.id,
+                        studentCode: newStudent.studentCode,
+                        grade: newStudent.grade,
+                        address: newStudent.address,
+                        user: {
+                            ...newStudent.user,
+                            password: defaultPassword
+                        }
+                    });
+                }
+            }
+
+            // Get updated parent with students
+            const parentWithStudents = await this.prisma.parent.findUnique({
+                where: { id: newParent.id },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            username: true,
+                            fullName: true,
+                            phone: true,
+                            avatar: true,
+                            isActive: true,
+                            gender: true,
+                            birthDate: true,
+                            createdAt: true,
+                            updatedAt: true
+                        }
+                    }
+                }
+            });
+
+            return {
+                data: {
+                    id: parentWithStudents.id,
+                    createdAt: parentWithStudents.createdAt,
+                    updatedAt: parentWithStudents.updatedAt,
+                    user: {
+                        ...parentWithStudents.user,
+                        password: defaultPassword
+                    },
+                    students: createdStudents,
+                    studentCount: createdStudents.length
+                },
+                message: `Tạo tài khoản phụ huynh và ${createdStudents.length} học sinh thành công`
+            };
+
+        } catch (error) {
+            console.error('Error creating parent with students:', error);
+            throw new Error(`${error.message}`);
+        }
+    }
 
     /**
      * Tạo mới parent
@@ -828,6 +1063,194 @@ export class ParentManagementService {
         } catch (error) {
             console.error('Error unlinking student from parent:', error);
             throw new Error(`Error unlinking student from parent: ${error.message}`);
+        }
+    }
+
+    /**
+     * Thêm học sinh mới cho phụ huynh đã tồn tại
+     */
+    async addStudentToParent(parentId: string, studentData: {
+        fullName: string;
+        username: string;
+        studentCode: string;
+        email?: string;
+        phone?: string;
+        gender?: 'MALE' | 'FEMALE' | 'OTHER';
+        birthDate?: string;
+        address?: string;
+        grade?: string;
+        schoolId: string;
+        password?: string;
+    }) {
+        try {
+            // Validate parent exists
+            const parent = await this.prisma.parent.findUnique({
+                where: { id: parentId },
+                include: {
+                    user: true
+                }
+            });
+
+            if (!parent) {
+                throw new Error('Phụ huynh không tồn tại');
+            }
+
+            if (!parent.user.isActive) {
+                throw new Error('Tài khoản phụ huynh đã bị vô hiệu hóa');
+            }
+
+            // Validate required fields (fullName, username, studentCode, schoolId)
+            if (!studentData.fullName || !studentData.username || !studentData.studentCode || !studentData.schoolId) {
+                throw new Error('Thông tin học sinh không đầy đủ (cần: fullName, username, studentCode, schoolId)');
+            }
+
+            // Check if student username already exists
+            const existingUsername = await this.prisma.user.findUnique({
+                where: { username: studentData.username + "@student.qne.edu.vn" }
+            });
+
+            if (existingUsername) {
+                throw new Error('Username học sinh đã được sử dụng');
+            }
+
+            // Check if student code already exists (REQUIRED & UNIQUE)
+            const existingCode = await this.prisma.student.findUnique({
+                where: { studentCode: studentData.studentCode }
+            });
+
+            if (existingCode) {
+                throw new Error('Mã học sinh đã tồn tại');
+            }
+
+            // Check if student email already exists (if provided)
+            if (studentData.email) {
+                const existingEmail = await this.prisma.user.findUnique({
+                    where: { email: studentData.email }
+                });
+
+                if (existingEmail) {
+                    throw new Error('Email học sinh đã được sử dụng');
+                }
+            }
+
+            // Check if phone already exists (if provided)
+            if (studentData.phone) {
+                const existingPhone = await this.prisma.user.findFirst({
+                    where: { phone: studentData.phone }
+                });
+
+                if (existingPhone) {
+                    throw new Error('Số điện thoại đã được sử dụng');
+                }
+            }
+
+            // Default password if not provided
+            const defaultPassword = studentData.password || '123456';
+
+            // Use provided username with student domain
+            const studentUsername = studentData.username + "@student.qne.edu.vn";
+
+            // Generate email if not provided (based on username)
+            const studentEmail = studentData.email || 
+                studentData.username + "@temp.qne.edu.vn";
+
+            // Create student user
+            const studentUser = await this.prisma.user.create({
+                data: {
+                    email: studentEmail,
+                    username: studentUsername,
+                    fullName: studentData.fullName,
+                    phone: studentData.phone || null,
+                    gender: studentData.gender || 'OTHER',
+                    birthDate: studentData.birthDate ? new Date(studentData.birthDate) : null,
+                    password: hash.make(defaultPassword),
+                    isActive: true,
+                    role: 'student'
+                }
+            });
+
+            // Create student record with REQUIRED studentCode
+            const newStudent = await this.prisma.student.create({
+                data: {
+                    userId: studentUser.id,
+                    parentId: parentId,
+                    studentCode: studentData.studentCode, // REQUIRED
+                    address: studentData.address || null,
+                    grade: studentData.grade || null,
+                    schoolId: studentData.schoolId
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                            username: true,
+                            phone: true,
+                            avatar: true,
+                            isActive: true,
+                            gender: true,
+                            birthDate: true
+                        }
+                    }
+                }
+            });
+
+            // Get updated parent with all students
+            const updatedParent = await this.prisma.parent.findUnique({
+                where: { id: parentId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            username: true,
+                            fullName: true,
+                            phone: true,
+                            avatar: true,
+                            isActive: true,
+                            gender: true,
+                            birthDate: true
+                        }
+                    },
+                    students: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    email: true,
+                                    username: true,
+                                    phone: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return {
+                data: {
+                    id: updatedParent.id,
+                    user: updatedParent.user,
+                    students: updatedParent.students.map(s => ({
+                        id: s.id,
+                        studentCode: s.studentCode,
+                        grade: s.grade,
+                        address: s.address,
+                        user: {
+                            ...s.user,
+                            password: s.id === newStudent.id ? defaultPassword : undefined
+                        }
+                    })),
+                    studentCount: updatedParent.students.length
+                },
+                message: 'Thêm học sinh mới cho phụ huynh thành công'
+            };
+
+        } catch (error) {
+            console.error('Error adding student to parent:', error);
+            throw new Error(`${error.message}`);
         }
     }
 }

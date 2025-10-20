@@ -13,13 +13,225 @@ export class ParentManagementController {
     ) {}
 
     /**
+     * Tạo mới phụ huynh kèm học sinh
+     */
+    @Post('with-students')
+    @ApiOperation({ summary: 'Tạo mới phụ huynh kèm nhiều học sinh' })
+    @ApiResponse({ status: HttpStatus.CREATED, description: 'Tạo phụ huynh và học sinh thành công' })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Username hoặc email đã tồn tại' })
+    async createParentWithStudents(
+        @Body() body: {
+            username: string;
+            password: string;
+            email: string;
+            fullName: string;
+            phone?: string;
+            gender?: string;
+            birthDate?: string;
+            students?: Array<{
+                fullName: string;
+                username: string;
+                studentCode: string;
+                email?: string;
+                phone?: string;
+                gender?: string;
+                birthDate?: string;
+                address?: string;
+                grade?: string;
+                schoolId: string;
+            }>;
+        }
+    ) {
+        // Validate parent username
+        if (!body.username || body.username.trim().length < 3 || body.username.trim().length > 20) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Username phụ huynh phải từ 3-20 ký tự',
+                data: null
+            };
+        }
+
+        // Check username format (chỉ chữ, số, gạch dưới)
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(body.username)) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Username phụ huynh chỉ được chứa chữ, số và dấu gạch dưới',
+                data: null
+            };
+        }
+
+        // Validate parent password
+        if (!body.password || body.password.length < 6) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Mật khẩu phải có ít nhất 6 ký tự',
+                data: null
+            };
+        }
+
+        // Validate parent email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!body.email || !emailRegex.test(body.email)) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Email phụ huynh không hợp lệ',
+                data: null
+            };
+        }
+
+        // Validate parent fullName
+        if (!body.fullName || body.fullName.trim().length === 0) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Họ và tên phụ huynh không được để trống',
+                data: null
+            };
+        }
+
+        // Validate parent phone if provided
+        if (body.phone) {
+            const phoneRegex = /^[0-9]{10,11}$/;
+            if (!phoneRegex.test(body.phone)) {
+                return {
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: 'Số điện thoại phụ huynh phải có 10-11 chữ số',
+                    data: null
+                };
+            }
+        }
+
+        // Validate students if provided
+        if (body.students && body.students.length > 0) {
+            for (let i = 0; i < body.students.length; i++) {
+                const student = body.students[i];
+
+                // Validate student fullName (required)
+                if (!student.fullName || student.fullName.trim().length === 0) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Họ và tên học sinh ${i + 1} không được để trống`,
+                        data: null
+                    };
+                }
+
+                // Validate student username (required)
+                if (!student.username || student.username.trim().length < 3 || student.username.trim().length > 20) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Username học sinh ${i + 1} phải từ 3-20 ký tự`,
+                        data: null
+                    };
+                }
+
+                const usernameRegex = /^[a-zA-Z0-9_]+$/;
+                if (!usernameRegex.test(student.username)) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Username học sinh ${i + 1} chỉ được chứa chữ, số và dấu gạch dưới`,
+                        data: null
+                    };
+                }
+
+                // Validate studentCode (REQUIRED)
+                if (!student.studentCode || student.studentCode.trim().length === 0) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Mã học sinh ${i + 1} không được để trống`,
+                        data: null
+                    };
+                }
+
+                // Validate studentCode format (example: HS001, HS002)
+                const studentCodeRegex = /^[A-Z0-9]+$/;
+                if (!studentCodeRegex.test(student.studentCode)) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Mã học sinh ${i + 1} chỉ được chứa chữ in hoa và số`,
+                        data: null
+                    };
+                }
+
+                // Validate schoolId (required)
+                if (!student.schoolId) {
+                    return {
+                        statusCode: HttpStatus.BAD_REQUEST,
+                        message: `Trường học cho học sinh ${i + 1} không được để trống`,
+                        data: null
+                    };
+                }
+
+                // Email validation (optional but if provided must be valid)
+                if (student.email && student.email.trim()) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(student.email)) {
+                        return {
+                            statusCode: HttpStatus.BAD_REQUEST,
+                            message: `Email học sinh ${i + 1} không hợp lệ`,
+                            data: null
+                        };
+                    }
+                }
+
+                // Phone validation (optional but if provided must be valid)
+                if (student.phone && student.phone.trim()) {
+                    const phoneRegex = /^[0-9]{10,11}$/;
+                    if (!phoneRegex.test(student.phone)) {
+                        return {
+                            statusCode: HttpStatus.BAD_REQUEST,
+                            message: `Số điện thoại học sinh ${i + 1} phải có 10-11 chữ số`,
+                            data: null
+                        };
+                    }
+                }
+            }
+        }
+
+        try {
+            const result = await this.parentManagementService.createParentWithStudents({
+                username: body.username.trim(),
+                password: body.password,
+                email: body.email.trim(),
+                fullName: body.fullName.trim(),
+                phone: body.phone?.trim(),
+                gender: body.gender as any,
+                birthDate: body.birthDate,
+                students: body.students?.map(s => ({
+                    fullName: s.fullName.trim(),
+                    username: s.username.trim(),
+                    studentCode: s.studentCode.trim().toUpperCase(), // Convert to uppercase
+                    email: s.email?.trim() || undefined,
+                    phone: s.phone?.trim() || undefined,
+                    gender: s.gender as any,
+                    birthDate: s.birthDate,
+                    address: s.address?.trim() || undefined,
+                    grade: s.grade || undefined,
+                    schoolId: s.schoolId
+                }))
+            });
+
+            return {
+                statusCode: HttpStatus.CREATED,
+                message: result.message,
+                data: result.data
+            };
+        } catch (error) {
+            return {
+                statusCode: HttpStatus.CONFLICT,
+                message: error.message,
+                data: null
+            };
+        }
+    }
+
+    /**
      * Tạo mới phụ huynh
      */
     @Post()
     @ApiOperation({ summary: 'Tạo mới phụ huynh' })
     @ApiResponse({ status: HttpStatus.CREATED, description: 'Tạo phụ huynh thành công' })
     @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
-    @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Username hoặc email đã tồn tại' })
     async createParent(
         @Body() body: {
             username: string;
@@ -36,6 +248,16 @@ export class ParentManagementController {
             return {
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'Username phải từ 3-20 ký tự',
+                data: null
+            };
+        }
+
+        // Check username format
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(body.username)) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Username chỉ được chứa chữ, số và dấu gạch dưới',
                 data: null
             };
         }
@@ -80,21 +302,29 @@ export class ParentManagementController {
             }
         }
 
-        const result = await this.parentManagementService.createParent({
-            username: body.username,
-            password: body.password,
-            email: body.email,
-            fullName: body.fullName,
-            phone: body.phone,
-            gender: body.gender as 'MALE' | 'FEMALE' | 'OTHER',
-            birthDate: body.birthDate
-        });
+        try {
+            const result = await this.parentManagementService.createParent({
+                username: body.username.trim(),
+                password: body.password,
+                email: body.email.trim(),
+                fullName: body.fullName.trim(),
+                phone: body.phone?.trim(),
+                gender: body.gender as 'MALE' | 'FEMALE' | 'OTHER',
+                birthDate: body.birthDate
+            });
 
-        return {
-            statusCode: HttpStatus.CREATED,
-            message: result.message,
-            data: result.data
-        };
+            return {
+                statusCode: HttpStatus.CREATED,
+                message: result.message,
+                data: result.data
+            };
+        } catch (error) {
+            return {
+                statusCode: HttpStatus.CONFLICT,
+                message: error.message,
+                data: null
+            };
+        }
     }
 
     /**
@@ -287,8 +517,8 @@ export class ParentManagementController {
         const result = await this.parentManagementService.updateParent(
             id,
             {
-                fullName: body.fullName,
-                phone: body.phone,
+                fullName: body.fullName?.trim(),
+                phone: body.phone?.trim(),
                 gender: body.gender as 'MALE' | 'FEMALE' | 'OTHER',
                 birthDate: body.birthDate
             }
@@ -347,6 +577,143 @@ export class ParentManagementController {
             message: result.message,
             data: result.data
         };
+    }
+
+    /**
+     * Thêm học sinh mới cho phụ huynh
+     */
+    @Post(':id/add-student')
+    @ApiOperation({ summary: 'Thêm học sinh mới cho phụ huynh đã tồn tại' })
+    @ApiResponse({ status: HttpStatus.CREATED, description: 'Thêm học sinh thành công' })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy phụ huynh' })
+    @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Username hoặc email đã tồn tại' })
+    async addStudentToParent(
+        @Param('id') parentId: string,
+        @Body() body: {
+            fullName: string;
+            username: string;
+            studentCode: string;
+            email?: string;
+            phone?: string;
+            gender?: string;
+            birthDate?: string;
+            address?: string;
+            grade?: string;
+            schoolId: string;
+            password?: string;
+        }
+    ) {
+        // Validate student fullName (required)
+        if (!body.fullName || body.fullName.trim().length === 0) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Họ và tên học sinh không được để trống',
+                data: null
+            };
+        }
+
+        // Validate student username (required)
+        if (!body.username || body.username.trim().length < 3 || body.username.trim().length > 20) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Username học sinh phải từ 3-20 ký tự',
+                data: null
+            };
+        }
+
+        // Check username format
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(body.username)) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Username học sinh chỉ được chứa chữ, số và dấu gạch dưới',
+                data: null
+            };
+        }
+
+        // Validate studentCode (REQUIRED)
+        if (!body.studentCode || body.studentCode.trim().length === 0) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Mã học sinh không được để trống',
+                data: null
+            };
+        }
+
+        // Validate studentCode format (example: HS001, HS002)
+        const studentCodeRegex = /^[A-Z0-9]+$/;
+        if (!studentCodeRegex.test(body.studentCode)) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Mã học sinh chỉ được chứa chữ in hoa và số',
+                data: null
+            };
+        }
+
+        // Validate schoolId (required)
+        if (!body.schoolId) {
+            return {
+                statusCode: HttpStatus.BAD_REQUEST,
+                message: 'Trường học không được để trống',
+                data: null
+            };
+        }
+
+        // Validate student email if provided (optional)
+        if (body.email && body.email.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(body.email)) {
+                return {
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: 'Email học sinh không hợp lệ',
+                    data: null
+                };
+            }
+        }
+
+        // Validate student phone if provided (optional)
+        if (body.phone && body.phone.trim()) {
+            const phoneRegex = /^[0-9]{10,11}$/;
+            if (!phoneRegex.test(body.phone)) {
+                return {
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: 'Số điện thoại học sinh phải có 10-11 chữ số',
+                    data: null
+                };
+            }
+        }
+
+        try {
+            const result = await this.parentManagementService.addStudentToParent(
+                parentId,
+                {
+                    fullName: body.fullName.trim(),
+                    username: body.username.trim(),
+                    studentCode: body.studentCode.trim().toUpperCase(),
+                    email: body.email?.trim() || undefined,
+                    phone: body.phone?.trim() || undefined,
+                    gender: body.gender as any,
+                    birthDate: body.birthDate,
+                    address: body.address?.trim() || undefined,
+                    grade: body.grade || undefined,
+                    schoolId: body.schoolId,
+                    password: body.password
+                }
+            );
+
+            return {
+                statusCode: HttpStatus.CREATED,
+                message: result.message,
+                data: result.data
+            };
+        } catch (error) {
+            return {
+                statusCode: HttpStatus.CONFLICT,
+                message: error.message,
+                data: null
+            };
+        }
     }
 
     /**

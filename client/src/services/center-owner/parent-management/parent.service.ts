@@ -153,8 +153,72 @@ const createParent = async (data: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER'
     birthDate?: string
 }) => {
-    const response = await ApiService.post('/admin-center/parent-management', data)
-    return response.data as any
+    try {
+        const response = await ApiService.post('/admin-center/parent-management', data)
+        return response
+    } catch (error) {
+        console.error('Error creating parent:', error)
+        throw error
+    }
+}
+
+/**
+ * Tạo mới phụ huynh kèm học sinh
+ */
+const createParentWithStudents = async (data: {
+    username: string
+    password: string
+    email: string
+    fullName: string
+    phone?: string
+    gender?: 'MALE' | 'FEMALE' | 'OTHER'
+    birthDate?: string
+    students?: Array<{
+        fullName: string
+        email: string
+        studentCode?: string
+        phone?: string
+        gender?: 'MALE' | 'FEMALE' | 'OTHER'
+        birthDate?: string
+        address?: string
+        grade?: string
+        schoolId: string
+    }>
+}) => {
+    try {
+        const response = await ApiService.post('/admin-center/parent-management/with-students', data)
+        return response
+    } catch (error) {
+        console.error('Error creating parent with students:', error)
+        throw error
+    }
+}
+
+/**
+ * Thêm học sinh mới cho phụ huynh đã tồn tại
+ */
+const addStudentToParent = async (parentId: string, data: {
+    fullName: string
+    email: string
+    studentCode?: string
+    phone?: string
+    gender?: 'MALE' | 'FEMALE' | 'OTHER'
+    birthDate?: string
+    address?: string
+    grade?: string
+    schoolId: string
+    password?: string
+}) => {
+    try {
+        const response = await ApiService.post(
+            `/admin-center/parent-management/${parentId}/add-student`,
+            data
+        )
+        return response
+    } catch (error) {
+        console.error('Error adding student to parent:', error)
+        throw error
+    }
 }
 
 /**
@@ -167,49 +231,64 @@ const updateParent = async (id: string, data: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER'
     birthDate?: string
 }) => {
-    const response = await ApiService.put(`/admin-center/parent-management/${id}`, data)
-    return response.data as any
+    try {
+        const response = await ApiService.put(`/admin-center/parent-management/${id}`, data)
+        return response.data as any
+    } catch (error) {
+        console.error('Error updating parent:', error)
+        throw error
+    }
 }
 
 /**
  * Toggle trạng thái active của phụ huynh
  */
 const toggleParentStatus = async (id: string) => {
-    const response = await ApiService.patch(`/admin-center/parent-management/${id}/toggle-status`)
-    return response.data as any
+    try {
+        const response = await ApiService.patch(`/admin-center/parent-management/${id}/toggle-status`)
+        return response.data as any
+    } catch (error) {
+        console.error('Error toggling parent status:', error)
+        throw error
+    }
 }
 
 /**
  * Tìm kiếm học sinh theo mã để liên kết
  */
 const searchStudentByCode = async (studentCode: string) => {
-    const response = await ApiService.get('/admin-center/parent-management/search-student', {
-        studentCode
-    })
-    return response.data as {
-        id: string
-        studentCode: string
-        grade: string
-        address: string
-        user: {
+    try {
+        const response = await ApiService.get('/admin-center/parent-management/search-student', {
+            studentCode
+        })
+        return response.data as {
             id: string
-            email: string
-            fullName: string
-            phone: string
-        }
-        parent?: {
-            id: string
+            studentCode: string
+            grade: string
+            address: string
             user: {
                 id: string
                 email: string
                 fullName: string
                 phone: string
             }
-        } | null
-        school: {
-            id: string
-            name: string
+            parent?: {
+                id: string
+                user: {
+                    id: string
+                    email: string
+                    fullName: string
+                    phone: string
+                }
+            } | null
+            school: {
+                id: string
+                name: string
+            }
         }
+    } catch (error) {
+        console.error('Error searching student:', error)
+        throw error
     }
 }
 
@@ -217,21 +296,31 @@ const searchStudentByCode = async (studentCode: string) => {
  * Liên kết học sinh với phụ huynh
  */
 const linkStudentToParent = async (parentId: string, studentId: string) => {
-    const response = await ApiService.post(
-        `/admin-center/parent-management/${parentId}/students`,
-        { studentId }
-    )
-    return response.data as any
+    try {
+        const response = await ApiService.post(
+            `/admin-center/parent-management/${parentId}/students`,
+            { studentId }
+        )
+        return response.data as any
+    } catch (error) {
+        console.error('Error linking student to parent:', error)
+        throw error
+    }
 }
 
 /**
  * Hủy liên kết học sinh khỏi phụ huynh
  */
 const unlinkStudentFromParent = async (parentId: string, studentId: string) => {
-    const response = await ApiService.delete(
-        `/admin-center/parent-management/${parentId}/students/${studentId}`
-    )
-    return response.data as any
+    try {
+        const response = await ApiService.delete(
+            `/admin-center/parent-management/${parentId}/students/${studentId}`
+        )
+        return response.data as any
+    } catch (error) {
+        console.error('Error unlinking student from parent:', error)
+        throw error
+    }
 }
 
 export const ParentService = {
@@ -239,6 +328,8 @@ export const ParentService = {
     getParentById,
     getCountByStatus,
     createParent,
+    createParentWithStudents,
+    addStudentToParent,
     updateParent,
     toggleParentStatus,
     searchStudentByCode,
