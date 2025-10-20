@@ -19,7 +19,7 @@ import { classService } from '../../../services/center-owner/class-management/cl
 import { DataTable, Column } from '../../../components/common/Table/DataTable';
 import { Badge } from '@/components/ui/badge';
 
-import { EditScheduleSheet } from './components/EditScheduleSheet';
+import { EditScheduleSheet } from './components/Sheet/EditScheduleSheet';
 // import { EnrollStudentDialog } from './components/EnrollStudentDialog';
 
 // Hooks

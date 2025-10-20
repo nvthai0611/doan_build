@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Check, Plus, Clock, Trash2, User, Calendar, BookOpen } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { dayOptions } from '../../../../utils/commonData';
+import { dayOptions } from '../../../../../utils/commonData';
 
 interface ScheduleItem {
     id: string;
