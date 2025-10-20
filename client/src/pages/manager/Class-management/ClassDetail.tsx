@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import Loading from '../../../components/Loading/LoadingPage';
 import { GeneralInfo } from './components/GeneralInfo';
 import { StudentsInfo } from './components/StudentsInfo';
-import { TeachersInfo } from './components/TeachersInfo';
 import { LessonsInfo } from './components/LessonsInfo';
 import { AssignmentsInfo } from './components/AssignmentsInfo';
 import GradesInfo from './components/GradesInfo';
@@ -67,7 +66,6 @@ export default function ClassDetail() {
     { key: 'general', label: 'Thông tin chung' },
     { key: 'dashboard', label: 'Tổng quan' },
     { key: 'students', label: 'Học viên' },
-    { key: 'teachers', label: 'Giáo viên' },
     { key: 'lessons', label: 'Buổi học' },
     { key: 'assignments', label: 'Công việc' },
     { key: 'exercises', label: 'Bài tập' },
@@ -84,8 +82,7 @@ export default function ClassDetail() {
         return <DashboardTab classId={classId} classData={classData} />;
       case 'students':
         return <StudentsInfo classId={classId} classData={classData} />;
-      case 'teachers':
-        return <TeachersInfo classId={classId} classData={classData} />;
+      
       case 'lessons':
         return <LessonsInfo classId={classId} classData={classData} />;
       case 'assignments':

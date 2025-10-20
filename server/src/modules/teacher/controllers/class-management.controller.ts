@@ -131,10 +131,10 @@ export class ClassManagementController {
         description:'Lấy lịch sử điểm danh thành công',
         // type: HistoryAttendanceResponseDto
     })
-    @Get('classes/:teacherClassAssignmentId/attendance-history')
-    async getHistoryAttendanceOfClass(@Param('teacherClassAssignmentId') teacherClassAssignmentId: string, @Req() req: any){
+    @Get('classes/:classId/attendance-history')
+    async getHistoryAttendanceOfClass(@Param('classId') classId: string, @Req() req: any){
         const teacherId = req.user?.teacherId;
-        const historyAttendance = await this.classManagementService.getHistoryAttendanceOfClass(teacherClassAssignmentId, teacherId)
+        const historyAttendance = await this.classManagementService.getHistoryAttendanceOfClass(classId, teacherId)
         return {
             success: true,
             message: 'Lấy lịch sử điểm danh thành công',

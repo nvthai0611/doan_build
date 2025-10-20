@@ -380,7 +380,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
             </SheetTrigger>
             <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
               <SheetHeader>
-                <SheetTitle>Tạo mới các buổi học tiếp theo</SheetTitle>
+                <SheetTitle>Tạo lịch học tự động</SheetTitle>
               </SheetHeader>
               <AddLessonForm
                 classId={classId}
@@ -515,22 +515,169 @@ const AddLessonForm = ({
   onClose: () => void;
   onGenerated?: () => void;
 }) => {
-  const hasActualDates = Boolean(actualStartDate || actualEndDate);
-  console.log(hasActualDates);
-  
   const initialStart = actualStartDate ? new Date(actualStartDate) : (expectedStartDate ? new Date(expectedStartDate) : new Date());
   const initialEnd = (() => {
-    const base = actualEndDate ? new Date(actualEndDate) : new Date(new Date(initialStart).setMonth(initialStart.getMonth() + 9));
+    if (actualEndDate) {
+      const base = new Date(actualEndDate);
+      base.setHours(23, 59, 59, 999);
+      return base;
+    }
+    
+    // Mặc định là 31/05 của năm sau ngày khai giảng
+    const startYear = initialStart.getFullYear();
+    const endYear = startYear + 1;
+    
+    const base = new Date(endYear, 4, 31); // Tháng 5 (index 4), ngày 31
     base.setHours(23, 59, 59, 999);
     return base;
   })();
 
-  const [startDate, setStartDate] = useState<Date>(initialStart);
+  const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date>(initialEnd);
-  const [lessonCount, setLessonCount] = useState(0);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Validation functions
+  const validateStartDate = (): string | null => {
+    if (!startDate) {
+      return "Vui lòng chọn ngày bắt đầu";
+    }
+    
+    const now = new Date();
+    if (startDate <= now) {
+      return "Ngày bắt đầu phải sau ngày hiện tại";
+    }
+    
+    if (startDate >= endDate) {
+      return "Ngày bắt đầu phải trước ngày kết thúc";
+    }
+    
+    return null;
+  };
+
+  const checkExistingSessions = async (): Promise<{ hasExisting: boolean; overwrite: boolean }> => {
+    try {
+      const existing = await classService.getClassSessions(classId, {
+        startDate: startDate!.toISOString(),
+        endDate: endDate.toISOString(),
+        page: 1,
+        limit: 1,
+      });
+      
+      const totalExisting = (existing as any)?.meta?.total || 0;
+      
+      if (totalExisting === 0) {
+        return { hasExisting: false, overwrite: false };
+      }
+
+      // Chỉ cho phép ghi đè nếu lớp chưa bắt đầu học
+      const classStart = actualStartDate || expectedStartDate;
+      if (classStart && new Date() >= new Date(classStart)) {
+        throw new Error('Lớp đã bắt đầu học, không thể cập nhật lịch cũ.');
+      }
+
+      const confirmOverwrite = window.confirm('Đã có lịch trong khoảng thời gian này. Bạn có muốn cập nhật (ghi đè) lịch cũ?');
+      if (!confirmOverwrite) {
+        throw new Error('Hủy bỏ tạo buổi học');
+      }
+
+      return { hasExisting: true, overwrite: true };
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const createSessionPayload = (overwrite: boolean) => {
+    const basePayload = {
+      startDate: startDate!.toISOString(),
+      endDate: endDate.toISOString(),
+      overwrite,
+    };
+
+    return actualStartDate || actualEndDate
+      ? { ...basePayload, generateForFullYear: false }
+      : { ...basePayload, generateForFullYear: true };
+  };
+
+  const handleGenerateSessions = async () => {
+    try {
+      // Validate input
+      const validationError = validateStartDate();
+      if (validationError) {
+        toast.error(validationError);
+        return;
+      }
+
+      // Check existing sessions
+      const { overwrite } = await checkExistingSessions();
+
+      // Generate sessions
+      setIsGenerating(true);
+      const payload = createSessionPayload(overwrite);
+      await classService.generateSessions(classId, payload);
+      
+      // Success
+      toast.success('Tạo buổi học thành công!');
+      onGenerated && onGenerated();
+      onClose();
+    } catch (error: any) {
+      if (error.message === 'Hủy bỏ tạo buổi học') {
+        return; // User cancelled, don't show error
+      }
+      toast.error(error.message || 'Có lỗi xảy ra khi tạo buổi học');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Calendar handlers
+  const handleStartDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setStartDate(date);
+      // Auto-update end date if not manually set
+      if (!(actualStartDate || actualEndDate)) {
+        const startYear = date.getFullYear();
+        const endYear = startYear + 1;
+        const endOfMay = new Date(endYear, 4, 31); // Tháng 5 (index 4), ngày 31
+        endOfMay.setHours(23, 59, 59, 999);
+        setEndDate(endOfMay);
+      }
+      setIsCalendarOpen(false);
+    }
+  };
+
+  const handleEndDateSelect = (date: Date | undefined) => {
+    if (date) {
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      setEndDate(endOfDay);
+      setIsEndCalendarOpen(false);
+    }
+  };
+
+  // Calendar disabled logic
+  const isStartDateDisabled = (date: Date): boolean => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 3);
+    maxDate.setMonth(11, 31); // Tháng 12, ngày 31
+    maxDate.setHours(23, 59, 59, 999);
+    
+    return date < now || date > maxDate || (endDate && date >= endDate);
+  };
+
+  const isEndDateDisabled = (date: Date): boolean => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 3);
+    maxDate.setMonth(11, 31); // Tháng 12, ngày 31
+    maxDate.setHours(23, 59, 59, 999);
+    
+    return date < now || date > maxDate || (startDate !== null && date <= startDate);
+  };
 
   return (
     <div className="space-y-4 pt-4">
@@ -541,57 +688,7 @@ const AddLessonForm = ({
         </Button>
         <Button
           size="sm"
-          onClick={async () => {
-            try {
-              if(startDate.getTime() >= endDate.getTime()) {
-                toast.error("Ngày bắt đầu phải trước ngày kết thúc");
-                return;
-              }
-              // Kiểm tra lịch hiện có trong khoảng để xác nhận ghi đè
-              let overwrite = false;
-              const existing = await classService.getClassSessions(classId, {
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-                page: 1,
-                limit: 1,
-              });
-              const totalExisting = (existing as any)?.meta?.total || 0;
-              if (totalExisting > 0) {
-                // Chỉ cho phép ghi đè nếu lớp chưa bắt đầu học
-                const classStart = actualStartDate || expectedStartDate;
-                if (classStart && new Date() >= new Date(classStart)) {
-                  toast.error('Lớp đã bắt đầu học, không thể cập nhật lịch cũ.');
-                  return;
-                }
-                const confirmOverwrite = window.confirm('Đã có lịch trong khoảng thời gian này. Bạn có muốn cập nhật (ghi đè) lịch cũ?');
-                if (!confirmOverwrite) return;
-                overwrite = true;
-              }
-              setIsGenerating(true);
-              const payload = actualStartDate || actualEndDate
-                ? {
-                    generateForFullYear: false,
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString(),
-                    sessionCount: lessonCount,
-                    overwrite,
-                  }
-                : {
-                    generateForFullYear: true,
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString(),
-                    sessionCount: lessonCount,
-                    overwrite,
-                  };
-              await classService.generateSessions(classId, payload);
-              onGenerated && onGenerated();
-              onClose();
-            } catch (e) {
-              // no-op UI change
-            } finally {
-              setIsGenerating(false);
-            }
-          }}
+          onClick={handleGenerateSessions}
           disabled={isGenerating}
         >
           <Check className="w-4 h-4" />
@@ -602,14 +699,14 @@ const AddLessonForm = ({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
         <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
         <p className="text-sm text-blue-800">
-          Hệ thống sẽ tạo các buổi học kế tiếp theo lịch học của lớp
+          Hệ thống sẽ tạo các buổi học theo lịch học của lớp
         </p>
       </div>
 
       {/* Start Date */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          {hasActualDates ? 'Ngày bắt đầu' : 'Ngày khai giảng dự kiến'}
+         Ngày bắt đầu
         </label>
         <div className="flex items-center gap-2">
           <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -619,32 +716,26 @@ const AddLessonForm = ({
                 className="flex-1 justify-start text-left font-normal"
               >
                 <Calendar className="mr-2 h-4 w-4" />
-                {format(startDate, 'dd/MM/yyyy, HH:mm')}
+                {startDate ? format(startDate, 'dd/MM/yyyy') : 'Chọn ngày bắt đầu'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <CalendarComponent
                 mode="single"
-                selected={startDate}
-                onSelect={(date: Date | undefined) => {
-                  if (date) {
-                    setStartDate(date);
-                    // nếu người dùng chưa set endDate thủ công, cập nhật mặc định +9 tháng
-                    if (!(actualStartDate || actualEndDate)) {
-                      const nineMonthsLater = new Date(date);
-                      nineMonthsLater.setMonth(nineMonthsLater.getMonth() + 9);
-                      nineMonthsLater.setHours(23, 59, 59, 999);
-                      setEndDate(nineMonthsLater);
-                    }
-                    setIsCalendarOpen(false);
-                  }
-                }}
+                selected={startDate || undefined}
+                onSelect={handleStartDateSelect}
                 className="rounded-md border shadow-sm"
                 captionLayout="dropdown"
+                disabled={isStartDateDisabled}
+                fromYear={new Date().getFullYear()}
+                toYear={new Date().getFullYear() + 3}
               />
             </PopoverContent>
           </Popover>
         </div>
+        <p className="text-xs text-gray-500">
+          Ngày bắt đầu phải sau ngày hiện tại và trước ngày kết thúc
+        </p>
       </div>
 
       {/* End Date - chỉ hiện khi lớp thiếu actualStartDate/actualEndDate */}
@@ -668,16 +759,12 @@ const AddLessonForm = ({
                 <CalendarComponent
                   mode="single"
                   selected={endDate}
-                  onSelect={(date: Date | undefined) => {
-                    if (date) {
-                      const endOfDay = new Date(date);
-                      endOfDay.setHours(23, 59, 59, 999);
-                      setEndDate(endOfDay);
-                      setIsEndCalendarOpen(false);
-                    }
-                  }}
+                  onSelect={handleEndDateSelect}
                   className="rounded-md border shadow-sm"
                   captionLayout="dropdown"
+                  disabled={isEndDateDisabled}
+                  fromYear={new Date().getFullYear()}
+                  toYear={new Date().getFullYear() + 3}
                 />
               </PopoverContent>
             </Popover>
@@ -685,19 +772,7 @@ const AddLessonForm = ({
         </div>
       )}
 
-      {/* Lesson Count */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">
-          Số lượng buổi học muốn tạo
-        </label>
-        <Input
-          type="number"
-          value={lessonCount}
-          onChange={(e) => setLessonCount(Number(e.target.value))}
-          min="1"
-          max="100"
-        />
-      </div>
+ 
 
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6">

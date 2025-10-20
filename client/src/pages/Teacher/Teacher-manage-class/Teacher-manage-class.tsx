@@ -23,7 +23,10 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DataTable, type Column } from '../../../components/common/Table/DataTable';
+import {
+  DataTable,
+  type Column,
+} from '../../../components/common/Table/DataTable';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,11 +34,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { getClassByTeacherId, getCountByStatus } from '../../../services/teacher-service/manage-class.service';
+import {
+  getClassByTeacherId,
+  getCountByStatus,
+} from '../../../services/teacher-service/manage-class.service';
 import { ApiResponse } from '../../../types/response';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 // Status colors
 const statusColors = {
@@ -56,16 +70,26 @@ const daysOfWeek = [
   { value: 'sunday', label: 'Chủ Nhật' },
 ];
 
-const fetchClassData = async (
-  { status, page, limit, searchQuery, academicYear }: {
-    status: string;
-    page: number;
-    limit: number;
-    searchQuery?: string;
-    academicYear?: string;
-  }
-) => {
-  const res = await getClassByTeacherId(status, page, limit, searchQuery, academicYear);
+const fetchClassData = async ({
+  status,
+  page,
+  limit,
+  searchQuery,
+  academicYear,
+}: {
+  status: string;
+  page: number;
+  limit: number;
+  searchQuery?: string;
+  academicYear?: string;
+}) => {
+  const res = await getClassByTeacherId(
+    status,
+    page,
+    limit,
+    searchQuery,
+    academicYear,
+  );
   return res;
 };
 
@@ -131,19 +155,28 @@ export default function ClassManagement() {
 
   // Query lấy danh sách lớp học
   const {
-    data: listClassResponse ,
+    data: listClassResponse,
     isLoading,
     isError,
     isFetching,
   } = useQuery({
-    queryKey: ["class", activeTab, currentPage, pageSize, debouncedSearchQuery, debouncedAcademicYear],
-    queryFn: () => fetchClassData({
-      status: activeTab,
-      page: currentPage,
-      limit: pageSize,
-      searchQuery: debouncedSearchQuery,
-      academicYear: debouncedAcademicYear === 'all' ? undefined : debouncedAcademicYear,
-    }),
+    queryKey: [
+      'class',
+      activeTab,
+      currentPage,
+      pageSize,
+      debouncedSearchQuery,
+      debouncedAcademicYear,
+    ],
+    queryFn: () =>
+      fetchClassData({
+        status: activeTab,
+        page: currentPage,
+        limit: pageSize,
+        searchQuery: debouncedSearchQuery,
+        academicYear:
+          debouncedAcademicYear === 'all' ? undefined : debouncedAcademicYear,
+      }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -153,11 +186,8 @@ export default function ClassManagement() {
   });
 
   // Query lấy số lượng theo trạng thái
-  const {
-    data: countData,
-    isLoading: isCountLoading,
-  } = useQuery({
-    queryKey: ["classCount"],
+  const { data: countData, isLoading: isCountLoading } = useQuery({
+    queryKey: ['classCount'],
     queryFn: () => fetchCountData(),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -167,112 +197,158 @@ export default function ClassManagement() {
 
   // Tạo statusTabs từ dữ liệu API
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: countData?.total ?? 0, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700' },
-    { key: 'active', label: 'Đang diễn ra', count: countData?.active ?? 0, color: 'bg-green-100 text-green-700' },
-    { key: 'completed', label: 'Đã kết thúc', count: countData?.completed ?? 0, color: 'bg-blue-100 text-blue-700' },
-    { key: 'draft', label: 'Chưa diễn ra', count: countData?.draft ?? 0, color: 'bg-yellow-100 text-yellow-700' },
-    { key: 'cancelled', label: 'Đã Hủy', count: countData?.cancelled ?? 0, color: 'bg-red-100 text-red-700' },
+    {
+      key: 'all',
+      label: 'Tất cả',
+      count: countData?.total ?? 0,
+      color: 'bg-gray-100 dark:bg-gray-800 text-gray-700',
+    },
+    {
+      key: 'active',
+      label: 'Đang diễn ra',
+      count: countData?.active ?? 0,
+      color: 'bg-green-100 text-green-700',
+    },
+    {
+      key: 'completed',
+      label: 'Đã kết thúc',
+      count: countData?.completed ?? 0,
+      color: 'bg-blue-100 text-blue-700',
+    },
+    {
+      key: 'draft',
+      label: 'Chưa diễn ra',
+      count: countData?.draft ?? 0,
+      color: 'bg-yellow-100 text-yellow-700',
+    },
+    {
+      key: 'cancelled',
+      label: 'Đã Hủy',
+      count: countData?.cancelled ?? 0,
+      color: 'bg-red-100 text-red-700',
+    },
   ];
 
   // Xử lý dữ liệu với optional chaining
-  const classesToRender = (isError || !listClassResponse?.data) ? [] : (Array.isArray(listClassResponse.data) ? listClassResponse.data : []);
+  const classesToRender =
+    isError || !listClassResponse?.data
+      ? []
+      : Array.isArray(listClassResponse.data)
+      ? listClassResponse.data
+      : [];
   const pagination = listClassResponse?.pagination || null;
   const appliedFilters = listClassResponse?.filters || null;
 
   // Format ngày thành tiếng Việt
   const formatDayToVietnamese = (dateStr: string) => {
-    const dayFormat = daysOfWeek.find(day => day.value === dateStr);
+    const dayFormat = daysOfWeek.find((day) => day.value === dateStr);
     return dayFormat?.label ?? dateStr;
   };
 
   // Columns configuration cho DataTable
-  const columns: Column<any>[] = useMemo(() => [
-    {
-      key: 'index',
-      header: 'STT',
-      width: '80px',
-      align: 'center',
-      render: (item: any, index: number) => (currentPage - 1) * pageSize + index + 1,
-    },
-    {
-      key: 'name',
-      header: 'Tên lớp học',
-      sortable: true,
-      searchable: true,
-      searchPlaceholder: 'Tìm theo tên lớp...',
-      render: (item: any) => (
-        <div
-          onClick={() => navigate(`/teacher/classes/${item?.id}`)}
-          className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200"
-        >
-          {item?.name ?? 'N/A'}
-        </div>
-      ),
-    },
-    {
-      key: 'schedule',
-      header: 'Lịch học',
-      render: (item: any) => (
-        <div className="space-y-1">
-          {item?.schedule?.schedules && Array.isArray(item.schedule.schedules) ? (
-            item.schedule.schedules.map((schedule: any, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-center gap-1 text-sm"
-              >
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>
-                  {formatDayToVietnamese(schedule?.day ?? '')} - {schedule?.startTime ?? '--'}
-                  <ArrowRight className="inline-block mx-1" size={14} />
-                  {schedule?.endTime ?? '--'}
-                </span>
-              </div>
-            ))
-          ) : (
-            <span className="text-sm text-gray-500">Không có lịch</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      sortable: true,
-      render: (item: any) => (
-        <Badge
-          variant="secondary"
-          className={`${statusColors[item?.status as keyof typeof statusColors] ?? 'bg-gray-100'} hover:bg-opacity-80 transition-colors duration-200`}
-        >
-          {statusTabs.find(tab => tab.key === item?.status)?.label ?? item?.status ?? 'N/A'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'dates',
-      header: 'Ngày bắt đầu / Ngày kết thúc',
-      render: (item: any) => (
-        <div className="text-sm space-y-1">
-          <div>{item?.expectedStartDate ? formatDate(item.expectedStartDate) : 'N/A'}</div>
-          <div>{item?.actualEndDate ? formatDate(item.actualEndDate) : 'N/A'}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'enrollmentStatus',
-      header: 'Số học sinh trong lớp',
-      align: 'center',
-      render: (item: any) => (
-        <span className="font-medium">
-          {item?.studentCount ?? 0}/{item?.maxStudents ?? 0}
-        </span>
-      ),
-    },
-  ], [currentPage, pageSize, navigate, statusTabs]);
+  const columns: Column<any>[] = useMemo(
+    () => [
+      {
+        key: 'index',
+        header: 'STT',
+        width: '80px',
+        align: 'center',
+        render: (item: any, index: number) =>
+          (currentPage - 1) * pageSize + index + 1,
+      },
+      {
+        key: 'name',
+        header: 'Tên lớp học',
+        sortable: true,
+        searchable: true,
+        searchPlaceholder: 'Tìm theo tên lớp...',
+        render: (item: any) => (
+          <div
+            onClick={() => navigate(`/teacher/classes/${item?.id}`)}
+            className="text-blue-600 font-medium hover:text-blue-700 cursor-pointer transition-colors duration-200"
+          >
+            {item?.name ?? 'N/A'}
+          </div>
+        ),
+      },
+      {
+        key: 'schedule',
+        header: 'Lịch học',
+        render: (item: any) => (
+          <div className="space-y-1">
+            {item?.schedule?.schedules &&
+            Array.isArray(item.schedule.schedules) ? (
+              item.schedule.schedules.map((schedule: any, idx: number) => (
+                <div key={idx} className="flex items-center gap-1 text-sm">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span>
+                    {formatDayToVietnamese(schedule?.day ?? '')} -{' '}
+                    {schedule?.startTime ?? '--'}
+                    <ArrowRight className="inline-block mx-1" size={14} />
+                    {schedule?.endTime ?? '--'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span className="text-sm text-gray-500">Không có lịch</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'Trạng thái',
+        sortable: true,
+        render: (item: any) => (
+          <Badge
+            variant="secondary"
+            className={`${
+              statusColors[item?.status as keyof typeof statusColors] ??
+              'bg-gray-100'
+            } hover:bg-opacity-80 transition-colors duration-200`}
+          >
+            {statusTabs.find((tab) => tab.key === item?.status)?.label ??
+              item?.status ??
+              'N/A'}
+          </Badge>
+        ),
+      },
+      {
+        key: 'dates',
+        header: 'Ngày bắt đầu / Ngày kết thúc',
+        render: (item: any) => (
+          <div className="text-sm space-y-1">
+            <div>
+              {item?.expectedStartDate
+                ? formatDate(item.expectedStartDate)
+                : 'N/A'}
+            </div>
+            <div>
+              {item?.actualEndDate ? formatDate(item.actualEndDate) : 'N/A'}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'enrollmentStatus',
+        header: 'Số học sinh trong lớp',
+        align: 'center',
+        render: (item: any) => (
+          <span className="font-medium">
+            {item?.studentCount ?? 0}/{item?.maxStudents ?? 0}
+          </span>
+        ),
+      },
+    ],
+    [currentPage, pageSize, navigate, statusTabs],
+  );
 
   // Xử lý chuyển trang
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document
+      .querySelector('.table-container')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // Xóa tất cả filter
@@ -293,19 +369,19 @@ export default function ClassManagement() {
           </h1>
 
           {/* Breadcrumb */}
-          <nav className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <span className="hover:text-foreground cursor-pointer transition-colors duration-200">
-              Dashboard
-            </span>
-            <span>•</span>
-            <span className="text-foreground">Danh sách lớp học</span>
-          </nav>
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage><Link to="/teacher/classes">Danh sách lớp học</Link></BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
 
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200">
+        {/* <Button className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200">
           <Plus className="w-4 h-4 mr-2" />
           Lớp học
-        </Button>
+        </Button> */}
       </div>
 
       {/* Search and Filters Section */}
@@ -354,7 +430,9 @@ export default function ClassManagement() {
         </Button>
 
         {/* Clear Filters Button */}
-        {(searchQuery || activeTab !== 'all' || selectedAcademicYear !== 'all') && (
+        {(searchQuery ||
+          activeTab !== 'all' ||
+          selectedAcademicYear !== 'all') && (
           <Button
             variant="outline"
             onClick={handleClearFilters}
@@ -379,7 +457,11 @@ export default function ClassManagement() {
               )}
               {debouncedAcademicYear !== 'all' && (
                 <span className="bg-blue-100 px-2 py-1 rounded text-xs">
-                  Năm học: {academicYears.find(y => y.value === debouncedAcademicYear)?.label}
+                  Năm học:{' '}
+                  {
+                    academicYears.find((y) => y.value === debouncedAcademicYear)
+                      ?.label
+                  }
                 </span>
               )}
             </div>
@@ -406,9 +488,7 @@ export default function ClassManagement() {
             >
               <span className="transition-all duration-200">{tab.label}</span>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center transition-all duration-200 ${
-                  tab.color
-                }`}
+                className={`text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center transition-all duration-200 ${tab.color}`}
               >
                 {isCountLoading ? '...' : tab.count}
               </span>
@@ -430,7 +510,7 @@ export default function ClassManagement() {
           data={classesToRender}
           columns={columns}
           loading={isLoading && classesToRender.length === 0}
-          error={isError ? "Không thể tải dữ liệu lớp học" : null}
+          error={isError ? 'Không thể tải dữ liệu lớp học' : null}
           emptyMessage="Không có lớp học nào"
           rowKey="id"
           hoverable={true}
@@ -450,7 +530,9 @@ export default function ClassManagement() {
             showItemsPerPage: true,
             showPageInfo: true,
           }}
-          className={`transition-opacity duration-200 ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}
+          className={`transition-opacity duration-200 ${
+            isFetching && !isLoading ? 'opacity-60' : 'opacity-100'
+          }`}
         />
       </div>
 

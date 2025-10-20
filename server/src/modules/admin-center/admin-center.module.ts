@@ -23,6 +23,7 @@ import { IncidentHandleController } from './controllers/incident-handle.controll
 import { IncidentHandleService } from './services/incident-handle.service';
 import { ParentManagementController } from './controllers/parent-management.controller';
 import { ParentManagementService } from './services/parent-management.service';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ParentManagementService } from './services/parent-management.service';
         module: AdminCenterModule,
       },
     ]),
+    SharedModule, // Import SharedModule để sử dụng email services
   ],
   controllers: [
     ApprovalManagementController,

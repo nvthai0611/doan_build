@@ -29,12 +29,12 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState('info')
 
   if (!student) return null
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Chi tiết học viên - {student.user.fullName}</DialogTitle>
+          <DialogTitle>Chi tiết học viên - {student?.user?.fullName}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
