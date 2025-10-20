@@ -48,7 +48,7 @@ import { getStatusBadge } from '../const/statusBadge';
 import { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { EditScheduleSheet } from './EditScheduleSheet';
+import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
