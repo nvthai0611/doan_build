@@ -173,14 +173,14 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
         }
 
         // Validate studentCode (REQUIRED)
-        const sanitizedCode = student.studentCode?.trim().toUpperCase()
-        if (!sanitizedCode) {
-            newErrors[`students.${index}.studentCode`] = "Mã học sinh không được để trống"
-        } else if (!/^[A-Z0-9]+$/.test(sanitizedCode)) {
-            newErrors[`students.${index}.studentCode`] = "Mã học sinh chỉ được chứa chữ IN HOA và số"
-        } else if (sanitizedCode.length < 3) {
-            newErrors[`students.${index}.studentCode`] = "Mã học sinh phải có ít nhất 3 ký tự"
-        }
+        // const sanitizedCode = student.studentCode?.trim().toUpperCase()
+        // if (!sanitizedCode) {
+        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh không được để trống"
+        // } else if (!/^[A-Z0-9]+$/.test(sanitizedCode)) {
+        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh chỉ được chứa chữ IN HOA và số"
+        // } else if (sanitizedCode.length < 3) {
+        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh phải có ít nhất 3 ký tự"
+        // }
 
         // Validate schoolId (required)
         if (!student.schoolId) {
