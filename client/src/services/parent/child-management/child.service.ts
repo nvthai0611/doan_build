@@ -28,8 +28,8 @@ export const parentChildService = {
     return response.data as ChildAttendance[]
   },
 
-  getChildGrades: async (childId: string, subject?: string): Promise<ChildGrade[]> => {
-    const params = subject ? { subject } : {}
+  getChildGrades: async (childId: string, classId?: string): Promise<ChildGrade[]> => {
+    const params = classId ? { classId } : {}
     const response = await ApiService.get<ChildGrade[]>(`/student-management/children/${childId}/grades`, params)
     return (response.data as any).data ?? (response.data as any)
   },

@@ -450,14 +450,17 @@ export class GradeService {
             };
         }
 
-        // Lấy tất cả lớp học mà giáo viên đang dạy
+        // Lấy tất cả lớp học mà giáo viên đang dạy và đang active,
+        // và chỉ include enrollments có trạng thái 'active'
         const classes = await this.prisma.class.findMany({
             where: { 
-                teacherId: teacherId
+                teacherId: teacherId,
+                status: 'active'
             },
             include: {
                 subject: true,
                 enrollments: {
+                    where: { status: 'active' },
                     include: {
                         student: {
                             include: {
@@ -485,7 +488,7 @@ export class GradeService {
             };
         }
         
-        // Lấy tất cả assessments của các lớp này
+        // Lấy tất cả assessments của các lớp active này
         const assessments = await this.prisma.assessment.findMany({
             where: { classId: { in: classIds } },
             include: {
@@ -551,10 +554,26 @@ export class GradeService {
         
         // Xử lý dữ liệu để tạo StudentGradeDetail
         const studentMap = new Map();
-        
+
+        // Build a map of active studentIds per class from enrollments
+        const activeStudentsByClass = new Map<string, Set<string>>();
+        classes.forEach(c => {
+            const set = new Set<string>();
+            (c.enrollments || []).forEach((en: any) => {
+                if (en && en.studentId) set.add(en.studentId);
+            });
+            activeStudentsByClass.set(c.id, set);
+        });
+
         assessments.forEach(assessment => {
+            const classId = assessment.classId || assessment.class?.id;
+            const activeSet = classId ? activeStudentsByClass.get(classId) : undefined;
             assessment.grades.forEach(grade => {
                 const studentId = grade.studentId;
+
+                // skip grades for students who are not active in this class
+                if (activeSet && !activeSet.has(studentId)) return;
+
                 if (!studentMap.has(studentId)) {
                     studentMap.set(studentId, {
                         id: studentId,
@@ -572,7 +591,7 @@ export class GradeService {
                         trendValue: 0
                     });
                 }
-                
+
                 const student = studentMap.get(studentId);
                 student.grades.push({
                     type: assessment.type,
@@ -651,19 +670,19 @@ export class GradeService {
             return [];
         }
 
-        // Lấy tất cả lớp học mà giáo viên đang dạy
+        // Lấy tất cả lớp học active mà giáo viên đang dạy và include chỉ enrollments active
         const classes = await this.prisma.class.findMany({
             where: { 
-                teacherId: teacherId
+                teacherId: teacherId,
+                status: 'active'
             },
             include: {
                 subject: true,
                 enrollments: {
+                    where: { status: 'active' },
                     include: {
                         student: {
-                            include: {
-                                user: true
-                            }
+                            include: { user: true }
                         }
                     }
                 }
@@ -696,6 +715,16 @@ export class GradeService {
         // Nhóm theo môn học
         const subjectMap = new Map();
         
+        // Build map of active students per class to filter grades
+        const activeStudentsByClass = new Map<string, Set<string>>();
+        classes.forEach(c => {
+            const set = new Set<string>();
+            (c.enrollments || []).forEach((en: any) => {
+                if (en && en.studentId) set.add(en.studentId);
+            });
+            activeStudentsByClass.set(c.id, set);
+        });
+
         assessments.forEach(assessment => {
             const subjectName = assessment.class.subject.name;
             if (!subjectMap.has(subjectName)) {
@@ -709,9 +738,12 @@ export class GradeService {
                     trend: 'stable' as const
                 });
             }
-            
+
             const subject = subjectMap.get(subjectName);
+            const activeSet = activeStudentsByClass.get(assessment.classId || assessment.class?.id);
             assessment.grades.forEach(grade => {
+                // only include grades where student is active in that class
+                if (activeSet && !activeSet.has(grade.studentId)) return;
                 subject.grades.push(Number(grade.score) || 0);
             });
         });

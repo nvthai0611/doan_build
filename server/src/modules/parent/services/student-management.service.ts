@@ -67,25 +67,20 @@ export class StudentManagementService {
         include: {
           user: true,
           school: true,
-          enrollments: enrollmentWhere === undefined ? {
+          // Chỉ lấy enrollment ACTIVE và lớp ACTIVE
+          enrollments: {
+            where: {
+              status: 'active',
+              class: { status: 'active' },
+            },
             include: {
-              class: { 
-                include: { 
+              class: {
+                include: {
                   subject: true,
-                  teacher: { include: { user: true } }
-                } 
+                  teacher: { include: { user: true } },
+                },
               },
             },
-          } : { 
-            where: enrollmentWhere, 
-            include: { 
-              class: { 
-                include: { 
-                  subject: true,
-                  teacher: { include: { user: true } }
-                } 
-              } 
-            } 
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -269,6 +264,59 @@ export class StudentManagementService {
     return { data: result, message: 'Lấy chi tiết học sinh thành công' };
   }
 
+  async getChildMetricsForParent(userId: string, childId: string) {
+    // Xác thực phụ huynh và học sinh
+    const parent = await this.prisma.parent.findUnique({ where: { userId }, select: { id: true } });
+    if (!parent) return { data: null, message: 'Không tìm thấy phụ huynh' };
+
+    const child = await this.prisma.student.findFirst({ where: { id: childId, parentId: parent.id }, select: { id: true } });
+    if (!child) return { data: null, message: 'Không tìm thấy học sinh' };
+
+    // Lấy danh sách lớp đang học (active)
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { studentId: childId, status: 'active', class: { status: 'active' } },
+      select: { classId: true },
+    });
+    const classIds = enrollments.map((e) => e.classId);
+    if (classIds.length === 0) {
+      return {
+        data: { averageGrade: 0, classRank: null, totalStudents: 0, attendanceRate: 0 },
+        message: 'Chưa có lớp học đang hoạt động',
+      };
+    }
+
+    // Tính điểm trung bình của học sinh
+    const studentGradeAgg = await this.prisma.studentAssessmentGrade.aggregate({
+      _avg: { score: true },
+      where: { studentId: childId, assessment: { classId: { in: classIds } }, score: { not: null } },
+    });
+    const averageGrade = studentGradeAgg._avg.score ? Number(studentGradeAgg._avg.score) : 0;
+
+    // Xếp hạng: tính điểm TB cho tất cả học sinh trong các lớp này, sắp xếp và tìm vị trí
+    const classmates = await this.prisma.studentAssessmentGrade.groupBy({
+      by: ['studentId'],
+      _avg: { score: true },
+      where: { assessment: { classId: { in: classIds } }, score: { not: null } },
+    });
+    const sorted = classmates
+      .map((c) => ({ studentId: c.studentId, avg: c._avg.score ? Number(c._avg.score) : 0 }))
+      .sort((a, b) => b.avg - a.avg);
+    const totalStudents = sorted.length;
+    const classRank = Math.max(1, sorted.findIndex((s) => s.studentId === childId) + 1) || null;
+
+    // Tỷ lệ điểm danh: present / total trong các lớp đang học
+    const [attendanceTotal, attendancePresent] = await Promise.all([
+      this.prisma.studentSessionAttendance.count({ where: { studentId: childId, session: { classId: { in: classIds } } } }),
+      this.prisma.studentSessionAttendance.count({ where: { studentId: childId, status: 'present', session: { classId: { in: classIds } } } }),
+    ]);
+    const attendanceRate = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
+
+    return {
+      data: { averageGrade, classRank, totalStudents, attendanceRate },
+      message: 'Lấy thành tích học tập thành công',
+    };
+  }
+
   async getChildScheduleForParent(
     userId: string,
     childId: string,
@@ -347,7 +395,7 @@ export class StudentManagementService {
     return { data: result, message: 'Lấy lịch học thành công' };
   }
 
-  async getChildGradesForParent(userId: string, childId: string, subject?: string) {
+  async getChildGradesForParent(userId: string, childId: string, classId?: string) {
     const parent = await this.prisma.parent.findUnique({
       where: { userId },
       select: { id: true },
@@ -367,22 +415,11 @@ export class StudentManagementService {
       return { data: [], message: 'Không tìm thấy học sinh' };
     }
 
-    // Lấy điểm số của học sinh
+    // Lấy điểm số của học sinh (lọc theo lớp nếu có)
     const grades = await this.prisma.studentAssessmentGrade.findMany({
       where: {
         studentId: childId,
-        ...(subject ? {
-          assessment: {
-            class: {
-              subject: {
-                name: {
-                  contains: subject,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          }
-        } : {})
+        ...(classId ? { assessment: { classId } } : {})
       },
       include: {
         assessment: {
@@ -440,7 +477,8 @@ export class StudentManagementService {
         feedback: grade.feedback || '',
         gradedAt: grade.gradedAt.toISOString(),
         assessmentType: grade.assessment.type,
-        className: grade.assessment.class.name
+        className: grade.assessment.class.name,
+        classId: grade.assessment.classId
       };
     });
 

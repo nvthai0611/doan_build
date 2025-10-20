@@ -40,7 +40,11 @@ export function ParentDashboard() {
       id: s.id,
       name: s.user?.fullName ?? s.user?.username ?? "",
       avatar: s.user?.avatar,
-      classNames: (s.enrollments ?? []).map((e: any) => e.class?.name).filter(Boolean).join(", ") || "—",
+      // Chỉ hiển thị các enrollment active và lớp active (API đã lọc)
+      classNames: (s.enrollments ?? [])
+        .map((e: any) => e.class?.name)
+        .filter(Boolean)
+        .join(", ") || "—",
       studentCode: s.studentCode,
       dateOfBirth: s.dateOfBirth?.slice(0, 10),
       gender: s.gender,
