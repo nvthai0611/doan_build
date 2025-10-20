@@ -223,6 +223,13 @@ const studentMenuItems = [
         href: "/student/my-classes",
         children: undefined,
     },
+    
+    {
+        title: "Lịch học",
+        icon: Calendar,
+        href: "/student/my-schedule",
+        children: undefined,
+    },
 
     {
         title: "Bảng điểm",
@@ -232,12 +239,7 @@ const studentMenuItems = [
     },
 
 
-    {
-        title: "Lịch học",
-        icon: Calendar,
-        href: "/student/my-schedule",
-        children: undefined,
-    },
+    
 ]
 
 const parentMenuItems = [
