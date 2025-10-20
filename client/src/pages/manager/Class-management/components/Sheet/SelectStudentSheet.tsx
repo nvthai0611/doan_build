@@ -10,7 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
 import { centerOwnerStudentService } from '../../../../../services/center-owner/student-management/student.service';
 import Loading from '../../../../../components/Loading/LoadingPage';
-import { enrollmentService } from '../../../../../services/center-owner/enrollment/enrollment.service';
 
 interface SelectStudentSheetProps {
   open: boolean;
@@ -52,19 +51,20 @@ export const SelectStudentSheet = ({
 
   const { data, isLoading: isFetchingStudents } = useQuery({
     queryKey: ['students', { searchTerm: debouncedQuery || undefined, page, limit: pageSize, open }],
-    queryFn: () => enrollmentService.getStudentsByClass(classData.id, {
+    queryFn: () => centerOwnerStudentService.getStudents({
       search: debouncedQuery?.trim() ? debouncedQuery : undefined,
-      page: page,
+      status: "all",
+      page,
       limit: pageSize
     }),
     enabled: open,
     staleTime: 2000,
     refetchOnWindowFocus: true
   });
-  console.log(data);
+
   
 
-  const apiStudents: any[] = (data as any)?.data || [];
+  const apiStudents: any[] = (data as any)?.students || [];
   const total: number = (data as any)?.pagination?.totalCount || apiStudents.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const current = useMemo(() => apiStudents.map((s: any) => ({
