@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Calendar, Clock, MapPin, User2, Users, ArrowRight } from "lucide-react"
+import { BookOpen, Calendar, Clock, MapPin, User2, Users, ArrowRight, GraduationCap, Building, CalendarDays, UserCheck, TrendingUp } from "lucide-react"
 import { formatDate } from "../../../../../utils/format"
 import { studentClassInformationService } from "../../../../../services/student/classInformation/classInformation.service"
 
@@ -50,70 +50,105 @@ export function GeneralInfoTab({ classData, classId }: GeneralInfoTabProps) {
 
   const statusClasses = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return 'bg-green-100 text-green-700 border border-green-200'
-    if (s === 'pending') return 'bg-amber-100 text-amber-700 border border-amber-200'
-    if (s === 'completed') return 'bg-blue-100 text-blue-700 border border-blue-200'
-    if (s === 'cancelled' || s === 'canceled') return 'bg-red-100 text-red-700 border border-red-200'
-    return 'bg-gray-100 text-gray-700 border border-gray-200'
+    if (s === 'active') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
+    if (s === 'pending') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
+    if (s === 'completed') return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border border-blue-300 shadow-sm'
+    if (s === 'cancelled' || s === 'canceled') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
+    return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 shadow-sm'
   }
 
   return (
     <div className="grid grid-cols-1 gap-8">
       {/* Class Information Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BookOpen className="h-5 w-5 text-blue-600" />
+            </div>
             Chi tiết lớp học
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Tên lớp học</label>
-              <p className="text-lg font-semibold mt-1">{classData?.subject?.name || classData?.name}</p>
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
+              <label className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Tên lớp học
+              </label>
+              <p className="text-lg font-semibold mt-2 text-gray-800">{classData?.name}</p>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Môn học</label>
-              <p className="text-lg font-semibold mt-1">{classData?.subject?.name}</p>
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+              <label className="text-sm font-medium text-green-700 flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Môn học
+              </label>
+              <p className="text-lg font-semibold mt-2 text-gray-800">{classData?.subject?.name}</p>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Giáo viên</label>
-              <div className="flex items-center gap-2 mt-1">
-                <User2 className="w-4 h-4 text-slate-500" />
-                <span className="text-lg font-semibold">{classData?.teacher?.user?.fullName || 'Đang cập nhật'}</span>
+            <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-lg border border-orange-100">
+              <label className="text-sm font-medium text-orange-700 flex items-center gap-2">
+                <User2 className="w-4 h-4" />
+                Giáo viên
+              </label>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="p-1 bg-orange-100 rounded">
+                  <UserCheck className="w-4 h-4 text-orange-600" />
+                </div>
+                <span className="text-lg font-semibold text-gray-800">{classData?.teacher?.user?.fullName || 'Đang cập nhật'}</span>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Phòng học</label>
-              <div className="flex items-center gap-2 mt-1">
-                <MapPin className="w-4 h-4 text-purple-500" />
-                <span className="text-lg font-semibold">{classData?.room?.name || 'Chưa phân phòng'}</span>
+            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-4 rounded-lg border border-cyan-100">
+              <label className="text-sm font-medium text-cyan-700 flex items-center gap-2">
+                <Building className="w-4 h-4" />
+                Phòng học
+              </label>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="p-1 bg-cyan-100 rounded">
+                  <MapPin className="w-4 h-4 text-cyan-600" />
+                </div>
+                <span className="text-lg font-semibold text-gray-800">{classData?.room?.name || 'Chưa phân phòng'}</span>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Ngày bắt đầu</label>
-              <p className="text-lg font-semibold mt-1">
+            <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-lg border border-rose-100">
+              <label className="text-sm font-medium text-rose-700 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4" />
+                Ngày bắt đầu
+              </label>
+              <p className="text-lg font-semibold mt-2 text-gray-800">
                 {classData?.startDate ? formatDate(classData.startDate) : '-'}
               </p>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Ngày kết thúc</label>
-              <p className="text-lg font-semibold mt-1">
+            <div className="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-lg border border-violet-100">
+              <label className="text-sm font-medium text-violet-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Ngày kết thúc
+              </label>
+              <p className="text-lg font-semibold mt-2 text-gray-800">
                 {classData?.endDate ? formatDate(classData.endDate) : '-'}
               </p>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Sĩ số</label>
-              <div className="flex items-center gap-2 mt-1">
-                <Users className="w-4 h-4 text-amber-500" />
-                <span className="text-lg font-semibold">{actualStudentCount}</span>
+            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-lg border border-amber-100">
+              <label className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Sĩ số
+              </label>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="p-1 bg-amber-100 rounded">
+                  <TrendingUp className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-lg font-semibold text-gray-800">{actualStudentCount}</span>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Trạng thái</label>
-              <div className="mt-1">
-                <Badge className={statusClasses('active')}>{getStatusLabel('active')}</Badge>
+            <div className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-100">
+              <label className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+                <UserCheck className="w-4 h-4" />
+                Trạng thái
+              </label>
+              <div className="mt-2">
+                <Badge className={`${statusClasses('active')} flex items-center gap-1 w-fit`}>
+                  <UserCheck className="w-3 h-3" />
+                  {getStatusLabel('active')}
+                </Badge>
               </div>
             </div>
           </div>
@@ -122,24 +157,35 @@ export function GeneralInfoTab({ classData, classId }: GeneralInfoTabProps) {
 
       {/* Schedule Card */}
       {classData?.recurringSchedule?.schedules && classData.recurringSchedule.schedules.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-indigo-800">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Calendar className="h-5 w-5 text-indigo-600" />
+              </div>
               Lịch học hàng tuần
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-6">
+            <div className="space-y-4">
               {classData.recurringSchedule.schedules.map((item, index: number) => (
                 <div
                   key={index}
-                  className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500"
+                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 hover:shadow-md transition-all duration-300"
                 >
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-900">
-                    {item.day} {item.startTime} <ArrowRight className="inline-block" size={14} /> {item.endTime}
-                  </span>
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-semibold text-blue-900 text-lg">
+                      {item.day}
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-blue-700 font-medium">{item.startTime}</span>
+                      <ArrowRight className="text-blue-500" size={16} />
+                      <span className="text-blue-700 font-medium">{item.endTime}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
