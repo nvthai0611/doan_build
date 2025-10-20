@@ -71,3 +71,19 @@ export const formatScheduleTwo = (recurringSchedule: any): string => {
     
     return 'Chưa có lịch';
   };
+
+
+  // Helper function để format ngày cho input date
+  export const formatDateForInput = (date: string | Date | null | undefined): string => {
+    if (!date) return '';
+    
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return '';
+      
+      return dateObj.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  };

@@ -106,54 +106,6 @@ export class SessionService {
         where: {
           id: sessionId,
           teacherId: teacherId
-        }
-      });
-
-      if (!existingSession) {
-        return null;
-      }
-
-      // Kiểm tra xem phòng học mới có sẵn không (nếu có thay đổi phòng)
-      if (rescheduleDto.newRoomId && rescheduleDto.newRoomId !== existingSession.roomId) {
-        const conflictingSession = await this.prisma.classSession.findFirst({
-          where: {
-            roomId: rescheduleDto.newRoomId,
-            sessionDate: new Date(rescheduleDto.newDate),
-            startTime: { lte: rescheduleDto.newEndTime },
-            endTime: { gte: rescheduleDto.newStartTime },
-            id: { not: sessionId }
-          }
-        });
-
-        if (conflictingSession) {
-          throw new Error('Phòng học đã được sử dụng trong khoảng thời gian này');
-        }
-      }
-
-      // Tạo bản ghi thay đổi lịch
-      await this.prisma.scheduleChange.create({
-        data: {
-          classId: existingSession.classId,
-          originalDate: existingSession.sessionDate,
-          originalTime: `${existingSession.startTime}-${existingSession.endTime}`,
-          newDate: new Date(rescheduleDto.newDate),
-          newTime: `${rescheduleDto.newStartTime}-${rescheduleDto.newEndTime}`,
-          newRoomId: rescheduleDto.newRoomId || existingSession.roomId,
-          reason: rescheduleDto.reason,
-          status: 'pending',
-          requestedBy: teacherId
-        }
-      });
-
-      // Cập nhật buổi học
-      const updatedSession = await this.prisma.classSession.update({
-        where: { id: sessionId },
-        data: {
-          sessionDate: new Date(rescheduleDto.newDate),
-          startTime: rescheduleDto.newStartTime,
-          endTime: rescheduleDto.newEndTime,
-          roomId: rescheduleDto.newRoomId || existingSession.roomId,
-          notes: rescheduleDto.notes || existingSession.notes
         },
         include: {
           class: {
@@ -189,9 +141,40 @@ export class SessionService {
       });
 
 
-      // Tạo danh sách học viên
-      const students: StudentInSessionDto[] = updatedSession.class.enrollments.map(enrollment => {
-        const attendance = updatedSession.attendances.find(att => att.studentId === enrollment.studentId);
+      if (!existingSession) {
+        return null;
+      }
+
+
+      // Kiểm tra lịch trùng kỹ hơn
+      await this.validateScheduleConflict(
+        rescheduleDto.newRoomId || existingSession.roomId,
+        new Date(rescheduleDto.newDate),
+        rescheduleDto.newStartTime,
+        rescheduleDto.newEndTime,
+        sessionId
+      );
+
+
+      // Tạo bản ghi thay đổi lịch (request)
+      const scheduleChange = await this.prisma.scheduleChange.create({
+        data: {
+          classId: existingSession.classId,
+          originalDate: existingSession.sessionDate,
+          originalTime: `${existingSession.startTime}-${existingSession.endTime}`,
+          newDate: new Date(rescheduleDto.newDate),
+          newTime: `${rescheduleDto.newStartTime}-${rescheduleDto.newEndTime}`,
+          newRoomId: rescheduleDto.newRoomId || existingSession.roomId,
+          reason: rescheduleDto.reason,
+          status: 'pending',
+          requestedBy: teacherId
+        }
+      });
+
+
+      // Trả về thông tin session hiện tại (chưa thay đổi)
+      const students: StudentInSessionDto[] = existingSession.class.enrollments.map(enrollment => {
+        const attendance = existingSession.attendances.find(att => att.studentId === enrollment.studentId);
         return {
           id: enrollment.student.id,
           name: enrollment.student.user.fullName || 'Chưa có tên',
@@ -201,25 +184,102 @@ export class SessionService {
       });
 
       return {
-        id: updatedSession.id,
-        date: this.formatDateYYYYMMDD(updatedSession.sessionDate),
-        startTime: updatedSession.startTime,
-        endTime: updatedSession.endTime,
-        subject: updatedSession.class.subject.name,
-        className: updatedSession.class.name,
-        room: updatedSession.room?.name || 'Chưa xác định',
-        studentCount: updatedSession.class.enrollments.length,
-        status: updatedSession.status,
-        notes: updatedSession.notes || undefined,
+        id: existingSession.id,
+        date: this.formatDateYYYYMMDD(existingSession.sessionDate),
+        startTime: existingSession.startTime,
+        endTime: existingSession.endTime,
+        subject: existingSession.class.subject.name,
+        className: existingSession.class.name,
+        room: existingSession.room?.name || 'Chưa xác định',
+        studentCount: existingSession.class.enrollments.length,
+        status: existingSession.status,
+        notes: existingSession.notes || undefined,
         type: 'regular',
-        teacherId: updatedSession.teacherId,
-        teacherName: updatedSession.teacher?.user.fullName || undefined,
+        teacherId: existingSession.teacherId,
+        teacherName: existingSession.teacher?.user.fullName || undefined,
         students,
-        createdAt: updatedSession.createdAt,
-        updatedAt: updatedSession.createdAt
+        createdAt: existingSession.createdAt,
+        updatedAt: existingSession.createdAt
       };
     } catch (error) {
       throw new Error(`Lỗi khi dời lịch buổi học: ${error.message}`);
+    }
+  }
+
+  private async validateScheduleConflict(
+    roomId: string | null,
+    newDate: Date,
+    newStartTime: string,
+    newEndTime: string,
+    excludeSessionId: string
+  ): Promise<void> {
+    // Kiểm tra xung đột phòng học
+    if (roomId) {
+      const roomConflict = await this.prisma.classSession.findFirst({
+        where: {
+          roomId: roomId,
+          sessionDate: newDate,
+          startTime: { lte: newEndTime },
+          endTime: { gte: newStartTime },
+          id: { not: excludeSessionId }
+        }
+      });
+
+
+      if (roomConflict) {
+        throw new Error('Phòng học đã được sử dụng trong khoảng thời gian này');
+      }
+    }
+
+    // Kiểm tra xung đột giáo viên - lấy teacherId từ session hiện tại
+    const currentSession = await this.prisma.classSession.findUnique({
+      where: { id: excludeSessionId },
+      select: { teacherId: true }
+    });
+
+
+    if (currentSession?.teacherId) {
+      const teacherConflict = await this.prisma.classSession.findFirst({
+        where: {
+          sessionDate: newDate,
+          startTime: { lte: newEndTime },
+          endTime: { gte: newStartTime },
+          id: { not: excludeSessionId },
+          teacherId: currentSession.teacherId
+        }
+      });
+
+
+      if (teacherConflict) {
+        throw new Error('Giáo viên đã có buổi dạy khác trong khoảng thời gian này');
+      }
+    }
+    // Kiểm tra xung đột với ScheduleChange đang pending (nếu có phòng)
+    if (roomId) {
+      const pendingChangeConflict = await this.prisma.scheduleChange.findFirst({
+        where: {
+          newDate: newDate,
+          newRoomId: roomId,
+          status: 'pending',
+          OR: [
+            {
+              newTime: {
+                contains: newStartTime
+              }
+            },
+            {
+              newTime: {
+                contains: newEndTime
+              }
+            }
+          ]
+        }
+      });
+
+
+      if (pendingChangeConflict) {
+        throw new Error('Đã có yêu cầu thay đổi lịch khác đang chờ xử lý cho phòng học này trong khoảng thời gian này');
+      }
     }
   }
 

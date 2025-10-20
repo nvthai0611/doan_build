@@ -20,6 +20,7 @@ export interface TeacherClass {
   id: string;
   name: string;
   grade?: string;
+  gradeLevel?: number;
   subject: string;
 }
 
