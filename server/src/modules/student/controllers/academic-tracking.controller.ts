@@ -8,29 +8,25 @@ export class AcademicTrackingController {}
 export class GradesController {
   constructor(private readonly academicTrackingService: AcademicTrackingService) {}
   /**
-   * GET /student/grades/years
+   * GET /student/grades/classes
+   * Danh sách lớp mà học sinh đang/đã học
    */
-  @Get('years')
-  async getYears(@Req() req: any) {
+  @Get('classes')
+  async getClasses(@Req() req: any) {
     const studentId = req.user?.studentId;
     const rows = await this.academicTrackingService["prisma"].$queryRawUnsafe<any[]>(
       `
-      SELECT DISTINCT tca.academic_year as year
-      FROM student_assessment_grades sag
-      JOIN assessments a ON a.id = sag.assessment_id
-      LEFT JOIN teacher_class_assignments tca ON tca.class_id = a.class_id
-      WHERE sag.student_id = $1::uuid AND tca.academic_year IS NOT NULL
-      UNION
-      SELECT DISTINCT tca.academic_year as year
+      SELECT DISTINCT c.id as class_id, c.name as class_name, c.academic_year, s.name as subject_name
       FROM enrollments e
-      JOIN teacher_class_assignments tca ON tca.class_id = e.class_id
-      WHERE e.student_id = $1::uuid AND tca.academic_year IS NOT NULL
-      ORDER BY year DESC
+      JOIN classes c ON c.id = e.class_id
+      JOIN subjects s ON s.id = c.subject_id
+      WHERE e.student_id = $1::uuid
+      ORDER BY c.name ASC
       `,
       studentId || null,
     );
-    const years = rows.map(r => r.year).filter(Boolean);
-    return { data: years, message: 'Lấy danh sách năm học thành công' };
+    const classes = rows.map(r => ({ id: r.class_id, name: r.class_name, academicYear: r.academic_year, subjectName: r.subject_name }));
+    return { data: classes, message: 'Lấy danh sách lớp thành công' };
   }
 
   /**
@@ -41,20 +37,12 @@ export class GradesController {
     const studentId = req.user?.studentId;
     const rows = await this.academicTrackingService["prisma"].$queryRawUnsafe<any[]>(
       `
-      SELECT DISTINCT tca.semester as term
-      FROM student_assessment_grades sag
-      JOIN assessments a ON a.id = sag.assessment_id
-      LEFT JOIN teacher_class_assignments tca ON tca.class_id = a.class_id
-      WHERE sag.student_id = $1::uuid
-        AND ($2::text IS NULL OR tca.academic_year = $2::text)
-        AND tca.semester IS NOT NULL
-      UNION
-      SELECT DISTINCT tca.semester as term
+      SELECT DISTINCT e.semester as term
       FROM enrollments e
-      JOIN teacher_class_assignments tca ON tca.class_id = e.class_id
+      JOIN classes c ON c.id = e.class_id
       WHERE e.student_id = $1::uuid
-        AND ($2::text IS NULL OR tca.academic_year = $2::text)
-        AND tca.semester IS NOT NULL
+        AND ($2::text IS NULL OR c.academic_year = $2::text)
+        AND e.semester IS NOT NULL
       ORDER BY term ASC
       `,
       studentId || null,
@@ -126,10 +114,9 @@ export class GradesController {
       FROM enrollments e
       JOIN classes c ON c.id = e.class_id
       JOIN subjects s ON s.id = c.subject_id
-      LEFT JOIN teacher_class_assignments tca ON tca.class_id = c.id
       WHERE e.student_id = $1::uuid
-        AND ($2::text IS NULL OR tca.academic_year = $2::text)
-        AND ($3::text IS NULL OR tca.semester = $3::text)
+        AND ($2::text IS NULL OR c.academic_year = $2::text)
+        AND ($3::text IS NULL OR e.semester = $3::text)
       ORDER BY s.name ASC
       `,
       studentId || null,
@@ -141,15 +128,13 @@ export class GradesController {
   }
 
   /**
-   * GET /student/grades/test-types?academicYear=&term=&subjectId=
+   * GET /student/grades/test-types?classId=
    * Trả ra các loại kiểm tra có dữ liệu theo filter
    */
   @Get('test-types')
   async getTestTypes(
     @Req() req: any,
-    @Query('academicYear') academicYear?: string,
-    @Query('term') term?: string,
-    @Query('subjectId') subjectId?: string,
+    @Query('classId') classId?: string,
   ) {
     const studentId = req.user?.studentId;
     const rows = await this.academicTrackingService["prisma"].$queryRawUnsafe<any[]>(
@@ -158,19 +143,26 @@ export class GradesController {
       FROM student_assessment_grades sag
       JOIN assessments a ON a.id = sag.assessment_id
       JOIN classes c ON c.id = a.class_id
-      LEFT JOIN teacher_class_assignments tca ON tca.class_id = a.class_id
+      JOIN enrollments e ON e.class_id = c.id AND e.student_id = sag.student_id
       WHERE sag.student_id = $1::uuid
-        AND ($2::text IS NULL OR tca.academic_year = $2::text)
-        AND ($3::text IS NULL OR tca.semester = $3::text)
-        AND ($4::uuid IS NULL OR c.subject_id = $4::uuid)
+        AND ($2::uuid IS NULL OR c.id = $2::uuid)
       ORDER BY a.type ASC
       `,
       studentId || null,
-      academicYear || null,
-      term || null,
-      subjectId || null,
+      classId || null,
     );
     const types = rows.map(r => r.type).filter(Boolean);
     return { data: types, message: 'Lấy danh sách loại kiểm tra thành công' };
+  }
+
+  /**
+   * GET /student/grades/overview
+   * Trả thống kê tổng quan về điểm số của học sinh
+   */
+  @Get('overview')
+  async getOverview(@Req() req: any) {
+    const studentId = req.user?.studentId;
+    const data = await this.academicTrackingService.getOverview(studentId);
+    return { data, message: 'Lấy thống kê tổng quan thành công' };
   }
 }
