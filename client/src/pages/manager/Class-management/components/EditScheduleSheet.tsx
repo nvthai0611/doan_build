@@ -35,7 +35,6 @@ export const EditScheduleSheet = ({
     
     // Load schedules from classData when component opens
     useEffect(() => {
-<<<<<<< Updated upstream
         
         if (open && classData) {
             let scheduleData = null;
@@ -68,27 +67,6 @@ export const EditScheduleSheet = ({
                     duration: 90
                 }]);
             }
-=======
-        if (open && classData?.teachers?.[0]?.recurringSchedule) {
-            const recurringSchedule = classData.teachers[0].recurringSchedule;
-            const loadedSchedules: ScheduleItem[] = recurringSchedule.days.map((day: string, index: number) => ({
-                id: `schedule-${index}`,
-                day: day,
-                startTime: recurringSchedule.startTime,
-                endTime: recurringSchedule.endTime,
-                duration: calculateDuration(recurringSchedule.startTime, recurringSchedule.endTime)
-            }));
-            setSchedules(loadedSchedules);
-        } else if (open) {
-            // Default empty schedule if no data
-            setSchedules([{
-                id: '1',
-                day: 'monday',
-                startTime: '08:00',
-                endTime: '09:30',
-                duration: 90
-            }]);
->>>>>>> Stashed changes
         }
     }, [open, classData]);
 
@@ -202,11 +180,7 @@ export const EditScheduleSheet = ({
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                                             <Calendar className="h-4 w-4" />
-<<<<<<< Updated upstream
                                             <span>{classData.subjectName} - {classData.gradeName || classData.grade?.name || 'Chưa xác định'}</span>
-=======
-                                            <span>{classData.subjectName} - {classData.grade}</span>
->>>>>>> Stashed changes
                                         </div>
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                                             <User className="h-4 w-4" />
@@ -294,10 +268,7 @@ export const EditScheduleSheet = ({
                                                     value={schedule.startTime}
                                                     onChange={(e: any) => handleScheduleChange(schedule.id, 'startTime', e.target.value)}
                                                     className="pl-10 h-10"
-<<<<<<< Updated upstream
                                                     disabled={classData?.status === 'active'}
-=======
->>>>>>> Stashed changes
                                                 />
                                             </div>
                                         </div>
@@ -319,10 +290,7 @@ export const EditScheduleSheet = ({
                                                         handleScheduleChange(schedule.id, 'duration', newDuration);
                                                     }}
                                                     className="pl-10 h-10"
-<<<<<<< Updated upstream
                                                     disabled={classData?.status === 'active'}
-=======
->>>>>>> Stashed changes
                                                 />
                                             </div>
                                         </div>
@@ -344,10 +312,7 @@ export const EditScheduleSheet = ({
                                                 min={0}
                                                 step={15}
                                                 className="h-10"
-<<<<<<< Updated upstream
                                                 disabled={classData?.status === 'active'}
-=======
->>>>>>> Stashed changes
                                             />
                                         </div>
 
@@ -358,11 +323,7 @@ export const EditScheduleSheet = ({
                                                 size="sm"
                                                 onClick={() => handleRemoveSchedule(schedule.id)}
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-10 w-10 p-0"
-<<<<<<< Updated upstream
                                                 disabled={schedules.length === 1 || classData?.status === 'active'}
-=======
-                                                disabled={schedules.length === 1}
->>>>>>> Stashed changes
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>

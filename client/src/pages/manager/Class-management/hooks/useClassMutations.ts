@@ -41,18 +41,6 @@ export const useClassMutations = () => {
         }
     });
 
-    const updateClassSchedule = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
-            classService.updateClassSchedule(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['classSchedules'] });
-            queryClient.invalidateQueries({ queryKey: ['class'] });
-            console.log('Cập nhật lịch học thành công');
-        },
-        onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
-        }
-    });
 
     const deleteClass = useMutation({
         mutationFn: classService.deleteClass,
