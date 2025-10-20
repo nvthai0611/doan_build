@@ -94,10 +94,10 @@ const fetchClassData = async (
   return res;
 };
 
-const getAttendanceHistoryOfClass = async (teacherClassAssignment: string): Promise<any> => {
+const getAttendanceHistoryOfClass = async (classId: string): Promise<any> => {
   try {
-    const result = await apiClient.get(`teacher/class-management/classes/${teacherClassAssignment}/attendance-history`);
-    
+    const result = await apiClient.get(`teacher/class-management/classes/${classId}/attendance-history`);
+
     if (result.status >= 200 && result.status < 300) {
       return result.data;
     } else {

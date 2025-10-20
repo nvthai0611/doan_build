@@ -20,7 +20,8 @@ import {
   BookOpen,
   GraduationCap,
   UserCheck,
-  Loader2
+  Loader2,
+  Search
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
@@ -405,10 +406,10 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
                 />
               </div>
 
-              <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddStudent}>
+              {/* <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddStudent}>
                 <Plus className="w-4 h-4" />
                 Thêm học sinh
-              </Button>
+              </Button> */}
             </div>
 
             {filteredStudents && filteredStudents.length > 0 ? (

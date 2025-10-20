@@ -3,7 +3,7 @@ import { StudentSharedService } from "../services/student.service";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @ApiTags('Shared - Students')
-@Controller('shared/students')
+@Controller('students')
 @Injectable()
 export class StudentsSharedController {
     constructor(private readonly studentSharedService: StudentSharedService) {}
