@@ -41,6 +41,7 @@ export const useClassMutations = () => {
         }
     });
 
+
     const deleteClass = useMutation({
         mutationFn: classService.deleteClass,
         onSuccess: () => {

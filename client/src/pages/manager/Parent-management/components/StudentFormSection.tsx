@@ -149,9 +149,9 @@ export function StudentFormSection({
                                     placeholder="nguyenvanb"
                                     className={errors[`students.${index}.username`] ? "border-red-500" : ""}
                                 />
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                {/* <span className="text-sm text-muted-foreground whitespace-nowrap">
                                     @student.qne.edu.vn
-                                </span>
+                                </span> */}
                             </div>
                             {errors[`students.${index}.username`] && (
                                 <p className="text-sm text-red-500">{errors[`students.${index}.username`]}</p>
@@ -161,7 +161,7 @@ export function StudentFormSection({
 
                     {/* Student Code & School */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                        {/* <div className="space-y-2">
                             <Label htmlFor={`student-code-${index}`}>
                                 Mã học sinh <span className="text-red-500">*</span>
                             </Label>
@@ -178,7 +178,7 @@ export function StudentFormSection({
                             <p className="text-xs text-muted-foreground">
                                 Chỉ chữ IN HOA và số (VD: HS001, HS002)
                             </p>
-                        </div>
+                        </div> */}
 
                         <div className="space-y-2">
                             <Label htmlFor={`student-school-${index}`}>

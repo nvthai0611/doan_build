@@ -36,10 +36,10 @@ export function StudentParentInfoCard({ student }: StudentParentInfoCardProps) {
               <p className="text-sm font-medium text-foreground">{student?.parent?.user?.email || 'Chưa cập nhật'}</p>
             </div>
 
-            <div>
+            {/* <div>
               <p className="text-xs text-muted-foreground mb-1">Mối quan hệ</p>
               <p className="text-sm font-medium text-foreground">{student?.parent?.relation || 'N/A'}</p>
-            </div>
+            </div> */}
           </div>
         ) : (
           // Empty State

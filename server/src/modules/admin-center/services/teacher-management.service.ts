@@ -74,6 +74,7 @@ export class TeacherManagementService {
         data: {
           userId: user.id,
           schoolId: schoolId,
+          teacherCode: `TCH${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         },
         include: {
           user: true,

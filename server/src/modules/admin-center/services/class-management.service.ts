@@ -1289,8 +1289,6 @@ export class ClassManagementService {
             );
         }
     }
-
-    
     // Xóa lớp học (soft delete bằng cách đổi status)
     async delete(id: string) {
         try {
