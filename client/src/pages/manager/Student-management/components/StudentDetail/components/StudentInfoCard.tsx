@@ -71,7 +71,7 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
     // Load schools
     try {
       const schoolsData = await centerOwnerStudentService.getSchools()
-      setSchools(schoolsData?.data || [])
+      setSchools(schoolsData || [])
     } catch (error) {
       console.error("Error loading schools:", error)
     }
@@ -238,8 +238,17 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle>Thông tin cá nhân</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenEdit}
+            className="gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Chỉnh sửa
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -282,10 +291,6 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
               <p className="font-medium">{student.address || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Lớp học</p>
-              <p className="font-medium">{student.grade || '-'}</p>
-            </div>
-            <div>
               <p className="text-sm text-gray-600">Trường học</p>
               <p className="font-medium">{student.school.name}</p>
             </div>
@@ -304,8 +309,14 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
           </div>
 
           <div className="pt-4 border-t space-y-2 text-sm text-gray-600">
-            <p>Ngày tạo: {formatDate(student.createdAt)}</p>
-            <p>Cập nhật lần cuối: {formatDate(student.updatedAt)}</p>
+            <p className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Ngày tạo: {formatDate(student.createdAt)}
+            </p>
+            <p className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Cập nhật lần cuối: {formatDate(student.updatedAt)}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -372,7 +383,7 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
                   />
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="grade">Khối lớp</Label>
                   <Input
                     id="grade"
@@ -380,7 +391,7 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
                     onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
                     placeholder="VD: 10A1"
                   />
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <Label htmlFor="schoolId">Trường học</Label>

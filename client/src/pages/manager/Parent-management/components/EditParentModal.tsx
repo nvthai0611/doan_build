@@ -58,7 +58,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
   const updateMutation = useMutation({
     mutationFn: (data: any) => ParentService.updateParent(parentId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["parents"] })
+      queryClient.invalidateQueries({ queryKey: ["parent-detail"] })
       toast.success("Cập nhật thông tin phụ huynh thành công!")
       handleClose()
     },
@@ -221,6 +221,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
                 <Input
                   id="email"
                   type="email"
+                  disabled ={true}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="parent@example.com"
