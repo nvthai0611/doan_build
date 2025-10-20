@@ -102,11 +102,17 @@ async function main() {
 
   // Tạo Teacher profile
   await prisma.teacher.upsert({
-    where: { userId: teacher.id },
-    update: {},
-    create: {
+    where: { teacherCode: 'TCH0001' },
+    update: {
       userId: teacher.id,
       schoolId: school.id,
+      subjects: ['Toán học', 'Vật lý'],
+    },
+    create: {
+      userId: teacher.id,
+      teacherCode: 'TCH0001',
+      schoolId: school.id,
+      subjects: ['Toán học', 'Vật lý'],
     },
   });
 

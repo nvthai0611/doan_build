@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  email                 String                     @unique
+  email                 String?                    @unique
   password              String
   createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   fullName              String?                    @map("full_name")
@@ -51,25 +51,26 @@ model Parent {
 }
 
 model Teacher {
-  id                  String                        @id @default(uuid()) @db.Uuid
-  userId              String                        @unique @map("user_id") @db.Uuid
-  schoolId            String?                       @map("school_id") @db.Uuid
-  subjects            String[]
-  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  classSessions       ClassSession[]
-  classes             Class[]
-  contractUploads     ContractUpload[]
-  contracts           Contract[]
-  reportedIncidents   IncidentReport[]
-  replacementSessions LeaveRequestAffectedSession[]
-  leaveRequests       LeaveRequest[]
-  uploadedMaterials   Material[]                    @relation("UploadedBy")
-  payrolls            Payroll[]
-  documents           TeacherDocument[]
-  school              School?                       @relation(fields: [schoolId], references: [id])
-  user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id                          String                        @id @default(uuid()) @db.Uuid
+  userId                      String                        @unique @map("user_id") @db.Uuid
+  teacherCode                 String                        @unique @map("teacher_code")
+  // code
+  schoolId                    String?                       @map("school_id") @db.Uuid
+  subjects                    String[]
+  createdAt                   DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contractUploads             ContractUpload[]
+  contracts                   Contract[]
+  leaveRequests               LeaveRequest[]
+  payrolls                    Payroll[]
+  documents                   TeacherDocument[]
+  uploadedMaterials           Material[]                    @relation("UploadedBy")
+  classes                     Class[]
+  school                      School?                       @relation(fields: [schoolId], references: [id])
+  user                        User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacementSessions         LeaveRequestAffectedSession[]
+  reportedIncidents           IncidentReport[]
+  classSessions               ClassSession[]
   @@map("teachers")
 }
 
@@ -135,41 +136,46 @@ model Grade {
 }
 
 model Class {
-  id                String                @id @default(uuid()) @db.Uuid
-  roomId            String?               @map("room_id") @db.Uuid
-  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  description       String?
-  feeStructureId    String?               @map("fee_structure_id") @db.Uuid
-  maxStudents       Int?                  @map("max_students")
-  name              String
-  status            String                @default("draft")
-  subjectId         String                @map("subject_id") @db.Uuid
-  academicYear      String?               @map("academic_year")
-  recurringSchedule Json?                 @map("recurring_schedule")
-  expectedStartDate DateTime?             @map("expected_start_date") @db.Date
-  actualEndDate     DateTime?             @map("actual_end_date") @db.Date
-  actualStartDate   DateTime?             @map("actual_start_date") @db.Date
-  gradeId           String?               @map("grade_id") @db.Uuid
-  teacherId         String?               @map("teacher_id") @db.Uuid
-  feeAmount         Decimal?              @map("fee_amount") @db.Decimal(12, 2)
-  feeCurrency       String?               @default("VND") @map("fee_currency")
-  feeLockedAt       DateTime?             @map("fee_locked_at") @db.Timestamptz(6)
-  feePeriod         String?               @map("fee_period")
-  assessments       Assessment[]
-  feeHistories      ClassFeeHistory[]
-  sessions          ClassSession[]
-  feeStructure      FeeStructure?         @relation(fields: [feeStructureId], references: [id])
-  grade             Grade?                @relation(fields: [gradeId], references: [id])
-  room              Room?                 @relation(fields: [roomId], references: [id])
-  subject           Subject               @relation(fields: [subjectId], references: [id])
-  teacher           Teacher?              @relation(fields: [teacherId], references: [id])
-  enrollments       Enrollment[]
-  feeRecords        FeeRecord[]
-  incidentReports   IncidentReport[]
-  materials         Material[]
-  scheduleChanges   ScheduleChange[]
-  classRequests     StudentClassRequest[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  roomId                  String?                  @map("room_id") @db.Uuid
+  teacherId               String?                  @map("teacher_id") @db.Uuid
+  classCode               String?                  @unique @map("class_code")
+  description             String?
+  feeStructureId          String?                  @map("fee_structure_id") @db.Uuid
+  gradeId                 String?                  @map("grade_id") @db.Uuid
+  maxStudents             Int?                     @map("max_students")
+  name                    String
+  status                  String                   @default("draft")
+  subjectId               String                   @map("subject_id") @db.Uuid
+  recurringSchedule       Json?                    @map("recurring_schedule")
+  academicYear            String?                  @map("academic_year")
+  expectedStartDate       DateTime?                @map("expected_start_date") @db.Date
+  actualStartDate         DateTime?                @map("actual_start_date") @db.Date
+  actualEndDate           DateTime?                @map("actual_end_date") @db.Date
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // NEW: Snapshot học phí trên lớp
+  feeAmount               Decimal?                 @map("fee_amount") @db.Decimal(12, 2)
+  feePeriod               String?                  @map("fee_period")
+  feeCurrency             String?                  @map("fee_currency") @default("VND")
+  feeLockedAt             DateTime?                @map("fee_locked_at") @db.Timestamptz(6)
+
+  // Relations
+  assessments             Assessment[]
+  sessions                ClassSession[]
+  feeStructure            FeeStructure?            @relation(fields: [feeStructureId], references: [id])
+  room                    Room?                    @relation(fields: [roomId], references: [id])
+  teacher                 Teacher?                 @relation(fields: [teacherId], references: [id])
+  subject                 Subject                  @relation(fields: [subjectId], references: [id])
+  enrollments             Enrollment[]
+  materials               Material[]
+  scheduleChanges         ScheduleChange[]
+  classRequests           StudentClassRequest[]
+  grade                   Grade?                   @relation(fields: [gradeId], references: [id])
+  incidentReports         IncidentReport[]
+  feeRecords              FeeRecord[]              // NEW: Quan hệ với FeeRecord
+  feeHistories            ClassFeeHistory[]        // NEW: Lịch sử thay đổi học phí
 
   @@map("classes")
 }
@@ -577,6 +583,7 @@ model RolePermission {
   @@unique([roleId, permissionId])
   @@map("role_permissions")
 }
+
 
 
 model ContractUpload {

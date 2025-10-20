@@ -375,13 +375,25 @@ export class StudentManagementService {
               }
             }
           },
+          // đa sua o day
           {
-            user: {
-              email: {
-                contains: searchTerm,
-                mode: 'insensitive'
+            AND: [
+              {
+                user: {
+                  email: {
+                    not: null
+                  }
+                }
+              },
+              {
+                user: {
+                  email: {
+                    contains: searchTerm,
+                    mode: 'insensitive'
+                  }
+                }
               }
-            }
+            ]
           },
           {
             user: {

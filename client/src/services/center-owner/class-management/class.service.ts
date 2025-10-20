@@ -31,16 +31,7 @@ export const classService = {
     updateClass: async (id: string, data: any) => {
         console.log(id, data);
         
-<<<<<<< Updated upstream
         const response = await apiClient.patch(`${BASE_URL}/${id}`, data);
-=======
-        const response = await apiClient.patch(`${BASE_URL}/${id}`, data.schedules);
-        return response;
-    },
-
-    updateClassSchedule: async (id: string, data: any) => {
-        const response = await apiClient.patch(`${BASE_URL}/${id}/schedules`, data);
->>>>>>> Stashed changes
         return response;
     },
 
