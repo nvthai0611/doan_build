@@ -14,13 +14,7 @@ export class EnrollmentsService {
           include: {
             subject: true,
             room: true,
-            teacherClassAssignments: {
-              take: 1,
-              orderBy: { startDate: 'desc' },
-              include: {
-                teacher: { include: { user: true } },
-              },
-            },
+            teacher: { include: { user: true } },
           },
         },
       },
@@ -31,7 +25,7 @@ export class EnrollmentsService {
       ...e,
       class: {
         ...e.class,
-        teacher: e.class?.teacherClassAssignments?.[0]?.teacher || null,
+        teacher: e.class?.teacher || null,
       },
     }));
   }

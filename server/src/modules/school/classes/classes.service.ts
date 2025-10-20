@@ -7,19 +7,16 @@ export class ClassesService {
     
     async getClassByTeacherId(teacherId: string) {
         // Logic to get classes by teacher ID
-        const assignments = await this.prisma.teacherClassAssignment.findMany({
+        const classes = await this.prisma.class.findMany({
             where: { teacherId },
             include: {
-                class: {
-                    include: {
-                        room: true,
-                    }
-                }
+                room: true,
+                teacher: true
             }
         });
-        return assignments.map(assignment => ({
-            ...assignment.class,
-            teacherId: assignment.teacherId
+        return classes.map(cls => ({
+            ...cls,
+            teacherId: cls.teacherId
         }));
     }
 
@@ -29,19 +26,15 @@ export class ClassesService {
             where: { id },
             include: {
                 room: true,
-                teacherClassAssignments: {
-                    select: {
-                        teacherId: true
-                    },
-                    take: 1
-                }
+                teacher: true
             }
         });
         
         if (classItem) {
             return {
                 ...classItem,
-                teacherId: classItem.teacherClassAssignments[0]?.teacherId
+                teacherId: classItem.teacherId,
+                room: classItem.room || { id: '', name: 'Chưa xác định', capacity: 0 }
             };
         }
         

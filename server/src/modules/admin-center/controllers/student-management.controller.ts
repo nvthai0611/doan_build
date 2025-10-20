@@ -1,5 +1,5 @@
 import { query } from 'express';
-import { StudentManagementService } from '../services/student-management.service';
+import { StudentManagementService, StudentResponse } from '../services/student-management.service';
 import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody } from '@nestjs/swagger';
 

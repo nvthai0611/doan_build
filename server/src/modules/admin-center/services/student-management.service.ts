@@ -26,7 +26,7 @@ interface UpdateStudentDto {
   schoolId?: string;
 }
 
-interface StudentResponse {
+export interface StudentResponse {
   data: any;
   message: string;
 }

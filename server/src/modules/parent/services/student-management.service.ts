@@ -69,10 +69,24 @@ export class StudentManagementService {
           school: true,
           enrollments: enrollmentWhere === undefined ? {
             include: {
-              class: { include: { subject: true } },
-              teacherClassAssignment: { include: { teacher: { include: { user: true } } } },
+              class: { 
+                include: { 
+                  subject: true,
+                  teacher: { include: { user: true } }
+                } 
+              },
             },
-          } : { where: enrollmentWhere, include: { class: { include: { subject: true } }, teacherClassAssignment: { include: { teacher: { include: { user: true } } } } } },
+          } : { 
+            where: enrollmentWhere, 
+            include: { 
+              class: { 
+                include: { 
+                  subject: true,
+                  teacher: { include: { user: true } }
+                } 
+              } 
+            } 
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -109,8 +123,8 @@ export class StudentManagementService {
           id: e.class.id,
           name: e.class.name,
           subject: { id: e.class.subject.id, name: e.class.subject.name },
-          teacher: e.teacherClassAssignment?.teacher
-            ? { id: e.teacherClassAssignment.teacher.id, user: { fullName: e.teacherClassAssignment.teacher.user.fullName ?? '' } }
+          teacher: e.class.teacher
+            ? { id: e.class.teacher.id, user: { fullName: e.class.teacher.user.fullName ?? '' } }
             : { id: '', user: { fullName: '' } },
         },
       })),
@@ -147,8 +161,12 @@ export class StudentManagementService {
         school: true,
         enrollments: {
           include: {
-            class: { include: { subject: true } },
-            teacherClassAssignment: { include: { teacher: { include: { user: true } } } },
+            class: { 
+              include: { 
+                subject: true,
+                teacher: { include: { user: true } }
+              } 
+            },
           },
         },
         attendances: {
@@ -207,8 +225,8 @@ export class StudentManagementService {
           id: e.class.id,
           name: e.class.name,
           subject: { id: e.class.subject.id, name: e.class.subject.name },
-          teacher: e.teacherClassAssignment?.teacher
-            ? { id: e.teacherClassAssignment.teacher.id, user: { fullName: e.teacherClassAssignment.teacher.user.fullName ?? '' } }
+          teacher: e.class.teacher
+            ? { id: e.class.teacher.id, user: { fullName: e.class.teacher.user.fullName ?? '' } }
             : { id: '', user: { fullName: '' } },
         },
       })),
@@ -293,14 +311,9 @@ export class StudentManagementService {
         class: { 
           include: { 
             subject: true,
-            teacherClassAssignments: {
-              where: { status: 'active' },
+            teacher: {
               include: {
-                teacher: {
-                  include: {
-                    user: { select: { fullName: true } }
-                  }
-                }
+                user: { select: { fullName: true } }
               }
             }
           } 
@@ -322,9 +335,9 @@ export class StudentManagementService {
         id: s.class.id,
         name: s.class.name,
         subject: { id: s.class.subject.id, name: s.class.subject.name },
-        teacher: s.class.teacherClassAssignments?.[0]?.teacher ? {
-          id: s.class.teacherClassAssignments[0].teacher.id,
-          fullName: s.class.teacherClassAssignments[0].teacher.user?.fullName || null,
+        teacher: s.class.teacher ? {
+          id: s.class.teacher.id,
+          fullName: s.class.teacher.user?.fullName || null,
         } : undefined,
         maxStudents: s.class.maxStudents ?? 0,
         currentStudents: 0,
@@ -377,16 +390,11 @@ export class StudentManagementService {
             class: {
               include: {
                 subject: true,
-                teacherClassAssignments: {
-                  where: { status: 'active' },
+                teacher: {
                   include: {
-                    teacher: {
-                      include: {
-                        user: {
-                          select: {
-                            fullName: true
-                          }
-                        }
+                    user: {
+                      select: {
+                        fullName: true
                       }
                     }
                   }
@@ -407,8 +415,7 @@ export class StudentManagementService {
     });
 
     const result = grades.map((grade) => {
-      const teacherAssignment = grade.assessment.class.teacherClassAssignments[0];
-      const teacherName = teacherAssignment?.teacher?.user?.fullName || 'Chưa xác định';
+      const teacherName = grade.assessment.class.teacher?.user?.fullName || 'Chưa xác định';
       
       // Tính trạng thái dựa trên điểm số
       let status = 'average';

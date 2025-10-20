@@ -1,5 +1,5 @@
 import { apiClient } from '../utils/clientAxios'
-import { ScheduleData, ScheduleFilters } from '../pages/teacher/Teacher-schedule/utils'
+import { ScheduleData, ScheduleFilters } from '../pages/Teacher/Teacher-schedule/utils'
 
 export interface TeacherScheduleResponse {
   success: boolean
@@ -111,9 +111,9 @@ class TeacherScheduleService {
     newRoomId?: string;
     reason: string;
     notes?: string;
-  }): Promise<{ success: boolean; data: ScheduleData; message: string }> {
+  }): Promise<{ success: boolean; data: any; message: string }> {
     try {
-      const response = await apiClient.post<{ success: boolean; data: ScheduleData; message: string }>(`/teacher/session/${sessionId}/reschedule`, rescheduleData)
+      const response = await apiClient.post<{ success: boolean; data: any; message: string }>(`/teacher/session/${sessionId}/reschedule`, rescheduleData)
       return response.data
     } catch (error) {
       console.error('Error rescheduling session:', error)

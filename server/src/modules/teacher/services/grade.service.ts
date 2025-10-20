@@ -23,32 +23,22 @@ export class GradeService {
         
         const teacherId = teacher.id;
 
-        // Kiểm tra class có tồn tại không
-        const classExists = await this.prisma.class.findUnique({
-            where: { id: classId }
-        });
-        if (!classExists) {
-            throw new HttpException('Lớp học không tồn tại', HttpStatus.NOT_FOUND);
-        }
-
-        // Kiểm tra teacher có được phân công dạy lớp này không (qua TeacherClassAssignment)
-        const assignment = await this.prisma.teacherClassAssignment.findFirst({
+        // Kiểm tra class có tồn tại và teacher có được phân công dạy lớp này không
+        const classExists = await this.prisma.class.findFirst({
             where: { 
-                teacherId, 
-                classId
-                // Bỏ điều kiện status để linh hoạt hơn
-            },
-            orderBy: { startDate: 'desc' } // Lấy assignment mới nhất
+                id: classId,
+                teacherId: teacherId // Kiểm tra teacher có được phân công dạy lớp này không
+            }
         });
         
-        console.log(`🔍 Teacher ${teacherId} assignment for class ${classId}:`, assignment);
+        console.log(`🔍 Teacher ${teacherId} access to class ${classId}:`, classExists ? 'Authorized' : 'Not authorized');
         
-        if(!assignment){
-            console.log(`⚠️ No assignment found for teacher ${teacherId} and class ${classId}`);
+        if (!classExists) {
+            console.log(`⚠️ Teacher ${teacherId} is not assigned to class ${classId}`);
             // Thay vì throw error, chỉ log warning và cho phép tiếp tục
             console.log('⚠️ Allowing access despite no assignment found');
         } else {
-            console.log(`✅ Assignment found: ${assignment.id}, status: ${assignment.status}`);
+            console.log(`✅ Teacher ${teacherId} is assigned to class ${classId}`);
         }
     }
 
@@ -158,11 +148,6 @@ export class GradeService {
     }
 
     async listAssessmentTypes(userId: string, classId?: string) {
-        // Bỏ kiểm tra strict để tránh lỗi 400
-        // if (classId) {
-        //     await this.ensureTeacherCanAccessClass(userId, classId);
-        // }
-
         // Lấy teacherId từ userId
         const teacher = await this.prisma.teacher.findFirst({
             where: { userId: userId }
@@ -177,15 +162,14 @@ export class GradeService {
             // Lấy loại kiểm tra của lớp cụ thể
             where.classId = classId;
         } else {
-            // Lấy các class mà teacher đang dạy (qua TeacherClassAssignment)
-            const assignments = await this.prisma.teacherClassAssignment.findMany({
+            // Lấy các class mà teacher đang dạy (qua quan hệ trực tiếp)
+            const classes = await this.prisma.class.findMany({
                 where: { 
-                    teacherId,
-                    status: 'active' // Chỉ lấy assignment đang hoạt động
+                    teacherId: teacherId
                 },
-                select: { classId: true }
+                select: { id: true }
             });
-            const classIds = assignments.map(a => a.classId);
+            const classIds = classes.map(c => c.id);
             if (classIds.length === 0) return [] as string[];
             where.classId = { in: classIds };
         }
@@ -467,22 +451,17 @@ export class GradeService {
         }
 
         // Lấy tất cả lớp học mà giáo viên đang dạy
-        const teacherAssignments = await this.prisma.teacherClassAssignment.findMany({
+        const classes = await this.prisma.class.findMany({
             where: { 
-                teacherId
-                // Bỏ filter status để lấy tất cả assignments
+                teacherId: teacherId
             },
             include: {
-                class: {
+                subject: true,
+                enrollments: {
                     include: {
-                        subject: true,
-                        enrollments: {
+                        student: {
                             include: {
-                                student: {
-                                    include: {
-                                        user: true
-                                    }
-                                }
+                                user: true
                             }
                         }
                     }
@@ -490,9 +469,9 @@ export class GradeService {
             }
         });
 
-        const classIds = teacherAssignments.map(a => a.classId);
+        const classIds = classes.map(c => c.id);
         
-        console.log('📚 Found assignments:', teacherAssignments.length);
+        console.log('📚 Found classes:', classes.length);
         console.log('📚 Class IDs:', classIds);
         
         if (classIds.length === 0) {
@@ -536,8 +515,8 @@ export class GradeService {
             
             // Lấy tất cả học sinh từ các lớp
             const allStudents = new Set();
-            teacherAssignments.forEach(assignment => {
-                assignment.class.enrollments.forEach(enrollment => {
+            classes.forEach(classItem => {
+                classItem.enrollments.forEach(enrollment => {
                     if (enrollment.student && enrollment.student.user) {
                         allStudents.add(JSON.stringify({
                             id: enrollment.student.id,
@@ -545,8 +524,8 @@ export class GradeService {
                             studentName: enrollment.student.user.fullName || 'N/A',
                             studentCode: enrollment.student.studentCode || 'N/A',
                             avatar: enrollment.student.user.avatar,
-                            subject: assignment.class.subject.name,
-                            class: assignment.class.name,
+                            subject: classItem.subject.name,
+                            class: classItem.name,
                             grades: [],
                             historicalGrades: [],
                             average: 0,
@@ -673,22 +652,17 @@ export class GradeService {
         }
 
         // Lấy tất cả lớp học mà giáo viên đang dạy
-        const teacherAssignments = await this.prisma.teacherClassAssignment.findMany({
+        const classes = await this.prisma.class.findMany({
             where: { 
-                teacherId
-                // Bỏ filter status
+                teacherId: teacherId
             },
             include: {
-                class: {
+                subject: true,
+                enrollments: {
                     include: {
-                        subject: true,
-                        enrollments: {
+                        student: {
                             include: {
-                                student: {
-                                    include: {
-                                        user: true
-                                    }
-                                }
+                                user: true
                             }
                         }
                     }
@@ -696,7 +670,7 @@ export class GradeService {
             }
         });
 
-        const classIds = teacherAssignments.map(a => a.classId);
+        const classIds = classes.map(c => c.id);
         
         // Lấy assessments và grades
         const assessments = await this.prisma.assessment.findMany({
@@ -796,7 +770,15 @@ export class GradeService {
 
         // Kiểm tra teacher có quyền truy cập lớp này không (optional - có thể bỏ qua nếu gây lỗi)
         try {
-            await this.ensureTeacherCanAccessClass(teacherId, assessment.classId);
+            // Lấy userId từ teacherId để kiểm tra quyền truy cập
+            const teacher = await this.prisma.teacher.findUnique({
+                where: { id: teacherId },
+                select: { userId: true }
+            });
+            
+            if (teacher) {
+                await this.ensureTeacherCanAccessClass(teacher.userId, assessment.classId);
+            }
         } catch (error) {
             console.log('⚠️ Warning: Teacher access check failed, continuing anyway');
         }
