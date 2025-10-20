@@ -26,24 +26,51 @@ export class ClassInformationController {
   }
 
   @Get('classes/:classId/sessions')
-  async getClassSessionsForStudent(@Param('classId') classId: string) {
+  async getClassSessionsForStudent(@Param('classId') classId: string, @Req() req: any) {
+    const studentId = req.user?.studentId;
+    
     const sessions = await this.prisma.classSession.findMany({
       where: { classId },
       orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       include: {
         room: true,
+        attendances: {
+          where: { studentId },
+          select: { 
+            id: true, 
+            status: true, 
+            note: true, 
+            recordedAt: true,
+            recordedByUser: {
+              select: {
+                id: true,
+                fullName: true
+              }
+            }
+          },
+          take: 1,
+        },
       },
     });
-    // Chuẩn hóa dạng trả về gần giống phía client student đang dùng
-    const data = sessions.map((s) => ({
-      id: s.id,
-      classId: s.classId,
-      sessionDate: s.sessionDate as any,
-      startTime: (s as any).startTime,
-      endTime: (s as any).endTime,
-      status: (s as any).status || 'scheduled',
-      room: s.room ? { id: s.room.id, name: s.room.name } : null,
-    }));
+    
+    // Chuẩn hóa dạng trả về với thông tin điểm danh
+    const data = sessions.map((s) => {
+      const attendance = s.attendances[0];
+      return {
+        id: s.id,
+        classId: s.classId,
+        sessionDate: s.sessionDate as any,
+        startTime: (s as any).startTime,
+        endTime: (s as any).endTime,
+        status: (s as any).status || 'scheduled',
+        room: s.room ? { id: s.room.id, name: s.room.name } : null,
+        attendanceStatus: attendance?.status || null,
+        attendanceNote: attendance?.note || null,
+        attendanceRecordedAt: attendance?.recordedAt || null,
+        attendanceRecordedBy: attendance?.recordedByUser || null,
+      };
+    });
+    
     return { data, message: 'Lấy danh sách buổi học của lớp thành công' };
   }
 }
