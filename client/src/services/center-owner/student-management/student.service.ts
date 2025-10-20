@@ -1,4 +1,5 @@
-import { ApiService } from "../../common/api/api-client"
+import { ApiService } from "../../../services/common"
+import { apiClient } from "../../../utils/clientAxios"
 import type {
   CreateStudentRequest,
   UpdateStudentRequest,
@@ -16,24 +17,24 @@ class StudentService {
    * Lấy danh sách học sinh với phân trang và filter
    */
   async getStudents(params?: any): Promise<any> {
-    const response = await ApiService.get<any>("/admin-center/student-management", params)
-    return response.data as any
+    const response = await apiClient.get("/admin-center/student-management", params)
+    return response.data
   };
 
   /**
    * Lấy thông tin chi tiết học sinh theo ID
    */
-  async getStudentById(id: string): Promise<Student> {
-    const response = await ApiService.get<Student>(`/admin-center/student-management/${id}`)
-    return response.data as Student
+  async getStudentById(id: string): Promise<any> {
+    const response = await apiClient.get(`/admin-center/student-management/${id}`)
+    return response
   };
 
   /**
    * Tạo học sinh mới
    */
-  async createStudent(data: CreateStudentRequest): Promise<Student> {
-    const response = await ApiService.post<Student>("/admin-center/student-management", data)
-    return response.data as Student
+  async createStudent(data: CreateStudentRequest): Promise<any> {
+    const response = await apiClient.post("/admin-center/student-management", data)
+    return response
   };
 
   /**
@@ -48,7 +49,7 @@ class StudentService {
     grade?: string;
     schoolId?: string;
   }): Promise<any> {
-    const response = await ApiService.put<any>(`/admin-center/student-management/${id}`, data)
+    const response = await apiClient.put(`/admin-center/student-management/${id}`, data)
     return response.data as any
   };
 
@@ -56,7 +57,7 @@ class StudentService {
    * Xóa học sinh
    */
   async deleteStudent(id: string): Promise<void> {
-    await ApiService.delete(`/admin-center/student-management/${id}`)
+    await apiClient.delete(`/admin-center/student-management/${id}`)
   };
 
   // ===== Business Operations =====
@@ -65,16 +66,16 @@ class StudentService {
    * Toggle trạng thái hoạt động của học sinh
    */
   async toggleStudentStatus(id: string): Promise<Student> {
-    const response = await ApiService.patch<Student>(`/admin-center/student-management/${id}/toggle-status`)
+    const response = await apiClient.patch(`/admin-center/student-management/${id}/toggle-status`)
     return response.data as Student
   };
 
   /**
    * Lấy thống kê học sinh
    */
-  async getStudentStats(): Promise<StudentStats> {
-    const response = await ApiService.get<StudentStats>("/admin-center/student-management/stats")
-    return response.data as StudentStats
+  async getStudentStats(): Promise<any> {
+    const response = await apiClient.get("/admin-center/student-management/stats")
+    return response
   };
 
   /**
@@ -85,7 +86,7 @@ class StudentService {
     if (year) params.year = year.toString()
     if (month) params.month = month.toString()
 
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/schedule`, params)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/schedule`, params)
     return response.data as any
   };
 
@@ -94,7 +95,7 @@ class StudentService {
    */
   async getStudentGrades(studentId: string, classId?: string) {
     const params = classId ? { classId } : {}
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/grades`, params)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/grades`, params)
     return response.data as any
   };
 
@@ -107,7 +108,7 @@ class StudentService {
     if (startDate) params.startDate = startDate
     if (endDate) params.endDate = endDate
 
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/attendance`, params)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/attendance`, params)
     return response.data as any
   };
 
@@ -115,7 +116,7 @@ class StudentService {
    * Lấy lịch sử thanh toán của học sinh
    */
   async getStudentPayments(studentId: string) {
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/payments`)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/payments`)
     return response.data as any
   };
 
@@ -125,7 +126,7 @@ class StudentService {
    * Đăng ký học sinh vào lớp
    */
   async enrollStudent(studentId: string, classId: string): Promise<any> {
-    const response = await ApiService.post("/admin-center/student-management/enroll", {
+        const response = await apiClient.post("/admin-center/student-management/enroll", {
       studentId,
       classId
     })
@@ -136,14 +137,14 @@ class StudentService {
    * Hủy đăng ký học sinh khỏi lớp
    */
   async unenrollStudent(studentId: string, classId: string): Promise<void> {
-    await ApiService.delete(`/admin-center/student-management/${studentId}/enrollments/${classId}`)
+    await apiClient.delete(`/admin-center/student-management/${studentId}/enrollments/${classId}`)
   };
 
   /**
    * Lấy danh sách lớp học sinh đã đăng ký
    */
   async getStudentEnrollments(studentId: string) {
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/enrollments`)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/enrollments`)
     return response.data as any
   };
 
@@ -153,7 +154,7 @@ class StudentService {
    * Liên kết phụ huynh với học sinh
    */
   async linkParent(studentId: string, parentId: string, relation?: string, primaryContact: boolean = false): Promise<any> {
-    const response = await ApiService.post("/admin-center/student-management/parent-link", {
+    const response = await apiClient.post("/admin-center/student-management/parent-link", {
       studentId,
       parentId,
       relation,
@@ -166,14 +167,14 @@ class StudentService {
    * Hủy liên kết phụ huynh với học sinh
    */
   async unlinkParent(studentId: string, parentId: string): Promise<void> {
-    await ApiService.delete(`/admin-center/student-management/${studentId}/parent-links/${parentId}`)
+    await apiClient.delete(`/admin-center/student-management/${studentId}/parent-links/${parentId}`)
   };
 
   /**
    * Lấy danh sách phụ huynh của học sinh
    */
   async getStudentParents(studentId: string) {
-    const response = await ApiService.get(`/admin-center/student-management/${studentId}/parents`)
+    const response = await apiClient.get(`/admin-center/student-management/${studentId}/parents`)
     return response.data as any
   };
 
@@ -212,13 +213,13 @@ class StudentService {
     return response.data?.code as string
   };
 
-  /**
-   * Cập nhật thông tin trường học
-   */
-  async updateSchoolInfo(studentId: string, schoolId: string): Promise<Student> {
-    const response = await ApiService.patch<Student>(`/admin-center/student-management/${studentId}/school`, { schoolId })
-    return response.data as Student
-  };
+    /**
+     * Cập nhật thông tin trường học
+     */
+    async updateSchoolInfo(studentId: string, schoolId: string): Promise<Student> {
+      const response = await ApiService.patch<Student>(`/admin-center/student-management/${studentId}/school`, { schoolId })
+      return response.data as Student
+    };
 
   /**
    * Lấy báo cáo học tập của học sinh

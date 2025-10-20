@@ -22,7 +22,7 @@ export class StudentManagementController {
     async getAllStudents (@Query() query: any){
         
         return this.studentManagementService.getAllStudents(
-            query.status,
+             query.status,
              query.search,
              query.birthMonth,
              query.birthYear,

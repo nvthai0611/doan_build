@@ -586,6 +586,31 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+<<<<<<< Updated upstream
+=======
+model TeacherClassAssignment {
+  id                String       @id @default(uuid()) @db.Uuid
+  teacherId         String       @map("teacher_id") @db.Uuid 
+  classId           String       @map("class_id") @db.Uuid
+  recurringSchedule Json?        @map("recurring_schedule")
+  startDate         DateTime     @map("start_date") @db.Date
+  endDate           DateTime?    @map("end_date") @db.Date
+  status            String       @default("active")
+  semester          String
+  academicYear      String       @map("academic_year")
+  maxStudents       Int?         @map("max_students")
+  currentStudents   Int          @default(0) @map("current_students")
+  actualEndDate     DateTime?    @map("actual_end_date") @db.Date
+  completionNotes   String?      @map("completion_notes")
+  finalStudentCount Int?         @map("final_student_count")
+  completionStatus  String?      @map("completion_status")
+  notes             String?
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  enrollments       Enrollment[]
+  class             Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher           Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+>>>>>>> Stashed changes
 
 
 model ContractUpload {

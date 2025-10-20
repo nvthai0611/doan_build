@@ -1,10 +1,14 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
+<<<<<<< Updated upstream
 import { CreateClassDto } from '../dto/class/create-class.dto';
 import { UpdateClassDto } from '../dto/class/update-class.dto';
 import { QueryClassDto } from '../dto/class/query-class.dto';
 import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
+=======
+import { timeRanges } from '../../../const/time_ranges';
+>>>>>>> Stashed changes
 
 @Injectable()
 export class ClassManagementService {
@@ -16,14 +20,23 @@ export class ClassManagementService {
     // Lấy danh sách tất cả lớp học với filters và pagination
     async findAll(queryDto: QueryClassDto) {
         try {
+<<<<<<< Updated upstream
             const { 
                 status, 
                 gradeId, 
                 subjectId, 
+=======
+            const {
+                status,
+                grade,
+                subjectId,
+                teacherId, // Đã có sẵn
+>>>>>>> Stashed changes
                 roomId,
                 search,
                 dayOfWeek,
                 shift,
+<<<<<<< Updated upstream
                 academicYear,
                 page = 1, 
                 limit = 10,
@@ -64,10 +77,29 @@ export class ClassManagementService {
             if (academicYear) where.academicYear = academicYear;
             
             // Enhanced search - search in name, description, subject name, teacher name
+=======
+                page = 1,
+                limit = Math.min(parseInt(query.limit) || 10, 50),
+                sortBy = 'createdAt',
+                sortOrder = 'desc'
+            } = query;
+    
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            const take = parseInt(limit);
+    
+            // Build where clause
+            const where: any = {};
+            if (status) where.status = status;
+            if (grade) where.grade = grade;
+            if (subjectId) where.subjectId = subjectId;
+            if (roomId) where.roomId = roomId;
+    
+>>>>>>> Stashed changes
             if (search) {
                 where.OR = [
                     { name: { contains: search, mode: 'insensitive' } },
                     { description: { contains: search, mode: 'insensitive' } },
+<<<<<<< Updated upstream
                     { 
                         subject: {
                             name: { contains: search, mode: 'insensitive' }
@@ -101,6 +133,74 @@ export class ClassManagementService {
                 orderBy.createdAt = 'desc'; 
             }
             
+=======
+                    { grade: { contains: search, mode: 'insensitive' } },
+                    { subject: { name: { contains: search, mode: 'insensitive' } } },
+                    {
+                        teacherClassAssignments: {
+                            some: {
+                                teacher: {
+                                    user: { fullName: { contains: search, mode: 'insensitive' } }
+                                }
+                            }
+                        }
+                    },
+                    { room: { name: { contains: search, mode: 'insensitive' } } }
+                ];
+            }
+    
+            // --- PHẦN SỬA LỖI LOGIC LỌC NÂNG CAO ---
+    
+            // 1. Tạo một mảng để chứa tất cả các điều kiện liên quan đến TeacherClassAssignment
+            const assignmentConditions = [];
+    
+            // 2. Thêm điều kiện cho teacherId (phần bị thiếu)
+            if (teacherId) {
+                assignmentConditions.push({ teacherId: teacherId });
+            }
+    
+            // 3. Thêm điều kiện cho dayOfWeek
+            if (dayOfWeek && dayOfWeek !== 'all') {
+                assignmentConditions.push({
+                    recurringSchedule: {
+                        path: ['days'],
+                        array_contains: dayOfWeek.toLowerCase() // Chuyển sang chữ thường để đảm bảo khớp dữ liệu
+                    }
+                });
+            }
+    
+            // 4. Thêm điều kiện cho shift
+            if (shift && shift !== 'all') {
+                const timeRange = timeRanges[shift]; // Giả sử bạn có biến timeRanges
+                if (timeRange) {
+                    assignmentConditions.push({
+                        recurringSchedule: {
+                            path: ['startTime'],
+                            gte: timeRange.start,
+                            lte: timeRange.end
+                        }
+                    });
+                }
+            }
+            
+            if (assignmentConditions.length > 0) {
+                where.teacherClassAssignments = {
+                    some: {
+                        AND: assignmentConditions
+                    }
+                };
+            }
+    
+            console.log(JSON.stringify(where, null, 2)); // In ra để debug dễ hơn
+    
+            // Get total count
+            const total = await this.prisma.class.count({ where });
+    
+            // Build orderBy clause
+            const orderBy: any = { [sortBy]: sortOrder };
+    
+            // Get data with relations
+>>>>>>> Stashed changes
             const classes = await this.prisma.class.findMany({
                 where,
                 skip,
@@ -109,20 +209,42 @@ export class ClassManagementService {
                 include: {
                     subject: true,
                     room: true,
+<<<<<<< Updated upstream
                     grade: true,
                     teacher: {
+=======
+                    teacherClassAssignments: {
+>>>>>>> Stashed changes
                         select: {
                             id: true,
                             userId: true,
                             user: {
                                 select: {
                                     id: true,
+<<<<<<< Updated upstream
                                     fullName: true,
                                     email: true,
                                     phone: true,
                                     avatar: true
                                 }
                             }
+=======
+                                    userId: true,
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            fullName: true,
+                                            email: true,
+                                            avatar: true
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        take: 1,
+                        orderBy: {
+                            createdAt: 'desc' // Sắp xếp để lấy teacher đầu tiên một cách nhất quán
+>>>>>>> Stashed changes
                         }
                     },
                     _count: {
@@ -130,9 +252,15 @@ export class ClassManagementService {
                     }
                 }
             });
+<<<<<<< Updated upstream
 
             // Transform data
             let transformedClasses = classes.map(cls => ({
+=======
+    
+            // ... (phần transform data và return giữ nguyên)
+            const transformedClasses = classes.map(cls => ({
+>>>>>>> Stashed changes
                 id: cls.id,
                 name: cls.name,
                 subjectId: cls.subjectId,
@@ -146,6 +274,7 @@ export class ClassManagementService {
                 roomId: cls.roomId,
                 roomName: cls.room?.name || 'Chưa xác định',
                 description: cls.description,
+<<<<<<< Updated upstream
                 actualStartDate: cls.actualStartDate,
                 actualEndDate: cls.actualEndDate,
                 recurringSchedule: cls.recurringSchedule,
@@ -198,6 +327,26 @@ export class ClassManagementService {
                 return 0; 
             });
             
+=======
+                feeStructureId: cls.feeStructureId,
+                teachers: cls.teacherClassAssignments.map(ta => ({
+                    id: ta.teacher.id,
+                    userId: ta.teacher.userId,
+                    avatar: ta.teacher.user.avatar,
+                    name: ta.teacher.user.fullName,
+                    email: ta.teacher.user.email,
+                    assignmentId: ta.id,
+                    startDate: ta.startDate,
+                    endDate: ta.endDate,
+                    semester: ta.semester,
+                    academicYear: ta.academicYear,
+                    recurringSchedule: ta.recurringSchedule
+                })),
+                createdAt: cls.createdAt,
+                updatedAt: cls.updatedAt
+            }));
+    
+>>>>>>> Stashed changes
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
@@ -209,6 +358,7 @@ export class ClassManagementService {
                     totalPages: Math.ceil(totalBeforeFilter / limit)
                 }
             };
+    
         } catch (error) {
             throw new HttpException(
                 {
@@ -590,6 +740,7 @@ export class ClassManagementService {
             const updatedClass = await this.prisma.class.update({
                 where: { id },
                 data: {
+<<<<<<< Updated upstream
                     ...(updateClassDto.name && { name: updateClassDto.name }),
                     ...(updateClassDto.subjectId && { subjectId: updateClassDto.subjectId }),
                     ...(updateClassDto.gradeId !== undefined && { gradeId: updateClassDto.gradeId }),
@@ -603,6 +754,17 @@ export class ClassManagementService {
                     ...(updateClassDto.expectedStartDate !== undefined && { expectedStartDate: updateClassDto.expectedStartDate ? new Date(updateClassDto.expectedStartDate) : null }),
                     ...(updateClassDto.actualEndDate !== undefined && { actualEndDate: updateClassDto.actualEndDate ? new Date(updateClassDto.actualEndDate) : null }),
                     ...(updateClassDto.actualStartDate !== undefined && { actualStartDate: updateClassDto.actualStartDate ? new Date(updateClassDto.actualStartDate) : null })
+=======
+                    ...(body.name && { name: body.name }),
+                    ...(body.subjectId && { subjectId: body.subjectId }),
+                    ...(body.grade !== undefined && { grade: body.grade }),
+                    ...(body.maxStudents !== undefined && { maxStudents: body.maxStudents }),
+                    ...(body.roomId !== undefined && { roomId: body.roomId }),
+                    ...(body.feeStructureId !== undefined && { feeStructureId: body.feeStructureId }),
+                    ...(body.description !== undefined && { description: body.description }),
+                    ...(body.status && { status: body.status }),
+                    ...(body.schedules !== undefined && { recurringSchedule: body.schedules })
+>>>>>>> Stashed changes
                 },
                 include: {
                     subject: true,
@@ -1288,6 +1450,44 @@ export class ClassManagementService {
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    
+    // Xóa lớp học (soft delete bằng cách đổi status)
+    async updateClassSchedules(id: string, body: any) {
+        console.log(id, body);
+        
+        // Tìm assignment trước
+        const assignment = await this.prisma.teacherClassAssignment.findFirst({
+            where: {
+                classId: id,
+                teacherId: body.teacherId,
+                // academicYear: body.academicYear,
+                // status: 'active'
+            }
+        });
+
+        if (!assignment) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không tìm thấy phân công giáo viên'
+                },
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Update bằng id
+        return this.prisma.teacherClassAssignment.update({
+            where: { id: assignment.id },
+            data: { 
+                recurringSchedule: {
+                    days: body.schedules.map((schedule: any) => schedule.day),
+                    startTime: body.schedules.map((schedule: any) => schedule.startTime),
+                    endTime: body.schedules.map((schedule: any) => schedule.endTime)
+                } 
+            }
+        });
     }
 
     
