@@ -25,6 +25,18 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
     refetchOnWindowFocus: false,
   })
 
+  // Metrics: average grade, class rank, attendance rate (only active classes)
+  const { data: metrics } = useQuery({
+    queryKey: ["parent-child-metrics", childId],
+    queryFn: async () => {
+      const res: any = await fetch(`/api/student-management/children/${childId}/metrics`, { credentials: 'include' })
+      const data = await res.json()
+      return data?.data ?? data
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+
   return (
     <div className="p-6 space-y-6">
       {/* Header with Back Button */}

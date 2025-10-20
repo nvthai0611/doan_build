@@ -192,6 +192,22 @@ export default function GradeInputPage() {
     })
   }
 
+  const handleExamDateChange = (value: string) => {
+    const today = new Date()
+    const selectedDate = new Date(value)
+    
+    // Reset time to compare only dates
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+    
+    if (selectedDate > today) {
+      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
+      return
+    }
+    
+    setExamDate(value)
+  }
+
   const saveIndividualGrade = async (studentId: string) => {
     const grade = grades[studentId]
     if (!grade?.score) return
@@ -199,6 +215,17 @@ export default function GradeInputPage() {
     // Validate required fields
     if (!selectedExamType || !examTitle || !examDate) {
       alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Ngày kiểm tra)')
+      return
+    }
+    
+    // Validate exam date
+    const today = new Date()
+    const selectedDate = new Date(examDate)
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+    
+    if (selectedDate > today) {
+      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
       return
     }
     
@@ -239,6 +266,17 @@ export default function GradeInputPage() {
     // Validate required fields first
     if (!selectedExamType || !examTitle || !examDate) {
       alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Ngày kiểm tra)')
+      return
+    }
+    
+    // Validate exam date
+    const today = new Date()
+    const selectedDate = new Date(examDate)
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+    
+    if (selectedDate > today) {
+      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
       return
     }
     
@@ -293,11 +331,7 @@ export default function GradeInputPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Nhập điểm kiểm tra</h1>
-        <p className="text-muted-foreground">Nhập điểm và nhận xét cho học sinh trong lớp</p>
-        {/* Debug info */}
-        <div className="mt-2 text-xs text-gray-500">
-          Debug: Classes: {classes.length}, ExamTypes: {examTypes.length}, Students: {students.length}, Filtered: {filteredStudents.length}, Loading: {loading ? 'Yes' : 'No'}
-        </div>
+        <p className="text-muted-foreground">Nhập điểm và nhận xét cho học sinh trong lớp</p>        
       </div>
 
       {/* Class and Exam Selection */}
@@ -319,7 +353,7 @@ export default function GradeInputPage() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="class-select">Lớp học</Label>
+              <Label htmlFor="class-select">Lớp học <span className="text-red-500">*</span></Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn lớp học" />
@@ -342,7 +376,7 @@ export default function GradeInputPage() {
             <div className="space-y-2">
               <Label htmlFor="exam-type">Loại kiểm tra <span className="text-red-500">*</span></Label>
               <Select value={selectedExamType} onValueChange={setSelectedExamType}>
-                <SelectTrigger className={!selectedExamType ? "border-red-300" : ""}>
+                <SelectTrigger>
                   <SelectValue placeholder="Chọn loại kiểm tra" />
                 </SelectTrigger>
                 <SelectContent>
@@ -368,7 +402,6 @@ export default function GradeInputPage() {
                 placeholder="VD: Kiểm tra chương 1 - Hàm số"
                 value={examTitle}
                 onChange={(e) => setExamTitle(e.target.value)}
-                className={!examTitle ? "border-red-300" : ""}
               />
             </div>
             <div className="space-y-2">
@@ -377,8 +410,8 @@ export default function GradeInputPage() {
                 type="date" 
                 id="exam-date" 
                 value={examDate} 
-                onChange={(e) => setExamDate(e.target.value)}
-                className={!examDate ? "border-red-300" : ""}
+                onChange={(e) => handleExamDateChange(e.target.value)}
+                max={new Date().toISOString().split('T')[0]} // Set max date to today
               />
             </div>
           </div>

@@ -14,12 +14,24 @@ export class CloudinaryService {
 
   async uploadImage(file: Express.Multer.File, folder?: string): Promise<any> {
     return new Promise((resolve, reject) => {
+      // Derive safe public_id from original filename (without extension)
+      const originalName = file.originalname || 'upload';
+      const baseName = originalName.replace(/\.[^/.]+$/, '');
+      const safeBaseName = baseName
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-_]/g, '');
+
       const uploadStream = cloudinary.uploader.upload_stream(
         {                    
-          folder: `QNEduManagementSystem/${folder}` || 'QNEduManagementSystem/default',
+          folder: folder ? `QNEduManagementSystem/${folder}` : 'QNEduManagementSystem/default',
           resource_type: 'auto',
-          use_filename: true,  // Giữ tên file gốc
-          unique_filename: true,  // Thêm unique ID để tránh trùng
+          // Giữ tên file gốc và không thêm hậu tố ngẫu nhiên
+          use_filename: true,
+          unique_filename: false,
+          overwrite: false,
+          public_id: safeBaseName,
           transformation: [
             { width: 1000, height: 1000, crop: 'limit' },
             { quality: 'auto' },
@@ -45,12 +57,24 @@ export class CloudinaryService {
    */
   async uploadDocument(file: Express.Multer.File, folder?: string): Promise<any> {
     return new Promise((resolve, reject) => {
+      // Derive safe public_id from original filename (without extension)
+      const originalName = file.originalname || 'document';
+      const baseName = originalName.replace(/\.[^/.]+$/, '');
+      const safeBaseName = baseName
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-_]/g, '');
+
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: `QNEduManagementSystem/${folder}` || 'QNEduManagementSystem/default',
+          folder: folder ? `QNEduManagementSystem/${folder}` : 'QNEduManagementSystem/default',
           resource_type: 'auto', // Tự động detect: image, video, raw (documents)
-          use_filename: true, // Giữ tên file gốc
-          unique_filename: true, // Thêm unique ID để tránh trùng
+          // Giữ tên file gốc và không thêm hậu tố ngẫu nhiên
+          use_filename: true,
+          unique_filename: false,
+          overwrite: false,
+          public_id: safeBaseName,
           // KHÔNG có transformation cho documents
         },
         (error, result) => {
