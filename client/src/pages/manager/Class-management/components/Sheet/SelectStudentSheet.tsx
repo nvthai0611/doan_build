@@ -8,8 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Search, ArrowLeft, Check, ChevronLeft, ChevronRight, Users, Mail, Phone, IdCard, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
-import { centerOwnerStudentService } from '../../../../../services/center-owner/student-management/student.service';
 import Loading from '../../../../../components/Loading/LoadingPage';
+import { useEnrollmentMutations } from '../../hooks/useEnrollmentMutations';
+import { toast } from 'sonner';
+import { enrollmentService } from '../../../../../services/center-owner/enrollment/enrollment.service';
 
 interface SelectStudentSheetProps {
   open: boolean;
@@ -44,28 +46,36 @@ export const SelectStudentSheet = ({
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<string[]>([]);
   const debouncedQuery = useDebounce(query, 500);
+  
+  // Use enrollment mutations hook
+  const { bulkEnroll } = useEnrollmentMutations();
 
   useEffect(() => {
     setPage(1);
   }, [debouncedQuery]);
 
+  // Dùng API mới: chỉ lấy students CHƯA enroll vào lớp này
   const { data, isLoading: isFetchingStudents } = useQuery({
-    queryKey: ['students', { searchTerm: debouncedQuery || undefined, page, limit: pageSize, open }],
-    queryFn: () => centerOwnerStudentService.getStudents({
-      search: debouncedQuery?.trim() ? debouncedQuery : undefined,
-      status: "all",
-      page,
-      limit: pageSize
-    }),
-    enabled: open,
+    queryKey: ['available-students', classData?.id, { searchTerm: debouncedQuery || undefined, page, limit: pageSize, open }],
+    queryFn: async () => {
+      if (!classData?.id) {
+        return { success: true, status: 200, message: '', data: [], meta: { total: 0, totalPages: 0 } };
+      }
+      return enrollmentService.getAvailableStudents(classData.id, {
+        search: debouncedQuery?.trim() ? debouncedQuery : undefined,
+        page,
+        limit: pageSize
+      });
+    },
+    enabled: open && !!classData?.id,
     staleTime: 2000,
     refetchOnWindowFocus: true
   });
 
   
 
-  const apiStudents: any[] = (data as any)?.students || [];
-  const total: number = (data as any)?.pagination?.totalCount || apiStudents.length;
+  const apiStudents: any[] = (data as any)?.data || [];
+  const total: number = (data as any)?.meta?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const current = useMemo(() => apiStudents.map((s: any) => ({
     id: s.id,
@@ -87,9 +97,56 @@ export const SelectStudentSheet = ({
     setSelected(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const handleSubmit = () => {
-    onSubmit?.(selected);
-    onOpenChange(false);
+  const handleSubmit = async () => {
+    if (selected.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất 1 học viên');
+      return;
+    }
+
+    if (!classData?.id) {
+      toast.error('Không tìm thấy thông tin lớp học');
+      return;
+    }
+
+    try {
+      // Call bulk enroll API
+      const response = await bulkEnroll.mutateAsync({
+        classId: classData.id,
+        studentIds: selected
+      });
+
+      console.log(response);
+      // Parse response
+      const result = response?.data || response;
+      const successCount = result?.success?.length || 0;
+      const failedCount = result?.failed?.length || 0;
+      const totalCount = selected.length;
+
+      // Show appropriate toast
+      if (failedCount === 0) {
+        toast.success(`✅ Đã thêm ${successCount} học viên thành công!`);
+      } else if (successCount > 0) {
+        toast.warning(
+          `Thêm ${successCount}/${totalCount} học viên thành công. ${failedCount} thất bại.`,
+          {
+            description: result.failed?.map((f: any) => f.reason).join(', ').substring(0, 100)
+          }
+        );
+      } else {
+        toast.error(`Không thể thêm học viên. Vui lòng thử lại.`);
+      }
+
+      // Reset and close on success
+      if (successCount > 0) {
+        setSelected([]);
+        onOpenChange(false);
+        onSubmit?.(selected);
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.message || error?.message || 'Có lỗi xảy ra khi thêm học viên';
+      toast.error(errorMessage);
+      console.error('Bulk enroll error:', error);
+    }
   };
 
   return (
@@ -110,10 +167,14 @@ export const SelectStudentSheet = ({
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={isLoading || selected.length === 0}
+                disabled={bulkEnroll.isPending || selected.length === 0}
                 className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
               >
-                <Check className="h-4 w-4" />
+                {bulkEnroll.isPending ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>

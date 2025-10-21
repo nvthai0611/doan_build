@@ -238,7 +238,7 @@ export class ScheduleService {
 
   private getStatusText(status: string): string {
     switch (status) {
-      case 'scheduled': return 'Đã lên lịch';
+      case 'happening': return 'Đang diễn ra';
       case 'completed': return 'Đã hoàn thành';
       case 'cancelled': return 'Đã hủy';
       default: return status;

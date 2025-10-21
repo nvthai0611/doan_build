@@ -238,8 +238,8 @@ export const apiClient = {
   patch: <T>(url: string, data?: any, options?: ApiRequestConfig) =>
     send<T>('patch', url, { data, ...options }),
 
-  delete: <T>(url: string, params?: any, options?: ApiRequestConfig) =>
-    send<T>('delete', url, { params, ...options }),
+  delete: <T>(url: string, data?: any, options?: ApiRequestConfig) =>
+    send<T>('delete', url, { data, ...options }),
 
   token: TokenStorage,
 };
