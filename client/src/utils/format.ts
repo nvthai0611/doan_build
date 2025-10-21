@@ -87,3 +87,18 @@ export const formatScheduleTwo = (recurringSchedule: any): string => {
       return '';
     }
   };
+
+  // Helper function để convert date string từ input sang ISO 8601 format cho backend
+  export const convertDateToISO = (dateStr: string | null | undefined): string | undefined => {
+    if (!dateStr) return undefined;
+    
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return undefined;
+      
+      return date.toISOString(); // Format: YYYY-MM-DDTHH:mm:ss.sssZ
+    } catch (error) {
+      console.error('Error converting date to ISO:', error);
+      return undefined;
+    }
+  };

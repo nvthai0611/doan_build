@@ -77,7 +77,7 @@ const centerOwnerMenuItems = [
     href: "/center-qn/classes",
     children: [
       { title: "Quản lý lớp học", href: "/center-qn/classes" },
-      { title: "Tạo khóa học mới", href: "/courses/create" },
+      { title: "Tạo môn học mới", href: "/courses/create" },
       { title: "Quản lý khóa học", href: "/courses" },
       { title: "Thời khóa biểu", href: "/courses/timetable" },
       { title: "Quản lý phòng học", href: "/courses/rooms" },

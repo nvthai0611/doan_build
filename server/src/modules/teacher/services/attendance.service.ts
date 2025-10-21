@@ -4,134 +4,213 @@ import { checkId } from 'src/utils/validate.util';
 
 @Injectable()
 export class AttendanceService {
-    constructor(private prisma: PrismaService){}
+  constructor(private prisma: PrismaService) {}
 
-    async getAttendanceBySessionId(sessionId: string) {
-        if(!checkId(sessionId)){
-            throw new HttpException(
-                'Invalid session ID',
-                HttpStatus.BAD_REQUEST
-            )
-        }
+  //Lấy danh sách học sinh theo ID buổi học
+  async getListStudentBySessionId(sessionId: string) {
+    try {
+      if (!checkId(sessionId)) {
+        throw new HttpException(
+          {
+            message: 'Id session không hợp lệ',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const checkExistSession = await this.prisma.classSession.findUnique({
+        where: { id: sessionId },
+      });
 
-        const result = await this.prisma.studentSessionAttendance.findMany({
-            where:{sessionId},
-            include:{
-                student:{
-                    include:{
-                        user:{
-                            select:{
-                                avatar:true,
-                                fullName:true,
-                            }
-                        }
-                    }
+      if (!checkExistSession) {
+        throw new HttpException(
+          {
+            mesage: 'Buổi học không tồn tại',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      //get list student in class session
+      const result = await this.prisma.classSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          class: {
+            include: {
+              enrollments: {
+                include: {
+                  student: {
+                    include: {
+                      user: {
+                        select: {
+                          fullName: true,
+                          avatar: true,
+                        },
+                      },
+                    },
+                  },
                 },
-                session:{
-                    include:{
-                        class:{
-                            select:{
-                                name:true,
-                            }
-                        }
-                    }
-                },
+              },
             },
-            orderBy:{
-                id:'asc'
-            }
-        })
+          },
+        },
+      });
+      return result;
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Lỗi khi lấy danh sách học sinh',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
-        return result;
+  async getAttendanceBySessionId(sessionId: string) {
+    if (!checkId(sessionId)) {
+      throw new HttpException('Invalid session ID', HttpStatus.BAD_REQUEST);
     }
 
-    //Điểm danh học sinh theo buổi học
-    // Chỉ update status cho các học sinh đã có
-    async attendanceStudentBySessionId(sessionId: string, records: any[], teacherId: any) {
-        if (!checkId(sessionId)) {
-            throw new HttpException(
-                'Invalid session ID',
-                HttpStatus.BAD_REQUEST
-            );
-        }
+    const result = await this.prisma.studentSessionAttendance.findMany({
+      where: { sessionId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                avatar: true,
+                fullName: true,
+              },
+            },
+          },
+        },
+        session: {
+          include: {
+            class: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        id: 'asc',
+      },
+    });
 
-        const findSession = await this.prisma.classSession.findUnique({
-            where: { id: sessionId },
-        });
-        if(!findSession){
-            throw new HttpException(
-                'Buổi học không tồn tại',
-                HttpStatus.NOT_FOUND
-            );
-        }
+    return result;
+  }
 
-        // if(findSession.status === 'completed'){
-        //     throw new HttpException(
-        //         'Không thể cập nhật điểm danh cho buổi học đã hoàn thành',
-        //         HttpStatus.BAD_REQUEST
-        //     );
-        // }
+  //Điểm danh học sinh theo buổi học
+  // Chỉ update status cho các học sinh đã có
+  async attendanceStudentBySessionId(
+    sessionId: string,
+    records: any[],
+    teacherId: string,
+  ) {
+    
+    if (!checkId(sessionId) || !checkId(teacherId)) {
+      throw new HttpException('Invalid session or teacher ID', HttpStatus.BAD_REQUEST);
+    }
 
-        // if(findSession.sessionDate < new Date()){
-        //     throw new HttpException(
-        //         'Không thể cập nhật điểm danh cho buổi học nếu đã qua ngày học',
-        //         HttpStatus.BAD_REQUEST
-        //     );
-        // }
+    const findSession = await this.prisma.classSession.findUnique({
+      where: { id: sessionId },
+    });
 
-        // Đây là cho trường hợp lớp chưa đến lịch
+    if (!findSession) {
+      throw new HttpException('Buổi học không tồn tại', HttpStatus.NOT_FOUND);
+    }
+
     const sessionDate = new Date(findSession.sessionDate);
     const currentDate = new Date();
-    
-    // Compare dates only (ignore time)
+
+    // Lấy ngày hiện tại và ngày học (không tính giờ)
     const sessionDateOnly = new Date(sessionDate.toDateString());
     const currentDateOnly = new Date(currentDate.toDateString());
-    
-    if (currentDateOnly.getTime() === sessionDateOnly.getTime()) {
-            // cùng ngày — chỉ cho điểm danh khi lớp đã bắt đầu (hiện tại >= thời gian bắt đầu session)
-            if (currentDate.getTime() < sessionDate.getTime()) {
-                throw new HttpException(
-                    'Chưa đến giờ bắt đầu lớp, không thể điểm danh trước giờ',
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-        }
-        try {
-            const result = await this.prisma.$transaction(async (prisma) => {
-                const updatePromises = records.map(record => 
-                    prisma.studentSessionAttendance.update({
-                        where: {
-                            sessionId_studentId: {
-                                sessionId,
-                                studentId: record.studentId
-                            }
-                        },
-                        data: {
-                            status: record.status,
-                            note: record.note || '',
-                            recordedBy: teacherId,
-                            recordedAt: new Date()
-                        }
-                    })
-                );
 
-                return Promise.all(updatePromises);
-            });
-
-
-            return {
-                data: { 
-                    updated: result.length,
-                    total: records.length 
-                },
-                message: `Updated ${result.length} attendance records successfully`
-            };
-        } catch (error) {
-            console.error('Error updating attendance:', error);
-            throw new HttpException(
-                'Failed to update attendance',
-                HttpStatus.INTERNAL_SERVER_ERROR
-            );
-        }
+    // 1. Kiểm tra chưa đến ngày học
+    if (currentDateOnly < sessionDateOnly) {
+      throw new HttpException(
+        'Chưa đến ngày học, không thể điểm danh',
+        HttpStatus.BAD_REQUEST,
+      );
     }
+
+    // 2. Kiểm tra đã qua ngày học (sau 00h ngày hôm sau)
+    if (currentDateOnly > sessionDateOnly) {
+      throw new HttpException(
+        'Đã qua ngày học, không thể điểm danh',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 3. Đúng ngày học - kiểm tra giờ
+    if (currentDateOnly.getTime() === sessionDateOnly.getTime()) {
+      // Chưa đến giờ bắt đầu lớp
+      if (currentDate < sessionDate) {
+        throw new HttpException(
+          'Chưa đến giờ bắt đầu lớp, không thể điểm danh',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      // Đã đến giờ hoặc sau giờ học (nhưng vẫn trong ngày) -> cho phép điểm danh
+    }
+
+    try {
+      const result = await this.prisma.$transaction(async (prisma) => {
+        const upsertPromises = records.map((record) => {
+          if (!checkId(record.studentId)) {
+            throw new HttpException(`Invalid student ID: ${record.studentId}`, HttpStatus.BAD_REQUEST);
+          }
+          
+          return prisma.studentSessionAttendance.upsert({
+            where: {
+              sessionId_studentId: {
+                sessionId,
+                studentId: record.studentId,
+              },
+            },
+            update: {
+              status: record.status,
+              note: record.note || '',
+              recordedAt: new Date(),
+              recordedByTeacher: {
+                connect: { id: teacherId }
+              }
+            },
+            create: {
+              status: record.status,
+              note: record.note || '',
+              recordedAt: new Date(),
+              session: { 
+                connect: { id: sessionId } 
+              },
+              student: { 
+                connect: { id: record.studentId } 
+              },
+              recordedByTeacher: { 
+                connect: { id: teacherId } 
+              },
+            },
+          });
+        });
+
+        return Promise.all(upsertPromises);
+      });
+
+      return {
+        data: {
+          updated: result.length,
+          total: records.length,
+        },
+        message: `Cập nhật ${result.length} bản ghi điểm danh thành công`,
+      };
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      throw new HttpException(
+        'Lỗi khi cập nhật điểm danh',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

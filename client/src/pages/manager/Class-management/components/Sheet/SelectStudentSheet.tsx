@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, ArrowLeft, Check, ChevronLeft, ChevronRight, Users, Mail, Phone, IdCard } from 'lucide-react';
+import { Search, ArrowLeft, Check, ChevronLeft, ChevronRight, Users, Mail, Phone, IdCard, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
 import { centerOwnerStudentService } from '../../../../../services/center-owner/student-management/student.service';
@@ -71,6 +71,7 @@ export const SelectStudentSheet = ({
     id: s.id,
     fullName: s.user?.fullName || s.fullName || 'Không tên',
     email: s.user?.email || s.email,
+    studentCode: s.studentCode || '',
     phone: s.user?.phone || s.phone,
     avatar: s.user?.avatar || s.avatar,
     parent: {
@@ -130,7 +131,7 @@ export const SelectStudentSheet = ({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Tìm kiếm theo tên, email, số điện thoại, mã học viên"
+              placeholder="Tìm kiếm theo tên, mã học viên (QNSTxxxxxx), email, SĐT..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-10"
@@ -173,7 +174,11 @@ export const SelectStudentSheet = ({
                   <div className="p-4 space-y-2 text-sm text-gray-700">
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <span className="truncate">{s.email || 'Chưa cập nhật'}</span>
+                      <span className="truncate">{s.email || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-gray-400" />
+                      <span className="truncate">{s.studentCode || '-'}</span>
                     </div>
                     <div className="pt-2 mt-2 border-t">
                       <div className="flex items-center gap-2 mb-1 text-gray-700">
@@ -181,7 +186,7 @@ export const SelectStudentSheet = ({
                         <span className="font-medium">Phụ huynh</span>
                       </div>
                       <div className="ml-6 space-y-1 text-gray-700">
-                        <div className="text-sm">{s.parent?.fullName || 'Chưa cập nhật'}</div>
+                        <div className="text-sm">{s.parent?.fullName || '-'}</div>
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-gray-300" />
                           <span className="truncate">{s.parent?.email || '-'}</span>
