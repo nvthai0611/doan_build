@@ -263,11 +263,6 @@ const parentMenuItems = [
         icon: Users,
         href: "/parent/children",
     },
-    {
-        title: "Tài liệu học tập",
-        icon: Upload,
-        href: "/parent/my-documents",
-    },
 ]
 
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {

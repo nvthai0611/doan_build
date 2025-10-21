@@ -3,22 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDays, UserCheck, XCircle, AlertCircle } from "lucide-react"
-import Loading from "../../../../../components/Loading/LoadingPage"
-import { studentScheduleService } from "../../../../../services/student/schedule/schedule.service"
-import type { StudentSession } from "../../../../../services/student/schedule/schedule.types"
+import Loading from "../../../components/Loading/LoadingPage"
+import { parentChildService } from "../../../services/parent/child-management/child.service"
+import type { Child } from "../../../services/parent/child-management/child.types"
 
-interface SessionDetailsDialogProps {
+interface AttendanceDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   sessionId?: string
   session?: any
-  classInfo?: any
+  child?: Child
 }
 
-export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: sessionProp, classInfo }: SessionDetailsDialogProps) {
+export function AttendanceDetailsDialog({ open, onOpenChange, sessionId, session: sessionProp, child }: AttendanceDetailsDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [session, setSession] = useState<StudentSession | null>(null)
+  const [session, setSession] = useState<any | null>(null)
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -32,8 +32,9 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
       try {
         setLoading(true)
         setError(null)
-        const data = await studentScheduleService.getSessionById(sessionId)
-        setSession(data as any)
+        // Có thể gọi API chi tiết session nếu cần
+        // const data = await parentChildService.getSessionDetail(sessionId)
+        // setSession(data as any)
       } catch (e) {
         setError("Không thể tải thông tin buổi học")
       } finally {
@@ -45,20 +46,18 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
 
   const getStatusColor = (status?: string) => {
     switch ((status || '').toLowerCase()) {
-      case 'scheduled': return 'bg-blue-100 text-blue-800'
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      case 'has_not_happened': return 'bg-gray-100 text-gray-800'
+      case 'has_not_happened': return 'bg-blue-100 text-blue-800'
+      case 'ended': return 'bg-green-100 text-green-800'
+      case 'happening': return 'bg-amber-100 text-amber-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const statusTextVi = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'scheduled') return 'Sắp tới'
-    if (s === 'completed') return 'Hoàn thành'
-    if (s === 'cancelled') return 'Đã hủy'
     if (s === 'has_not_happened') return 'Chưa diễn ra'
+    if (s === 'ended') return 'Đã kết thúc'
+    if (s === 'happening') return 'Đang diễn ra'
     return 'Không xác định'
   }
 
@@ -78,9 +77,9 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
     const roomStr = (session as any)?.roomName || (session as any)?.room
     return roomObj?.name || roomStr || 'Chưa phân phòng'
   }
-  const getSubjectName = () => (session as any)?.class?.subject?.name || classInfo?.subject?.name || (session as any)?.subject || 'Môn học'
-  const getClassName = () => (session as any)?.class?.name || classInfo?.name || (session as any)?.className || 'Lớp học'
-  const getTeacherName = () => (session as any)?.class?.teacher?.user?.fullName || classInfo?.teacher?.user?.fullName || (session as any)?.teacherName || 'Giáo viên'
+  const getSubjectName = () => (session as any)?.class?.subject?.name || (session as any)?.subject || 'Môn học'
+  const getClassName = () => (session as any)?.class?.name || (session as any)?.className || 'Lớp học'
+  const getTeacherName = () => (session as any)?.class?.teacher?.user?.fullName || (session as any)?.teacher || 'Giáo viên'
 
   const getAttendanceBadge = (status?: string | null) => {
     switch (status) {
@@ -118,7 +117,7 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Chi tiết buổi học</DialogTitle>
+          <DialogTitle>Chi tiết điểm danh</DialogTitle>
         </DialogHeader>
         {loading ? (
           <Loading />
@@ -217,7 +216,7 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
                       {(session as any)?.attendanceRecordedBy && (
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Điểm danh bởi:</span>
-                          <span className="text-sm font-medium">{(session as any).attendanceRecordedBy.fullName}</span>
+                          <span className="text-sm font-medium">{(session as any).attendanceRecordedBy}</span>
                         </div>
                       )}
                       

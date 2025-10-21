@@ -2,10 +2,11 @@
 import { useAuth } from "../../lib/auth"
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Calendar, BookOpen, Target, TrendingUp, Users, Clock, Award, ArrowRight, Sparkles, BarChart3, GraduationCap } from "lucide-react"
+import { Calendar, BookOpen, Target, TrendingUp, Users, Clock, Award, ArrowRight, Sparkles, GraduationCap } from "lucide-react"
 import { studentScheduleService } from "../../services/student/schedule/schedule.service"
 import { studentGradesService } from "../../services/student/grades/grades.service"
 import { studentProfileService } from "../../services/student/profile/profile.service"
+import { studentEnrollmentService } from "../../services/student/enrollment/enrollment.service"
 
 export default function     StudentHomepage() {
   const { user } = useAuth()
@@ -19,6 +20,14 @@ export default function     StudentHomepage() {
     refetchOnWindowFocus: false,
   })
 
+  // Lấy danh sách enrollments để đếm lớp đang học
+  const { data: enrollments } = useQuery({
+    queryKey: ["studentEnrollments"],
+    queryFn: () => studentEnrollmentService.getEnrollments(),
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
+  })
+
   // Buổi học sắp tới (5 buổi)
   const today = useMemo(() => new Date(), [])
   const weekStart = useMemo(() => {
@@ -28,7 +37,7 @@ export default function     StudentHomepage() {
     return d.toISOString().slice(0, 10)
   }, [today])
 
-  const { data: weekly, isLoading: loadingWeekly, error: weeklyError } = useQuery({
+  const { data: weekly } = useQuery({
     queryKey: ["studentWeeklySchedule", weekStart],
     queryFn: () => studentScheduleService.getWeeklySchedule(weekStart),
     staleTime: 60_000,
@@ -40,27 +49,34 @@ export default function     StudentHomepage() {
     const sessions = Array.isArray(weekly) ? weekly : []
     
     return sessions
-      .filter((s: any) => {
-        const sessionDate = s.sessionDate || s.date
-        const rawDateStr = typeof sessionDate === 'string' ? sessionDate : new Date(sessionDate).toISOString()
+      .filter((s: unknown) => {
+        const session = s as Record<string, unknown>
+        const sessionDate = session.sessionDate || session.date
+        if (!sessionDate) return false
+        
+        const rawDateStr = typeof sessionDate === 'string' ? sessionDate : new Date(sessionDate as string).toISOString()
         const sessionDateOnly = rawDateStr.includes('T') ? rawDateStr.split('T')[0] : rawDateStr
-        const start = new Date(`${sessionDateOnly}T${s.startTime ?? '00:00'}`)
+        const start = new Date(`${sessionDateOnly}T${(session.startTime as string) ?? '00:00'}`)
         return start >= new Date()
       })
-      .sort((a: any, b: any) => {
-        const aDate = a.sessionDate || a.date
-        const bDate = b.sessionDate || b.date
-        const aRaw = typeof aDate === 'string' ? aDate : new Date(aDate).toISOString()
-        const bRaw = typeof bDate === 'string' ? bDate : new Date(bDate).toISOString()
+      .sort((a: unknown, b: unknown) => {
+        const sessionA = a as Record<string, unknown>
+        const sessionB = b as Record<string, unknown>
+        const aDate = sessionA.sessionDate || sessionA.date
+        const bDate = sessionB.sessionDate || sessionB.date
+        if (!aDate || !bDate) return 0
+        
+        const aRaw = typeof aDate === 'string' ? aDate : new Date(aDate as string).toISOString()
+        const bRaw = typeof bDate === 'string' ? bDate : new Date(bDate as string).toISOString()
         const aOnly = aRaw.includes('T') ? aRaw.split('T')[0] : aRaw
         const bOnly = bRaw.includes('T') ? bRaw.split('T')[0] : bRaw
-        return Number(new Date(`${aOnly}T${a.startTime ?? '00:00'}`)) - Number(new Date(`${bOnly}T${b.startTime ?? '00:00'}`))
+        return Number(new Date(`${aOnly}T${(sessionA.startTime as string) ?? '00:00'}`)) - Number(new Date(`${bOnly}T${(sessionB.startTime as string) ?? '00:00'}`))
       })
       .slice(0, 5)
   }, [weekly])
 
   // Điểm mới cập nhật (từ transcript)
-  const { data: transcript, isLoading: loadingTranscript } = useQuery({
+  const { data: transcript } = useQuery({
     queryKey: ["studentTranscriptOverview"],
     queryFn: () => studentGradesService.getTranscript(),
     staleTime: 60_000,
@@ -148,7 +164,11 @@ export default function     StudentHomepage() {
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-blue-700">{
-                Array.isArray(weekly) ? new Set(weekly.map((s: any) => s.classId || s.class?.id)).size : 0
+                Array.isArray(enrollments) ? enrollments.filter((e: unknown) => {
+                  const enrollment = e as Record<string, unknown>
+                  const status = enrollment.status as string
+                  return status === 'active' || status === 'studying'
+                }).length : 0
               }</div>
             </div>
           </div>
@@ -196,25 +216,26 @@ export default function     StudentHomepage() {
             <h3 className="text-lg font-bold text-gray-800">Buổi học sắp tới</h3>
           </div>
           <div className="space-y-3">
-            {upcomingSessions.slice(0, 3).map((session: any, index: number) => {
-              const sessionDate = session.sessionDate || session.date
-              const rawDateStr = typeof sessionDate === 'string' ? sessionDate : new Date(sessionDate).toISOString()
+            {upcomingSessions.slice(0, 3).map((session: unknown, index: number) => {
+              const sessionData = session as Record<string, unknown>
+              const sessionDate = sessionData.sessionDate || sessionData.date
+              const rawDateStr = typeof sessionDate === 'string' ? sessionDate : new Date(sessionDate as string).toISOString()
               const sessionDateOnly = rawDateStr.includes('T') ? rawDateStr.split('T')[0] : rawDateStr
               const date = new Date(sessionDateOnly)
               
               return (
-                <div key={session.id || index} className="flex items-center gap-4 p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg border border-gray-200">
+                <div key={(sessionData.id as string) || index} className="flex items-center gap-4 p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg border border-gray-200">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Clock className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-gray-800">{session.class?.subject?.name || session.subject?.name || 'Lớp học'}</div>
+                    <div className="font-medium text-gray-800">{((sessionData.class as Record<string, unknown>)?.subject as Record<string, unknown>)?.name as string || (sessionData.subject as Record<string, unknown>)?.name as string || 'Lớp học'}</div>
                     <div className="text-sm text-gray-600">
-                      {date.toLocaleDateString('vi-VN')} • {session.startTime} - {session.endTime}
+                      {date.toLocaleDateString('vi-VN')} • {sessionData.startTime as string} - {sessionData.endTime as string}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium text-gray-800">{session.room?.name || 'Chưa xác định'}</div>
+                    <div className="text-sm font-medium text-gray-800">{((sessionData.room as Record<string, unknown>)?.name as string) || 'Chưa xác định'}</div>
                     <div className="text-xs text-gray-500">Phòng học</div>
                   </div>
                 </div>

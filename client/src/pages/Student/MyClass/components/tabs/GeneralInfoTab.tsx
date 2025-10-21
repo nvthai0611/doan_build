@@ -41,19 +41,19 @@ export function GeneralInfoTab({ classData, classId }: GeneralInfoTabProps) {
   const actualStudentCount = membersQuery.data ? (membersQuery.data as unknown[]).length : 0
   const getStatusLabel = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return 'Đang học'
-    if (s === 'pending') return 'Chờ duyệt'
+    if (s === 'active' || s === 'studying') return 'Đang học'
+    if (s === 'not_been_updated') return 'Chưa cập nhật'
     if (s === 'completed') return 'Hoàn thành'
-    if (s === 'cancelled' || s === 'canceled') return 'Đã hủy'
+    if (s === 'dropped') return 'Đã bỏ học'
     return 'Không xác định'
   }
 
   const statusClasses = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
-    if (s === 'pending') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
+    if (s === 'active' || s === 'studying') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
+    if (s === 'not_been_updated') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
     if (s === 'completed') return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border border-blue-300 shadow-sm'
-    if (s === 'cancelled' || s === 'canceled') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
+    if (s === 'dropped') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
     return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 shadow-sm'
   }
 

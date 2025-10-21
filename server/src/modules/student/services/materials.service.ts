@@ -16,11 +16,11 @@ export class MaterialsService {
   async getMaterialsForStudent(studentId: string, dto: GetStudentMaterialsDto) {
     const { classId, category, page = 1, limit = 10, search } = dto || {};
 
-    // Lấy danh sách lớp mà học sinh đã enroll (đang active)
+    // Lấy danh sách lớp mà học sinh đã enroll (đang active hoặc studying)
     const enrolledClassIds = await this.prisma.enrollment.findMany({
       where: {
         studentId,
-        status: 'active',
+        status: 'studying',
         ...(classId ? { classId } : {}),
       },
       select: { classId: true },

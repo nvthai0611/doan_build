@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RouterModule } from '@nestjs/core';
 import { AcademicTrackingController } from './controllers/academic-tracking.controller';
 import { ClassInformationController } from './controllers/class-information.controller';
 import { CommunicationController } from './controllers/communication.controller';
@@ -14,7 +15,14 @@ import { StudentManagementService } from './services/student-management.service'
 import { PrismaService } from 'src/db/prisma.service';
 
 @Module({
-  imports: [],
+  imports: [
+    RouterModule.register([
+      {
+        path: 'parent',
+        module: ParentModule,
+      },
+    ]),
+  ],
   controllers: [
     AcademicTrackingController,
     ClassInformationController,
