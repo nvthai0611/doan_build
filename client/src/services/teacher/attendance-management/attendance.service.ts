@@ -24,6 +24,10 @@ const getListStudentsByRecordId = async (recordId: any): Promise<any> => {
   }
 }
 
+const getListStudentBySessionId = async (sessionId: string): Promise<any> => {
+  const response = await apiClient.get(`/teacher/attendances/${sessionId}/students`);
+  return response.data;
+}
 const updateAttendanceStudent = async (sessionId: string, records: any[]): Promise<any> => {
   try {
     const response = await apiClient.put(`/teacher/attendances/${sessionId}`,  records );
@@ -45,6 +49,7 @@ const updateAttendanceStudent = async (sessionId: string, records: any[]): Promi
 
 export {
     getListStudentsByRecordId,
-    updateAttendanceStudent
+    updateAttendanceStudent,
+    getListStudentBySessionId
 }
 

@@ -8,31 +8,30 @@ datasource db {
 }
 
 model User {
-  email                 String?                    @unique
+  email                 String?                  @unique
   password              String
-  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  fullName              String?                    @map("full_name")
-  isActive              Boolean                    @default(true) @map("is_active")
-  avatar                String?                    @map("avatar")
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  fullName              String?                  @map("full_name")
+  isActive              Boolean                  @default(true) @map("is_active")
+  avatar                String?                  @map("avatar")
   phone                 String?
   role                  String
-  roleId                String?                    @map("role_id") @db.Uuid
-  updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  username              String                     @unique
-  id                    String                     @id @default(uuid()) @db.Uuid
-  birthDate             DateTime?                  @map("birth_date") @db.Date
-  gender                Gender?                    @map("gender")
-  auditLogs             AuditLog[]                 @relation("PerformedBy")
-  approvedLeaveRequests LeaveRequest[]             @relation("ApprovedBy")
-  createdLeaveRequests  LeaveRequest[]             @relation("CreatedBy")
-  createdNotifications  Notification[]             @relation("CreatedBy")
+  roleId                String?                  @map("role_id") @db.Uuid
+  updatedAt             DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  username              String                   @unique
+  id                    String                   @id @default(uuid()) @db.Uuid
+  birthDate             DateTime?                @map("birth_date") @db.Date
+  gender                Gender?                  @map("gender")
+  auditLogs             AuditLog[]               @relation("PerformedBy")
+  approvedLeaveRequests LeaveRequest[]           @relation("ApprovedBy")
+  createdLeaveRequests  LeaveRequest[]           @relation("CreatedBy")
+  createdNotifications  Notification[]           @relation("CreatedBy")
   parent                Parent?
-  gradedAssessments     StudentAssessmentGrade[]   @relation("GradedBy")
-  recordedAttendances   StudentSessionAttendance[] @relation("RecordedBy")
+  gradedAssessments     StudentAssessmentGrade[] @relation("GradedBy")
   student               Student?
   teacher               Teacher?
   sessions              UserSession[]
-  roleData              Role?                      @relation(fields: [roleId], references: [id])
+  roleData              Role?                    @relation(fields: [roleId], references: [id])
 
   @@map("users")
 }
@@ -69,6 +68,7 @@ model Teacher {
   school              School?                       @relation(fields: [schoolId], references: [id])
   user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   replacementSessions LeaveRequestAffectedSession[]
+  recordedAttendances StudentSessionAttendance[]    @relation("RecordedBy")
   reportedIncidents   IncidentReport[]
   classSessions       ClassSession[]
 
@@ -250,16 +250,16 @@ model StudentClassRequest {
 }
 
 model StudentSessionAttendance {
-  id             BigInt       @id @default(autoincrement())
-  sessionId      String       @map("session_id") @db.Uuid
-  studentId      String       @map("student_id") @db.Uuid
-  status         String
-  note           String?
-  recordedBy     String       @map("recorded_by") @db.Uuid
-  recordedAt     DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
-  recordedByUser User         @relation("RecordedBy", fields: [recordedBy], references: [id])
-  session        ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id                BigInt       @id @default(autoincrement())
+  sessionId         String       @map("session_id") @db.Uuid
+  studentId         String       @map("student_id") @db.Uuid
+  status            String
+  note              String?
+  recordedBy        String       @map("recorded_by") @db.Uuid
+  recordedAt        DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  recordedByTeacher Teacher?     @relation("RecordedBy", fields: [recordedBy], references: [id])
+  session           ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student           Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
   @@map("student_session_attendance")
@@ -662,7 +662,6 @@ model IncidentReport {
 
   @@map("incident_reports")
 }
-
 
 enum Gender {
   MALE
