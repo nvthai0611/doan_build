@@ -9,6 +9,7 @@ import { RouterModule } from '@nestjs/core';
 import { EmailQueueService } from './services/email-queue.service';
 import { EmailProcessor } from './services/email-processor.service';
 import { EmailNotificationService } from './services/email-notification.service';
+import { EmailNotificationProcessor } from './consumer/email_notification.processor';
 
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -50,6 +51,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,
+    EmailNotificationProcessor
   ],
   exports: [
     StudentSharedService, 
