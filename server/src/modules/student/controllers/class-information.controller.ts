@@ -41,12 +41,12 @@ export class ClassInformationController {
             status: true, 
             note: true, 
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1,
         },
@@ -67,7 +67,7 @@ export class ClassInformationController {
         attendanceStatus: attendance?.status || null,
         attendanceNote: attendance?.note || null,
         attendanceRecordedAt: attendance?.recordedAt || null,
-        attendanceRecordedBy: attendance?.recordedByUser || null,
+        // attendanceRecordedBy: attendance?.recordedByUser || null,
       };
     });
     
