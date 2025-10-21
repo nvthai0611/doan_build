@@ -74,10 +74,10 @@ export class TeacherManagementService {
       let teacherCode: string;
       let isUnique = false;
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 10; 
       
       while (!isUnique && attempts < maxAttempts) {
-        teacherCode = generateQNCode();
+        teacherCode = generateQNCode('teacher');
         const existingTeacher = await prisma.teacher.findUnique({
           where: { teacherCode }
         });

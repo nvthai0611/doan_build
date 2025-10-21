@@ -528,7 +528,7 @@ export class ClassManagementService {
             const maxAttempts = 10;
             
             while (!isUnique && attempts < maxAttempts) {
-                classCode = generateQNCode();
+                classCode = generateQNCode('class');
                 const existingClass = await this.prisma.class.findUnique({
                     where: { classCode }
                 });
