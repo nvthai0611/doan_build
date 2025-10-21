@@ -6,7 +6,7 @@ const App = () => {
   return <>
     <Layout />
     {/* <ThemeDebug /> */}
-    <Toaster position="top-right" richColors duration={1000} closeButton/>
+    <Toaster position="top-right" richColors duration={3000} closeButton/>
   </>;
 };
 

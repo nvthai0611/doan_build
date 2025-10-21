@@ -36,8 +36,6 @@ export class TeacherManagementController {
       createTeacherDto.contractImage = file;
     }
     
-    console.log("Processed DTO:", createTeacherDto);
-    console.log("=====================================");
     
     return this.teacherManagementService.createTeacher(createTeacherDto);
   }
