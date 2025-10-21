@@ -1,5 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { PrismaService } from '../../db/prisma.service';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { AttendanceController } from './controllers/attendance.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { CommunicationController } from './controllers/communication.controller';
@@ -20,7 +19,7 @@ import { ScheduleService } from './services/schedule.service';
 import { SessionService } from './services/session.service';
 import { StudentManagementService } from './services/student-management.service';
 import { RouterModule } from '@nestjs/core';
-import { MiddlewareTeacher } from '../../common/middleware/teacher/teacher.middleware';
+import { MiddlewareTeacher } from 'src/common/middleware/teacher/teacher.middleware';
 import { CommonController } from './controllers/common.controller';
 import { CommonService } from './services/common.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -28,14 +27,19 @@ import { FileManagementController } from './controllers/file-management.controll
 import { FileManagementService } from './services/file-management.service';
 import { IncidentReportController } from './controllers/incident-report.controller';
 import { IncidentReportService } from './services/incident-report.service';
+import { SharedModule } from '../shared/shared.module';
+import { PrismaService } from 'src/db/prisma.service';
 
 @Module({
-  imports: [RouterModule.register([
-    {
-      path:'teacher',
-      module: TeacherModule
-    }
-  ])],
+  imports: [
+    RouterModule.register([
+      {
+        path:'teacher',
+        module: TeacherModule
+      }
+    ]),
+    SharedModule, // Import SharedModule để sử dụng EmailNotificationService
+  ],
   controllers: [
     AttendanceController,
     ClassManagementController,
@@ -52,7 +56,6 @@ import { IncidentReportService } from './services/incident-report.service';
     IncidentReportController,
   ],
   providers: [
-    PrismaService,
     AttendanceService,
     ClassManagementService,
     CommunicationService,
@@ -68,10 +71,19 @@ import { IncidentReportService } from './services/incident-report.service';
     CloudinaryService,
     FileManagementService,
     IncidentReportService,
+    PrismaService,
   ],
+  exports: [
+    AttendanceService,
+    // ...other exports
+  ]
 })
-export class TeacherModule implements NestModule {
+export class TeacherModule {
   configure(consumer: MiddlewareConsumer) {
-      consumer.apply(MiddlewareTeacher).forRoutes('teacher');
+    consumer
+      .apply(MiddlewareTeacher)
+      .forRoutes(
+        { path: 'teacher/*', method: RequestMethod.ALL }
+      );
   }
 }
