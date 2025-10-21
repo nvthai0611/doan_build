@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
 import { CreateTeacherDto } from '../dto/teacher/create-teacher.dto';
 import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
 import * as bcrypt from 'bcrypt';
 import { Gender } from 'src/common/constants';
+import { generateQNCode } from '../../../utils/function.util';
 @Injectable()
 export class TeacherManagementService {
   constructor(private prisma: PrismaService) {}
@@ -69,12 +70,40 @@ export class TeacherManagementService {
         }
       });
 
+      // Generate unique teacher code
+      let teacherCode: string;
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (!isUnique && attempts < maxAttempts) {
+        teacherCode = generateQNCode();
+        const existingTeacher = await prisma.teacher.findUnique({
+          where: { teacherCode }
+        });
+        
+        if (!existingTeacher) {
+          isUnique = true;
+        }
+        attempts++;
+      }
+      
+      if (!isUnique) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không thể tạo mã giáo viên duy nhất sau nhiều lần thử'
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
       // Create teacher record
       const teacher = await prisma.teacher.create({
         data: {
           userId: user.id,
           schoolId: schoolId,
-          teacherCode: `TCH${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+          teacherCode: teacherCode,
         },
         include: {
           user: true,
@@ -117,20 +146,11 @@ export class TeacherManagementService {
     const pageNum = parseInt(page.toString());
     const limitNum = parseInt(limit.toString());
     const skip = (pageNum - 1) * limitNum;
-    const where: any = {};
+    const where: any = { AND: [] };
     const userWhere: any = {};
 
     if (role) {
       userWhere.role = role;
-    }
-
-    if (search) {
-      userWhere.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { username: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } }
-      ];
     }
 
     // Add status filter
@@ -154,8 +174,33 @@ export class TeacherManagementService {
       }
     }
 
+    // Add user filters to AND conditions
     if (Object.keys(userWhere).length > 0) {
-      where.user = userWhere;
+      where.AND.push({ user: userWhere });
+    }
+
+    // Add search - search in user fields and teacher code
+    if (search) {
+      where.AND.push({
+        OR: [
+          { 
+            user: {
+              OR: [
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+                { username: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          },
+          { teacherCode: { contains: search, mode: 'insensitive' } }
+        ]
+      });
+    }
+
+    // If no AND conditions, remove it to avoid empty AND
+    if (where.AND.length === 0) {
+      delete where.AND;
     }
    
     // hireDate field has been removed from Teacher model
@@ -481,7 +526,7 @@ export class TeacherManagementService {
       email: teacher.user.email,
       phone: teacher.user.phone,
       username: teacher.user.username,
-      code: `***${teacher.id.slice(-4).toUpperCase()}A`,
+      code: teacher.teacherCode,
       role: this.mapRoleToVietnamese(teacher.user.role),
       gender: teacher.user.gender === Gender.MALE ? 'Nam' : teacher.user.gender === Gender.FEMALE ? 'Nữ' : 'Khác',
       birthDate: teacher.user.birthDate ? this.formatDate(teacher.user.birthDate) : undefined,

@@ -6,6 +6,7 @@ import axios, {
   Method,
 } from 'axios';
 import CryptoJS from 'crypto-js';
+import Cookies from 'js-cookie';
 
 /* =======================
    Token Helper
@@ -29,16 +30,16 @@ const decrypt = (cipher: string): string | undefined => {
 export const TokenStorage = {
   set: (token: string | null) => {
     if (!token) {
-      localStorage.removeItem(AUTH_TOKEN);
+    Cookies.remove(AUTH_TOKEN);
       return;
     }
-    localStorage.setItem(AUTH_TOKEN, encrypt(token));
+    Cookies.set(AUTH_TOKEN, encrypt(token));
   },
   get: (): string | undefined => {
-    const cipher = localStorage.getItem(AUTH_TOKEN);
+    const cipher = Cookies.get(AUTH_TOKEN);
     return cipher === null ? undefined : cipher;
   },
-  clear: () => localStorage.removeItem(AUTH_TOKEN),
+  clear: () => Cookies.remove(AUTH_TOKEN),
 };
 
 /* =======================
@@ -119,8 +120,10 @@ client.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
+        const refreshToken = Cookies.get('refreshToken');
+        if (!refreshToken || refreshToken === 'undefined') {
+          throw new Error('No refresh token available');
+        }
           const response = await axios.post(
             `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1'}/auth/refresh`,
             {},
@@ -136,14 +139,12 @@ client.interceptors.response.use(
           processQueue(null, accessToken);
           
           return client(originalRequest);
-        } else {
-          throw new Error('No refresh token available');
-        }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError, null);
+        Cookies.remove('user');
+        Cookies.remove('accessToken');
+        Cookies.remove('refreshToken');
         TokenStorage.clear();
-        localStorage.removeItem('user');
-        localStorage.removeItem('refreshToken');
         window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       } finally {
@@ -151,9 +152,11 @@ client.interceptors.response.use(
       }
     }
 
-    return Promise.reject<ApiError>({
+    // Trả về đầy đủ thông tin từ response.data để có suggestedName, hint, etc.
+    return Promise.reject({
       status: response?.status || 0,
       message: response?.data?.message || 'Lỗi không xác định',
+      ...(response?.data || {}), // Merge tất cả fields từ response.data
     });
   },
 );

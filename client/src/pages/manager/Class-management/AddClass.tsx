@@ -28,6 +28,7 @@ import { useClassMutations } from './hooks/useClassMutations';
 import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { convertDateToISO } from '../../../utils/format';
 import { GRADE_LEVEL_OPTIONS } from '../../../lib/gradeConstants';
 import { dayOptions } from '../../../utils/commonData';
 
@@ -42,17 +43,6 @@ export const CreateClass = () => {
   const navigate = useNavigate();
   const { createClass } = useClassMutations();
 
-  // Helper function để tạo ngày mặc định 15/8
-  const getDefaultStartDate = () => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-    
-    // Nếu hiện tại đã qua tháng 8, dùng năm tiếp theo
-    const targetYear = currentMonth > 8 ? currentYear + 1 : currentYear;
-    
-    const defaultDate = new Date(targetYear, 7, 15); // Tháng 8 (index 7), ngày 15
-    return defaultDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -61,7 +51,7 @@ export const CreateClass = () => {
     maxStudents: '',
     roomId: '',
     teacherId: '',
-    expectedStartDate: getDefaultStartDate(),
+    expectedStartDate:'',
     description: '',
     status: 'draft',
     academicYear: '',
@@ -125,7 +115,6 @@ export const CreateClass = () => {
     const usedDays = schedules.map(s => s.day);
     const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const nextAvailableDay = dayOrder.find(day => !usedDays.includes(day)) || 'monday';
-    
     const newSchedule: ScheduleItem = {
       id: Date.now().toString(),
       day: nextAvailableDay,
@@ -332,13 +321,15 @@ export const CreateClass = () => {
     const submitData = {
       ...formData,
       subjectId: formData.subjectId === 'none' ? undefined : formData.subjectId,
-      roomId: formData.roomId === 'none' ? undefined : formData.roomId,
-      teacherId: formData.teacherId === 'none' ? undefined : formData.teacherId,
+      roomId: formData.roomId === 'none' || formData.roomId === '' ? undefined : formData.roomId,
+      teacherId: formData.teacherId === 'none' || formData.teacherId === '' ? undefined : formData.teacherId,
       maxStudents: formData.maxStudents
         ? parseInt(formData.maxStudents)
         : undefined,
       academicYear: formData.academicYear || currentAcademicYear,
       recurringSchedule: recurringSchedule,
+      // Convert expectedStartDate sang ISO format
+      expectedStartDate: convertDateToISO(formData.expectedStartDate),
     };
 
     createClass.mutate(submitData as any, {
@@ -506,11 +497,12 @@ export const CreateClass = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                     <Label htmlFor="expectedStartDate" className="text-sm font-medium">
-                    Ngày tuyển sinh (dự kiến) <span className="text-red-500">*</span>
+                    Ngày khai giảng dự kiến <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="expectedStartDate"
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={formData.expectedStartDate}
                     onChange={(e) => handleInputChange("expectedStartDate", e.target.value)}
                     className={`mt-1.5 ${errors.expectedStartDate ? "border-red-500" : ""}`}

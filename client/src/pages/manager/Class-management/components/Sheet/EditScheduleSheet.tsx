@@ -32,6 +32,7 @@ export const EditScheduleSheet = ({
     isLoading = false 
 }: EditScheduleSheetProps) => {
     const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     
     // Load schedules from classData when component opens
     useEffect(() => {
@@ -51,7 +52,7 @@ export const EditScheduleSheet = ({
             if (scheduleData && Array.isArray(scheduleData)) {
                 const loadedSchedules: ScheduleItem[] = scheduleData.map((schedule: any, index: number) => ({
                     id: `schedule-${index}`,
-                    day: schedule.day || 'monday',
+                    day: schedule.day || '',
                     startTime: schedule.startTime || '08:00',
                     endTime: schedule.endTime || '09:30',
                     duration: calculateDuration(schedule.startTime || '08:00', schedule.endTime || '09:30')
@@ -59,13 +60,7 @@ export const EditScheduleSheet = ({
                 setSchedules(loadedSchedules);
             } else {
                 // Default empty schedule if no data
-                setSchedules([{
-                    id: '1',
-                    day: 'monday',
-                    startTime: '08:00',
-                    endTime: '09:30',
-                    duration: 90
-                }]);
+                setSchedules([]);
             }
         }
     }, [open, classData]);
@@ -90,19 +85,16 @@ export const EditScheduleSheet = ({
     
 
     const handleAddSchedule = () => {
-        // Tìm thứ tiếp theo chưa được sử dụng theo thứ tự logic
-        const usedDays = schedules.map(s => s.day);
-        const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        const nextAvailableDay = dayOrder.find(day => !usedDays.includes(day)) || 'monday';
-        
         const newSchedule: ScheduleItem = {
             id: Date.now().toString(),
-            day: nextAvailableDay,
+            day: '', // Empty string để hiển thị placeholder
             startTime: '08:00',
             endTime: '09:30',
             duration: 90
         };
         setSchedules([...schedules, newSchedule]);
+        // Clear error khi thêm mới
+        setErrors({});
     };
 
     const handleRemoveSchedule = (id: string) => {
@@ -127,10 +119,85 @@ export const EditScheduleSheet = ({
                 s.id === id ? { ...s, [field]: value } : s
             ));
         }
+
+        // Clear error for this field when user changes it
+        if (errors[`${id}-${field}`]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[`${id}-${field}`];
+                return newErrors;
+            });
+        }
+    };
+
+    // Validation function
+    const validateSchedules = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        schedules.forEach((schedule, index) => {
+            // Validate day selection
+            if (!schedule.day || schedule.day === '') {
+                newErrors[`${schedule.id}-day`] = 'Vui lòng chọn thứ';
+            }
+
+            // Validate start time
+            if (!schedule.startTime) {
+                newErrors[`${schedule.id}-startTime`] = 'Vui lòng nhập giờ bắt đầu';
+            }
+
+            // Validate duration
+            if (!schedule.duration || schedule.duration <= 0) {
+                newErrors[`${schedule.id}-duration`] = 'Thời lượng phải lớn hơn 0';
+            }
+
+            // Check for time conflicts on same day
+            if (schedule.day) {
+                const sameDaySchedules = schedules.filter(s => s.day === schedule.day);
+                
+                if (sameDaySchedules.length > 1) {
+                    // Convert time to minutes for easier comparison
+                    const toMinutes = (time: string) => {
+                        const [h, m] = time.split(':').map(Number);
+                        return h * 60 + m;
+                    };
+
+                    const currentStart = toMinutes(schedule.startTime);
+                    const currentEnd = toMinutes(schedule.endTime);
+
+                    sameDaySchedules.forEach(otherSchedule => {
+                        if (otherSchedule.id !== schedule.id) {
+                            const otherStart = toMinutes(otherSchedule.startTime);
+                            const otherEnd = toMinutes(otherSchedule.endTime);
+
+                            // Check if time ranges overlap
+                            const isOverlapping = (
+                                (currentStart >= otherStart && currentStart < otherEnd) ||
+                                (currentEnd > otherStart && currentEnd <= otherEnd) ||
+                                (currentStart <= otherStart && currentEnd >= otherEnd)
+                            );
+
+                            if (isOverlapping) {
+                                newErrors[`${schedule.id}-time`] = `Trùng giờ với ca học khác cùng ngày (${otherSchedule.startTime} - ${otherSchedule.endTime})`;
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = () => {
-        onSubmit(schedules);
+        // Validate before submit
+        if (!validateSchedules()) {
+            return;
+        }
+        
+        // Filter out schedules without valid data
+        const validSchedules = schedules.filter(s => s.day && s.startTime && s.duration > 0);
+        onSubmit(validSchedules);
     };
 
     const getDayLabel = (day: string) => {
@@ -232,18 +299,24 @@ export const EditScheduleSheet = ({
                         </div>
 
                         <div className="space-y-4">
-                            {schedules.map((schedule, index) => (
-                                <div key={schedule.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                                    <div className="grid grid-cols-12 gap-3 items-end">
+                            {schedules.length === 0 ? (
+                                <div className="">
+                                </div>
+                            ) : (
+                                schedules.map((schedule, index) => (
+                                    <div key={schedule.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                                        <div className="grid grid-cols-12 gap-3 items-end">
                                         {/* Thứ */}
                                         <div className="col-span-3">
-                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Thứ</label>
+                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                                                Thứ <span className="text-red-500">*</span>
+                                            </label>
                                             <Select 
                                                 value={schedule.day} 
                                                 onValueChange={(value: string) => handleScheduleChange(schedule.id, 'day', value)}
                                                 disabled={classData?.status === 'active'}
                                             >
-                                                <SelectTrigger className="h-10">
+                                                <SelectTrigger className={`h-10 ${errors[`${schedule.id}-day`] ? 'border-red-500' : ''}`}>
                                                     <SelectValue placeholder="Chọn thứ" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -254,6 +327,9 @@ export const EditScheduleSheet = ({
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            {errors[`${schedule.id}-day`] && (
+                                                <p className="text-xs text-red-500 mt-1">{errors[`${schedule.id}-day`]}</p>
+                                            )}
                                         </div>
 
                                         {/* Bắt đầu */}
@@ -267,53 +343,36 @@ export const EditScheduleSheet = ({
                                                     type="time"
                                                     value={schedule.startTime}
                                                     onChange={(e: any) => handleScheduleChange(schedule.id, 'startTime', e.target.value)}
-                                                    className="pl-10 h-10"
+                                                    className={`pl-10 h-10 ${errors[`${schedule.id}-startTime`] ? 'border-red-500' : ''}`}
                                                     disabled={classData?.status === 'active'}
                                                 />
                                             </div>
-                                        </div>
-
-                                        {/* Kết thúc */}
-                                        <div className="col-span-3">
-                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                                                Kết thúc <span className="text-red-500">*</span>
-                                            </label>
-                                            <div className="relative">
-                                                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                <Input
-                                                    type="time"
-                                                    value={schedule.endTime}
-                                                    onChange={(e: any) => {
-                                                        const newEndTime = e.target.value;
-                                                        const newDuration = calculateDuration(schedule.startTime, newEndTime);
-                                                        handleScheduleChange(schedule.id, 'endTime', newEndTime);
-                                                        handleScheduleChange(schedule.id, 'duration', newDuration);
-                                                    }}
-                                                    className="pl-10 h-10"
-                                                    disabled={classData?.status === 'active'}
-                                                />
-                                            </div>
+                                            {errors[`${schedule.id}-startTime`] && (
+                                                <p className="text-xs text-red-500 mt-1">{errors[`${schedule.id}-startTime`]}</p>
+                                            )}
                                         </div>
 
                                         {/* Thời lượng */}
-                                        <div className="col-span-2">
+                                        <div className="col-span-5">
                                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                                                Thời lượng
+                                                Thời lượng (phút) <span className="text-red-500">*</span>
                                             </label>
                                             <Input
                                                 type="number"
                                                 value={schedule.duration}
                                                 onChange={(e: any) => {
-                                                    const newDuration = parseInt(e.target.value) || 0;
-                                                    const newEndTime = calculateEndTime(schedule.startTime, newDuration);
+                                                    const newDuration = parseInt(e.target.value) || '';
                                                     handleScheduleChange(schedule.id, 'duration', newDuration);
-                                                    handleScheduleChange(schedule.id, 'endTime', newEndTime);
                                                 }}
                                                 min={0}
                                                 step={15}
-                                                className="h-10"
+                                                placeholder="90"
+                                                className={`h-10 ${errors[`${schedule.id}-duration`] ? 'border-red-500' : ''}`}
                                                 disabled={classData?.status === 'active'}
                                             />
+                                            {errors[`${schedule.id}-duration`] && (
+                                                <p className="text-xs text-red-500 mt-1">{errors[`${schedule.id}-duration`]}</p>
+                                            )}
                                         </div>
 
                                         {/* Delete button */}
@@ -323,14 +382,16 @@ export const EditScheduleSheet = ({
                                                 size="sm"
                                                 onClick={() => handleRemoveSchedule(schedule.id)}
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-10 w-10 p-0"
-                                                disabled={schedules.length === 1 || classData?.status === 'active'}
+                                                disabled={classData?.status === 'active'}
+                                                title="Xóa lịch học này"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
 
@@ -346,14 +407,11 @@ export const EditScheduleSheet = ({
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
                                         <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                                            {getDayLabel(schedule.day)}
+                                            {schedule.day ? getDayLabel(schedule.day) : 'Chưa chọn thứ'}
                                         </span>
                                     </div>
                                     <div className="text-sm text-green-800 dark:text-green-200">
-                                        {schedule.startTime} - {schedule.endTime}
-                                    </div>
-                                    <div className="text-xs text-green-600 dark:text-green-400">
-                                        ({schedule.duration} phút)
+                                        {schedule.startTime} ({schedule.duration} phút)
                                     </div>
                                 </div>
                             ))}
