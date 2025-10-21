@@ -31,17 +31,20 @@ import {
   PaginationConfig,
 } from '../../../../components/common/Table/DataTable';
 import {
-  StudentStatus,
-  STUDENT_STATUS_LABELS,
-  STUDENT_STATUS_COLORS,
   ClassStatus,
-  CLASS_STATUS_LABELS,
+  ENROLLMENT_STATUS_COLORS,
+  ENROLLMENT_STATUS_LABELS,
+  EnrollmentStatus,
+  STUDENT_STATUS_LABELS,
 } from '../../../../lib/constants';
 import { SelectStudentSheet } from './Sheet/SelectStudentSheet';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { enrollmentService } from '../../../../services/center-owner/enrollment/enrollment.service';
+import { centerOwnerStudentService } from '../../../../services/center-owner/student-management/student.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import { usePagination } from '../../../../hooks/usePagination';
+import { CodeDisplay } from '../../../../components/common/CodeDisplay';
+import { useToast } from '../../../../hooks/use-toast';
 
 interface StudentsInfoProps {
   classId: string;
@@ -53,18 +56,17 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
-  // Remove local page state; use shared pagination hook instead
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isSelectStudentOpen, setIsSelectStudentOpen] = useState(false);
-  // Local copy of students to support UI toggles
-  const [studentsData, setStudentsData] = useState<any[]>([]);
   const debouncedSearch = useDebounce(searchTerm, 500);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const pagination = usePagination({
     initialPage: 1,
     initialItemsPerPage: 10,
     totalItems: 0,
   });
+  
   // Fetch enrollments students in class
   const {
     data: studentsResp,
@@ -90,106 +92,184 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
     refetchOnWindowFocus: true,
   });
 
-  // Sync state when API data changes
-  useEffect(() => {
-    const apiEnrollments = (studentsResp as any)?.data;
-    if (Array.isArray(apiEnrollments)) {
-      const mapped = apiEnrollments.map((enrollment: any) => {
-        const s = enrollment?.student || {};
-        const u = s?.user || {};
-        const p = s?.parent || {};
-        const pu = p?.user || {};
-        // Map backend status to UI status if needed
-        // active -> studying, completed -> graduated, withdrawn -> stopped
-        const statusMap: any = {
-          active: 'studying',
-          completed: 'graduated',
-          withdrawn: 'stopped',
-        };
-        return {
-          // stable identifiers
-          id: s.id || enrollment.id,
-          studentId: s.studentCode || s.id,
-          fullName: u.fullName || s.fullName || '-',
-          email: u.email || '-',
-          phone: u.phone || '-',
-          avatar: u.avatar || '',
-          parentFullName: pu.fullName || p.fullName || '-',
-          parentEmail: pu.email || '-',
-          parentPhone: pu.phone || '-',
-          enrolledAt: enrollment.enrolledAt,
-          status: statusMap[enrollment.status] || enrollment.status || 'pending',
-          classesAttended: enrollment.classesAttended ?? 0,
-          classesRegistered: enrollment.classesRegistered ?? 0,
-          accountStatus: u.isActive ? 'active' : 'inactive',
-          graduationStatus:
-            (enrollment.status === 'completed') ? 'graduated' : 'not_graduated',
-        };
-      });
-      setStudentsData(mapped);
-    }
-  }, [studentsResp]);
-
   // Reset to first page when search changes
   useEffect(() => {
     pagination.setCurrentPage(1);
   }, [debouncedSearch]);
+  
+  // Lấy data trực tiếp từ API
+  const enrollments = (studentsResp as any)?.data || [];
   const totalCount = (studentsResp as any)?.meta?.total || 0;
   const totalPages = (studentsResp as any)?.meta?.totalPages || 1;
+
+  // Mutation để update enrollment status với optimistic update
+  const updateEnrollmentMutation = useMutation({
+    mutationFn: ({ enrollmentId, status }: { enrollmentId: string; status: string }) =>
+      enrollmentService.updateStatus(enrollmentId, { status }),
+    onMutate: async ({ enrollmentId, status }) => {
+      // Query key hiện tại
+      const queryKey = [
+        'class-enrollments',
+        {
+          classId,
+          q: debouncedSearch,
+          page: pagination.currentPage,
+          limit: pagination.itemsPerPage,
+        },
+      ];
+      
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(queryKey);
+      
+      // Optimistically update
+      queryClient.setQueryData(queryKey, (old: any) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.map((enrollment: any) =>
+            enrollment.id === enrollmentId
+              ? { ...enrollment, status }
+              : enrollment
+          ),
+        };
+      });
+      
+      return { previousData, queryKey };
+    },
+    onError: (error, variables, context: any) => {
+      // Rollback on error
+      if (context?.previousData && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousData);
+      }
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật trạng thái tốt nghiệp. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Cập nhật trạng thái tốt nghiệp thành công",
+      });
+    },
+    onSettled: () => {
+      // Invalidate all queries that start with 'class-enrollments'
+      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+    },
+  });
+
+  // Mutation để update student account status với optimistic update
+  const updateStudentStatusMutation = useMutation({
+    mutationFn: ({ studentId, isActive }: { studentId: string; isActive: boolean }) =>
+      centerOwnerStudentService.updateStudentStatus(studentId, isActive),
+    onMutate: async ({ studentId, isActive }) => {
+      // Query key hiện tại
+      const queryKey = [
+        'class-enrollments',
+        {
+          classId,
+          q: debouncedSearch,
+          page: pagination.currentPage,
+          limit: pagination.itemsPerPage,
+        },
+      ];
+      
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(queryKey);
+      
+      // Optimistically update
+      queryClient.setQueryData(queryKey, (old: any) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.map((enrollment: any) =>
+            enrollment?.student?.id === studentId
+              ? {
+                  ...enrollment,
+                  student: {
+                    ...enrollment.student,
+                    user: {
+                      ...enrollment.student.user,
+                      isActive,
+                    },
+                  },
+                }
+              : enrollment
+          ),
+        };
+      });
+      
+      return { previousData, queryKey };
+    },
+    onError: (error, variables, context: any) => {
+      // Rollback on error
+      if (context?.previousData && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousData);
+      }
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Cập nhật trạng thái tài khoản thành công",
+      });
+    },
+    onSettled: () => {
+      // Invalidate all queries that start with 'class-enrollments'
+      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+    },
+  });
 
   // Status filters với counts
   const statusFilters = [
     {
-      key: StudentStatus.ALL,
-      label: STUDENT_STATUS_LABELS[StudentStatus.ALL],
-      count: studentsData.length || 0,
+      key: EnrollmentStatus.ALL,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.ALL] || '',
+      count: enrollments.length || 0,
+    },
+    { 
+      key: EnrollmentStatus.NOT_BEEN_UPDATED,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.NOT_BEEN_UPDATED] || '',
+      count: enrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.NOT_BEEN_UPDATED).length || 0,
     },
     {
-      key: StudentStatus.PENDING,
-      label: STUDENT_STATUS_LABELS[StudentStatus.PENDING],
-      count: studentsData.filter((s: any) => s.status === StudentStatus.PENDING)
-        .length,
-    },
-    // {
-    //   key: StudentStatus.UPCOMING,
-    //   label: STUDENT_STATUS_LABELS[StudentStatus.UPCOMING],
-    //   count: studentsData.filter(
-    //     (s: any) => s.status === StudentStatus.UPCOMING,
-    //   ).length,
-    // },
-    {
-      key: StudentStatus.STUDYING,
-      label: STUDENT_STATUS_LABELS[StudentStatus.STUDYING],
-      count: studentsData.filter(
-        (s: any) => s.status === StudentStatus.STUDYING,
+      key: EnrollmentStatus.STUDYING,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STUDYING],
+      count: enrollments.filter(
+        (enrollment: any) => enrollment.status === EnrollmentStatus.STUDYING,
       ).length,
     },
+   
     {
-      key: StudentStatus.RESERVED,
-      label: STUDENT_STATUS_LABELS[StudentStatus.RESERVED],
-      count: studentsData.filter(
-        (s: any) => s.status === StudentStatus.RESERVED,
-      ).length,
-    },
-    {
-      key: StudentStatus.STOPPED,
-      label: STUDENT_STATUS_LABELS[StudentStatus.STOPPED],
-      count: studentsData.filter((s: any) => s.status === StudentStatus.STOPPED)
+      key: EnrollmentStatus.STOPPED,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STOPPED],
+      count: enrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.STOPPED)
         .length,
     },
     {
-      key: StudentStatus.GRADUATED,
-      label: STUDENT_STATUS_LABELS[StudentStatus.GRADUATED],
-      count: studentsData.filter(
-        (s: any) => s.status === StudentStatus.GRADUATED,
+      key: EnrollmentStatus.GRADUATED,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
+      count: enrollments.filter(
+        (enrollment: any) => enrollment.status === EnrollmentStatus.GRADUATED,
       ).length,
     },
   ];
 
   // Filter students based on active filter
-  const filteredStudents = studentsData?.filter((student: any) => {
-    if (activeStatusFilter === StudentStatus.ALL) return true;
-    return student.status === activeStatusFilter;
+  const filteredStudents = enrollments?.filter((enrollment: any) => {
+    if (activeStatusFilter === EnrollmentStatus.ALL) return true;
+    return enrollment.status === activeStatusFilter;
   });
 
   const getStatusBadge = (status: string) => {
@@ -201,38 +281,28 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         className?: string;
       }
     > = {
-      [StudentStatus.STUDYING]: {
+      [EnrollmentStatus.NOT_BEEN_UPDATED]: {
         variant: 'default',
-        label: STUDENT_STATUS_LABELS[StudentStatus.STUDYING],
-        className: STUDENT_STATUS_COLORS[StudentStatus.STUDYING],
+        label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.NOT_BEEN_UPDATED],
+        className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.NOT_BEEN_UPDATED],
       },
-      // [StudentStatus.UPCOMING]: {
-      //   variant: 'secondary',
-      //   label: STUDENT_STATUS_LABELS[StudentStatus.UPCOMING],
-      //   className: STUDENT_STATUS_COLORS[StudentStatus.UPCOMING],
-      // },
-      [StudentStatus.RESERVED]: {
-        variant: 'outline',
-        label: STUDENT_STATUS_LABELS[StudentStatus.RESERVED],
-        className: STUDENT_STATUS_COLORS[StudentStatus.RESERVED],
+      [EnrollmentStatus.STUDYING]: {
+        variant: 'default',
+        label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STUDYING],
+        className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.STUDYING],
       },
-      [StudentStatus.STOPPED]: {
+      [EnrollmentStatus.STOPPED]: {
         variant: 'destructive',
-        label: STUDENT_STATUS_LABELS[StudentStatus.STOPPED],
-        className: STUDENT_STATUS_COLORS[StudentStatus.STOPPED],
+        label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STOPPED],
+        className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.STOPPED],
       },
-      [StudentStatus.GRADUATED]: {
+      [EnrollmentStatus.GRADUATED]: {
         variant: 'default',
-        label: STUDENT_STATUS_LABELS[StudentStatus.GRADUATED],
-        className: STUDENT_STATUS_COLORS[StudentStatus.GRADUATED],
-      },
-      [StudentStatus.PENDING]: {
-        variant: 'outline',
-        label: STUDENT_STATUS_LABELS[StudentStatus.PENDING],
-        className: STUDENT_STATUS_COLORS[StudentStatus.PENDING],
+        label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
+        className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.GRADUATED],
       },
     };
-    const config = variants[status] || variants[StudentStatus.STUDYING];
+    const config = variants[status] || variants[EnrollmentStatus.NOT_BEEN_UPDATED];
     return (
       <Badge variant={config.variant} className={config.className}>
         {config.label}
@@ -264,7 +334,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       .toUpperCase();
   };
 
-  // Define columns for DataTable
+  // Define columns for DataTable - Sử dụng trực tiếp enrollment data từ backend
   const columns: Column<any>[] = [
     {
       key: 'stt',
@@ -278,18 +348,21 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       key: 'student',
       header: 'Tài khoản học viên',
       width: '250px',
-      render: (student: any) => (
+      render: (enrollment: any) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={student.avatar} alt={student.fullName} />
+            <AvatarImage src={enrollment?.student?.user?.avatar} alt={enrollment?.student?.user?.fullName} />
             <AvatarFallback className="bg-blue-100 text-blue-600">
-              {getInitials(student.fullName)}
+              {getInitials(enrollment?.student?.user?.fullName || 'NA')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-gray-900">{student.fullName}</p>
+            <p className="font-medium text-gray-900">{enrollment?.student?.user?.fullName || '-'}</p>
             <p className="text-sm text-gray-500">
-              ID: {student.studentId || student.id}
+              <CodeDisplay
+                code={enrollment?.student?.studentCode || '-'}
+                hiddenLength={4}
+              />
             </p>
           </div>
         </div>
@@ -299,11 +372,11 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       key: 'parentInfo',
       header: 'Phụ huynh',
       width: '260px',
-      render: (student: any) => (
+      render: (enrollment: any) => (
         <div className="space-y-1 text-sm">
-          <div className="font-medium">{student.parentFullName || '-'}</div>
-          <div className="text-gray-500">{student.parentEmail || '-'}</div>
-          <div className="text-gray-500">{student.parentPhone || '-'}</div>
+          <div className="font-medium">{enrollment?.student?.parent?.user?.fullName || '-'}</div>
+          <div className="text-gray-500">{enrollment?.student?.parent?.user?.email || '-'}</div>
+          <div className="text-gray-500">{enrollment?.student?.parent?.user?.phone || '-'}</div>
         </div>
       )
     },
@@ -311,104 +384,101 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       key: 'studyStatus',
       header: 'Trạng thái học tập',
       width: '150px',
-      render: (student: any) => getStatusBadge(student.status),
+      render: (enrollment: any) => getStatusBadge(enrollment?.status),
     },
     {
       key: 'classes',
-      header: 'Buổi đã học/đăng ký',
+      header: 'Buổi đã học/Tổng buổi',
       width: '150px',
       align: 'center',
-      render: (student: any) => (
+      render: (enrollment: any) => (
         <div className="text-center">
           <p className="font-medium">
-            {student.classesAttended ?? 0}/{student.classesRegistered ?? 0}
+            {enrollment?.classesAttended ?? 0}/{enrollment?.classesRegistered ?? 0}
           </p>
         </div>
       ),
     },
-    {
-      key: 'startDate',
-      header: 'Ngày bắt đầu học',
-      width: '120px',
-      render: (student: any) =>
-        student.enrolledAt
-          ? format(new Date(student.enrolledAt), 'dd/MM/yyyy')
-          : '-',
-    },
+    // {
+    //   key: 'enrolledDate',
+    //   header: 'Ngày tham gia lớp',
+    //   width: '120px',
+    //   render: (enrollment: any) =>
+    //     enrollment?.enrolledAt
+    //       ? format(new Date(enrollment.enrolledAt), 'dd/MM/yyyy')
+    //       : '-',
+    // },
+    // {
+    //   key: 'startDate',
+    //   header: 'Ngày bắt đầu/Ngày kết thúc',
+    //   width: '200px',
+    //   render: (enrollment: any) =>
+    //     enrollment?.startDate && enrollment?.endDate
+    //       ? `${format(new Date(enrollment.startDate), 'dd/MM/yyyy')} - ${format(new Date(enrollment.endDate), 'dd/MM/yyyy')}`
+    //       : '-',
+    // },
     // {
     //   key: 'endDate',
     //   header: 'Ngày kết thúc học',
     //   width: '120px',
-    //   render: (student: any) => student.endDate ? format(new Date(student.endDate), 'dd/MM/yyyy') : '-'
+    //   render: (enrollment: any) => enrollment.endDate ? format(new Date(enrollment.endDate), 'dd/MM/yyyy') : '-'
     // },
-    {
-      key: 'componentScore',
-      header: 'Điểm thành phần buổi học',
-      width: '180px',
-      align: 'center',
-      render: (student: any) => (
-        <div className="text-center">
-          <p className="font-medium">{student.componentScore || 0}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'averageScore',
-      header: 'Điểm trung bình',
-      width: '120px',
-      align: 'center',
-      render: (student: any) => (
-        <div className="text-center">
-          <p className="font-medium">{student.averageScore || 0}</p>
-        </div>
-      ),
-    },
     {
       key: 'accountStatus',
       header: 'Trạng thái tài khoản',
       width: '150px',
-      render: (student: any) => (
-        <Switch
-          checked={student.accountStatus === 'active'}
-          onCheckedChange={(checked) => {
-            setStudentsData((prev) =>
-              prev.map((s) =>
-                s.id === student.id
-                  ? { ...s, accountStatus: checked ? 'active' : 'inactive' }
-                  : s,
-              ),
-            );
-          }}
-        />
-      ),
+      render: (enrollment: any) => {
+        const isActive = enrollment?.student?.user?.isActive === true;
+        return (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isActive}
+              onCheckedChange={(checked) => {
+                updateStudentStatusMutation.mutate({
+                  studentId: enrollment?.student?.id,
+                  isActive: checked,
+                });
+              }}
+              disabled={updateStudentStatusMutation.isPending}
+            />
+            <span className="text-sm">
+              {isActive ? 'Hoạt động' : 'Không hoạt động'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'graduationStatus',
       header: 'Trạng thái tốt nghiệp',
       width: '150px',
-      render: (student: any) => (
-        <Switch
-          checked={student.graduationStatus === 'graduated'}
-          onCheckedChange={(checked) => {
-            setStudentsData((prev) =>
-              prev.map((s) =>
-                s.id === student.id
-                  ? {
-                      ...s,
-                      graduationStatus: checked ? 'graduated' : 'not_graduated',
-                    }
-                  : s,
-              ),
-            );
-          }}
-        />
-      ),
+      render: (enrollment: any) => {
+        const isGraduated = enrollment?.status === EnrollmentStatus.GRADUATED;
+        return (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isGraduated}
+              onCheckedChange={(checked) => {
+                const newStatus = checked ? EnrollmentStatus.GRADUATED : EnrollmentStatus.STUDYING;
+                updateEnrollmentMutation.mutate({
+                  enrollmentId: enrollment.id,
+                  status: newStatus,
+                });
+              }}
+              disabled={updateEnrollmentMutation.isPending}
+            />
+            <span className="text-sm">
+              {isGraduated ? 'Đã tốt nghiệp' : 'Chưa tốt nghiệp'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'actions',
       header: '',
       width: '50px',
-      render: (student: any) => (
+      render: (enrollment: any) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -515,7 +585,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
                       : 'border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white'
                   }`}
                 >
-                  {filter.label}{' '}
+                  {ENROLLMENT_STATUS_LABELS[filter.key as EnrollmentStatus]}{' '}
                   <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                     {filter.count}
                   </span>
@@ -550,7 +620,10 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         open={isSelectStudentOpen}
         onOpenChange={setIsSelectStudentOpen}
         classData={classData}
-        onSubmit={() => {}}
+        onSubmit={() => {
+          // Refetch enrollments data after successful bulk enroll
+          queryClient.invalidateQueries({ queryKey: ['class-enrollments', { classId }] });
+        }}
       />
     </>
   );

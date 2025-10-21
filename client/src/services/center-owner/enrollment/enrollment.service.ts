@@ -24,8 +24,6 @@ export const enrollmentService = {
     // Get students by class
     getStudentsByClass: async (classId: string, params?: any) => {
         const response = await apiClient.get(`${BASE_URL}/class/${classId}`, params);
-        console.log(response);
-        
         return response;
     },
 
@@ -57,6 +55,12 @@ export const enrollmentService = {
     deleteEnrollment: async (enrollmentId: string) => {
         const response = await apiClient.delete(`${BASE_URL}/${enrollmentId}`);
         return response.data;
+    },
+
+    // Get available students (chưa enroll vào lớp này)
+    getAvailableStudents: async (classId: string, params?: any) => {
+        const response = await apiClient.get(`${BASE_URL}/class/${classId}/available-students`, params);
+        return response;
     }
 };
 

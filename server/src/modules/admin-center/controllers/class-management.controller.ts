@@ -116,6 +116,15 @@ export class ClassManagementController {
         return this.classManagementService.getClassSessions(classId, query);
     }
 
+    @Delete(':id/sessions')
+    @ApiOperation({ summary: 'Xóa nhiều buổi học' })
+    @ApiResponse({ status: 200, description: 'Xóa buổi học thành công' })
+    @ApiResponse({ status: 400, description: 'Không thể xóa buổi học đã diễn ra' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async deleteSessions(@Param('id') classId: string, @Body() body: { sessionIds: string[] }) {
+        return this.classManagementService.deleteSessions(classId, body.sessionIds);
+    }
+
     // ============ LEGACY ENDPOINTS (Backward Compatibility) ============
 
     @Get('/:teacherId/teacher')
