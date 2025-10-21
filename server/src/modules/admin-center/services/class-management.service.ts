@@ -5,6 +5,8 @@ import { UpdateClassDto } from '../dto/class/update-class.dto';
 import { QueryClassDto } from '../dto/class/query-class.dto';
 import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
+import { generateQNCode } from '../../../utils/function.util';
+import { DEFAULT_STATUS, ClassStatus } from '../../../common/constants';
 
 @Injectable()
 export class ClassManagementService {
@@ -13,6 +15,90 @@ export class ClassManagementService {
         private emailQueueService: EmailQueueService,
         private emailNotificationService: EmailNotificationService
     ) {}
+
+    // Helper function để tìm và gợi ý tên khóa mới
+    private async suggestNextClassName(name: string, academicYear: string): Promise<string> {
+        // Pattern để tìm số khóa: "Toán 6 K1", "Văn 7 K2", etc.
+        const khPattern = /^(.+?)\s*K(\d+)$/i;
+        const match = name.match(khPattern);
+        
+        let baseName: string;
+        let currentNumber = 0;
+        
+        if (match) {
+            // Nếu tên đã có format "Tên K{số}"
+            baseName = match[1].trim();
+            currentNumber = parseInt(match[2]);
+        } else {
+            // Nếu tên không có format K{số}, lấy toàn bộ làm base
+            baseName = name.trim();
+        }
+        
+        // Tìm tất cả các lớp có tên tương tự trong cùng năm học
+        const similarClasses = await this.prisma.class.findMany({
+            where: {
+                name: {
+                    startsWith: baseName,
+                    mode: 'insensitive'
+                },
+                academicYear: academicYear,
+                status: { not: 'deleted' }
+            },
+            select: {
+                name: true
+            }
+        });
+        
+        // Tìm số khóa cao nhất
+        let maxNumber = currentNumber;
+        
+        for (const cls of similarClasses) {
+            const clsMatch = cls.name.match(khPattern);
+            if (clsMatch && clsMatch[1].trim().toLowerCase() === baseName.toLowerCase()) {
+                const num = parseInt(clsMatch[2]);
+                if (num > maxNumber) {
+                    maxNumber = num;
+                }
+            } else if (cls.name.trim().toLowerCase() === baseName.toLowerCase()) {
+                // Nếu có lớp chính xác trùng tên không có số
+                maxNumber = Math.max(maxNumber, 1);
+            }
+        }
+        
+        // Gợi ý tên mới
+        return `${baseName} K${maxNumber + 1}`;
+    }
+
+    // Helper function để kiểm tra trùng tên
+    private async checkDuplicateClassName(name: string, academicYear: string, excludeId?: string): Promise<{ isDuplicate: boolean; suggestedName?: string }> {
+        const whereCondition: any = {
+            name: {
+                equals: name,
+                mode: 'insensitive'
+            },
+            academicYear: academicYear,
+            status: { not: 'deleted' }
+        };
+        
+        // Nếu đang update, loại trừ chính nó
+        if (excludeId) {
+            whereCondition.id = { not: excludeId };
+        }
+        
+        const existingClass = await this.prisma.class.findFirst({
+            where: whereCondition
+        });
+        
+        if (existingClass) {
+            const suggestedName = await this.suggestNextClassName(name, academicYear);
+            return {
+                isDuplicate: true,
+                suggestedName
+            };
+        }
+        
+        return { isDuplicate: false };
+    }
     // Lấy danh sách tất cả lớp học với filters và pagination
     async findAll(queryDto: QueryClassDto) {
         try {
@@ -63,10 +149,11 @@ export class ClassManagementService {
             if (roomId) where.roomId = roomId;
             if (academicYear) where.academicYear = academicYear;
             
-            // Enhanced search - search in name, description, subject name, teacher name
+            // Enhanced search - search in name, classCode, description, subject name, teacher name
             if (search) {
                 where.OR = [
                     { name: { contains: search, mode: 'insensitive' } },
+                    { classCode: { contains: search, mode: 'insensitive' } },
                     { description: { contains: search, mode: 'insensitive' } },
                     { 
                         subject: {
@@ -135,6 +222,7 @@ export class ClassManagementService {
             let transformedClasses = classes.map(cls => ({
                 id: cls.id,
                 name: cls.name,
+                code: cls.classCode,
                 subjectId: cls.subjectId,
                 subjectName: cls.subject?.name || '',
                 gradeId: cls.gradeId,
@@ -299,7 +387,8 @@ export class ClassManagementService {
                     teacher: classItem.teacher ? {
                         ...classItem.teacher.user,
                         teacherId: classItem.teacher.id,
-                        userId: classItem.teacher.userId
+                        userId: classItem.teacher.userId,
+                        teacherCode: classItem.teacher.teacherCode
                     } : null,
                     students: classItem.enrollments.map(e => ({
                         enrollmentId: e.id,
@@ -335,6 +424,31 @@ export class ClassManagementService {
                         message: 'Tên lớp là bắt buộc'
                     },
                     HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Determine current academic year nếu không có
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+            const currentAcademicYear = currentMonth >= 5
+                ? `${currentYear}-${currentYear + 1}` 
+                : `${currentYear - 1}-${currentYear}`;
+            
+            const academicYear = createClassDto.academicYear || currentAcademicYear;
+            
+            // Check duplicate class name
+            const duplicateCheck = await this.checkDuplicateClassName(
+                createClassDto.name,
+                academicYear
+            );
+            
+            if (duplicateCheck.isDuplicate) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: `Tên lớp "${createClassDto.name}" đã tồn tại. Gợi ý tên: "${duplicateCheck.suggestedName}"`,
+                    },
+                    HttpStatus.CONFLICT
                 );
             }
             
@@ -405,46 +519,49 @@ export class ClassManagementService {
                     );
                 }
             }
-            
-            // Determine current academic year
-            const currentYear = new Date().getFullYear();
-            const currentMonth = new Date().getMonth() + 1;
-            const currentAcademicYear = currentMonth >= 5
-                ? `${currentYear}-${currentYear + 1}` 
-                : `${currentYear - 1}-${currentYear}`;
 
             // Auto-determine status based on completeness
-            let autoStatus = 'draft';
+            // Generate unique class code
+            let classCode: string;
+            let isUnique = false;
+            let attempts = 0;
+            const maxAttempts = 10;
             
-            // Check if all required fields are present (except description)
-            const hasRequiredFields = createClassDto.subjectId && 
-                                    createClassDto.gradeId && 
-                                    // createClassDto.roomId && 
-                                    createClassDto.expectedStartDate;
+            while (!isUnique && attempts < maxAttempts) {
+                classCode = generateQNCode();
+                const existingClass = await this.prisma.class.findUnique({
+                    where: { classCode }
+                });
+                
+                if (!existingClass) {
+                    isUnique = true;
+                }
+                attempts++; 
+            }
             
-            // Check if recurring schedule is provided and valid
-            const hasValidSchedule = createClassDto.recurringSchedule && 
-                                   createClassDto.recurringSchedule.schedules && 
-                                   Array.isArray(createClassDto.recurringSchedule.schedules) &&
-                                   createClassDto.recurringSchedule.schedules.length > 0;
-            
-            // If all required fields and schedule are present, set to 'ready'
-            if (hasRequiredFields && hasValidSchedule) {
-                autoStatus = 'ready';
+            if (!isUnique) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không thể tạo mã lớp học duy nhất sau nhiều lần thử'
+                    },
+                    HttpStatus.INTERNAL_SERVER_ERROR
+                );
             }
 
             const newClass = await this.prisma.class.create({
                 data: {
                     name: createClassDto.name,
+                    classCode: classCode,
                     subjectId: createClassDto.subjectId || null,
                     gradeId: createClassDto.gradeId || null,
                     maxStudents: createClassDto.maxStudents || null,
                     roomId: createClassDto.roomId || null,
                     teacherId: createClassDto.teacherId || null,
                     description: createClassDto.description || null,
-                    status: autoStatus, // Use auto-determined status
+                    status: DEFAULT_STATUS.CLASS, 
                     recurringSchedule: createClassDto.recurringSchedule || null,
-                    academicYear: createClassDto.academicYear || currentAcademicYear,
+                    academicYear: academicYear,
                     expectedStartDate: createClassDto.expectedStartDate ? new Date(createClassDto.expectedStartDate) : null,
                     actualStartDate: createClassDto.actualStartDate ? new Date(createClassDto.actualStartDate) : null,
                     actualEndDate: createClassDto.actualEndDate ? new Date(createClassDto.actualEndDate) : null
@@ -471,7 +588,7 @@ export class ClassManagementService {
 
             return {
                 success: true,
-                message: `Tạo lớp học thành công. Trạng thái: ${autoStatus === 'ready' ? 'Sẵn sàng' : 'Nháp'}`,
+                message: `Tạo lớp học thành công.`,
                 data: newClass
             };
         } catch (error) {
@@ -517,6 +634,31 @@ export class ClassManagementService {
                     },
                     HttpStatus.NOT_FOUND
                 );
+            }
+
+            // Check duplicate class name nếu đổi tên hoặc đổi năm học
+            if (updateClassDto.name || updateClassDto.academicYear) {
+                const newName = updateClassDto.name || existingClass.name;
+                const newAcademicYear = updateClassDto.academicYear || existingClass.academicYear;
+                
+                // Chỉ check nếu tên hoặc năm học thay đổi
+                if (newName !== existingClass.name || newAcademicYear !== existingClass.academicYear) {
+                    const duplicateCheck = await this.checkDuplicateClassName(
+                        newName,
+                        newAcademicYear,
+                        id // Loại trừ chính nó
+                    );
+                    
+                    if (duplicateCheck.isDuplicate) {
+                        throw new HttpException(
+                            {
+                                success: false,
+                                message: `Tên lớp "${newName}" đã tồn tại trong năm học này. Gợi ý tên: "${duplicateCheck.suggestedName}"`,
+                            },
+                            HttpStatus.CONFLICT
+                        );
+                    }
+                }
             }
 
             // Check subject exists if provided
@@ -787,18 +929,6 @@ export class ClassManagementService {
                         success: false,
                         message: 'Lớp học chưa đủ điều kiện để tạo buổi học',
                         errors: validationErrors,
-                        details: {
-                            classId: classInfo.id,
-                            className: classInfo.name,
-                            teacherAssigned: !!classInfo.teacher,
-                            teacherActive: classInfo.teacher?.user.isActive || false,
-                            roomAssigned: !!classInfo.room,
-                            subjectAssigned: !!classInfo.subject,
-                            scheduleConfigured: !!classInfo.recurringSchedule,
-                            activeEnrollments: activeEnrollments,
-                            requiredEnrollments: 15,
-                            classStatus: classInfo.status
-                        }
                     },
                     HttpStatus.BAD_REQUEST
                 );
@@ -1199,31 +1329,44 @@ export class ClassManagementService {
             }
 
             // Validate schedule data
-            if (!body.schedules || !Array.isArray(body.schedules) || body.schedules.length === 0) {
+            // Nếu lớp là draft, cho phép xóa hết lịch học (set null)
+            // Nếu không phải draft, bắt buộc phải có lịch học
+            const isDraft = classData.status === ClassStatus.DRAFT;
+            const hasSchedules = body.schedules && Array.isArray(body.schedules) && body.schedules.length > 0;
+
+            if (!hasSchedules && !isDraft) {
                 throw new HttpException(
                     {
                         success: false,
-                        message: 'Dữ liệu lịch học không hợp lệ'
+                        message: 'Dữ liệu lịch học không hợp lệ. Lớp không phải draft phải có lịch học.'
                     },
                     HttpStatus.BAD_REQUEST
                 );
             }
 
-            // Transform schedules to proper format
-            const schedules = body.schedules.map((schedule: any) => ({
-                day: schedule.day,
-                startTime: schedule.startTime,
-                endTime: schedule.endTime
-            }));
+            // Prepare update data
+            let updateData: any = {};
+
+            if (hasSchedules) {
+                // Transform schedules to proper format
+                const schedules = body.schedules.map((schedule: any) => ({
+                    day: schedule.day,
+                    startTime: schedule.startTime,
+                    endTime: schedule.endTime
+                }));
+
+                updateData.recurringSchedule = {
+                    schedules: schedules
+                };
+            } else if (isDraft) {
+                // Nếu là draft và không có schedules, set null
+                updateData.recurringSchedule = null;
+            }
 
             // Update class-level schedule
             const updatedClass = await this.prisma.class.update({
                 where: { id },
-                data: {
-                    recurringSchedule: {
-                        schedules: schedules
-                    }
-                },
+                data: updateData,
                 include: {
                     subject: true,
                     room: true,
@@ -1269,9 +1412,17 @@ export class ClassManagementService {
                 });
             }
 
+            // Tạo message phù hợp
+            let message = 'Cập nhật lịch học thành công';
+            if (!hasSchedules && isDraft) {
+                message = 'Đã xóa lịch học. Lớp cần có lịch học trước khi chuyển sang trạng thái sẵn sàng (ready)';
+            } else if (hasSchedules) {
+                message = 'Cập nhật lịch học thành công';
+            }
+
             return {
                 success: true,
-                message: 'Cập nhật lịch học thành công',
+                message,
                 data: updatedClass
             };
 
@@ -1337,7 +1488,7 @@ export class ClassManagementService {
             // Soft delete by updating status
             await this.prisma.class.update({
                 where: { id },
-                data: { status: 'cancelled' }
+                data: { status: 'deleted' }
             });
 
             return {
@@ -1413,22 +1564,46 @@ export class ClassManagementService {
                 );
             }
 
-            // Gửi email hủy lớp cho giáo viên cũ (nếu có)
-            if (classItem.teacherId) {
-                try {
-                    await this.emailNotificationService.sendTeacherCancellationEmailDirect(classId, classItem.teacherId);
-                    console.log(`📧 Email hủy lớp đã được gửi cho giáo viên cũ ${classItem.teacherId}`);
-                } catch (emailError) {
-                    console.error('Failed to send cancellation email to old teacher:', emailError);
-                    // Không throw error để không làm fail toàn bộ operation
+
+            // Kiểm tra xem lớp đã có lịch học chưa
+            // recurringSchedule có thể là: null, undefined, array rỗng [], hoặc object rỗng {}
+            let hasSchedule = false;
+            
+            if (classItem.recurringSchedule !== null && classItem.recurringSchedule !== undefined) {
+                if (Array.isArray(classItem.recurringSchedule)) {
+                    hasSchedule = classItem.recurringSchedule.length > 0;
+                } else if (typeof classItem.recurringSchedule === 'object') {
+                    hasSchedule = Object.keys(classItem.recurringSchedule).length > 0;
                 }
             }
 
-            // Update class with new teacher
+            // Nếu chưa có lịch học thì không cho phép phán công giáo viên
+            if (!hasSchedule) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Vui lòng cập nhật lịch học trước khi phân công giáo viên'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+        
+            // Xác định status mới - nếu đã có lịch học và đang ở draft thì chuyển sang ready
+            let newStatus = classItem.status;
+            let successMessage = 'Phân công giáo viên thành công';
+
+            if (classItem.status === ClassStatus.DRAFT) {
+                newStatus = ClassStatus.READY;
+                successMessage = 'Phân công giáo viên thành công. Lớp đã sẵn sàng khai giảng';
+            }
+
+            // Update class with new teacher and status
             const updatedClass = await this.prisma.class.update({
                 where: { id: classId },
                 data: {
-                    teacherId: body.teacherId
+                    teacherId: body.teacherId,
+                    status: newStatus
                 },
                 include: {
                     teacher: {
@@ -1445,20 +1620,28 @@ export class ClassManagementService {
                     }
                 }
             });
+
             // Gửi email thông báo cho giáo viên
             try {
-                    // Gửi email trực tiếp
-                    await this.emailNotificationService.sendTeacherAssignmentEmailDirect(classId, body.teacherId);
-                    console.log(`📧 Email đã được gửi trực tiếp cho giáo viên ${body.teacherId} và lớp ${classId}`);
+                // Gửi email trực tiếp
+                await this.emailNotificationService.sendTeacherAssignmentEmailDirect(classId, body.teacherId);
+                console.log(`📧 Email đã được gửi trực tiếp cho giáo viên ${body.teacherId} và lớp ${classId}`);
             } catch (emailError) {
                 // Log lỗi email nhưng không làm fail toàn bộ operation
                 console.error('Failed to send email notification:', emailError);
                 // Có thể thêm vào response để frontend biết email không gửi được
             }
+
             return {
                 success: true,
-                message: 'Phân công giáo viên thành công',
-                data: updatedClass
+                message: successMessage,
+                data: updatedClass,
+                metadata: {
+                    hasSchedule,
+                    statusChanged: classItem.status !== newStatus,
+                    oldStatus: classItem.status,
+                    newStatus: newStatus
+                }
             };
         } catch (error) {
             if (error instanceof HttpException) throw error;
@@ -1512,15 +1695,24 @@ export class ClassManagementService {
                 // Không throw error để không làm fail toàn bộ operation
             }
 
-            // Remove teacher assignment by setting teacherId to null
-            await this.prisma.class.update({
+            // Remove teacher assignment and chuyển status về draft
+            const updatedClass = await this.prisma.class.update({
                 where: { id: classId },
-                data: { teacherId: null }
+                data: { 
+                    teacherId: null,
+                    status: ClassStatus.DRAFT
+                }
             });
 
             return {
                 success: true,
-                message: 'Xóa phân công giáo viên thành công'
+                message: 'Xóa phân công giáo viên thành công. Lớp đã chuyển về trạng thái nháp',
+                data: updatedClass,
+                metadata: {
+                    statusChanged: classItem.status !== ClassStatus.DRAFT,
+                    oldStatus: classItem.status,
+                    newStatus: ClassStatus.DRAFT
+                }
             };
         } catch (error) {
             if (error instanceof HttpException) throw error;

@@ -532,7 +532,7 @@ const AddLessonForm = ({
     return base;
   })();
 
-  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(expectedStartDate ? new Date(expectedStartDate) : null);
   const [endDate, setEndDate] = useState<Date>(initialEnd);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
@@ -622,9 +622,7 @@ const AddLessonForm = ({
       onGenerated && onGenerated();
       onClose();
     } catch (error: any) {
-      if (error.message === 'Hủy bỏ tạo buổi học') {
-        return; // User cancelled, don't show error
-      }
+      console.log(error);
       toast.error(error.message || 'Có lỗi xảy ra khi tạo buổi học');
     } finally {
       setIsGenerating(false);

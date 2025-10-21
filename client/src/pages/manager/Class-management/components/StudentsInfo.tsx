@@ -34,6 +34,8 @@ import {
   StudentStatus,
   STUDENT_STATUS_LABELS,
   STUDENT_STATUS_COLORS,
+  ClassStatus,
+  CLASS_STATUS_LABELS,
 } from '../../../../lib/constants';
 import { SelectStudentSheet } from './Sheet/SelectStudentSheet';
 import { useQuery } from '@tanstack/react-query';
@@ -438,7 +440,11 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               </h1>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => setIsSelectStudentOpen(true)}>
+              <Button 
+                onClick={() => setIsSelectStudentOpen(true)}
+                disabled={classData?.status === ClassStatus.DRAFT}
+                title={classData?.status === ClassStatus.DRAFT ? 'Lớp cần có lịch học và giáo viên (status READY) trước khi thêm học viên' : ''}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Học viên
               </Button>

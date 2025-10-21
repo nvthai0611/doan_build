@@ -38,6 +38,7 @@ import { DataTable, Column, PaginationConfig } from "../../../components/common/
 import { usePagination } from "../../../hooks/usePagination"
 import ExcelImportDialog from "../../../components/common/ExcelImportDialog"
 import { centerOwnerTeacherService } from "../../../services/center-owner"
+import { CodeDisplay } from "../../../components/common/CodeDisplay"
 
 
 export default function TeacherQnmsManagement() {
@@ -55,7 +56,7 @@ export default function TeacherQnmsManagement() {
   // Pagination hook
   const pagination = usePagination({
     initialPage: 1,
-    initialItemsPerPage: 2,
+    initialItemsPerPage: 10,
     totalItems: 0 
   })
 
@@ -266,11 +267,7 @@ export default function TeacherQnmsManagement() {
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">{employee.username}</div>
             <div className="flex items-center gap-1 text-xs text-gray-400">
-              <span>{employee.code}</span>
-              <Copy
-                className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:text-gray-300"
-                onClick={() => handleCopyCode(employee.code)}
-              />
+              <CodeDisplay code={employee.code} hiddenLength={4} />
             </div>
           </div>
         </div>
@@ -305,7 +302,7 @@ export default function TeacherQnmsManagement() {
       header: 'Nhóm quyền',
       width: '150px',
       render: (employee: Teacher) => (
-        <Badge variant="secondary" className={getRoleBadgeColor(employee.role)}>
+        <Badge variant="outline" className={getRoleBadgeColor(employee.role)}>
           {employee.role}
         </Badge>
       )
@@ -348,9 +345,12 @@ export default function TeacherQnmsManagement() {
 
   const getRoleBadgeColor = (role: Teacher["role"]): string => {
     switch (role) {
-      case "Chủ trung tâm":
+      case "center_owner":
         return "bg-orange-100 text-orange-800"
-      case "Giáo viên":
+      case "teacher":
+        return "bg-blue-100 text-blue-800"
+      case "admin":
+        return "bg-green-100 text-green-800"
       default:
         return "bg-blue-100 text-blue-800"
     }
@@ -407,7 +407,7 @@ export default function TeacherQnmsManagement() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Tìm kiếm theo tên, email, số điện thoại"
+                placeholder="Tìm kiếm theo mã, tên, email, số điện thoại"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"

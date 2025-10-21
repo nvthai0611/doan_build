@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authService } from "../services/common/auth/auth.service"
 import { toast } from "sonner"
+import Cookies from "js-cookie"
 
 export type UserRole = "center_owner" | "teacher" | "admin" | "student" | "parent"
 
@@ -52,13 +53,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initializeAuth = async () => {
       // Check for existing session
-      const savedUser = localStorage.getItem("user")
-      const savedAccessToken = localStorage.getItem("accessToken")
-      const savedRefreshToken = localStorage.getItem("refreshToken")
+      const savedUser = Cookies.get("user")
+      const savedAccessToken = Cookies.get("accessToken")
+      const savedRefreshToken = Cookies.get("refreshToken")
 
-      if (savedUser && savedAccessToken) {
+      if (savedUser && savedAccessToken && savedRefreshToken) {
         try {
-          const userData = JSON.parse(savedUser) as User
+          const userData = JSON.parse(savedUser || '{}') as User
           // await verifyToken();
           setUser(userData)
           // Skip token verification for now to test
@@ -81,22 +82,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authService.getProfile()
       console.log("verifyToken: Profile response:", response)
       setUser(response as User)
-      localStorage.setItem("user", JSON.stringify(response))
+      Cookies.set("user", JSON.stringify(response))
       console.log("verifyToken: Token verification successful")
     } catch (error) {
       console.error("Token verification failed:", error)
       // Token is invalid, try to refresh
-      const refreshToken = localStorage.getItem("refreshToken")
-      if (refreshToken) {
-        try {
-          console.log("verifyToken: Attempting token refresh...")
-          await authService.refreshToken(refreshToken)
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError)
-          clearAuthData()
-        }
-      } else {
-        console.log("verifyToken: No refresh token, clearing auth data")
+      const refreshToken = Cookies.get("refreshToken")
+      if (!refreshToken || refreshToken === 'undefined') {
+        throw new Error("No refresh token available")
+      }
+      try {
+        console.log("verifyToken: Attempting token refresh...")
+        await authService.refreshToken(refreshToken)
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError)
         clearAuthData()
       }
     }
@@ -104,15 +103,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshToken = async () => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken")
-      if (!refreshToken) {
+      const refreshToken = Cookies.get("refreshToken")
+      if (!refreshToken || refreshToken === 'undefined') {
         throw new Error("No refresh token available")
       }
-
       const response = await authService.refreshToken(refreshToken)
-      localStorage.setItem("accessToken", response.accessToken)
+      Cookies.set("accessToken", response.accessToken)
       setUser(response as any)
-      localStorage.setItem("user", JSON.stringify(response as any))
+      Cookies.set("user", JSON.stringify(response as any))
     } catch (error) {
       clearAuthData()
       throw error
@@ -121,9 +119,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const clearAuthData = () => {
     setUser(null)
-    localStorage.removeItem("user")
-    localStorage.removeItem("accessToken")
-    localStorage.removeItem("refreshToken")
+    Cookies.remove("user")
+    Cookies.remove("accessToken")
+    Cookies.remove("refreshToken")
   }
 
   const login = async (email: string, password: string) => {
@@ -133,9 +131,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await authService.login({ email, password })
       // Store tokens and user data
-      localStorage.setItem("accessToken", response.accessToken)
-      localStorage.setItem("refreshToken", response.refreshToken)
-      localStorage.setItem("user", JSON.stringify(response.user))
+      Cookies.set("accessToken", response.accessToken)
+      Cookies.set("refreshToken", response.refreshToken)
+      Cookies.set("user", JSON.stringify(response.user))
       toast.success("Đăng nhập thành công");
       setUser(response.user as User)
     } catch (error: any) {
