@@ -96,4 +96,10 @@ export const classService = {
         return response;
     },
 
+  // Delete multiple sessions
+  deleteSessions: async (classId: string, sessionIds: string[]) => {
+    const response = await apiClient.delete(`${BASE_URL}/${classId}/sessions`, { sessionIds });
+    return response;
+  },
+
 };

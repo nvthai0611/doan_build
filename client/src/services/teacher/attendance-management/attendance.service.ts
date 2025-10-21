@@ -47,9 +47,29 @@ const updateAttendanceStudent = async (sessionId: string, records: any[]): Promi
   }
 }
 
+const sendEmailNotificationAbsence = async (sessionId: any, studentIds: string[]): Promise<any> => {
+  try {
+    const response = await apiClient.post(`/teacher/attendances/${sessionId}/send-absent-notifications`, { studentIds });
+    return response.data;
+  } catch (error: any) {
+    // Xu ly cac loai error khac nhau
+    if (error.response) {
+      // Server tra ve error response
+      throw new Error(error.response.data?.message || 'Gửi thông báo vắng mặt thất bại');
+    } else if (error.request) {
+      // Request dc gui nhung khong nhan dc response
+      throw new Error('Không thể kết nối đến server');
+    } else {
+      // Cac loi khac
+      throw new Error(error.message || 'Đã có lỗi xảy ra');
+    }
+  }
+}
+
 export {
     getListStudentsByRecordId,
     updateAttendanceStudent,
-    getListStudentBySessionId
+    getListStudentBySessionId,
+    sendEmailNotificationAbsence
 }
 
