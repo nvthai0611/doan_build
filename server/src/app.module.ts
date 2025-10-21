@@ -30,11 +30,13 @@ import { AdminCenterModule } from './modules/admin-center/admin-center.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
 // ...existing code...
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ScheduleModule.forRoot(),
     // Cấu hình Bull với Redis
     BullModule.forRoot({
       redis: {

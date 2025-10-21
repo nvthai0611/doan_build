@@ -114,8 +114,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     refetchOnWindowFocus: true
   });
 
-  console.log(classData.teacher);
-  
 
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
