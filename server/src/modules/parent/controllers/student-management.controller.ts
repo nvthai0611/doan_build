@@ -32,6 +32,14 @@ export class StudentManagementController {
     return result;
   }
 
+  @Get('children/:childId/metrics')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Thành tích học tập của học sinh' })
+  async getChildMetrics(@Req() req: any, @Param('childId') childId: string) {
+    const userId = req.user?.userId;
+    return await this.service.getChildMetricsForParent(userId, childId);
+  }
+
   @Get('children/:childId/schedule')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Lịch học của học sinh' })
@@ -48,13 +56,30 @@ export class StudentManagementController {
   @Get('children/:childId/grades')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Điểm số của học sinh' })
-  @ApiQuery({ name: 'subject', required: false, description: 'Lọc theo môn học' })
+  @ApiQuery({ name: 'classId', required: false, description: 'Lọc theo lớp học' })
   async getChildGrades(
     @Req() req: any,
     @Param('childId') childId: string,
-    @Query('subject') subject?: string,
+    @Query('classId') classId?: string,
   ) {
     const userId = req.user?.userId;
-    return await this.service.getChildGradesForParent(userId, childId, subject);
+    return await this.service.getChildGradesForParent(userId, childId, classId);
+  }
+
+  @Get('children/:childId/attendance')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lịch sử điểm danh của học sinh' })
+  @ApiQuery({ name: 'classId', required: false, description: 'Lọc theo lớp học' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Ngày bắt đầu' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'Ngày kết thúc' })
+  async getChildAttendance(
+    @Req() req: any,
+    @Param('childId') childId: string,
+    @Query('classId') classId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const userId = req.user?.userId;
+    return await this.service.getChildAttendanceForParent(userId, childId, { classId, startDate, endDate });
   }
 }

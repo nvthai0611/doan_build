@@ -48,16 +48,17 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
       case 'scheduled': return 'bg-blue-100 text-blue-800'
       case 'completed': return 'bg-green-100 text-green-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
+      case 'has_not_happened': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const statusTextVi = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'scheduled' || s === 'planned') return 'Sắp tới'
-    if (s === 'completed' || s === 'done') return 'Hoàn thành'
-    if (s === 'cancelled' || s === 'canceled') return 'Đã hủy'
-    if (s === 'ongoing' || s === 'in_progress') return 'Đang diễn ra'
+    if (s === 'scheduled') return 'Sắp tới'
+    if (s === 'completed') return 'Hoàn thành'
+    if (s === 'cancelled') return 'Đã hủy'
+    if (s === 'has_not_happened') return 'Chưa diễn ra'
     return 'Không xác định'
   }
 

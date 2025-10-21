@@ -12,14 +12,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 // Services
 import { classService } from '../../../services/center-owner/class-management/class.service';
 // Components
 import { DataTable, Column } from '../../../components/common/Table/DataTable';
 import { Badge } from '@/components/ui/badge';
+import { CodeDisplay } from '../../../components/common/CodeDisplay';
 
-import { EditScheduleSheet } from './components/EditScheduleSheet';
+import { EditScheduleSheet } from './components/Sheet/EditScheduleSheet';
 // import { EnrollStudentDialog } from './components/EnrollStudentDialog';
 
 // Hooks
@@ -162,17 +164,9 @@ export const ClassManagement = () => {
         { key: ClassStatus.COMPLETED, label: CLASS_STATUS_LABELS[ClassStatus.COMPLETED], count: stats.completedClasses }
     ];
 
-    // Handlers
-    const handleFilterChange = (newFilters: any) => {
-        pagination.setCurrentPage(1);
-    };
-
-    const handlePageChange = (page: number) => {
-        pagination.setCurrentPage(page);
-    };
 
     const handleCreateClass = (data: any) => {
-        navigate(`/center-qn/classes/add`);
+        navigate(`/center-qn/classes/create`);
     };
 
     const handleUpdateClass = (id: string, data: any) => {
@@ -238,8 +232,7 @@ export const ClassManagement = () => {
     };
 
     const handleView = (classItem: any) => {
-        setSelectedClass(classItem);
-        setIsDetailDialogOpen(true);
+        navigate(`/center-qn/classes/${classItem.id}`);
     };
 
     const handleAssignTeacher = (classItem: any) => {
@@ -306,6 +299,7 @@ export const ClassManagement = () => {
         setFilterRating('');
     };
 
+
     const handleDownloadTemplate = () => {
         alert('Tải xuống mẫu...');
     };
@@ -338,10 +332,8 @@ export const ClassManagement = () => {
                     <div className="font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => navigate(`/center-qn/classes/${item.id}`)}>
                         {item.name}
                     </div>
-                    {item.academicYear && (
-                        <div className="text-xs text-gray-600 dark:text-gray-300">
-                            {item.academicYear}
-                        </div>
+                    {item.code && (
+                        <CodeDisplay code={item.code} hiddenLength={4} />
                     )}
                 </div>
             )
@@ -412,60 +404,53 @@ export const ClassManagement = () => {
             header: 'Giáo viên phụ trách',
             render: (item: any) => {
                 if (item.teacher) {
-                    console.log(item.teacher);
+                    const teacher = item.teacher;
                     return (
                         <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>    
-                                    <img 
-                                        src={item?.teacher?.avatar || "https://picsum.photos/200/300"} 
-                                        alt={item?.teacher?.name || "Giáo viên"} 
-                                        className="w-8 h-8 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all"
-                                    />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 p-4" align="start">
-                                    <div className="flex items-center gap-3">
+                            <TooltipProvider delayDuration={300} key={teacher?.id}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
                                         <img 
-                                            src={item?.teacher?.avatar || "https://picsum.photos/200/300"} 
-                                            alt={item?.teacher?.name || "Giáo viên"} 
-                                            className="w-16 h-16 rounded-full object-cover"
+                                            src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                            alt={teacher?.name || "Giáo viên"} 
+                                            onClick={() => navigate(`/center-qn/teachers/${teacher.id}`)}
+                                            className="w-8 h-8 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all"
                                         />
-                                        <div className="flex-1">    
-                                            <h4 className="font-semibold text-lg">{item?.teacher?.name}</h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">{item?.teacher?.email}</p>
-                                            <div className="mt-2">
-                                                <Badge variant="outline" className="text-xs">
-                                                    Giáo viên 
-                                                </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="w-80 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md text-gray-600 dark:text-gray-300">
+                                        <div className="flex items-center gap-3">
+                                            <img 
+                                                src={teacher.avatar || "https://picsum.photos/200/300"} 
+                                                alt={teacher?.name || "Giáo viên"} 
+                                                className="w-16 h-16 rounded-full object-cover"
+                                            />
+                                            <div className="flex-1">
+                                                <h4 className="font-semibold text-lg">{teacher?.name}</h4>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">{teacher?.email}</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">{teacher?.phone}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t">
-                                        <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div>
-                                                <span className="text-gray-500">Môn học:</span>
-                                                <p className="font-medium">{item.subjectName}</p>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-500">Lớp:</span>
-                                                <p className="font-medium">{item.name}</p>
+                                        <div className="mt-4 pt-4 border-t">
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className="text-gray-500">Môn học:</span>
+                                                    <p className="font-medium">{item.subjectName}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-500">Lớp:</span>
+                                                    <p className="font-medium">{item.name}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                            <span className="text-sm">{item?.teacher?.name}</span>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     );
                 }
                 return (
                     <div className="flex items-center gap-2">
-                        <img 
-                            src="https://picsum.photos/200/300" 
-                            alt="Giáo viên" 
-                            className="w-8 h-8 rounded-full object-cover opacity-50"
-                        />
-                        <span className="text-sm text-gray-400">Chưa cập nhật</span>
+                        <span className="text-sm text-gray-400">-</span>
                     </div>
                 );
             }
@@ -569,7 +554,7 @@ export const ClassManagement = () => {
                             </BreadcrumbList>
                         </Breadcrumb>
                     </div>
-                    <Button onClick={() => navigate('/center-qn/classes/create')}>
+                    <Button onClick={handleCreateClass}>
                         <Plus className="w-4 h-4 mr-2" />
                         Lớp học
                     </Button>
@@ -628,7 +613,7 @@ export const ClassManagement = () => {
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
-                                placeholder="Tìm kiếm theo tên lớp, môn học"
+                                placeholder="Tìm kiếm theo mã lớp, tên lớp, môn học"
                                 value={searchTerm}  
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
@@ -844,5 +829,3 @@ export const ClassManagement = () => {
     );
 };
 export default ClassManagement;
-
-

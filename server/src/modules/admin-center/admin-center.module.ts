@@ -24,6 +24,8 @@ import { IncidentHandleService } from './services/incident-handle.service';
 import { ParentManagementController } from './controllers/parent-management.controller';
 import { ParentManagementService } from './services/parent-management.service';
 import { SharedModule } from '../shared/shared.module';
+import { SettingsManagementController } from './controllers/settings-management.controller';
+import { SettingsManagementService } from './services/settings-management.service';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { SharedModule } from '../shared/shared.module';
     StudentManagementController,
     IncidentHandleController,
     ParentManagementController,
+    SettingsManagementController,
   ],
   providers: [
     PrismaService,
@@ -61,6 +64,7 @@ import { SharedModule } from '../shared/shared.module';
     StudentManagementService,
     IncidentHandleService,
     ParentManagementService,
+    SettingsManagementService,
   ],
 })
 export class AdminCenterModule {}

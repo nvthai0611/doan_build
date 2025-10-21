@@ -10,6 +10,7 @@ import { ChildTimetable } from "./ChildTimetable"
 import { ChildExamResults } from "./ChildGradeResults"
 import { ChildProgressReports } from "./ChildProgressReports"
 import { ChildAttendance } from "./ChildAttendance"
+import { ChildMaterials } from "./ChildMaterials"
 
 interface ChildDetailViewProps {
   childId: string
@@ -21,6 +22,18 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const { data: child } = useQuery({
     queryKey: ["parent-child", childId],
     queryFn: () => parentChildService.getChildById(childId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+
+  // Metrics: average grade, class rank, attendance rate (only active classes)
+  const { data: metrics } = useQuery({
+    queryKey: ["parent-child-metrics", childId],
+    queryFn: async () => {
+      const res: any = await fetch(`/api/student-management/children/${childId}/metrics`, { credentials: 'include' })
+      const data = await res.json()
+      return data?.data ?? data
+    },
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   })
@@ -94,6 +107,16 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
         >
           Điểm danh
         </button>
+        <button
+          onClick={() => setActiveTab("materials")}
+          className={`pb-3 border-b-2 transition-colors ${
+            activeTab === "materials"
+              ? "border-primary text-primary font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Tài liệu
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -102,6 +125,7 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
       {activeTab === "exams" && child && <ChildExamResults child={child} />}
       {activeTab === "progress" && child && <ChildProgressReports child={child} />}
       {activeTab === "attendance" && child && <ChildAttendance child={child} />}
+      {activeTab === "materials" && child && <ChildMaterials childId={child.id} />}
     </div>
   )
 }

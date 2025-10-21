@@ -76,6 +76,7 @@ export interface ChildGrade {
   gradedAt: string
   assessmentType: string
   className: string
+  classId?: string
 }
 
 export interface ChildPayment {

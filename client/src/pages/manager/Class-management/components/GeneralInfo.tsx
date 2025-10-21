@@ -42,13 +42,15 @@ import {
   Phone,
   Search,
   ArrowLeft,
+  Code,
 } from 'lucide-react';
-import { formatDateForInput, formatSchedule } from '../../../../utils/format';
+import { formatDateForInput, formatSchedule, convertDateToISO } from '../../../../utils/format';
 import { getStatusBadge } from '../const/statusBadge';
 import { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { EditScheduleSheet } from './EditScheduleSheet';
+import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
+import { SelectTeacherSheet } from './Sheet/SelectTeacherSheet';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -68,13 +70,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [isAssignTeacherModalOpen, setIsAssignTeacherModalOpen] = useState(false);
-  const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [isAssignTeacherLoading, setIsAssignTeacherLoading] = useState(false);
-  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   
-  
+
   
   // Fetch subjects, rooms, and grades
   const { data: subjectsData } = useQuery({
@@ -101,17 +101,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     },
   });
 
-  // Fetch teachers data for assignment
-  const { data: teachersData } = useQuery({
-    queryKey: ['teachers'],
-    queryFn: async () => {
-      const response = await apiClient.get('/admin-center/teachers', {
-        params: { limit: 100 }
-      });
-      return response;
-    },
-  });
-
   // Fetch sessions data để kiểm tra lớp đã có lịch học chưa
   const { data: sessionsData } = useQuery({
     queryKey: ['classSessions', classData.id, classData.academicYear],
@@ -125,26 +114,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     refetchOnWindowFocus: true
   });
 
+  console.log(classData.teacher);
+  
+
   const subjects = (subjectsData as any)?.data || [];
   const rooms = (roomsData as any)?.data || [];
   const grades = (gradesData as any)?.data || [];
-  const teachers = (teachersData as any)?.data || [];
   const sessions = (sessionsData as any)?.data || [];
   const hasSessions = sessions.length > 0;
-
-  // Filter teachers based on search term
-  const filteredTeachers = teachers.filter((teacher: any) => {
-    if (!teacherSearchTerm) return true;
-    
-    const searchLower = teacherSearchTerm.toLowerCase();
-    const name = (teacher.user?.fullName || teacher.name || '').toLowerCase();
-    const email = (teacher.user?.email || teacher.email || '').toLowerCase();
-    const phone = (teacher.user?.phone || teacher.phone || '').toLowerCase();
-    
-    return name.includes(searchLower) || 
-           email.includes(searchLower) || 
-           phone.includes(searchLower);
-  });
   
   // Logic kiểm tra có thể edit hay không dựa trên status
   const hasActualDates = Boolean(classData.actualStartDate || classData.actualEndDate);
@@ -171,6 +148,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       name: classData.name || '',
       roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
+      subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
       actualStartDate: formatDateForInput(classData.actualStartDate),
       actualEndDate: formatDateForInput(classData.actualEndDate),
@@ -184,6 +162,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     name: classData.name || '',
     roomId: classData.roomId || classData.room?.id || '',
     gradeId: classData.gradeId || '',
+    subjectId: classData.subjectId || classData.subject?.id || '',
     expectedStartDate: formatDateForInput(classData.expectedStartDate),
     actualStartDate: formatDateForInput(classData.actualStartDate),
     actualEndDate: formatDateForInput(classData.actualEndDate),
@@ -219,8 +198,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     }
 
     // Validate subject - bắt buộc
-    const subjectId = classData.subjectId || classData.subject?.id;
-    if (!subjectId) {
+    if (!editData.subjectId || editData.subjectId === 'none') {
       newErrors.subjectId = 'Môn học là bắt buộc';
     }
 
@@ -248,6 +226,28 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       return;
     }
 
+    // Kiểm tra xem có thay đổi gì không
+    const hasChanges = 
+      editData.name.trim() !== classData.name ||
+      editData.description !== (classData.description || '') ||
+      editData.roomId !== (classData.roomId || '') ||
+      editData.gradeId !== (classData.gradeId || '') ||
+      editData.subjectId !== (classData.subjectId || classData.subject?.id || '') ||
+      editData.status !== classData.status ||
+      editData.academicYear !== classData.academicYear ||
+      (canEditExpectedDates && editData.expectedStartDate !== formatDateForInput(classData.expectedStartDate)) ||
+      (canEditActualDates && editData.actualStartDate !== formatDateForInput(classData.actualStartDate)) ||
+      (canEditActualDates && editData.actualEndDate !== formatDateForInput(classData.actualEndDate));
+
+    if (!hasChanges) {
+      toast({
+        title: "Thông báo",
+        description: "Dữ liệu chưa có gì thay đổi",
+        variant: "default",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Logic gửi dữ liệu theo status
@@ -258,14 +258,18 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         ...(editData.roomId && editData.roomId !== 'none' && editData.roomId !== '' ? { roomId: editData.roomId } : {}),
         // Xử lý gradeId: chỉ gửi nếu có giá trị hợp lệ
         ...(editData.gradeId && editData.gradeId !== 'none' ? { gradeId: editData.gradeId } : {}),
+        // Xử lý subjectId: chỉ gửi nếu có giá trị hợp lệ
+        ...(editData.subjectId && editData.subjectId !== 'none' ? { subjectId: editData.subjectId } : {}),
         status: editData.status,
         academicYear: editData.academicYear,
         // Gửi expectedStartDate nếu được phép edit
-        ...(canEditExpectedDates ? { expectedStartDate: editData.expectedStartDate } : {}),
+        ...(canEditExpectedDates && editData.expectedStartDate ? { 
+          expectedStartDate: convertDateToISO(editData.expectedStartDate) 
+        } : {}),
         // Gửi actualDates nếu được phép edit
         ...(canEditActualDates ? {
-          actualStartDate: editData.actualStartDate,
-          actualEndDate: editData.actualEndDate,
+          ...(editData.actualStartDate ? { actualStartDate: convertDateToISO(editData.actualStartDate) } : {}),
+          ...(editData.actualEndDate ? { actualEndDate: convertDateToISO(editData.actualEndDate) } : {}),
         } : {}),
       };
 
@@ -315,6 +319,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       name: classData.name || '',
       roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
+      subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
       actualStartDate: formatDateForInput(classData.actualStartDate),
       actualEndDate: formatDateForInput(classData.actualEndDate),
@@ -386,8 +391,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   };
 
   // Handle teacher assignment
-  const handleAssignTeacher = async () => {
-    if (!selectedTeacherId) {
+  const handleAssignTeacher = async (teacherId: string) => {
+    if (!teacherId) {
       toast({
         title: "Lỗi",
         description: "Vui lòng chọn giáo viên",
@@ -407,19 +412,12 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
     setIsAssignTeacherLoading(true);
     try {
-      console.log('Assigning teacher:', { classId: classData.id, teacherId: selectedTeacherId });
-      
-      const response = await classService.assignTeacher(classData.id, { teacherId: selectedTeacherId });
-      console.log('Assign teacher response:', response);
-      
+      const response = await classService.assignTeacher(classData.id, { teacherId });
       toast({
         title: "Thành công",
         description: "Gán giáo viên cho lớp học thành công. Email thông báo đã được gửi cho giáo viên.",
       });
-      
       setIsAssignTeacherModalOpen(false);
-      setSelectedTeacherId('');
-      setTeacherSearchTerm('');
       // Refresh class data
       window.location.reload(); // Temporary solution
     } catch (error: any) {
@@ -550,7 +548,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Khối lớp <span className="text-red-500">*</span>
                 </label>
-                {isEditing ? (
+                {isEditing && classData.status === ClassStatus.DRAFT ? (
                   <Select
                     value={editData.gradeId}
                     onValueChange={(value) => handleInputChange('gradeId', value)}
@@ -650,9 +648,28 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Môn học <span className="text-red-500">*</span>
                 </label>
-                <p className="text-base mt-1">
-                  {classData.subjectName || classData.subject?.name || 'Chưa xác định'}
-                </p>
+                {isEditing && classData.status === ClassStatus.DRAFT ? (
+                  <Select
+                    value={editData.subjectId}
+                    onValueChange={(value) => handleInputChange('subjectId', value)}
+                  >
+                    <SelectTrigger className={`mt-1 ${errors.subjectId ? "border-red-500" : ""}`}>
+                      <SelectValue placeholder="Chọn môn học" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Chọn môn học</SelectItem>
+                      {subjects && subjects.length > 0 && subjects.map((subject: any) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-base mt-1">
+                    {classData.subjectName || classData.subject?.name || 'Chưa xác định'}
+                  </p>
+                )}
                 <ErrorMessage field="subjectId" />
               </div>
 
@@ -674,7 +691,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   return (
                     <div>
                       <label className="text-sm font-medium text-gray-500">
-                        Ngày dự kiến tuyển sinh
+                        Ngày khai giảng dự kiến
                         <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
                           {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
                         </span>
@@ -682,6 +699,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                       {isEditing && canEditExpectedDates ? (
                         <Input
                           type="date"
+                          min={new Date().toISOString().split('T')[0]}
                           value={editData.expectedStartDate}
                           onChange={(e) => handleInputChange('expectedStartDate', e.target.value)}
                           className={`mt-1 ${errors.expectedStartDate ? "border-red-500" : ""}`}
@@ -710,6 +728,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                       {isEditing && canEditActualDates ? (
                         <Input
                           type="date"
+                          min={new Date().toISOString().split('T')[0]}
                           value={editData.actualStartDate}
                           onChange={(e) => handleInputChange('actualStartDate', e.target.value)}
                           className={`mt-1 ${errors.actualStartDate ? "border-red-500" : ""}`}
@@ -754,6 +773,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   {isEditing && canEditActualDates ? (
                     <Input
                       type="date"
+                      min={editData.actualStartDate || new Date().toISOString().split('T')[0]}
                       value={editData.actualEndDate}
                       onChange={(e) => handleInputChange('actualEndDate', e.target.value)}
                       className={`mt-1 ${errors.actualEndDate ? "border-red-500" : ""}`}
@@ -855,17 +875,17 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
             <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
               <Avatar className="h-16 w-16">
                 <AvatarImage 
-                  src={classData.teacher?.avatar || classData.teacher.user?.avatar} 
-                  alt={classData.teacher.user?.fullName || classData.teacher.name} 
+                  src={classData.teacher?.avatar} 
+                  alt={classData.teacher.name} 
                 />
                 <AvatarFallback>
-                  {classData.teacher.user?.fullName?.charAt(0) || classData.teacher.name?.charAt(0) || 'GV'}
+                  {classData.teacher.fullName?.charAt(0) || 'GV'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <h3 className="text-lg font-semibold">
-                    {classData.teacher?.fullName || classData.teacher.name}
+                    {classData.teacher?.fullName}
                   </h3>
                   <Badge variant="outline" className="text-xs">
                     Giáo viên
@@ -880,18 +900,12 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     <Phone className="h-4 w-4" />
                     <span>{classData.teacher?.phone || 'Chưa cập nhật'}</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    <span>{classData.teacher?.teacherCode || 'Chưa cập nhật'}</span>
+                  </div>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsAssignTeacherModalOpen(true)}
-                disabled={isAssignTeacherLoading || !canEditGeneralInfo}
-                title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
-              >
-                <Edit className="h-4 w-4" />
-                Thay đổi
-              </Button>
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -1004,149 +1018,13 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       </Dialog>
 
       {/* Sheet gán giáo viên */}
-      <Sheet open={isAssignTeacherModalOpen} onOpenChange={setIsAssignTeacherModalOpen}>
-        <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
-          <SheetHeader className="space-y-4">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-xl font-semibold">Chọn giáo viên cho lớp học</SheetTitle>
-            </div>
-          </SheetHeader>
-          
-          <div className="mt-6 space-y-6">
-            {/* Search bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-                value={teacherSearchTerm}
-                onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Teachers grid */}
-            <div className=" overflow-y-auto">
-              {filteredTeachers.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredTeachers.map((teacher: any) => (
-                    <div
-                      key={teacher.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                        selectedTeacherId === teacher.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedTeacherId(teacher.id)}
-                    >
-                      {/* Teacher card header */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage 
-                            src={teacher.avatar || teacher.user?.avatar} 
-                            alt={teacher.user?.fullName || teacher.name} 
-                          />
-                          <AvatarFallback className="bg-purple-100 text-purple-600">
-                            {teacher.user?.fullName?.charAt(0) || teacher.name?.charAt(0) || 'GV'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm">
-                            {teacher.user?.fullName || teacher.name}
-                          </h4>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Badge variant="outline" className="text-xs">
-                              {teacher.user?.role === 'center_owner' ? 'Chủ trung tâm' : 'Giáo viên'}
-                            </Badge>
-                            {teacher.user?.role === 'center_owner' && (
-                              <Badge variant="secondary" className="text-xs">+1</Badge>
-                            )}
-                          </div>
-                        </div>
-                        {selectedTeacherId === teacher.id && (
-                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                            <Check className="h-3 w-3 text-white" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Teacher details */}
-                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">{teacher.user?.email || teacher.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          <span>{teacher.user?.phone || teacher.phone || 'Chưa cập nhật'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>EMP-{teacher.id.slice(-12).toUpperCase()}</span>
-                        </div>
-                      </div>
-
-                      {/* Status */}
-                      <div className="mt-3 flex justify-end">
-                        <Badge 
-                          variant={teacher?.status ? "default" : "secondary"}
-                          className={`text-xs ${
-                            teacher?.status 
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {teacher?.status ? 'Đang hoạt động' : 'Không hoạt động'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium mb-2">
-                    {teacherSearchTerm ? 'Không tìm thấy giáo viên' : 'Không có giáo viên nào'}
-                  </p>
-                  <p className="text-sm">
-                    {teacherSearchTerm ? 'Thử tìm kiếm với từ khóa khác' : 'Vui lòng thêm giáo viên vào hệ thống'}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsAssignTeacherModalOpen(false);
-                  setSelectedTeacherId('');
-                  setTeacherSearchTerm('');
-                }}
-                disabled={isAssignTeacherLoading}
-              >
-                Hủy
-              </Button>
-              <Button 
-                onClick={handleAssignTeacher}
-                disabled={!selectedTeacherId || isAssignTeacherLoading}
-              >
-                {isAssignTeacherLoading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Đang gán...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Gán giáo viên
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <SelectTeacherSheet
+        open={isAssignTeacherModalOpen}
+        onOpenChange={setIsAssignTeacherModalOpen}
+        classData={classData}
+        onSubmit={handleAssignTeacher}
+        isLoading={isAssignTeacherLoading}
+      />
 
       {/* Edit Schedule Sheet */}
       <EditScheduleSheet

@@ -276,8 +276,8 @@ export const centerOwnerTeacherService = {
       // Handle different types of errors
       if (error.status === 0) {
         throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.')
-      } else if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
+      } else if (error.response?.message) {
+        throw new Error(error.response.message)
       } else if (error.message) {
         throw new Error(error.message)
       } else {

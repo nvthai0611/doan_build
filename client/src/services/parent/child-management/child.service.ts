@@ -22,7 +22,7 @@ export const parentChildService = {
     if (classId) params.classId = classId
     if (startDate) params.startDate = startDate
     if (endDate) params.endDate = endDate
-    const response = await apiClient.get<ChildAttendance[]>(`/parent/children/${childId}/attendance`, params)
+    const response = await apiClient.get<ChildAttendance[]>(`/parent/student-management/children/${childId}/attendance`, params)
     return (response as any)?.data
   },
 

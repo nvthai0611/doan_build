@@ -36,9 +36,6 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
             Tài liệu học tập của con
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="text-sm text-gray-600">Thiếu tham số childId. Vui lòng chọn học sinh.</div>
-        </CardContent>
       </Card>
     )
   }
@@ -78,6 +75,18 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
     if (kb < 1024) return `${kb.toFixed(1)} KB`
     const mb = kb / 1024
     return `${mb.toFixed(1)} MB`
+  }
+
+  const getCategoryDisplayName = (category: string) => {
+    const categoryMap: Record<string, string> = {
+      'lesson': 'Bài học',
+      'exercise': 'Bài tập', 
+      'exam': 'Đề thi',
+      'material': 'Tài liệu',
+      'reference': 'Tham khảo',
+      'other': 'Khác'
+    }
+    return categoryMap[category] || category
   }
 
   return (
@@ -128,7 +137,7 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
                             <h3 className="font-semibold text-lg text-gray-800">{(item as any).title}</h3>
                             {(item as any).category && (
                               <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
-                                {(item as any).category}
+                                {getCategoryDisplayName((item as any).category)}
                               </Badge>
                             )}
                           </div>

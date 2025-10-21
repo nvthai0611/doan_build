@@ -355,13 +355,18 @@ export class EnrollmentManagementService {
     // Lấy danh sách học sinh trong lớp
     async findByClass(classId: string, query: any = {}) {
         try {
-            const { status = 'active', page = 1, limit = 50 } = query;
-
+            const {search, page = 1, limit = 50 } = query;
             const skip = (parseInt(page) - 1) * parseInt(limit);
             const take = parseInt(limit);
 
             const where: any = { classId };
-            if (status) where.status = status;
+
+            if (search) where.student = {
+                OR: [
+                    { user: { fullName: { contains: search, mode: 'insensitive' } } },
+                    { user: { email: { contains: search, mode: 'insensitive' } } }
+                ]
+            };
 
             const total = await this.prisma.enrollment.count({ where });
 
@@ -371,7 +376,12 @@ export class EnrollmentManagementService {
                 take,
                 include: {
                     student: {
-                        include: {
+                            include: {
+                            parent: {
+                                include: {
+                                    user: true,
+                                }
+                            },
                             user: {
                                 select: {
                                     id: true,
@@ -390,15 +400,7 @@ export class EnrollmentManagementService {
             return {
                 success: true,
                 message: 'Lấy danh sách học sinh thành công',
-                data: enrollments.map(e => ({
-                    enrollmentId: e.id,
-                    studentId: e.student.id,
-                    ...e.student.user,
-                    studentCode: e.student.studentCode,
-                    enrolledAt: e.enrolledAt,
-                    status: e.status,
-                    semester: e.semester
-                })),
+                data: enrollments,
                 meta: {
                     total,
                     page: parseInt(page),
@@ -740,4 +742,3 @@ export class EnrollmentManagementService {
         }
     }
 }
-

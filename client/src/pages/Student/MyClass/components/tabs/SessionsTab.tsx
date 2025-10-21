@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, Eye, UserCheck, TrendingUp, CheckCircle, XCircle, AlertCircle, BookOpen, Users, BarChart3, Target } from "lucide-react"
+import { Calendar, Clock, MapPin, Eye, UserCheck, CheckCircle, XCircle, AlertCircle, BookOpen, BarChart3, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentClassInformationService } from "../../../../../services/student/classInformation/classInformation.service"
@@ -62,19 +62,19 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
 
   const statusBadge = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'scheduled' || s === 'planned') return "bg-blue-100 text-blue-700 border border-blue-200"
-    if (s === 'completed' || s === 'done') return "bg-green-100 text-green-700 border border-green-200"
-    if (s === 'cancelled' || s === 'canceled') return "bg-red-100 text-red-700 border border-red-200"
-    if (s === 'ongoing' || s === 'in_progress') return "bg-amber-100 text-amber-700 border border-amber-200"
+    if (s === 'scheduled') return "bg-blue-100 text-blue-700 border border-blue-200"
+    if (s === 'completed') return "bg-green-100 text-green-700 border border-green-200"
+    if (s === 'cancelled') return "bg-red-100 text-red-700 border border-red-200"
+    if (s === 'has_not_happened') return "bg-gray-100 text-gray-700 border border-gray-200"
     return "bg-gray-100 text-gray-700 border border-gray-200"
   }
 
   const statusTextVi = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'scheduled' || s === 'planned') return 'Sắp tới'
-    if (s === 'completed' || s === 'done') return 'Hoàn thành'
-    if (s === 'cancelled' || s === 'canceled') return 'Đã hủy'
-    if (s === 'ongoing' || s === 'in_progress') return 'Đang diễn ra'
+    if (s === 'scheduled') return 'Sắp tới'
+    if (s === 'completed') return 'Hoàn thành'
+    if (s === 'cancelled') return 'Đã hủy'
+    if (s === 'has_not_happened') return 'Chưa diễn ra'
     return 'Không xác định'
   }
 

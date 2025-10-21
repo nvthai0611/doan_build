@@ -38,7 +38,7 @@ export class MaterialsService {
 
     // Lấy các lớp student đang active (hoặc filter theo classId nếu có)
     const enrolled = await this.prisma.enrollment.findMany({
-      where: { studentId: student.id, status: 'active', ...(classId ? { classId } : {}) },
+      where: { studentId: student.id, status: 'studying', ...(classId ? { classId } : {}) },
       select: { classId: true },
     });
     const classIds = enrolled.map((e) => e.classId);

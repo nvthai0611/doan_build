@@ -17,6 +17,7 @@ export class StudentSharedService {
               avatar: true,
               gender: true,
               birthDate: true,
+              username: true,
               // Không include password, sensitive data
             }
           },

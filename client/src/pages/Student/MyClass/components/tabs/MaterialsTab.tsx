@@ -2,10 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, TrendingUp, FileDown } from "lucide-react"
+import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, FileDown } from "lucide-react"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentMaterialsService } from "../../../../../services/student/materials/materials.service"
 import { StudentMaterial } from "../../../../../services/student/materials/materials.types"
@@ -43,6 +42,19 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
     if (kb < 1024) return `${kb.toFixed(1)} KB`
     const mb = kb / 1024
     return `${mb.toFixed(1)} MB`
+  }
+
+  const getCategoryLabel = (category?: string) => {
+    if (!category) return ""
+    const categoryMap: Record<string, string> = {
+      'Lecture': 'Bài giảng',
+      'Exercise': 'Bài tập', 
+      'Reference': 'Tài liệu tham khảo',
+      'reference': 'Tài liệu tham khảo',
+      'Exam': 'Đề thi',
+      'Other': 'Khác'
+    }
+    return categoryMap[category] || category
   }
 
   return (
@@ -95,7 +107,7 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                             <h3 className="font-semibold text-lg text-gray-800">{item.title}</h3>
                             {item.category && (
                               <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
-                                {item.category}
+                                {getCategoryLabel(item.category)}
                               </Badge>
                             )}
                           </div>

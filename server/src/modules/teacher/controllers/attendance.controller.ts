@@ -3,10 +3,20 @@ import { AttendanceService } from '../services/attendance.service';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AttendanceResponseDto } from '../dto/attendance/attendance-response.dto';
 
-@ApiTags('Attendance')
+@ApiTags('Teacher - Attendance')
 @Controller('attendances')
 export class AttendanceController {
     constructor(private readonly attendanceService: AttendanceService){}
+
+    @Get(':sessionId/students')
+    @ApiOperation({summary:'Lấy danh sách học sinh theo ID buổi học'})
+    @ApiParam({
+        name:'sessionId',
+        description:'ID của buổi học',
+    })
+    async getListStudentBySessionId(@Param('sessionId') sessionId: string) {
+        return this.attendanceService.getListStudentBySessionId(sessionId);
+    }
 
     @Get(':sessionId')
     @ApiOperation({summary:'Lấy danh sách điểm danh theo ID buổi học'})
@@ -47,7 +57,7 @@ export class AttendanceController {
         @Req() request: any,
         @Param('sessionId') sessionId: string,
      @Body() records: any[]) {
-        const teacherId = request?.teacherId
+        const teacherId = request?.user?.teacherId
         return this.attendanceService.attendanceStudentBySessionId(sessionId, records, teacherId);
     }
 }

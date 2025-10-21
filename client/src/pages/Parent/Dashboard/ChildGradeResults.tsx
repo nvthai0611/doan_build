@@ -15,24 +15,30 @@ interface ChildExamResultsProps {
 }
 
 export function ChildExamResults({ child }: ChildExamResultsProps) {
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
 
-  // Fetch grades data from API
   const { 
     data: gradesData, 
     isLoading, 
     isError, 
-    error,
     refetch 
   } = useQuery({
-    queryKey: ['childGrades', child.id, selectedSubject],
-    queryFn: () => parentChildService.getChildGrades(child.id, selectedSubject || undefined),
+    queryKey: ['childGrades', child.id],
+    queryFn: () => parentChildService.getChildGrades(child.id),
     enabled: !!child.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false
   })
 
-  const examResults: ChildGrade[] = gradesData || []
+  const allExamResults: ChildGrade[] = gradesData || []
+
+  const examResults = selectedClassId
+    ? allExamResults.filter(r => r.classId === selectedClassId)
+    : allExamResults
+
+  const classes = Array.from(
+    new Set(allExamResults.map(r => JSON.stringify({ id: r.classId, name: r.className })))
+  ).map(s => JSON.parse(s))
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -46,8 +52,6 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
     }
   }
-
-  const subjects = Array.from(new Set(examResults.map((r) => r.subject)))
 
   // Loading state
   if (isLoading) {
@@ -73,25 +77,25 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Filter Buttons */}
+      {/* Filter Buttons by Class */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-2 flex-wrap">
             <Button
-              variant={selectedSubject === null ? "default" : "outline"}
+              variant={selectedClassId === null ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedSubject(null)}
+              onClick={() => setSelectedClassId(null)}
             >
-              Tất cả môn
+              Tất cả lớp
             </Button>
-            {subjects.map((subject) => (
+            {classes.map((cls: { id?: string; name: string }) => (
               <Button
-                key={subject}
-                variant={selectedSubject === subject ? "default" : "outline"}
+                key={cls.id || cls.name}
+                variant={selectedClassId === (cls.id || null) ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedSubject(subject)}
+                onClick={() => setSelectedClassId(cls.id || null)}
               >
-                {subject}
+                {cls.name}
               </Button>
             ))}
           </div>
