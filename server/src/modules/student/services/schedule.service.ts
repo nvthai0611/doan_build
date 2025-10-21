@@ -62,12 +62,12 @@ export class StudentScheduleService {
             status: true, 
             note: true, 
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1,
         },
@@ -142,12 +142,12 @@ export class StudentScheduleService {
             status: true, 
             note: true, 
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1,
         },
@@ -224,12 +224,12 @@ export class StudentScheduleService {
             status: true, 
             note: true, 
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1,
         },
@@ -293,12 +293,12 @@ export class StudentScheduleService {
             status: true,
             note: true,
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1 
         },
@@ -325,7 +325,7 @@ export class StudentScheduleService {
       attendanceStatus: session.attendances?.[0]?.status ?? null,
       attendanceNote: session.attendances?.[0]?.note ?? null,
       attendanceRecordedAt: session.attendances?.[0]?.recordedAt ?? null,
-      attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
+      // attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
     };
   }
 
@@ -373,12 +373,12 @@ export class StudentScheduleService {
             status: true,
             note: true,
             recordedAt: true,
-            recordedByUser: {
-              select: {
-                id: true,
-                fullName: true
-              }
-            }
+            // recordedByUser: {
+            //   select: {
+            //     id: true,
+            //     fullName: true
+            //   }
+            // }
           },
           take: 1 
         },
@@ -405,7 +405,7 @@ export class StudentScheduleService {
       attendanceStatus: session.attendances?.[0]?.status ?? null,
       attendanceNote: session.attendances?.[0]?.note ?? null,
       attendanceRecordedAt: session.attendances?.[0]?.recordedAt ?? null,
-      attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
+      // attendanceRecordedBy: session.attendances?.[0]?.recordedByUser ?? null,
     };
   }
 }
