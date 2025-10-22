@@ -102,4 +102,10 @@ export const classService = {
     return response;
   },
 
+  // Get dashboard data
+  getDashboard: async (classId: string) => {
+    const response = await apiClient.get(`${BASE_URL}/${classId}/dashboard`);
+    return response;
+  },
+
 };

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
   Users, 
   GraduationCap, 
@@ -18,8 +17,11 @@ import {
   UserX,
   AlertCircle,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from "lucide-react"
+import { classService } from "../../../../services/center-owner/class-management/class.service"
+import Loading from "../../../../components/Loading/LoadingPage"
 
 interface DashboardTabProps {
   classId: string
@@ -27,8 +29,17 @@ interface DashboardTabProps {
 }
 
 export default function DashboardTab({ classId, classData }: DashboardTabProps) {
-  const mockData = {
-    teachers: 1,
+  // Fetch dashboard data
+  const { data: dashboardResponse, isLoading, error } = useQuery({
+    queryKey: ['classDashboard', classId],
+    queryFn: () => classService.getDashboard(classId),
+    enabled: !!classId,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
+  })
+
+  const dashboardData = (dashboardResponse as any)?.data || {
+    teachers: 0,
     students: 0,
     lessons: 0,
     revenue: 0,
@@ -48,23 +59,6 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     }
   }
 
-  const reviews = [
-    {
-      id: 1,
-      studentName: "Nguyễn Văn A",
-      rating: 5,
-      comment: "Lớp học rất hay, giáo viên nhiệt tình",
-      date: "2024-01-15"
-    },
-    {
-      id: 2,
-      studentName: "Trần Thị B", 
-      rating: 4,
-      comment: "Nội dung học phong phú, dễ hiểu",
-      date: "2024-01-10"
-    }
-  ]
-
   const getStarRating = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -76,6 +70,23 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     ))
   }
 
+  // Loading state
+  if (isLoading) {
+    <Loading/>
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Có lỗi xảy ra khi tải dashboard</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Metric Cards Row */}
@@ -85,7 +96,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center">
               <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {mockData.teachers}
+                {dashboardData.teachers}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Giáo viên
@@ -99,7 +110,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center">
               <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {mockData.students}
+                {dashboardData.students}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Học viên
@@ -113,7 +124,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center">
               <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {mockData.lessons}
+                {dashboardData.lessons}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Buổi học đã diễn ra
@@ -127,7 +138,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center">
               <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {mockData.revenue.toLocaleString()} ₫
+                {dashboardData.revenue.toLocaleString()} ₫
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Doanh thu học phí ghi nhận
@@ -145,39 +156,113 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
             <CardTitle>Báo cáo điểm danh</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex">
-              <div className="flex-1">
-                {/* Chart area - empty for now */}
-                <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
-                  <div className="text-center">
-                    <Calendar className="h-12 w-12 mx-auto mb-2" />
-                    <p>Chưa có dữ liệu điểm danh</p>
+            {(() => {
+              const total = dashboardData.attendance.onTime + 
+                           dashboardData.attendance.late + 
+                           dashboardData.attendance.excusedAbsence + 
+                           dashboardData.attendance.unexcusedAbsence + 
+                           dashboardData.attendance.notMarked
+
+              if (total === 0) {
+                return (
+                  <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                    <div className="text-center">
+                      <Calendar className="h-12 w-12 mx-auto mb-2" />
+                      <p>Chưa có dữ liệu điểm danh</p>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div className="flex">
+                  <div className="flex-1 pr-6">
+                    {/* Bar chart */}
+                    <div className="space-y-4">
+                      {/* Đúng giờ */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Đúng giờ</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {dashboardData.attendance.onTime}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(dashboardData.attendance.onTime / total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Đi muộn */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Đi muộn</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {dashboardData.attendance.late}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(dashboardData.attendance.late / total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Nghỉ có phép */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Nghỉ có phép</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {dashboardData.attendance.excusedAbsence}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(dashboardData.attendance.excusedAbsence / total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Nghỉ không phép */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Nghỉ không phép</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {dashboardData.attendance.unexcusedAbsence}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className="bg-red-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(dashboardData.attendance.unexcusedAbsence / total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Chưa điểm danh */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Chưa điểm danh</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {dashboardData.attendance.notMarked}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div 
+                            className="bg-gray-400 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(dashboardData.attendance.notMarked / total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="ml-6 space-y-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Đúng giờ</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Đi muộn</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Nghỉ có phép</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Nghỉ không phép</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Chưa điểm danh</span>
-                </div>
-              </div>
-            </div>
+              )
+            })()}
           </CardContent>
         </Card>
 
@@ -187,26 +272,63 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
             <CardTitle>Báo cáo bài tập</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  Đã giao
-                </div>
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {mockData.homework.assigned}
+            {dashboardData.homework.assigned === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-2" />
+                  <p>Chưa có bài tập nào</p>
                 </div>
               </div>
-              <div className="flex justify-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Đã nộp</span>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    Đã giao
+                  </div>
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    {dashboardData.homework.assigned}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-300 rounded-full"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Chưa nộp</span>
+                <div className="space-y-3">
+                  {/* Đã nộp */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Đã nộp</span>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {dashboardData.homework.submitted}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                      <div 
+                        className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${(dashboardData.homework.submitted / dashboardData.homework.assigned) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {/* Chưa nộp */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Chưa nộp</span>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {dashboardData.homework.notSubmitted}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                      <div 
+                        className="bg-orange-400 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${(dashboardData.homework.notSubmitted / dashboardData.homework.assigned) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -215,51 +337,42 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Đánh giá */}
         <Card>
+          <CardHeader>
+            <CardTitle>Đánh giá trung bình</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                {mockData.rating}
+            {dashboardData.reviews === 0 ? (
+              <div className="text-center text-gray-400 dark:text-gray-500">
+                <Star className="h-12 w-12 mx-auto mb-2" />
+                <p>Chưa có đánh giá nào</p>
               </div>
-              <div className="flex justify-center space-x-1 mb-2">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-6 w-6 ${
-                      i < mockData.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                    }`}
-                  />
-                ))}
+            ) : (
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                  {dashboardData.rating.toFixed(1)}
+                </div>
+                <div className="flex justify-center space-x-1 mb-2">
+                  {getStarRating(dashboardData.rating)}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {dashboardData.reviews} đánh giá
+                </div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {mockData.reviews} đánh giá
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Reviews Navigation */}
+        {/* Reviews */}
         <Card>
+          <CardHeader>
+            <CardTitle>Đánh giá gần đây</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <Button variant="link" className="text-blue-600 hover:text-blue-700">
-                Xem tất cả
-              </Button>
-            </div>
-            
-            {/* Placeholder for review content */}
             <div className="text-center text-gray-400 dark:text-gray-500">
               <div className="w-32 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-2 flex items-center justify-center">
                 <FileText className="h-8 w-8" />
               </div>
-              <p className="text-sm">Chưa có đánh giá nào</p>
+              <p className="text-sm">Tính năng đang được phát triển</p>
             </div>
           </CardContent>
         </Card>

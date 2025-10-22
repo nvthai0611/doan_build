@@ -100,6 +100,14 @@ export class ClassManagementController {
         return this.classManagementService.getStats(classId);
     }
 
+    @Get(':id/dashboard')
+    @ApiOperation({ summary: 'Lấy dữ liệu dashboard đầy đủ cho lớp học' })
+    @ApiResponse({ status: 200, description: 'Dashboard data' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async getDashboard(@Param('id') classId: string) {
+        return this.classManagementService.getDashboard(classId);
+    }
+
     @Post(':id/generate-sessions')
     @ApiOperation({ summary: 'Tạo tự động buổi học cho lớp' })
     @ApiResponse({ status: 200, description: 'Tạo buổi học thành công' })

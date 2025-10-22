@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { authService } from "../services/common/auth/auth.service"
 import { toast } from "sonner"
 import Cookies from "js-cookie"
+import { TokenStorage } from "../utils/clientAxios"
 
 export type UserRole = "center_owner" | "teacher" | "admin" | "student" | "parent"
 
@@ -24,7 +25,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ user: User }>
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
   loading: boolean
@@ -60,9 +61,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (savedUser && savedAccessToken && savedRefreshToken) {
         try {
           const userData = JSON.parse(savedUser || '{}') as User
-          // await verifyToken();
           setUser(userData)
-          // Skip token verification for now to test
+          
+          // ✅ Enable token verification
+          try {
+            await verifyToken()
+            console.log("✅ Token verified successfully")
+          } catch (error) {
+            console.log("Token verification failed, will auto-refresh on next API call")
+          }
         } catch (error) {
           console.error("Error parsing saved user data:", error)
           clearAuthData()
@@ -107,11 +114,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!refreshToken || refreshToken === 'undefined') {
         throw new Error("No refresh token available")
       }
+      
+      console.log("🔄 Refreshing token from auth context...")
       const response = await authService.refreshToken(refreshToken)
+      
+      // ✅ Lưu access token mới
       Cookies.set("accessToken", response.accessToken)
-      setUser(response as any)
-      Cookies.set("user", JSON.stringify(response as any))
+      TokenStorage.set(response.accessToken)
+      
+      // ✅ Lưu refresh token mới (ROTATION)
+      if (response.refreshToken) {
+        console.log("✅ Updating refresh token (rotation)")
+        Cookies.set("refreshToken", response.refreshToken)
+      }
+      
+      // ✅ Cập nhật user
+      if (response.user) {
+        setUser(response.user as User)
+        Cookies.set("user", JSON.stringify(response.user))
+      }
+      
+      console.log("✅ Token refreshed successfully from auth context")
     } catch (error) {
+      console.error("❌ Token refresh failed:", error)
       clearAuthData()
       throw error
     }
@@ -122,6 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     Cookies.remove("user")
     Cookies.remove("accessToken")
     Cookies.remove("refreshToken")
+    TokenStorage.clear()
   }
 
   const login = async (email: string, password: string) => {
@@ -130,12 +156,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       const response = await authService.login({ email, password })
-      // Store tokens and user data
+      
+      // ✅ Store tokens and user data
       Cookies.set("accessToken", response.accessToken)
       Cookies.set("refreshToken", response.refreshToken)
       Cookies.set("user", JSON.stringify(response.user))
-      toast.success("Đăng nhập thành công");
+      
+      // ✅ Update TokenStorage
+      TokenStorage.set(response.accessToken)
+      
+      toast.success("Đăng nhập thành công")
       setUser(response.user as User)
+      
+      console.log("✅ Login successful, tokens stored")
+      
+      // ✅ Return user data for role validation
+      return { user: response.user as User }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Đăng nhập thất bại"
       toast.error(errorMessage)
