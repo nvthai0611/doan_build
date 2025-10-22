@@ -5,9 +5,10 @@ import {
   User,
   FileText,
   BookOpen,
-  Image as ImageIcon,
   Users,
   Loader2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,9 +21,10 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatDate } from '../../../../utils/format';
-import type { StudentLeaveRequest } from '../../../../services/parent/student-leave-request/student-leave.types';
-import { parentStudentLeaveRequestService } from '../../../../services/parent/student-leave-request/student-leave.service';
+import { formatDate } from '../../../utils/format';
+import type { TeacherStudentLeaveRequest } from '../../../services/teacher/student-leave-request/student-leave.types';
+import { teacherStudentLeaveRequestService } from '../../../services/teacher/student-leave-request/student-leave.service';
+import { toast } from 'sonner';
 
 // Status colors
 const statusColors = {
@@ -41,26 +43,28 @@ const statusLabels = {
 };
 
 interface StudentLeaveRequestDetailModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  leaveRequest: StudentLeaveRequest | null;
+  leaveRequest: TeacherStudentLeaveRequest | null;
 }
 
 export default function StudentLeaveRequestDetailModal({
-  isOpen,
+  open,
   onClose,
   leaveRequest: initialLeaveRequest,
 }: StudentLeaveRequestDetailModalProps) {
-  const [leaveRequest, setLeaveRequest] = useState<StudentLeaveRequest | null>(initialLeaveRequest);
+  const [leaveRequest, setLeaveRequest] = useState<TeacherStudentLeaveRequest | null>(initialLeaveRequest);
   const [isLoading, setIsLoading] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Refetch data when modal opens
   useEffect(() => {
-    if (isOpen && initialLeaveRequest?.id) {
+    if (open && initialLeaveRequest?.id) {
       const fetchLatestData = async () => {
         try {
           setIsLoading(true);
-          const latestData = await parentStudentLeaveRequestService.getStudentLeaveRequestById(initialLeaveRequest.id);
+          const latestData = await teacherStudentLeaveRequestService.getStudentLeaveRequestById(initialLeaveRequest.id);
           setLeaveRequest(latestData);
         } catch (error) {
           console.error('Failed to refetch leave request:', error);
@@ -71,12 +75,12 @@ export default function StudentLeaveRequestDetailModal({
         }
       };
       fetchLatestData();
-    } else if (!isOpen) {
+    } else if (!open) {
       // Reset when modal closes
       setLeaveRequest(initialLeaveRequest);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialLeaveRequest?.id]);
+  }, [open, initialLeaveRequest?.id]);
 
   if (!leaveRequest) return null;
 
@@ -92,8 +96,45 @@ export default function StudentLeaveRequestDetailModal({
     }
   };
 
+  const handleApprove = async () => {
+    if (!leaveRequest) return;
+    if (!confirm(`Bạn có chắc chắn muốn duyệt đơn nghỉ học của ${leaveRequest.student?.user.fullName}?`)) {
+      return;
+    }
+
+    try {
+      setIsApproving(true);
+      await teacherStudentLeaveRequestService.approveStudentLeaveRequest(leaveRequest.id, {});
+      toast.success('Đã duyệt đơn nghỉ học thành công');
+      onClose();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi duyệt đơn';
+      toast.error(errorMessage);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!leaveRequest) return;
+    const notes = prompt(`Nhập lý do từ chối đơn nghỉ học của ${leaveRequest.student?.user.fullName}:`);
+    if (notes === null) return; // User cancelled
+
+    try {
+      setIsRejecting(true);
+      await teacherStudentLeaveRequestService.rejectStudentLeaveRequest(leaveRequest.id, { notes });
+      toast.success('Đã từ chối đơn nghỉ học');
+      onClose();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối đơn';
+      toast.error(errorMessage);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 overflow-hidden overflow-y-auto">
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -199,39 +240,6 @@ export default function StudentLeaveRequestDetailModal({
                           <p className="text-sm bg-background rounded-md p-3 border">
                             {leaveRequest.notes}
                           </p>
-                        </div>
-                      )}
-                      {leaveRequest.responseNote && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground">
-                            Phản hồi từ giáo viên
-                          </label>
-                          <p className="text-sm bg-background rounded-md p-3 border">
-                            {leaveRequest.responseNote}
-                          </p>
-                        </div>
-                      )}
-                      {leaveRequest.imageUrl && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <ImageIcon className="h-4 w-4" />
-                            Hình ảnh đính kèm
-                          </label>
-                          <div className="bg-background rounded-md p-3 border">
-                            <img
-                              src={leaveRequest.imageUrl}
-                              alt="Hình ảnh đính kèm"
-                              className="w-full h-auto max-h-[250px] rounded-md object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = '<p class="text-sm text-muted-foreground">Không thể tải hình ảnh</p>';
-                                }
-                              }}
-                            />
-                          </div>
                         </div>
                       )}
                     </div>
@@ -378,10 +386,47 @@ export default function StudentLeaveRequestDetailModal({
 
           {/* Footer */}
           <div className="px-6 py-4 border-t bg-muted/20">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
               <Button variant="outline" onClick={onClose}>
                 Đóng
               </Button>
+              {leaveRequest?.status === 'pending' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleReject}
+                    disabled={isRejecting || isApproving}
+                  >
+                    {isRejecting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Từ chối
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isApproving || isRejecting}
+                  >
+                    {isApproving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Duyệt đơn
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

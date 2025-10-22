@@ -13,11 +13,6 @@ export class CreateStudentLeaveRequestDto {
   @IsNotEmpty()
   studentId: string;
 
-  @ApiProperty({ description: 'ID lớp học', example: 'uuid' })
-  @IsUUID()
-  @IsNotEmpty()
-  classId: string;
-
   @ApiProperty({
     description: 'Ngày bắt đầu nghỉ (YYYY-MM-DD)',
     example: '2025-10-23',
@@ -93,11 +88,6 @@ export class GetAffectedSessionsQueryDto {
   @IsUUID()
   @IsNotEmpty()
   studentId: string;
-
-  @ApiProperty({ description: 'ID lớp học', example: 'uuid' })
-  @IsUUID()
-  @IsNotEmpty()
-  classId: string;
 
   @ApiProperty({
     description: 'Ngày bắt đầu (YYYY-MM-DD)',
