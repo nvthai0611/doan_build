@@ -80,24 +80,29 @@ export default function StudentSchedule() {
         // Map dữ liệu từ API mới về dạng dùng cho UI
         const items: StudentScheduleItem[] = (rawData || []).map((session: unknown) => {
           const s = session as Record<string, unknown>
+          const classData = s.class as Record<string, unknown>
+          const subjectData = classData?.subject as Record<string, unknown>
+          const teacherData = classData?.teacher as Record<string, unknown>
+          const teacherUser = teacherData?.user as Record<string, unknown>
+          const roomData = s.room as Record<string, unknown>
+          
           return {
             id: s.id as string,
             date: s.sessionDate as string,
             startTime: s.startTime as string,
             endTime: s.endTime as string,
-            subject: (s.class as Record<string, unknown>)?.subject && typeof (s.class as Record<string, unknown>).subject === 'object' && (s.class as Record<string, unknown>).subject !== null 
-              ? ((s.class as Record<string, unknown>).subject as Record<string, unknown>)?.name as string || ""
-              : "",
-            className: (s.class as Record<string, unknown>)?.name as string || "",
-            room: (s.room as Record<string, unknown>)?.name as string || undefined,
+            subject: subjectData?.name as string || "",
+            className: classData?.name as string || "",
+            room: roomData?.name as string || undefined,
             attendanceStatus: s.attendanceStatus as "present" | "absent" | "late" | "excused" | null,
             attendanceNote: s.attendanceNote as string | null,
             attendanceRecordedAt: s.attendanceRecordedAt as string | null,
             attendanceRecordedBy: s.attendanceRecordedBy as { id: string; fullName: string } | null,
-            teacher: (s.teacher as Record<string, unknown>)?.user as { fullName: string; email?: string; phone?: string } || 
-                    ((s.class as Record<string, unknown>)?.teacher && typeof (s.class as Record<string, unknown>).teacher === 'object' && (s.class as Record<string, unknown>).teacher !== null
-                      ? ((s.class as Record<string, unknown>).teacher as Record<string, unknown>)?.user as { fullName: string; email?: string; phone?: string }
-                      : undefined) || undefined,
+            teacher: teacherUser ? {
+              fullName: teacherUser.fullName as string,
+              email: teacherUser.email as string,
+              phone: teacherUser.phone as string
+            } : undefined,
           }
         })
 

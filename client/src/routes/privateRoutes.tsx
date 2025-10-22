@@ -42,6 +42,8 @@ import { HolidaySetting } from "../pages/manager/Settings/HolidaySetting";
 import { ScoreSetting } from "../pages/manager/Settings/ScoreSetting";
 import { NotificationSetting } from "../pages/manager/Settings/NotiSetting";
 import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
+import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
+import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
 
 
 export const privateRoutes = (
@@ -133,6 +135,9 @@ export const privateRoutes = (
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
+        <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />
+        <Route path="student-leave-requests/create" element={<StudentLeaveRequestForm />} />
+        <Route path="student-leave-requests/edit/:id" element={<StudentLeaveRequestForm />} />
       </Route>
 
       {/* Admin */}

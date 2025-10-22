@@ -65,4 +65,21 @@ export class StudentManagementController {
     const userId = req.user?.userId;
     return await this.service.getChildGradesForParent(userId, childId, classId);
   }
+
+  @Get('children/:childId/attendance')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lịch sử điểm danh của học sinh' })
+  @ApiQuery({ name: 'classId', required: false, description: 'Lọc theo lớp học' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Ngày bắt đầu' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'Ngày kết thúc' })
+  async getChildAttendance(
+    @Req() req: any,
+    @Param('childId') childId: string,
+    @Query('classId') classId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const userId = req.user?.userId;
+    return await this.service.getChildAttendanceForParent(userId, childId, { classId, startDate, endDate });
+  }
 }
