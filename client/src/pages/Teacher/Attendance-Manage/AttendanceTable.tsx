@@ -171,7 +171,7 @@ export default function AttendanceTable() {
         ...prev,
         [studentId]: newStatus,
       };
-
+      
       // Check changes against server data
       const hasAnyChanges = Object.keys(newState).some((id) => {
         const serverRec = attendanceData?.find(
@@ -180,6 +180,7 @@ export default function AttendanceTable() {
         const serverStat = serverRec?.status || null;
         return newState[id] !== serverStat;
       });
+      
 
       setHasChanges(hasAnyChanges);
 
@@ -365,11 +366,16 @@ export default function AttendanceTable() {
       console.error('Error sending absence emails:', error);
     }
   };
-  const checkDate = () => {
-    const checkDate = studentListData?.sessionDate < new Date().toISOString();
-    return checkDate;
-  }
 
+  const d1 = new Date(studentListData?.sessionDate);
+const d2 = new Date();
+
+const checkDate =
+  d1.getFullYear() === d2.getFullYear() &&
+  d1.getMonth() === d2.getMonth() &&
+  d1.getDate() === d2.getDate();
+  console.log(checkDate);
+  
   // Early returns
   if (isLoading || isLoadingStudentList) {
     return <Loading />;
@@ -411,7 +417,15 @@ export default function AttendanceTable() {
           <span className="text-gray-900 font-medium">Quản lý điểm danh</span>
         </div>
       </div>
-
+{hasChanges && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-50 text-amber-700 border-amber-300"
+                >
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Có thay đổi chưa lưu
+                </Badge>
+              )}
       <Card className="shadow-xl border-slate-200">
         <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -431,15 +445,7 @@ export default function AttendanceTable() {
                   {studentListData?.class?.enrollments?.length || 0}
                 </span>
               </CardTitle>
-              {hasChanges && (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-50 text-amber-700 border-amber-300"
-                >
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  Có thay đổi chưa lưu
-                </Badge>
-              )}
+              
             </div>
             <div className="flex gap-3 flex-wrap">
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
@@ -459,7 +465,7 @@ export default function AttendanceTable() {
               {absentStudents.length > 0 && (
                 <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex items-center gap-2 ml-2">
                   <div>
-                    {!checkDate && (
+                    {checkDate && (
                       <div>
                       <Checkbox 
                         id="select-all-absent"
@@ -520,7 +526,7 @@ export default function AttendanceTable() {
                       {/* Avatar và thông tin học sinh */}
                       {/* Checkbox cho học sinh vắng chưa gửi email */}
                       {/* Quá ngày rồi thì không hiển thị nữa */}
-                      {isAbsent && !emailSent && !checkDate && (
+                      {isAbsent && !emailSent && checkDate && (
                         <Checkbox 
                           id={`select-${studentId}`}
                           checked={selectedStudents.includes(studentId)}
@@ -549,7 +555,7 @@ export default function AttendanceTable() {
                             </span>
                             
                             {/* Badge "Đã gửi" nằm cạnh tên */}
-                            {isAbsent && emailSent && (
+                            { emailSent && (
                               <Badge 
                                 variant="outline" 
                                 className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-2 py-0.5 flex-shrink-0 shadow-sm"

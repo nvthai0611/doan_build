@@ -174,7 +174,20 @@ export class ParentManagementService {
         // ===== CREATION PHASE - All validations passed, now create using transaction =====
         
         const defaultPassword = createParentData.password || '123456';
-        const studentCode = generateQNCode();
+        let studentCode = generateQNCode('student');
+
+        while(true){
+            const existingStudentCode = await this.prisma.student.findUnique({
+                where: { studentCode: studentCode }
+            });
+
+            if (existingStudentCode) {
+                studentCode = generateQNCode('student');
+            } else {
+                break;
+            }
+        }
+
 
         try {
             // Use transaction to ensure all-or-nothing operation
@@ -414,7 +427,16 @@ export class ParentManagementService {
 
         // ===== CREATION PHASE =====
         
-        const studentCode = generateQNCode();
+        let studentCode = generateQNCode('student');
+            while(true){
+                const existingCode = await this.prisma.student.findUnique({
+                    where: { studentCode: studentCode }
+                });
+                if(!existingCode){
+                    break;
+                }
+                studentCode = generateQNCode('student');
+            }
         const defaultPassword = studentData.password || '123456';
         const studentEmail = studentData.email || 
             studentData.username;
