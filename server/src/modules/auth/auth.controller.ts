@@ -13,6 +13,7 @@ import {
 import { LoginDto } from './dto/loginDto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { RegisterParentDto } from './dto/register-parent.dto';
 import { AuthService } from './auth.service';
 import { PermissionService } from './permission.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -32,6 +33,12 @@ export class AuthController {
       message: 'Đăng nhập thành công',
       data: result,
     };
+  }
+
+  @Post('register/parent')
+  async registerParent(@Body() registerDto: RegisterParentDto) {
+    const result = await this.authService.registerParent(registerDto);
+    return result;
   }
 
   @Get('profile')
