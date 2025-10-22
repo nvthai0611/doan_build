@@ -1,10 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import emailUtil from '../../../utils/email.util';
 import { PrismaService } from '../../../db/prisma.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class EmailNotificationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('email_notification') private readonly emailNotificationQueue: Queue
+  
+  ) {}
 
   /**
    * Gửi email thông báo gán giáo viên vào lớp học (trực tiếp, không qua queue)
@@ -606,5 +612,277 @@ export class EmailNotificationService {
     } catch (error) {
       throw new Error(`Không thể gửi email hủy lớp: ${error.message}`);
     }
+  }
+
+  /**
+   * Gửi email thông báo vắng mặt cho nhiều học sinh
+   * @param studentIds Mảng ID của các học sinh vắng mặt
+   * @param sessionId ID của buổi học
+   * @param teacherId ID của giáo viên ghi nhận điểm danh
+   */
+  async sendStudentAbsenceEmail(
+    studentIds: string[],
+    sessionId: string,
+    teacherId: string
+  ) {
+    try {
+      // Validate input
+      if (!studentIds || studentIds.length === 0) {
+        throw new HttpException(
+          'Danh sách học sinh không được để trống',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      console.log(`🚀 Bắt đầu xử lý gửi email cho ${studentIds.length} học sinh`);
+
+      // Kiểm tra học sinh đã được gửi email
+      const attendanceRecords = await this.prisma.studentSessionAttendance.findMany({
+        where: {
+          sessionId,
+          studentId: { in: studentIds },
+          status: 'absent'
+        },
+        select: {
+          studentId: true,
+          isSent: true,
+          sentAt: true
+        }
+      });
+
+      // Lọc học sinh đã gửi email
+      const alreadySentStudentIds = attendanceRecords
+        .filter(record => record.isSent === true)
+        .map(record => record.studentId);
+
+      // Lọc học sinh chưa gửi email
+      const studentsToSendEmail = studentIds.filter(
+        id => !alreadySentStudentIds.includes(id)
+      );
+
+      // Nếu tất cả đã gửi email
+      if (studentsToSendEmail.length === 0) {
+        console.log(`⚠️ Tất cả ${studentIds.length} học sinh đã được gửi email`);
+        
+        return {
+          success: true,
+          sentCount: 0,
+          failCount: 0,
+          alreadySentCount: alreadySentStudentIds.length,
+          totalStudents: studentIds.length,
+          message: 'Tất cả học sinh đã được gửi email thông báo vắng mặt trước đó',
+          details: []
+        };
+      }
+
+      console.log(
+        `📊 Thống kê:\n` +
+        `   - Tổng: ${studentIds.length} học sinh\n` +
+        `   - Cần gửi: ${studentsToSendEmail.length}\n` +
+        `   - Đã gửi trước đó: ${alreadySentStudentIds.length}`
+      );
+
+      // Lấy thông tin buổi học
+      const session = await this.prisma.classSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          class: {
+            include: {
+              subject: true
+            }
+          }
+        }
+      });
+
+      if (!session) {
+        throw new HttpException(
+          'Không tìm thấy buổi học',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Lấy thông tin giáo viên
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+        include: {
+          user: true
+        }
+      });
+
+      if (!teacher) {
+        throw new HttpException(
+          'Không tìm thấy giáo viên',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Lấy thông tin học sinh chưa gửi email
+      const students = await this.prisma.student.findMany({
+        where: {
+          id: { in: studentsToSendEmail }
+        },
+        include: {
+          user: true,
+          parent: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+
+      if (students.length === 0) {
+        throw new HttpException(
+          'Không tìm thấy học sinh nào cần gửi email',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Chuẩn bị dữ liệu chung
+      const absenceDate = new Date(session.sessionDate).toLocaleDateString('vi-VN');
+      const sessionTime = `${session.startTime} - ${session.endTime}`;
+      const subjectName = session.class?.subject?.name || 'N/A';
+      const className = session.class?.name || 'N/A';
+      const teacherName = teacher.user?.fullName || 'N/A';
+
+      // Thêm từng email vào queue
+      const emailResults = [];
+      const jobPromises = [];
+
+      for (const student of students) {
+        const parentEmail = student.parent?.user?.email;
+        
+        if (!parentEmail) {
+          console.warn(
+            `⚠️ Không tìm thấy email phụ huynh cho học sinh ${student.user?.fullName}`
+          );
+          
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            success: false,
+            reason: 'Không có email phụ huynh'
+          });
+          continue;
+        }
+
+        try {
+          // Thêm job vào queue với priority và delay
+          const jobPromise = this.emailNotificationQueue.add(
+            'send_student_absence_email',
+            {
+              to: parentEmail,
+              studentName: student.user?.fullName || 'N/A',
+              className,
+              absenceDate,
+              sessionTime,
+              subject: subjectName,
+              teacherName,
+              note: '',
+              sessionId,
+              studentId: student.id
+            },
+            {
+              priority: 1, // Priority cao hơn cho email khẩn cấp
+              delay: 2000, // Delay 2s giữa các email
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000
+              },
+              removeOnComplete: 10,
+              removeOnFail: 5
+            }
+          );
+
+          jobPromises.push(jobPromise);
+
+          // Cập nhật trạng thái isSent ngay lập tức
+          await this.prisma.studentSessionAttendance.updateMany({
+            where: {
+              sessionId,
+              studentId: student.id,
+              status: 'absent',
+              isSent: false
+            },
+            data: {
+              isSent: true,
+              sentAt: new Date()
+            }
+          });
+
+          console.log(`📨 Đã thêm job gửi email cho ${student.user?.fullName} vào queue`);
+
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            parentEmail,
+            success: true
+          });
+        } catch (error: any) {
+          console.error(
+            `❌ Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
+          );
+          
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            success: false,
+            reason: error.message
+          });
+        }
+      }
+
+      // Đợi tất cả jobs được thêm vào queue
+      await Promise.all(jobPromises);
+
+      const successCount = emailResults.filter(r => r.success).length;
+      const failCount = emailResults.filter(r => !r.success).length;
+
+      console.log(
+        `✅ Đã thêm ${successCount}/${studentsToSendEmail.length} email vào queue thành công\n` +
+        `   - Thành công: ${successCount}\n` +
+        `   - Thất bại: ${failCount}\n` +
+        `   - Đã gửi trước: ${alreadySentStudentIds.length}`
+      );
+
+      return {
+        success: true,
+        sentCount: successCount,
+        failCount,
+        alreadySentCount: alreadySentStudentIds.length,
+        totalStudents: studentIds.length,
+        details: emailResults,
+        message: `Đã thêm ${successCount} email vào hàng đợi. Email sẽ được gửi trong giây lát.`
+      };
+    } catch (error: any) {
+      console.error('❌ Lỗi khi xử lý gửi email:', error);
+      throw new HttpException(
+        error.message || 'Lỗi khi gửi email thông báo vắng học',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Kiểm tra trạng thái queue
+   */
+  async getQueueStatus() {
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
+      this.emailNotificationQueue.getWaitingCount(),
+      this.emailNotificationQueue.getActiveCount(),
+      this.emailNotificationQueue.getCompletedCount(),
+      this.emailNotificationQueue.getFailedCount(),
+      this.emailNotificationQueue.getDelayedCount(),
+    ]);
+
+    return {
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      total: waiting + active + completed + failed + delayed
+    };
   }
 }

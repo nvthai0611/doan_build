@@ -56,6 +56,7 @@ export interface DataTableProps<T> {
   selectedItems?: string[]
   onSelectionChange?: (selectedItems: string[]) => void
   getItemId?: (item: T) => string
+  allData?: T[] // Toàn bộ data sau khi filter (để select all qua các trang)
 }
 
 export function DataTable<T>({
@@ -79,6 +80,7 @@ export function DataTable<T>({
   selectedItems = [],
   onSelectionChange,
   getItemId,
+  allData,
 }: DataTableProps<T>) {
   // State cho search filters
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>({})
@@ -167,14 +169,17 @@ export function DataTable<T>({
   }, [data, searchFilters, columns, enableSearch])
 
   // Checkbox handlers
-  const isAllSelected = enableCheckbox && selectedItems.length === filteredData.length && filteredData.length > 0
-  const isIndeterminate = enableCheckbox && selectedItems.length > 0 && selectedItems.length < filteredData.length
+  // Sử dụng allData nếu có (để select all qua các trang), nếu không thì dùng filteredData
+  const dataForSelection = allData || filteredData
+  
+  const isAllSelected = enableCheckbox && selectedItems.length === dataForSelection.length && dataForSelection.length > 0
+  const isIndeterminate = enableCheckbox && selectedItems.length > 0 && selectedItems.length < dataForSelection.length
 
   const handleSelectAll = (checked: boolean) => {
     if (!enableCheckbox || !onSelectionChange || !getItemId) return
     
     if (checked) {
-      const allIds = filteredData.map(item => getItemId(item))
+      const allIds = dataForSelection.map(item => getItemId(item))
       onSelectionChange(allIds)
     } else {
       onSelectionChange([])

@@ -19,7 +19,9 @@ export class StudentScheduleService {
           enrollments: {
             some: {
               studentId,
-              status: 'active',
+              status: {
+                in: ['active', 'studying']
+              },
             },
           },
         },
@@ -99,7 +101,9 @@ export class StudentScheduleService {
           enrollments: {
             some: {
               studentId,
-              status: 'active',
+              status: {
+                in: ['active', 'studying']
+              },
             },
           },
         },
@@ -181,7 +185,9 @@ export class StudentScheduleService {
           enrollments: {
             some: {
               studentId,
-              status: 'active',
+              status: {
+                in: ['active', 'studying']
+              },
             },
           },
         },

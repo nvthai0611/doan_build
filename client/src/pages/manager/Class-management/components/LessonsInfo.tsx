@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check } from 'lucide-react';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
@@ -24,12 +24,13 @@ interface LessonsInfoProps {
 }
 
 export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
-  const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<SessionStatus>(SessionStatus.HAPPENING);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isAddLessonOpen, setIsAddLessonOpen] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Pagination hook
   const pagination = usePagination({
@@ -44,29 +45,26 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   // Reset search when filter changes
   useEffect(() => {
     setSearchTerm('');
+    setSelectedSessions([]); // Reset selection khi đổi filter
   }, [filter]);
 
-  // Reset to page 1 when changing items per page
+  // Reset to page 1 when filters change
   useEffect(() => {
     pagination.setCurrentPage(1);
-  }, [pagination.itemsPerPage]);
+  }, [filter, debouncedSearchTerm, startDate, endDate]);
   
-  // Fetch sessions data from API
+  // Fetch ALL sessions data from API (không phân trang ở BE)
   const { 
     data: sessionsResponse, 
     isLoading, 
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['classSessions', classId, classData?.academicYear, debouncedSearchTerm, filter, startDate, endDate, pagination.currentPage, pagination.itemsPerPage],
+    queryKey: ['classSessions', classId, classData?.academicYear],
     queryFn: () => classService.getClassSessions(classId, {
-      search: debouncedSearchTerm || undefined,
-      status: filter !== 'all' ? filter : undefined,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-      academicYear: classData?.academicYear, // Chỉ lấy sessions cùng academicYear
-      page: pagination.currentPage,
-      limit: pagination.itemsPerPage,
+      academicYear: classData?.academicYear,
+      page: 1,
+      limit: 10000, // Lấy hết tất cả sessions
       sortBy: "sessionDate",
       sortOrder: "asc",
     }),
@@ -75,55 +73,122 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     refetchOnWindowFocus: true
   });
 
-  const sessions = (sessionsResponse as any)?.data || [];
-  const totalCount = (sessionsResponse as any)?.meta?.total || 0;
-  const totalPages = (sessionsResponse as any)?.meta?.totalPages || 1;
+  const allSessions = (sessionsResponse as any)?.data || [];
+
+  // Filter sessions ở FE
+  const filteredSessions = allSessions.filter((session: any) => {
+    // Filter by status
+    if (filter !== SessionStatus.HAPPENING && session.status !== filter) {
+      return false;
+    }
+
+    // Filter by search term
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      const notes = (session.notes || '').toLowerCase();
+      const teacherName = (session.teacher?.name || session.teacherName || '').toLowerCase();
+      if (!notes.includes(searchLower) && !teacherName.includes(searchLower)) {
+        return false;
+      }
+    }
+
+    // Filter by date range
+    if (startDate || endDate) {
+      const sessionDate = new Date(session.scheduledDate || session.sessionDate);
+      if (startDate && sessionDate < new Date(startDate)) {
+        return false;
+      }
+      if (endDate && sessionDate > new Date(endDate)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Pagination ở FE
+  const totalCount = filteredSessions.length;
+  const totalPages = Math.ceil(totalCount / pagination.itemsPerPage);
+  const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+  const endIndex = startIndex + pagination.itemsPerPage;
+  const sessions = filteredSessions.slice(startIndex, endIndex);
 
   // Update pagination total items when data changes
   useEffect(() => {
-    pagination.setItemsPerPage(pagination.itemsPerPage);
-  }, [totalCount]);
+    // Đảm bảo currentPage không vượt quá totalPages
+    if (pagination.currentPage > totalPages && totalPages > 0) {
+      pagination.setCurrentPage(totalPages);
+    }
+  }, [totalCount, totalPages]);
 
-  // Calculate metrics
+  // Calculate metrics từ filteredSessions
   const metrics = {
-    attended: sessions.reduce((sum: number, s: any) => sum + (s.attendanceCount || 0), 0),
-    onTime: sessions.reduce((sum: number, s: any) => sum + (s.status === 'in_progress' ? (s.attendanceCount || 0) : 0), 0),
-    late: sessions.reduce((sum: number, s: any) => sum + (s.lateCount || 0), 0),
-    excusedAbsence: sessions.reduce((sum: number, s: any) => sum + (s.excusedAbsenceCount || 0), 0),
-    unexcusedAbsence: sessions.reduce((sum: number, s: any) => sum + (s.unexcusedAbsenceCount || 0), 0),
-    notAttended: sessions.reduce((sum: number, s: any) => sum + (s.notAttendedCount || 0), 0)
+    attended: filteredSessions.reduce((sum: number, s: any) => sum + (s.attendanceCount || 0), 0),
+    onTime: filteredSessions.reduce((sum: number, s: any) => sum + (s.status === 'in_progress' ? (s.attendanceCount || 0) : 0), 0),
+    late: filteredSessions.reduce((sum: number, s: any) => sum + (s.lateCount || 0), 0),
+    excusedAbsence: filteredSessions.reduce((sum: number, s: any) => sum + (s.excusedAbsenceCount || 0), 0),
+    unexcusedAbsence: filteredSessions.reduce((sum: number, s: any) => sum + (s.unexcusedAbsenceCount || 0), 0),
+    notAttended: filteredSessions.reduce((sum: number, s: any) => sum + (s.notAttendedCount || 0), 0)
   };
 
-  // Status filters với counts
+  // Status filters với counts từ allSessions
   const statusFilters = [
-    { key: SessionStatus.ALL, label: SESSION_STATUS_LABELS[SessionStatus.ALL], count: totalCount },
-    { key: SessionStatus.SCHEDULED, label: SESSION_STATUS_LABELS[SessionStatus.SCHEDULED], count: sessions.filter((s: any) => s.status === SessionStatus.SCHEDULED).length },
-    { key: SessionStatus.COMPLETED, label: SESSION_STATUS_LABELS[SessionStatus.COMPLETED], count: sessions.filter((s: any) => s.status === SessionStatus.COMPLETED).length },
-    { key: SessionStatus.CANCELLED, label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED], count: sessions.filter((s: any) => s.status === SessionStatus.CANCELLED).length }
+    { key: SessionStatus.HAPPENING, label: SESSION_STATUS_LABELS[SessionStatus.HAPPENING], count: allSessions.filter((s: any) => s.status === SessionStatus.HAPPENING).length }, 
+    { key: SessionStatus.END, label: SESSION_STATUS_LABELS[SessionStatus.END], count: allSessions.filter((s: any) => s.status === SessionStatus.END).length },
+    { key: SessionStatus.HAS_NOT_HAPPENED, label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED], count: allSessions.filter((s: any) => s.status === SessionStatus.HAS_NOT_HAPPENED).length }
   ];
 
-  const getStatusBadge = (status: string) => {
+  // Handle delete selected sessions
+  const handleDeleteSessions = async () => {
+    console.log(selectedSessions);
+    
+    if (selectedSessions.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 buổi học để xóa');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa ${selectedSessions.length} buổi học đã chọn?`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await classService.deleteSessions(classId, selectedSessions);
+      toast.success(`Đã xóa ${selectedSessions.length} buổi học thành công!`);
+      setSelectedSessions([]);
+      refetch();
+    } catch (error: any) {
+      console.error('Error deleting sessions:', error);
+      toast.error(error?.message || 'Có lỗi xảy ra khi xóa buổi học');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {  
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
-      [SessionStatus.COMPLETED]: { 
+      [SessionStatus.END]: { 
         variant: 'default', 
-        label: SESSION_STATUS_LABELS[SessionStatus.COMPLETED], 
-        className: SESSION_STATUS_COLORS[SessionStatus.COMPLETED],
+        label: SESSION_STATUS_LABELS[SessionStatus.END], 
+        className: SESSION_STATUS_COLORS[SessionStatus.END],
         icon: CheckCircle
       },
-      [SessionStatus.SCHEDULED]: { 
+      [SessionStatus.HAPPENING]: { 
         variant: 'secondary', 
-        label: SESSION_STATUS_LABELS[SessionStatus.SCHEDULED],
-        className: SESSION_STATUS_COLORS[SessionStatus.SCHEDULED],
+        label: SESSION_STATUS_LABELS[SessionStatus.HAPPENING],
+        className: SESSION_STATUS_COLORS[SessionStatus.HAPPENING],
         icon: Clock
       },
-      [SessionStatus.CANCELLED]: { 
+      [SessionStatus.HAS_NOT_HAPPENED]: {   
         variant: 'destructive', 
-        label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED],
-        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED],
+        label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED],
+        className: SESSION_STATUS_COLORS[SessionStatus.HAS_NOT_HAPPENED],
         icon: XCircle
       }
     };
-    const config = variants[status] || variants[SessionStatus.SCHEDULED];
+    const config = variants[status] || variants[SessionStatus.HAPPENING];
     const Icon = config.icon;
     return (
       <Badge variant={config.variant} className={config.className}>
@@ -161,7 +226,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       render: (session: any, index: number) => (
         <div>
           <div className="font-medium text-blue-600 cursor-pointer hover:underline">
-            {session.topic || session.name || `Buổi ${index + 1}`}
+            {`${session.notes}`}
                       </div>
                       <div className="text-sm text-gray-500">
             {(() => {
@@ -371,29 +436,31 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
             </h1>
             <Info className="h-4 w-4 text-gray-400" />
               </div>
-          <Sheet open={isAddLessonOpen} onOpenChange={setIsAddLessonOpen}>
-            <SheetTrigger asChild>
-              <Button >
-                <Plus className="h-4 w-4 mr-2" />
-                Thêm mới buổi học
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Tạo lịch học tự động</SheetTitle>
-              </SheetHeader>
-              <AddLessonForm
-                classId={classId}
-                expectedStartDate={classData?.expectedStartDate}
-                actualStartDate={classData?.actualStartDate}
-                actualEndDate={classData?.actualEndDate}
-                onClose={() => setIsAddLessonOpen(false)}
-                onGenerated={() => {
-                  refetch();
-                }}
-              />
-            </SheetContent>
-          </Sheet>
+          <div className="flex gap-2">
+            <Sheet open={isAddLessonOpen} onOpenChange={setIsAddLessonOpen}>
+              <SheetTrigger asChild>
+                <Button >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Thêm mới buổi học
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Tạo lịch học tự động</SheetTitle>
+                </SheetHeader>
+                <AddLessonForm
+                  classId={classId}
+                  expectedStartDate={classData?.expectedStartDate}
+                  actualStartDate={classData?.actualStartDate}
+                  actualEndDate={classData?.actualEndDate}
+                  onClose={() => setIsAddLessonOpen(false)}
+                  onGenerated={() => {
+                    refetch();
+                  }}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
 
@@ -466,6 +533,40 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           </div>
         </div>
 
+        {/* Selection Bar - Thanh hiển thị khi có items được chọn */}
+        {selectedSessions.length > 0 && (
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
+            <div className="px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={selectedSessions.length === filteredSessions.length && filteredSessions.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      const allIds = filteredSessions.map((session: any) => session.id);
+                      setSelectedSessions(allIds);
+                    } else {
+                      setSelectedSessions([]);
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+                  Đã chọn {selectedSessions.length}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                onClick={handleDeleteSessions}
+                disabled={isDeleting}
+                title="Xóa buổi học đã chọn"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* DataTable */}
         <DataTable
           data={sessions}
@@ -493,6 +594,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           selectedItems={selectedSessions}
           onSelectionChange={setSelectedSessions}
           getItemId={(item: any) => item.id}
+          allData={filteredSessions}
         />
       </div>
     </div>
@@ -545,7 +647,7 @@ const AddLessonForm = ({
     }
     
     const now = new Date();
-    if (startDate <= now) {
+    if (startDate < now) {
       return "Ngày bắt đầu phải sau ngày hiện tại";
     }
     
@@ -633,14 +735,8 @@ const AddLessonForm = ({
   const handleStartDateSelect = (date: Date | undefined) => {
     if (date) {
       setStartDate(date);
-      // Auto-update end date if not manually set
-      if (!(actualStartDate || actualEndDate)) {
-        const startYear = date.getFullYear();
-        const endYear = startYear + 1;
-        const endOfMay = new Date(endYear, 4, 31); // Tháng 5 (index 4), ngày 31
-        endOfMay.setHours(23, 59, 59, 999);
-        setEndDate(endOfMay);
-      }
+      // KHÔNG tự động thay đổi endDate khi startDate thay đổi
+      // endDate luôn giữ giá trị mặc định (31/05) hoặc giá trị user đã chọn
       setIsCalendarOpen(false);
     }
   };
@@ -731,12 +827,10 @@ const AddLessonForm = ({
             </PopoverContent>
           </Popover>
         </div>
-        <p className="text-xs text-gray-500">
-          Ngày bắt đầu phải sau ngày hiện tại và trước ngày kết thúc
-        </p>
+
       </div>
 
-      {/* End Date - chỉ hiện khi lớp thiếu actualStartDate/actualEndDate */}
+      {/* End Date */}
       {(
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
@@ -750,7 +844,7 @@ const AddLessonForm = ({
                   className="flex-1 justify-start text-left font-normal"
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  {format(endDate, 'dd/MM/yyyy, HH:mm')}
+                  {format(endDate, 'dd/MM/yyyy')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -767,6 +861,7 @@ const AddLessonForm = ({
               </PopoverContent>
             </Popover>
           </div>
+
         </div>
       )}
 

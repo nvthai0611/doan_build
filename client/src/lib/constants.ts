@@ -176,24 +176,22 @@ export const ACTIVE_TO_COMPLETED_CONDITIONS = {
 
 // ==================== SESSION STATUS ====================
 export enum SessionStatus {
-  SCHEDULED = 'scheduled',    // Đã lên lịch
-  COMPLETED = 'completed',    // Đã hoàn thành
-  CANCELLED = 'cancelled',    // Đã hủy
-  ALL = 'all'                // Tất cả (dùng cho filter)
+  HAPPENING = 'happening',    // Đang diễn ra
+  END = 'end',    // Đã hoàn thành
+  HAS_NOT_HAPPENED = 'has_not_happened',    // Đã hủy
+
 }
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
-  [SessionStatus.ALL]: 'Tất cả',
-  [SessionStatus.SCHEDULED]: 'Đã lên lịch',
-  [SessionStatus.COMPLETED]: 'Đã hoàn thành',
-  [SessionStatus.CANCELLED]: 'Đã hủy'
+  [SessionStatus.HAPPENING]: 'Đang diễn ra',
+  [SessionStatus.END]: 'Đã hoàn thành',
+  [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra'
 }
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
-  [SessionStatus.ALL]: 'border-blue-500 text-blue-700 bg-blue-50',
-  [SessionStatus.SCHEDULED]: 'border-blue-500 text-blue-700 bg-blue-50',
-  [SessionStatus.COMPLETED]: 'border-green-500 text-green-700 bg-green-50',
-  [SessionStatus.CANCELLED]: 'border-red-500 text-red-700 bg-red-50'
+  [SessionStatus.HAPPENING]: 'border-green-500 text-green-700 bg-green-50',
+  [SessionStatus.END]: 'border-red-500 text-red-700 bg-red-50',
+  [SessionStatus.HAS_NOT_HAPPENED]: 'border-gray-500 text-gray-700 bg-gray-50'
 }
 
 // ==================== SESSION TYPE ====================
@@ -232,17 +230,27 @@ export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
 
 // ==================== ENROLLMENT STATUS ====================
 export enum EnrollmentStatus {
-  ACTIVE = 'active',          // Đang học
-  INACTIVE = 'inactive',     // Tạm dừng
-  COMPLETED = 'completed',    // Đã hoàn thành
-  CANCELLED = 'cancelled'     // Đã hủy
+  ALL = 'all',
+  NOT_BEEN_UPDATED = 'not_been_updated',      // Chưa cập nhật
+  STUDYING = 'studying',      // Đang học
+  STOPPED = 'stopped',        // Dừng học
+  GRADUATED = 'graduated',    // Tốt nghiệp
 }
 
 export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
-  [EnrollmentStatus.ACTIVE]: 'Đang học',
-  [EnrollmentStatus.INACTIVE]: 'Tạm dừng',
-  [EnrollmentStatus.COMPLETED]: 'Đã hoàn thành',
-  [EnrollmentStatus.CANCELLED]: 'Đã hủy'
+  [EnrollmentStatus.ALL]: 'Tất cả',
+  [EnrollmentStatus.NOT_BEEN_UPDATED]: 'Chưa cập nhật lịch học',
+  [EnrollmentStatus.STUDYING]: 'Đang học',
+  [EnrollmentStatus.STOPPED]: 'Dừng học',
+  [EnrollmentStatus.GRADUATED]: 'Tốt nghiệp'
+}
+
+export const ENROLLMENT_STATUS_COLORS: Record<EnrollmentStatus, string> = {
+  [EnrollmentStatus.ALL]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [EnrollmentStatus.NOT_BEEN_UPDATED]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [EnrollmentStatus.STUDYING]: 'border-green-500 text-green-700 bg-green-50',
+  [EnrollmentStatus.STOPPED]: 'border-purple-500 text-purple-700 bg-purple-50',
+  [EnrollmentStatus.GRADUATED]: 'border-red-500 text-red-700 bg-red-50'
 }
 
 // ==================== REQUEST STATUS ====================

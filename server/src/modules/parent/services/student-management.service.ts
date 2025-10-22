@@ -484,4 +484,100 @@ export class StudentManagementService {
 
     return { data: result, message: 'Lấy điểm số thành công' };
   }
+
+  async getChildAttendanceForParent(userId: string, childId: string, filters: { classId?: string; startDate?: string; endDate?: string } = {}) {
+    // Xác thực parent-child relationship
+    const parent = await this.prisma.parent.findUnique({ where: { userId }, select: { id: true } });
+    if (!parent) {
+      return { success: false, message: 'Không tìm thấy phụ huynh' };
+    }
+
+    const student = await this.prisma.student.findFirst({ 
+      where: { id: childId, parentId: parent.id }, 
+      select: { id: true } 
+    });
+    if (!student) {
+      return { success: false, message: 'Không tìm thấy học sinh' };
+    }
+
+    // Lấy các lớp học sinh đang học
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { 
+        studentId: student.id, 
+        status: 'studying',
+        ...(filters.classId ? { classId: filters.classId } : {})
+      },
+      select: { classId: true }
+    });
+
+    const classIds = enrollments.map(e => e.classId);
+    if (classIds.length === 0) {
+      return { success: true, data: [], message: 'Học sinh chưa có lớp học nào' };
+    }
+
+    // Lấy tất cả sessions của các lớp học sinh đang học
+    const sessionWhere: any = {
+      classId: { in: classIds }
+    };
+
+    if (filters.startDate || filters.endDate) {
+      sessionWhere.sessionDate = {};
+      if (filters.startDate) sessionWhere.sessionDate.gte = new Date(filters.startDate);
+      if (filters.endDate) sessionWhere.sessionDate.lte = new Date(filters.endDate);
+    }
+
+    const sessions = await this.prisma.classSession.findMany({
+      where: sessionWhere,
+      include: {
+        class: {
+          include: {
+            subject: { select: { name: true } },
+            teacher: { 
+              include: { 
+                user: { select: { fullName: true } } 
+              } 
+            }
+          }
+        },
+        room: { select: { name: true } },
+        attendances: {
+          where: { studentId: student.id },
+          include: {
+            recordedByTeacher: {
+              include: {
+                user: { select: { fullName: true } }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        sessionDate: 'asc'
+      }
+    });
+
+    const result = sessions.map((session) => {
+      const attendance = session.attendances[0]; // Lấy attendance record nếu có
+      return {
+        id: session.id,
+        sessionId: session.id,
+        sessionDate: session.sessionDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        status: session.status,
+        attendanceStatus: attendance?.status || null,
+        attendanceRecordedAt: attendance?.recordedAt,
+        attendanceRecordedBy: attendance?.recordedByTeacher?.user?.fullName,
+        attendanceNote: attendance?.note,
+        room: session.room,
+        class: {
+          name: session.class.name,
+          subject: session.class.subject
+        },
+        teacher: session.class.teacher?.user?.fullName
+      };
+    });
+
+    return { success: true, data: result, message: 'Lấy lịch sử điểm danh thành công' };
+  }
 }

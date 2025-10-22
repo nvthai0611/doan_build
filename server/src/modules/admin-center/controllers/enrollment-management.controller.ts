@@ -59,6 +59,14 @@ export class EnrollmentManagementController {
         return this.enrollmentManagementService.checkCapacity(classId);
     }
 
+    @Get('class/:classId/available-students')
+    @ApiOperation({ summary: 'Lấy danh sách students CHƯA enroll vào lớp này' })
+    @ApiResponse({ status: 200, description: 'Danh sách students có thể thêm vào lớp' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    async getAvailableStudents(@Param('classId') classId: string, @Query() query: any) {
+        return this.enrollmentManagementService.getAvailableStudents(classId, query);
+    }
+
     // ============ STUDENT-SPECIFIC OPERATIONS ============
 
     @Get('student/:studentId')

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Users, User, Mail, Hash, Calendar, CheckCircle2, Clock, AlertCircle, UserCheck } from "lucide-react"
+import { Users, User, Mail, Hash, CheckCircle2, Clock, AlertCircle } from "lucide-react"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentClassInformationService } from "../../../../../services/student/classInformation/classInformation.service"
 
@@ -22,28 +22,28 @@ export function StudentsTab({ classId }: StudentsTabProps) {
 
   const getStatusLabel = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return 'Đang học'
-    if (s === 'pending') return 'Chờ duyệt'
+    if (s === 'active' || s === 'studying') return 'Đang học'
+    if (s === 'not_been_updated') return 'Chưa cập nhật'
     if (s === 'completed') return 'Hoàn thành'
-    if (s === 'cancelled' || s === 'canceled') return 'Đã hủy'
+    if (s === 'dropped') return 'Đã bỏ học'
     return 'Không xác định'
   }
 
   const statusClasses = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
-    if (s === 'pending') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
+    if (s === 'active' || s === 'studying') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
+    if (s === 'not_been_updated') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
     if (s === 'completed') return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border border-blue-300 shadow-sm'
-    if (s === 'cancelled' || s === 'canceled') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
+    if (s === 'dropped') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
     return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 shadow-sm'
   }
 
   const getStatusIcon = (status?: string) => {
     const s = (status || 'active').toLowerCase()
-    if (s === 'active') return <CheckCircle2 className="w-3 h-3" />
-    if (s === 'pending') return <Clock className="w-3 h-3" />
+    if (s === 'active' || s === 'studying') return <CheckCircle2 className="w-3 h-3" />
+    if (s === 'not_been_updated') return <Clock className="w-3 h-3" />
     if (s === 'completed') return <CheckCircle2 className="w-3 h-3" />
-    if (s === 'cancelled' || s === 'canceled') return <AlertCircle className="w-3 h-3" />
+    if (s === 'dropped') return <AlertCircle className="w-3 h-3" />
     return <AlertCircle className="w-3 h-3" />
   }
 
@@ -72,7 +72,7 @@ export function StudentsTab({ classId }: StudentsTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(membersQuery.data as any[]).map((m) => (
+            {(membersQuery.data as any[]).map((m: any) => (
               <div key={m.id} className="border rounded-xl p-4 bg-white hover:shadow-lg transition-all duration-300 border-l-4 border-l-cyan-500">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">

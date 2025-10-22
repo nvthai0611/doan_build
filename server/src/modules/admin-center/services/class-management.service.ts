@@ -7,6 +7,7 @@ import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 import { generateQNCode } from '../../../utils/function.util';
 import { DEFAULT_STATUS, ClassStatus } from '../../../common/constants';
+import { log } from 'console';
 
 @Injectable()
 export class ClassManagementService {
@@ -342,7 +343,11 @@ export class ClassManagementService {
                         }
                     },
                     enrollments: {
-                        where: { status: 'active' },
+                        where: { 
+                            status: {
+                                in: ['not_been_updated', 'studying']
+                            }
+                        },
                         include: {
                             student: {
                                 include: {
@@ -528,7 +533,7 @@ export class ClassManagementService {
             const maxAttempts = 10;
             
             while (!isUnique && attempts < maxAttempts) {
-                classCode = generateQNCode();
+                classCode = generateQNCode('class');
                 const existingClass = await this.prisma.class.findUnique({
                     where: { classCode }
                 });
@@ -843,7 +848,9 @@ export class ClassManagementService {
                     subject: true,
                     enrollments: {
                         where: {
-                            status: 'active'
+                            status: {
+                                in: ['not_been_updated', 'studying']  // Các trạng thái "đang hoạt động"
+                            }
                         },
                         include: {
                             student: {
@@ -861,7 +868,9 @@ export class ClassManagementService {
                         select: {
                             enrollments: {
                                 where: {
-                                    status: 'active'
+                                    status: {
+                                        in: ['not_been_updated', 'studying']  // Các trạng thái "đang hoạt động"
+                                    }
                                 }
                             }
                         }
@@ -918,8 +927,8 @@ export class ClassManagementService {
             }
 
             // 5. Kiểm tra trạng thái lớp học
-            if (classInfo.status !== 'active') {
-                validationErrors.push(`Lớp học đang ở trạng thái '${classInfo.status}', cần chuyển sang trạng thái 'active'`);
+            if (classInfo.status === 'active') {
+                validationErrors.push(`Lớp học đang ở trạng thái '${classInfo.status}', cần chuyển sang trạng thái 'draft hoặc ready'`);
             }
 
             // Nếu có lỗi validation, throw exception
@@ -961,10 +970,10 @@ export class ClassManagementService {
                         HttpStatus.BAD_REQUEST
                     );
                 }
+                
                 await this.prisma.classSession.deleteMany({
                     where: {
                         classId,
-                        sessionDate: { gte: sessionStartDate, lte: sessionEndDate }
                     }
                 });
             }
@@ -1014,6 +1023,8 @@ export class ClassManagementService {
 
             const overallStart = new Date(sessionStartDate);
             const overallEnd = new Date(sessionEndDate);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
 
             for (let d = new Date(overallStart); d <= overallEnd; d.setDate(d.getDate() + 1)) {
                 const dayOfWeek = d.getDay();
@@ -1033,6 +1044,16 @@ export class ClassManagementService {
                     const endTime: string = s.endTime;
                     if (!startTime || !endTime) continue;
 
+                    // Tính khoảng cách ngày giữa session và hiện tại
+                    const sessionDate = new Date(d);
+                    sessionDate.setHours(0, 0, 0, 0);
+                    const diffInDays = Math.ceil((sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    // Auto set status dựa trên khoảng cách
+                    // < 3 ngày: happening (đang diễn ra)
+                    // >= 3 ngày: has_not_happened (chưa diễn ra)
+                    const sessionStatus = diffInDays < 3 ? 'happening' : 'has_not_happened';
+
                     sessions.push({
                         classId,
                         academicYear: classInfo.academicYear || new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
@@ -1040,7 +1061,7 @@ export class ClassManagementService {
                         startTime,
                         endTime,
                         roomId: classInfo.roomId,
-                        status: 'scheduled',
+                        status: sessionStatus,
                         notes: `Buổi ${displayIndex++} - ${classInfo.name}`,
                         createdAt: new Date(),
                     });
@@ -1072,6 +1093,17 @@ export class ClassManagementService {
                 skipDuplicates: true
             });
 
+            // 🔥 AUTO-UPDATE: Chuyển enrollment status từ not_been_updated → studying
+            const updatedEnrollments = await this.prisma.enrollment.updateMany({
+                where: {
+                    classId: classId,
+                    status: 'not_been_updated'
+                },
+                data: {
+                    status: 'studying'
+                }
+            });
+
             // Cập nhật lại ngày thực tế của lớp học (nếu có start/end trong body)
             if (startDate && endDate) {
                 await this.prisma.class.update({
@@ -1094,6 +1126,7 @@ export class ClassManagementService {
                     endDate: sessionEndDate,
                     sessions: filteredSessions,
                     validationPassed: true,
+                    updatedEnrollments: updatedEnrollments.count,
                     classInfo: {
                         id: classInfo.id,
                         name: classInfo.name,
@@ -1104,7 +1137,7 @@ export class ClassManagementService {
                         status: classInfo.status
                     }
                 },
-                message: `Tạo thành công ${createdSessions.count} buổi học cho lớp ${classInfo.name}`
+                message: `Tạo thành công ${createdSessions.count} buổi học cho lớp ${classInfo.name}. ${updatedEnrollments.count} học sinh đã chuyển sang trạng thái "Đang học".`
             };
 
         } catch (error) {
@@ -1264,6 +1297,118 @@ export class ClassManagementService {
                 {
                     success: false,
                     message: 'Có lỗi xảy ra khi lấy danh sách buổi học'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // Xóa nhiều buổi học
+    async deleteSessions(classId: string, sessionIds: string[]) {
+        try {
+            // Validate input
+            if (!sessionIds || !Array.isArray(sessionIds) || sessionIds.length === 0) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Vui lòng chọn ít nhất 1 buổi học để xóa'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Validate class exists
+            const classData = await this.prisma.class.findUnique({
+                where: { id: classId },
+                select: { 
+                    id: true, 
+                    name: true,
+                    status: true 
+                }
+            });
+
+            if (!classData) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không tìm thấy lớp học'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Get sessions to delete
+            const sessionsToDelete = await this.prisma.classSession.findMany({
+                where: {
+                    id: { in: sessionIds },
+                    classId: classId
+                },
+                select: {
+                    id: true,
+                    status: true,
+                    sessionDate: true,
+                    notes: true,
+                    _count: {
+                        select: {
+                            attendances: true
+                        }
+                    }
+                }
+            });
+
+            if (sessionsToDelete.length === 0) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không tìm thấy buổi học nào để xóa'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Check if any session has already ended or has attendances
+            const invalidSessions = sessionsToDelete.filter(
+                session => session.status === 'end' || session._count.attendances > 0
+            );
+
+            if (invalidSessions.length > 0) {
+                const invalidSessionNames = invalidSessions.map(s => s.notes || 'Không có tên').join(', ');
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: `Không thể xóa ${invalidSessions.length} buổi học đã kết thúc hoặc đã có điểm danh: ${invalidSessionNames}`
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Delete sessions
+            const deletedResult = await this.prisma.classSession.deleteMany({
+                where: {
+                    id: { in: sessionIds },
+                    classId: classId
+                }
+            });
+
+            return {
+                success: true,
+                data: {
+                    deletedCount: deletedResult.count,
+                    requestedCount: sessionIds.length,
+                    classId: classId,
+                    className: classData.name
+                },
+                message: `Đã xóa ${deletedResult.count} buổi học thành công`
+            };
+
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Có lỗi xảy ra khi xóa buổi học'
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
@@ -1459,7 +1604,11 @@ export class ClassManagementService {
                 where: { id },
                 include: {
                     enrollments: {
-                        where: { status: 'active' }
+                        where: { 
+                            status: {
+                                in: ['not_been_updated', 'studying']
+                            }
+                        }
                     }
                 }
             });
@@ -1810,9 +1959,11 @@ export class ClassManagementService {
             }
 
             const totalStudents = classItem.enrollments.length;
-            const activeStudents = classItem.enrollments.filter(e => e.status === 'active').length;
-            const completedStudents = classItem.enrollments.filter(e => e.status === 'completed').length;
-            const withdrawnStudents = classItem.enrollments.filter(e => e.status === 'withdrawn').length;
+            const activeStudents = classItem.enrollments.filter(e => 
+                e.status === 'not_been_updated' || e.status === 'studying'
+            ).length;
+            const completedStudents = classItem.enrollments.filter(e => e.status === 'graduated').length;
+            const withdrawnStudents = classItem.enrollments.filter(e => e.status === 'stopped').length;
 
             return {
                 success: true,
