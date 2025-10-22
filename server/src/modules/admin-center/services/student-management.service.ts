@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
+import { generateQNCode } from 'src/utils/function.util';
 import hash from 'src/utils/hasing.util';
 import { checkId } from 'src/utils/validate.util';
 
@@ -142,7 +143,19 @@ export class StudentManagementService {
 
       // Generate student code
       const studentCount = await this.prisma.student.count();
-      const studentCode = `ST${(studentCount + 1).toString().padStart(6, '0')}`;
+      let studentCode = generateQNCode('student');
+
+      //checkcode tồn tại chưa
+      while( true){
+        const existingStudentWithCode = await this.prisma.student.findFirst({
+          where: { studentCode: studentCode }
+        });
+
+        if(!existingStudentWithCode){
+          break;
+        }
+        studentCode = generateQNCode('student');
+      }
 
       const defaultPassword = createStudentData.password || '123456';
 

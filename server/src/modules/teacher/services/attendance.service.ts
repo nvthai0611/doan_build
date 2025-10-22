@@ -19,6 +19,9 @@ export class AttendanceService {
       }
       const checkExistSession = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
+        include: {
+        class: true,
+      },
       });
 
       if (!checkExistSession) {
@@ -29,6 +32,8 @@ export class AttendanceService {
           HttpStatus.NOT_FOUND,
         );
       }
+      // Nếu lớp học chưa có ngày bắt đầu thực tế, sử dụng ngày hiện tại
+    const classStartDate = checkExistSession.class.actualStartDate || new Date();
       //get list student in class session
       const result = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
@@ -36,6 +41,12 @@ export class AttendanceService {
           class: {
             include: {
               enrollments: {
+                where:{
+                  status: 'active',
+                  enrolledAt: {
+                    lte: classStartDate
+                  }
+                },
                 include: {
                   student: {
                     include: {
