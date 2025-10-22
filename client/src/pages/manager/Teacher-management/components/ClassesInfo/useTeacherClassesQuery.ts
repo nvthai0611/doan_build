@@ -1,13 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { classService } from '../../../../../services/center-owner/class-management/class.service'
 
-interface UseTeacherClassesParams {
-  teacherId: string
-  status?: string
-  search?: string
-  page?: number
-  limit?: number
-}
 
 export const useTeacherClassesQuery = ({
   teacherId,
@@ -15,7 +8,7 @@ export const useTeacherClassesQuery = ({
   search = '',
   page = 1,
   limit = 10
-}: UseTeacherClassesParams) => {
+}: any) => {
   return useQuery({
     queryKey: ['teacher-classes', teacherId, status, search, page, limit],
     queryFn: async () => {
@@ -27,7 +20,7 @@ export const useTeacherClassesQuery = ({
       })
       return response
     },
-    refetchOnWindowFocus: true, // Không gọi lại khi focus window
-    refetchOnMount: true, // Không gọi lại khi mount
+    refetchOnWindowFocus: true, 
+    refetchOnMount: true,
   })
 }

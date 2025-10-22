@@ -53,8 +53,6 @@ interface StudentsInfoProps {
 
 export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [isSelectStudentOpen, setIsSelectStudentOpen] = useState(false);
   const debouncedSearch = useDebounce(searchTerm, 500);
@@ -522,50 +520,18 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
           </div>
         </div>
 
-        {/* Search and Filter Bar */}
+        {/* Search Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 mb-6">
-          <div className="flex items-end justify-between gap-4">
-            <div className="flex items-end gap-4 flex-1">
-              {/* Date filters */}
-              <div className="flex gap-4">
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Ngày bắt đầu học
-                  </label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-48"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">
-                    Ngày kết thúc học
-                  </label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-48"
-                  />
-                </div>
-              </div>
-
-              {/* Search */}
-              <div className="flex flex-col flex-1 max-w-md">
-                <label className="text-sm font-medium text-gray-700 mb-1">
-                  Tìm kiếm
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Nhập tên học viên"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Tìm kiếm theo tên, email, SĐT học viên, mã học viên, hoặc thông tin phụ huynh..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
           </div>

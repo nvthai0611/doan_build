@@ -391,10 +391,18 @@ export class EnrollmentManagementService {
 
             const where: any = { classId };
 
+            // Search đầy đủ: tên, email, SĐT học viên, mã học viên, thông tin phụ huynh
             if (search) where.student = {
                 OR: [
+                    // Thông tin học viên
                     { user: { fullName: { contains: search, mode: 'insensitive' } } },
-                    { user: { email: { contains: search, mode: 'insensitive' } } }
+                    { user: { email: { contains: search, mode: 'insensitive' } } },
+                    { user: { phone: { contains: search, mode: 'insensitive' } } },
+                    { studentCode: { contains: search, mode: 'insensitive' } },
+                    // Thông tin phụ huynh
+                    { parent: { user: { fullName: { contains: search, mode: 'insensitive' } } } },
+                    { parent: { user: { email: { contains: search, mode: 'insensitive' } } } },
+                    { parent: { user: { phone: { contains: search, mode: 'insensitive' } } } }
                 ]
             };
 
@@ -439,7 +447,7 @@ export class EnrollmentManagementService {
                 },
                 orderBy: { enrolledAt: 'desc' }
             });
-
+            
             // Tính số buổi đã học và tổng buổi cho từng học sinh
             const enrollmentsWithStats = await Promise.all(
                 enrollments.map(async (enrollment) => {
@@ -476,7 +484,6 @@ export class EnrollmentManagementService {
                     };
                 })
             );
-
             return {
                 success: true,
                 message: 'Lấy danh sách học sinh thành công',

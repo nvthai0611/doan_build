@@ -1010,6 +1010,7 @@ export class ClassManagementService {
                 startTime: string;
                 endTime: string;
                 roomId: string | null;
+                teacherId: string | null;
                 status: string;
                 notes: string;
                 createdAt: Date;
@@ -1063,6 +1064,7 @@ export class ClassManagementService {
                         startTime,
                         endTime,
                         roomId: classInfo.roomId,
+                        teacherId: classInfo.teacherId,
                         status: sessionStatus,
                         notes: `Buổi ${displayIndex++} - ${classInfo.name}`,
                         createdAt: new Date(),
@@ -1092,10 +1094,10 @@ export class ClassManagementService {
             // Tạo buổi học trong database
             const createdSessions = await this.prisma.classSession.createMany({
                 data: filteredSessions,
-                skipDuplicates: true
+                skipDuplicates: true,
             });
 
-            // 🔥 AUTO-UPDATE: Chuyển enrollment status từ not_been_updated → studying
+            // AUTO-UPDATE: Chuyển enrollment status từ not_been_updated → studying
             const updatedEnrollments = await this.prisma.enrollment.updateMany({
                 where: {
                     classId: classId,
