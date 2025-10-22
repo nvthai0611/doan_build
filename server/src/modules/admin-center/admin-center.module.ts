@@ -26,6 +26,8 @@ import { ParentManagementService } from './services/parent-management.service';
 import { SharedModule } from '../shared/shared.module';
 import { SettingsManagementController } from './controllers/settings-management.controller';
 import { SettingsManagementService } from './services/settings-management.service';
+import { FileManagementController } from './controllers/file-management.controller';
+import { FileManagementService } from './services/file-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 
 @Module({
@@ -51,6 +53,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     IncidentHandleController,
     ParentManagementController,
     SettingsManagementController,
+    FileManagementController,
   ],
   providers: [
     PrismaService,
@@ -66,6 +69,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     IncidentHandleService,
     ParentManagementService,
     SettingsManagementService,
+    FileManagementService,
   ],
 })
 //check

@@ -166,8 +166,22 @@ export function ParentStudentLogin() {
                 </>
               ) : (
                 "Đăng nhập"
-              )}
-            </Button>
+            )}
+          </Button>
+
+          {/* Register Link */}
+          <div className="text-center pt-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Chưa có tài khoản?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/auth/register/family")}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+              >
+                Đăng ký ngay
+              </button>
+            </p>
+          </div>
           </form>
 
           {/* Demo Accounts */}

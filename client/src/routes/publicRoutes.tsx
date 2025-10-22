@@ -4,6 +4,7 @@ import Home from "../pages/Home/Home";
 import { LoginForm } from "../pages/Auth/Login";
 import { PortalSelection } from "../pages/Auth/PortalSelection";
 import { ParentStudentLogin } from "../pages/Auth/ParentStudentLogin";
+import { ParentRegister } from "../pages/Auth/ParentRegister";
 import { AdminLogin } from "../pages/Auth/AdminLogin";
 import { Route, Navigate } from "react-router-dom";
 import GuestMiddleware from "../middlewares/GuestMiddleware";
@@ -64,6 +65,7 @@ export const publicRoutes = (
         
         {/* Family Portal - Parent & Student */}
         <Route path="/auth/login/family" element={<ParentStudentLogin />} />
+        <Route path="/auth/register/family" element={<ParentRegister />} />
         
         {/* Admin Portal - IT Admin */}
         <Route path="/auth/login/admin" element={<AdminLogin />} />

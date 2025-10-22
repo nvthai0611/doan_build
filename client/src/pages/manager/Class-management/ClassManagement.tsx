@@ -235,6 +235,10 @@ export const ClassManagement = () => {
         navigate(`/center-qn/classes/${classItem.id}`);
     };
 
+    const handleViewLessons = (classItem: any) => {
+        navigate(`/center-qn/classes/${classItem.id}#lessons`);
+    };
+
     const handleAssignTeacher = (classItem: any) => {
         setSelectedClass(classItem);
         setIsAssignTeacherDialogOpen(true);
@@ -509,7 +513,10 @@ export const ClassManagement = () => {
                             <Edit className="w-4 h-4" />
                             Sửa lịch học
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 cursor-pointer">
+                        <DropdownMenuItem 
+                            className="gap-2 cursor-pointer"
+                            onClick={() => handleViewLessons(item)}
+                        >
                             <Edit className="w-4 h-4" />
                             Chương trình học
                         </DropdownMenuItem>

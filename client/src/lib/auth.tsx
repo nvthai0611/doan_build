@@ -62,20 +62,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           const userData = JSON.parse(savedUser || '{}') as User
           setUser(userData)
-          
-          // ✅ Enable token verification
           try {
             await verifyToken()
-            console.log("✅ Token verified successfully")
           } catch (error) {
-            console.log("Token verification failed, will auto-refresh on next API call")
           }
         } catch (error) {
-          console.error("Error parsing saved user data:", error)
           clearAuthData()
         }
       } else {
-        console.log("AuthProvider: No saved user or access token found")
       }
       setLoading(false)
     }
@@ -85,24 +79,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const verifyToken = async () => {
     try {
-      console.log("verifyToken: Calling getProfile...")
       const response = await authService.getProfile()
-      console.log("verifyToken: Profile response:", response)
       setUser(response as User)
       Cookies.set("user", JSON.stringify(response))
-      console.log("verifyToken: Token verification successful")
     } catch (error) {
-      console.error("Token verification failed:", error)
       // Token is invalid, try to refresh
       const refreshToken = Cookies.get("refreshToken")
       if (!refreshToken || refreshToken === 'undefined') {
         throw new Error("No refresh token available")
       }
       try {
-        console.log("verifyToken: Attempting token refresh...")
         await authService.refreshToken(refreshToken)
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError)
         clearAuthData()
       }
     }
@@ -114,8 +102,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!refreshToken || refreshToken === 'undefined') {
         throw new Error("No refresh token available")
       }
-      
-      console.log("🔄 Refreshing token from auth context...")
       const response = await authService.refreshToken(refreshToken)
       
       // ✅ Lưu access token mới
@@ -124,7 +110,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // ✅ Lưu refresh token mới (ROTATION)
       if (response.refreshToken) {
-        console.log("✅ Updating refresh token (rotation)")
         Cookies.set("refreshToken", response.refreshToken)
       }
       
@@ -134,9 +119,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         Cookies.set("user", JSON.stringify(response.user))
       }
       
-      console.log("✅ Token refreshed successfully from auth context")
     } catch (error) {
-      console.error("❌ Token refresh failed:", error)
       clearAuthData()
       throw error
     }
@@ -167,8 +150,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       toast.success("Đăng nhập thành công")
       setUser(response.user as User)
-      
-      console.log("✅ Login successful, tokens stored")
       
       // ✅ Return user data for role validation
       return { user: response.user as User }

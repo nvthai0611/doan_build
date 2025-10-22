@@ -72,7 +72,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
 
   // Loading state
   if (isLoading) {
-    <Loading/>
+    return <Loading/>
   }
 
   // Error state
