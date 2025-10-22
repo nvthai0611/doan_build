@@ -44,6 +44,7 @@ import { NotificationSetting } from "../pages/manager/Settings/NotiSetting";
 import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
 import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
+import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
 
 
 export const privateRoutes = (
@@ -110,6 +111,7 @@ export const privateRoutes = (
         <Route path="session-details/:sessionId" element={<SessionDetails />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
+        <Route path="student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
       </Route>
 
       {/* Học sinh */}

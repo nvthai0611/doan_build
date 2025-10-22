@@ -117,6 +117,7 @@ export default function StudentLeaveRequestList() {
 
   const leaveRequests = leaveRequestsResponse?.data || [];
   const meta = leaveRequestsResponse?.meta;
+  const counts = leaveRequestsResponse?.counts;
 
   // Table columns
   const columns: Column<StudentLeaveRequest>[] = [
@@ -130,16 +131,7 @@ export default function StudentLeaveRequestList() {
         </div>
       ),
     },
-    {
-      key: 'class',
-      header: 'Lớp học',
-      render: (item) => (
-        <div>
-          <div className="font-medium">{item.class?.name || 'N/A'}</div>
-          <div className="text-xs text-muted-foreground">{item.class?.subject?.name || ''}</div>
-        </div>
-      ),
-    },
+   
     {
       key: 'startDate',
       header: 'Ngày bắt đầu',
@@ -239,12 +231,19 @@ export default function StudentLeaveRequestList() {
   };
 
   // Tab configuration
+  const displayCounts = {
+    pending: counts?.pending ?? (activeTab === 'pending' ? (meta?.total ?? 0) : 0),
+    approved: counts?.approved ?? (activeTab === 'approved' ? (meta?.total ?? 0) : 0),
+    rejected: counts?.rejected ?? (activeTab === 'rejected' ? (meta?.total ?? 0) : 0),
+    cancelled: counts?.cancelled ?? (activeTab === 'cancelled' ? (meta?.total ?? 0) : 0),
+    all: counts?.all ?? (meta?.total ?? 0),
+  };
   const tabs = [
-    { id: 'all', label: 'Tất cả', count: meta?.total || 0 },
-    { id: 'pending', label: 'Chờ duyệt', count: 0 },
-    { id: 'approved', label: 'Đã duyệt', count: 0 },
-    { id: 'rejected', label: 'Từ chối', count: 0 },
-    { id: 'cancelled', label: 'Đã hủy', count: 0 },
+    { id: 'all', label: 'Tất cả', count: displayCounts.all },
+    { id: 'pending', label: 'Chờ duyệt', count: displayCounts.pending },
+    { id: 'approved', label: 'Đã duyệt', count: displayCounts.approved },
+    { id: 'rejected', label: 'Từ chối', count: displayCounts.rejected },
+    { id: 'cancelled', label: 'Đã hủy', count: displayCounts.cancelled },
   ];
 
   return (
@@ -336,7 +335,17 @@ export default function StudentLeaveRequestList() {
           }}
           loading={isLoading}
           error={isError ? 'Có lỗi xảy ra khi tải dữ liệu' : null}
-          emptyMessage="Chưa có đơn nghỉ học nào"
+          emptyMessage={
+            activeTab === 'all'
+              ? 'Chưa có đơn nào'
+              : activeTab === 'pending'
+              ? 'Chưa có đơn chờ duyệt'
+              : activeTab === 'approved'
+              ? 'Chưa có đơn đã duyệt'
+              : activeTab === 'rejected'
+              ? 'Chưa có đơn bị từ chối'
+              : 'Không có dữ liệu'
+          }
         />
       </div>
 

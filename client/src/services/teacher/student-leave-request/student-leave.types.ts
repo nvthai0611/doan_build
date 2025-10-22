@@ -1,13 +1,11 @@
-export interface StudentLeaveRequest {
+export interface TeacherStudentLeaveRequest {
   id: string
   studentId: string
   startDate: string
   endDate: string
   reason: string
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
-  imageUrl?: string
   notes?: string
-  responseNote?: string
   createdAt: string
   updatedAt: string
   approvedAt?: string
@@ -17,6 +15,13 @@ export interface StudentLeaveRequest {
     user: {
       fullName: string
       email: string
+    }
+    parent?: {
+      user: {
+        fullName: string
+        email: string
+        phone?: string
+      }
     }
   }
   classes?: {
@@ -66,29 +71,16 @@ export interface AffectedSessionDetail {
   }
 }
 
-export interface CreateStudentLeaveRequestDto {
-  studentId: string
-  startDate: string
-  endDate: string
-  reason: string
-}
-
-export interface UpdateStudentLeaveRequestDto {
-  startDate?: string
-  endDate?: string
-  reason?: string
-}
-
-export interface GetStudentLeaveRequestsParams {
+export interface GetTeacherStudentLeaveRequestsParams {
   page?: number
   limit?: number
   status?: string
-  studentId?: string
   classId?: string
+  search?: string
 }
 
-export interface StudentLeaveRequestResponse {
-  data: StudentLeaveRequest[]
+export interface TeacherStudentLeaveRequestResponse {
+  data: TeacherStudentLeaveRequest[]
   meta: {
     total: number
     page: number
@@ -99,29 +91,11 @@ export interface StudentLeaveRequestResponse {
     pending: number
     approved: number
     rejected: number
-    cancelled?: number
     all: number
   }
 }
 
-export interface ChildClass {
-  id: string
-  name: string
-  subject: {
-    id: string
-    name: string
-  }
-  teacher?: {
-    id: string
-    user: {
-      fullName: string
-      email: string
-    }
-  }
-  schedule?: {
-    dayOfWeek: number
-    startTime: string
-    endTime: string
-  }[]
+export interface ApproveRejectDto {
+  notes?: string
 }
 

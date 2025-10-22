@@ -31,16 +31,13 @@ export function StudentLeaveRequestForm() {
   const isEditMode = Boolean(id);
   
   const [selectedChild, setSelectedChild] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [children, setChildren] = useState<any[]>([]);
-  const [classes, setClasses] = useState<ChildClass[]>([]);
   const [affectedSessions, setAffectedSessions] = useState<any[]>([]);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [leaveRequestData, setLeaveRequestData] = useState<StudentLeaveRequest | null>(null);
 
@@ -59,19 +56,6 @@ export function StudentLeaveRequestForm() {
         setStartDate(formatDateForInput(data.startDate) || '');
         setEndDate(formatDateForInput(data.endDate) || '');
         setReason(data.reason || '');
-
-        // Fetch classes for the student first, then set selectedClass
-        if (data.studentId) {
-          try {
-            const classesData = await parentStudentLeaveRequestService.getChildClasses(data.studentId);
-            setClasses(classesData);
-            // Now set selectedClass after classes are loaded
-            setSelectedClass(data.classId || '');
-          } catch (error) {
-            console.error('Failed to fetch classes for student:', error);
-            toast.error('Không thể tải danh sách lớp học');
-          }
-        }
       } catch (error) {
         console.error('Failed to fetch leave request:', error);
         toast.error('Không thể tải thông tin đơn nghỉ học');
@@ -99,37 +83,9 @@ export function StudentLeaveRequestForm() {
     fetchChildren();
   }, []);
 
-  // Fetch classes when child is selected (only in create mode)
+  // Fetch affected sessions from ALL classes when dates are selected
   useEffect(() => {
-    // Skip if in edit mode (classes already loaded)
-    if (isEditMode) return;
-
-    if (!selectedChild) {
-      setClasses([]);
-      setSelectedClass('');
-      return;
-    }
-
-    const fetchClasses = async () => {
-      try {
-        setIsLoadingClasses(true);
-        const data = await parentStudentLeaveRequestService.getChildClasses(selectedChild);
-        setClasses(data);
-      } catch (error) {
-        console.error('Failed to fetch classes:', error);
-        toast.error('Không thể tải danh sách lớp học');
-        setClasses([]);
-      } finally {
-        setIsLoadingClasses(false);
-      }
-    };
-
-    fetchClasses();
-  }, [selectedChild, isEditMode]);
-
-  // Fetch affected sessions when dates and class are selected
-  useEffect(() => {
-    if (!selectedChild || !selectedClass || !startDate || !endDate) {
+    if (!selectedChild || !startDate || !endDate) {
       setAffectedSessions([]);
       return;
     }
@@ -139,7 +95,6 @@ export function StudentLeaveRequestForm() {
         setIsLoadingSessions(true);
         const data = await parentStudentLeaveRequestService.getAffectedSessions({
           studentId: selectedChild,
-          classId: selectedClass,
           startDate,
           endDate,
         });
@@ -153,13 +108,13 @@ export function StudentLeaveRequestForm() {
     };
 
     fetchAffectedSessions();
-  }, [selectedChild, selectedClass, startDate, endDate]);
+  }, [selectedChild, startDate, endDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (!selectedChild || !selectedClass || !startDate || !endDate || !reason) {
+    if (!selectedChild || !startDate || !endDate || !reason) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
@@ -173,7 +128,7 @@ export function StudentLeaveRequestForm() {
       setIsSubmitting(true);
       
       if (isEditMode && id) {
-        // Update existing leave request (không update studentId và classId)
+        // Update existing leave request (không update studentId)
         await parentStudentLeaveRequestService.updateStudentLeaveRequest(id, {
           startDate,
           endDate,
@@ -181,10 +136,9 @@ export function StudentLeaveRequestForm() {
         });
         toast.success('Đơn nghỉ học đã được cập nhật thành công!');
       } else {
-        // Create new leave request
+        // Create new leave request (tự động nghỉ tất cả lớp)
         await parentStudentLeaveRequestService.createStudentLeaveRequest({
           studentId: selectedChild,
-          classId: selectedClass,
           startDate,
           endDate,
           reason,
@@ -270,43 +224,13 @@ export function StudentLeaveRequestForm() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {isEditMode && (
+                    {isEditMode ? (
                       <p className="text-xs text-muted-foreground">
                         Không thể thay đổi học sinh khi chỉnh sửa đơn
                       </p>
-                    )}
-                  </div>
-
-                  {/* Class Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="class" className="text-base font-semibold">
-                      Lớp học <span className="text-destructive">*</span>
-                    </Label>
-                    <Select 
-                      value={selectedClass} 
-                      onValueChange={setSelectedClass}
-                      disabled={!selectedChild || isLoadingClasses || isEditMode}
-                    >
-                      <SelectTrigger id="class">
-                        <SelectValue placeholder={
-                          isLoadingClasses 
-                            ? "Đang tải..." 
-                            : !selectedChild 
-                            ? "Vui lòng chọn con trước" 
-                            : "Chọn lớp học..."
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map((cls) => (
-                          <SelectItem key={cls.id} value={cls.id}>
-                            {cls.name} - {cls.subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isEditMode && (
+                    ) : (
                       <p className="text-xs text-muted-foreground">
-                        Không thể thay đổi lớp học khi chỉnh sửa đơn
+                        Đơn nghỉ sẽ áp dụng cho TẤT CẢ các lớp có buổi học trong khoảng thời gian đã chọn
                       </p>
                     )}
                   </div>
@@ -403,10 +327,10 @@ export function StudentLeaveRequestForm() {
             <Card className="shadow-xl border rounded-2xl">
               <CardHeader className="bg-gradient-to-r from-primary to-primary/90 text-primary-foreground pb-8 rounded-t-2xl">
                 <CardTitle className="text-2xl font-bold">
-                  Danh sách buổi sẽ nghỉ dự kiến
+                  Buổi học bị ảnh hưởng
                 </CardTitle>
                 <CardDescription className="text-primary-foreground/80">
-                  {affectedSessions.length} buổi học
+                  {affectedSessions.length} buổi học từ tất cả các lớp
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -416,8 +340,8 @@ export function StudentLeaveRequestForm() {
                   </div>
                 ) : affectedSessions.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
-                    {!startDate || !endDate || !selectedClass
-                      ? 'Vui lòng chọn lớp học và thời gian để xem các buổi học bị ảnh hưởng'
+                    {!startDate || !endDate || !selectedChild
+                      ? 'Vui lòng chọn con và thời gian để xem các buổi học bị ảnh hưởng'
                       : 'Không có buổi học nào trong khoảng thời gian này'}
                   </div>
                 ) : (
@@ -431,6 +355,7 @@ export function StudentLeaveRequestForm() {
                           <div>
                             <div className="font-medium">
                               {session.className || 'Lớp học'}
+                              {session.subjectName && ` - ${session.subjectName}`}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {session.date} - {session.time}
