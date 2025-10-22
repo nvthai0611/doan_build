@@ -30,14 +30,16 @@ const decrypt = (cipher: string): string | undefined => {
 export const TokenStorage = {
   set: (token: string | null) => {
     if (!token) {
-    Cookies.remove(AUTH_TOKEN);
+      Cookies.remove(AUTH_TOKEN);
       return;
     }
-    Cookies.set(AUTH_TOKEN, encrypt(token));
+    // Lưu plain token để gửi trong Authorization header
+    Cookies.set(AUTH_TOKEN, token);
   },
   get: (): string | undefined => {
-    const cipher = Cookies.get(AUTH_TOKEN);
-    return cipher === null ? undefined : cipher;
+    // Trả về plain token (không decrypt)
+    const token = Cookies.get(AUTH_TOKEN);
+    return token === null || token === undefined || token === 'undefined' ? undefined : token;
   },
   clear: () => Cookies.remove(AUTH_TOKEN),
 };
@@ -74,10 +76,12 @@ const client: AxiosInstance = axios.create({
 // Add token vào header
 client.interceptors.request.use((config) => {
   const token = TokenStorage.get();
-  if (token) {
-    config.headers?.set?.('Authorization', `Bearer ${token}`);
+  if (token && token !== 'undefined') {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // Xử lý lỗi trả về và auto-refresh token
@@ -124,27 +128,57 @@ client.interceptors.response.use(
         if (!refreshToken || refreshToken === 'undefined') {
           throw new Error('No refresh token available');
         }
-          const response = await axios.post(
-            `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1'}/auth/refresh`,
-            {},
-            {
-              headers: {
-                'refresh-token': refreshToken,
-              },
-            }
-          );
 
-          const { accessToken } = response.data.data;
-          TokenStorage.set(accessToken);
-          processQueue(null, accessToken);
-          
-          return client(originalRequest);
+        console.log('🔄 Attempting to refresh token...');
+
+        const response = await axios.post(
+          `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1'}/auth/refresh`,
+          {},
+          {
+            headers: {
+              'refresh-token': refreshToken,
+            },
+          }
+        );
+
+        console.log('✅ Refresh token response:', response.data);
+
+        const { accessToken, refreshToken: newRefreshToken, user } = response.data.data;
+        
+        // Lưu access token mới
+        TokenStorage.set(accessToken);
+        Cookies.set('accessToken', accessToken);
+        
+        // Lưu refresh token mới (ROTATION)
+        if (newRefreshToken) {
+          console.log('✅ Updating refresh token (rotation)');
+          Cookies.set('refreshToken', newRefreshToken);
+        }
+
+        // Cập nhật user data
+        if (user) {
+          Cookies.set('user', JSON.stringify(user));
+        }
+        
+        processQueue(null, accessToken);
+        
+        console.log('✅ Token refreshed successfully, retrying original request');
+        
+        return client(originalRequest);
       } catch (refreshError: any) {
+        console.error('❌ Refresh token failed:', refreshError);
+        
         processQueue(refreshError, null);
         Cookies.remove('user');
         Cookies.remove('accessToken');
         Cookies.remove('refreshToken');
         TokenStorage.clear();
+        
+        // Lưu current URL để redirect về sau
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/login')) {
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+        }
+        
         window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       } finally {
