@@ -36,7 +36,8 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenResponse {
   accessToken: string
   refreshToken: string
-  expiresIn: number
+  user?: User
+  expiresIn?: number
 }
 
 export interface ChangePasswordRequest {

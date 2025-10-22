@@ -2,6 +2,9 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import Home from "../pages/Home/Home";
 import { LoginForm } from "../pages/Auth/Login";
+import { PortalSelection } from "../pages/Auth/PortalSelection";
+import { ParentStudentLogin } from "../pages/Auth/ParentStudentLogin";
+import { AdminLogin } from "../pages/Auth/AdminLogin";
 import { Route, Navigate } from "react-router-dom";
 import GuestMiddleware from "../middlewares/GuestMiddleware";
 import { useAuth } from "../lib/auth";
@@ -19,8 +22,8 @@ const RoleBasedRedirect = () => {
   }
   
   if (!user) {
-    console.log("RoleBasedRedirect: No user, redirecting to login");
-    return <Navigate to="/auth/login" replace />;
+    console.log("RoleBasedRedirect: No user, redirecting to portal selection");
+    return <Navigate to="/auth" replace />;
   }
   
   console.log("RoleBasedRedirect: User role:", user.role);
@@ -42,8 +45,8 @@ const RoleBasedRedirect = () => {
       console.log("RoleBasedRedirect: Redirecting to /admin");
       return <Navigate to="/admin" replace />;
     default:
-      console.log("RoleBasedRedirect: Unknown role, redirecting to login");
-      return <Navigate to="/auth/login" replace />;
+      console.log("RoleBasedRedirect: Unknown role, redirecting to portal selection");
+      return <Navigate to="/auth" replace />;
   }
 };
 
@@ -52,7 +55,18 @@ export const publicRoutes = (
     <Route path="/" element={<RoleBasedRedirect />} />
     <Route element={<AuthLayout />}>
       <Route element={<GuestMiddleware />}>
-        <Route path="/auth/login" element={<LoginForm />} />
+        {/* Portal Selection - Landing page */}
+        <Route path="/auth" element={<PortalSelection />} />
+        
+        {/* Management Portal - Center Owner & Teacher */}
+        <Route path="/auth/login/management" element={<LoginForm />} />
+        <Route path="/auth/login" element={<Navigate to="/auth/login/management" replace />} />
+        
+        {/* Family Portal - Parent & Student */}
+        <Route path="/auth/login/family" element={<ParentStudentLogin />} />
+        
+        {/* Admin Portal - IT Admin */}
+        <Route path="/auth/login/admin" element={<AdminLogin />} />
       </Route>
     </Route>
   </>

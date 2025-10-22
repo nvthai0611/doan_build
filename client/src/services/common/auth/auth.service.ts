@@ -41,10 +41,19 @@ export const authService = {
 
   /**
    * Làm mới access token
+   * Gửi refresh token qua header thay vì body
    */
   refreshToken: async (refreshToken: string): Promise<RefreshTokenResponse> => {
-    const response = await ApiService.post<RefreshTokenResponse>("/auth/refresh", { refreshToken })
-    return response.data as RefreshTokenResponse
+    const response = await ApiService.post<RefreshTokenResponse>(
+      "/auth/refresh", 
+      {}, 
+      {
+        headers: {
+          'refresh-token': refreshToken
+        }
+      }
+    );
+    return response.data as RefreshTokenResponse;
   },
 
   // ===== Password Management =====
