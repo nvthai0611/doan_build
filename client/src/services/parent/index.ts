@@ -29,3 +29,15 @@ export type {
   ParentMaterialsResponse,
   GetParentMaterialsParams
 } from './materials/materials.types'
+
+// Student Leave Request
+export { parentStudentLeaveRequestService } from './student-leave-request/student-leave.service'
+export type {
+  StudentLeaveRequest,
+  CreateStudentLeaveRequestDto,
+  UpdateStudentLeaveRequestDto,
+  GetStudentLeaveRequestsParams,
+  StudentLeaveRequestResponse,
+  AffectedSessionDetail,
+  ChildClass
+} from './student-leave-request/student-leave.types'

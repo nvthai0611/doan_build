@@ -32,6 +32,7 @@ import {
     Menu,
     ChevronLeft,
     AlertTriangle,
+    FileText,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -263,6 +264,12 @@ const parentMenuItems = [
         icon: Users,
         href: "/parent/children",
     },
+    {
+        title: "Đơn nghỉ học",
+        icon: FileText,
+        href: "/parent/student-leave-requests",
+    },
+   
 ]
 
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
