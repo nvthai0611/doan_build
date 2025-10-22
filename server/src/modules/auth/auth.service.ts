@@ -58,17 +58,17 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    console.log(email, password);
     const user = await this.validateUser(email, password);
-    console.log(user);
+    
+    // Tạo access token
     const accessToken = JWT.createAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
-    console.log(accessToken);
-    const refreshToken = JWT.createRefreshToken();
-    console.log(refreshToken);
+    
+    // Tạo refresh token với userId
+    const refreshToken = JWT.createRefreshToken(user.id);
     
     // Lưu refresh token vào database
     await this.prisma.userSession.create({
@@ -78,9 +78,6 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
-
-    console.log("step last");
-    
 
     return {
       accessToken,
@@ -92,14 +89,24 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         isActive: user.isActive,
-        // teacher: user.teacher,
         student: user.student,
         parent: user.parent,
       },
     };
   }
 
+  /**
+   * Refresh Token với ROTATION
+   * Luồng:
+   * 1. Verify refresh token có hợp lệ không
+   * 2. Tạo access token MỚI
+   * 3. Tạo refresh token MỚI (Rotation)
+   * 4. Invalidate refresh token CŨ
+   * 5. Lưu refresh token MỚI vào database
+   * 6. Trả về cả 2 tokens MỚI
+   */
   async refreshToken(refreshToken: string) {
+    // Tìm session với refresh token
     const session = await this.prisma.userSession.findFirst({
       where: {
         refreshToken,
@@ -111,7 +118,6 @@ export class AuthService {
       include: {
         user: {
           include: {
-            // teacher: true,
             student: true,
             parent: true,
           },
@@ -120,18 +126,67 @@ export class AuthService {
     });
 
     if (!session) {
+      // Kiểm tra xem có phải token đã được sử dụng không (Reuse Detection)
+      const reusedSession = await this.prisma.userSession.findFirst({
+        where: {
+          refreshToken,
+          isActive: false,
+        },
+      });
+
+      if (reusedSession) {
+        // 🚨 CẢNH BÁO: Refresh token reuse detected!
+        // Invalidate tất cả sessions của user
+        await this.prisma.userSession.updateMany({
+          where: {
+            userId: reusedSession.userId,
+          },
+          data: {
+            isActive: false,
+          },
+        });
+
+        throw new UnauthorizedException(
+          'Phát hiện sử dụng lại refresh token. Tất cả phiên đăng nhập đã bị vô hiệu hóa vì lý do bảo mật.'
+        );
+      }
+
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
     const user = session.user;
+
+    // Tạo access token mới
     const newAccessToken = JWT.createAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
 
+    // Tạo refresh token mới (ROTATION)
+    const newRefreshToken = JWT.createRefreshToken(user.id);
+
+    // Invalidate refresh token cũ
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: {
+        isActive: false,
+      },
+    });
+
+    // Tạo session mới với refresh token mới
+    await this.prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken: newRefreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+
+    // Trả về CẢ 2 tokens mới
     return {
       accessToken: newAccessToken,
+      refreshToken: newRefreshToken, // ✅ QUAN TRỌNG!
       user: {
         id: user.id,
         email: user.email,
@@ -139,7 +194,6 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         isActive: user.isActive,
-        //    teacher: user.teacher,
         student: user.student,
         parent: user.parent,
       },

@@ -1,5 +1,4 @@
 import type React from "react"
-
 import { useState } from "react"
 import { useAuth } from "../../lib/auth"
 import { useNavigate } from "react-router-dom"
@@ -7,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Mail, Lock, Eye, EyeOff, Building2, ArrowLeft } from "lucide-react"
+import { Loader2, Mail, Lock, Eye, EyeOff, Shield, ArrowLeft } from "lucide-react"
 
-export function LoginForm() {
+export function AdminLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -25,18 +24,19 @@ export function LoginForm() {
       // Login và validate role TRƯỚC KHI lưu tokens
       const result = await login(email, password)
       
-      // Validate role - chỉ cho phép Center Owner và Teacher
-      const allowedRoles = ['center_owner', 'teacher']
+      // Validate role - chỉ cho phép Admin
+      const allowedRoles = ['admin']
       if (!allowedRoles.includes(result?.user?.role)) {
         const roleNames: any = {
+          center_owner: 'Chủ trung tâm',
+          teacher: 'Giáo viên',
           parent: 'Phụ huynh',
-          student: 'Học sinh', 
-          admin: 'Quản trị viên'
+          student: 'Học sinh'
         }
         
         // CHẶN NGAY - Logout ngay lập tức không cho vào hệ thống
         await logout()
-        setError(`🚫 Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Lý. Vui lòng sử dụng cổng phù hợp.`)
+        setError(`🚫 Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Trị. Chỉ dành cho Quản trị viên IT.`)
         return
       }
       
@@ -48,14 +48,14 @@ export function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
-      {/* Animated Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900">
+      {/* Animated Gradient Background - Red/Orange Theme */}
+      <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 dark:from-slate-900 dark:via-red-900 dark:to-slate-900">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM4ODg4ODgiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJzLTUuMzczIDEyLTEyIDEyLTEyLTUuMzczLTEyLTEyIDUuMzczLTEyIDEyLTEyem0wIDJ2MjBjNS41MjMgMCAxMC00LjQ3NyAxMC0xMFMzNi41MjMgMTYgMzYgMTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
         
-        {/* Floating Orbs */}
-        <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-br from-blue-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-indigo-400/30 to-pink-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-cyan-400/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        {/* Floating Orbs - Red/Orange */}
+        <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-br from-red-400/30 to-orange-400/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-orange-400/30 to-amber-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-red-400/20 to-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Back Button */}
@@ -73,15 +73,19 @@ export function LoginForm() {
         <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 rounded-3xl shadow-2xl border border-white/20 dark:border-slate-700/50 p-8 transform transition-all duration-500 hover:scale-[1.02]">
           {/* Logo & Title */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg mb-4 transform transition-transform hover:rotate-12 duration-300">
-              <Building2 className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg mb-4 transform transition-transform hover:rotate-12 duration-300">
+              <Shield className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              Cổng Quản Lý
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">
+              Cổng Quản Trị
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Dành cho Chủ trung tâm & Giáo viên
+              Dành cho Quản trị viên IT
             </p>
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium text-red-700 dark:text-red-400">Restricted Access</span>
+            </div>
           </div>
 
           {/* Login Form */}
@@ -93,16 +97,16 @@ export function LoginForm() {
               </Label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                  <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" />
                 </div>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="admin@qnedu.vn"
                   value={email}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                   required
-                  className="pl-10 h-12 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl transition-all"
+                  className="pl-10 h-12 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 rounded-xl transition-all"
                 />
               </div>
             </div>
@@ -115,14 +119,14 @@ export function LoginForm() {
                 </Label>
                 <button
                   type="button"
-                  className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                  className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                 >
                   Quên mật khẩu?
                 </button>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" />
                 </div>
                 <Input
                   id="password"
@@ -131,7 +135,7 @@ export function LoginForm() {
                   value={password}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   required
-                  className="pl-10 pr-10 h-12 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl transition-all"
+                  className="pl-10 pr-10 h-12 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 rounded-xl transition-all"
                 />
                 <button
                   type="button"
@@ -158,7 +162,7 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5"
+              className="w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-medium rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 transition-all duration-300 transform hover:-translate-y-0.5"
             >
               {loading ? (
                 <>
@@ -171,34 +175,25 @@ export function LoginForm() {
             </Button>
           </form>
 
-          {/* Demo Accounts */}
+          {/* Demo Account */}
           <div className="mt-8 p-5 bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-slate-800/50 dark:to-slate-700/50 rounded-2xl border border-gray-200/50 dark:border-slate-600/50">
             <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3 flex items-center">
               <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
               Tài khoản demo
             </p>
             <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("owner@qne.edu.vn"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👑 Chủ trung tâm</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">owner@qne.edu.vn</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("teacher@qne.edu.vn"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👨‍🏫 Giáo viên</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">teacher@qne.edu.vn</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("student@qne.edu.vn"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👨‍🎓 Học sinh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">student@qne.edu.vn</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("parent@qne.edu.vn"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👨‍👩‍👧 Phụ huynh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">parent@qne.edu.vn</span>
-              </div>
               <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("admin@qne.edu.vn"); setPassword("123456") }}>
                 <span className="font-medium text-gray-700 dark:text-gray-300">⚙️ Quản trị viên</span>
                 <span className="text-gray-500 dark:text-gray-400 text-[10px]">admin@qne.edu.vn</span>
               </div>
             </div>
+          </div>
+
+          {/* Security Notice */}
+          <div className="mt-4 p-3 bg-amber-50/50 dark:bg-amber-900/20 rounded-xl border border-amber-200/50 dark:border-amber-800/50">
+            <p className="text-[10px] text-amber-700 dark:text-amber-400 text-center leading-relaxed">
+              🔒 Cổng này chỉ dành cho quản trị viên IT. Mọi hoạt động đăng nhập đều được ghi nhận.
+            </p>
           </div>
         </div>
 
@@ -210,3 +205,4 @@ export function LoginForm() {
     </div>
   )
 }
+

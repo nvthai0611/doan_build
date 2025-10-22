@@ -1,11 +1,9 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, HttpStatus, HttpCode, UseGuards, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, HttpStatus, HttpCode, HttpException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { ParentManagementService } from '../services/parent-management.service';
 
 @ApiTags('Admin - Parent Management')
 @Controller('parent-management')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ParentManagementController {
     constructor(
