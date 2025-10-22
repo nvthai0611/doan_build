@@ -391,14 +391,34 @@ export class EnrollmentManagementService {
 
             const where: any = { classId };
 
+            // Search đầy đủ: tên, email, SĐT học viên, mã học viên, thông tin phụ huynh
             if (search) where.student = {
                 OR: [
+                    // Thông tin học viên
                     { user: { fullName: { contains: search, mode: 'insensitive' } } },
-                    { user: { email: { contains: search, mode: 'insensitive' } } }
+                    { user: { email: { contains: search, mode: 'insensitive' } } },
+                    { user: { phone: { contains: search, mode: 'insensitive' } } },
+                    { studentCode: { contains: search, mode: 'insensitive' } },
+                    // Thông tin phụ huynh
+                    { parent: { user: { fullName: { contains: search, mode: 'insensitive' } } } },
+                    { parent: { user: { email: { contains: search, mode: 'insensitive' } } } },
+                    { parent: { user: { phone: { contains: search, mode: 'insensitive' } } } }
                 ]
             };
 
             const total = await this.prisma.enrollment.count({ where });
+
+            // Lấy thông tin lớp học để biết ngày kết thúc
+            const classInfo = await this.prisma.class.findUnique({
+                where: { id: classId },
+                select: {
+                    actualEndDate: true,
+                    expectedStartDate: true
+                }
+            });
+
+            // Xác định ngày kết thúc để tính: dùng actualEndDate nếu có, không thì dùng ngày hiện tại
+            const endDate = classInfo?.actualEndDate || new Date();
 
             const enrollments = await this.prisma.enrollment.findMany({
                 where,
@@ -427,11 +447,47 @@ export class EnrollmentManagementService {
                 },
                 orderBy: { enrolledAt: 'desc' }
             });
+            
+            // Tính số buổi đã học và tổng buổi cho từng học sinh
+            const enrollmentsWithStats = await Promise.all(
+                enrollments.map(async (enrollment) => {
+                    // Đếm tổng số buổi học đã lên lịch từ khi học sinh đăng ký
+                    const totalSessions = await this.prisma.classSession.count({
+                        where: {
+                            classId: classId,
+                            sessionDate: {
+                                gte: enrollment.enrolledAt, // Từ ngày đăng ký
+                                lte: new Date()    // Đến ngày kết thúc lớp hoặc hiện tại
+                            }
+                        }
+                    });
 
+                    // Đếm số buổi học sinh có mặt (present)
+                    const attendedSessions = await this.prisma.studentSessionAttendance.count({
+                        where: {
+                            studentId: enrollment.studentId,
+                            session: {
+                                classId: classId,
+                                sessionDate: {
+                                    gte: enrollment.enrolledAt,
+                                    lte: endDate
+                                }
+                            },
+                            status: 'present'
+                        }
+                    });
+
+                    return {
+                        ...enrollment,
+                        classesRegistered: totalSessions,
+                        classesAttended: attendedSessions
+                    };
+                })
+            );
             return {
                 success: true,
                 message: 'Lấy danh sách học sinh thành công',
-                data: enrollments,
+                data: enrollmentsWithStats,
                 meta: {
                     total,
                     page: parseInt(page),

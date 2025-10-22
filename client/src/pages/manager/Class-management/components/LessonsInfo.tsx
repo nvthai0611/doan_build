@@ -248,16 +248,16 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       align: 'center',
       render: (session: any) => getStatusBadge(session.status)
     },
-    {
-      key: 'teacher',
-      header: 'Giáo viên',
-      width: '200px',
-      render: (session: any) => (
-        <div className="text-sm text-gray-600">
-          {session.teacher?.name || session.teacherName || '-'}
-        </div>
-      )
-    },
+    // {
+    //   key: 'teacher',
+    //   header: 'Giáo viên',
+    //   width: '200px',
+    //   render: (session: any) => (
+    //     <div className="text-sm text-gray-600">
+    //       {session.teacher?.name || session.teacherName || '-'}
+    //     </div>
+    //   )
+    // },
     {
       key: 'attendance',
       header: 'Sĩ số',

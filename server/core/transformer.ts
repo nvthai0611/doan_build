@@ -141,4 +141,41 @@ export class DataTransformer {
             totalPages: Math.ceil(total / parseInt(String(limit)))
         };
     }
+
+    /**
+     * Format schedule to array of strings
+     */
+    static formatScheduleArray(recurringSchedule: any): string[] {
+        if (!recurringSchedule) return ['Chưa có lịch'];
+        
+        // If it's a string, try to parse it
+        if (typeof recurringSchedule === 'string') {
+            try {
+                const parsed = JSON.parse(recurringSchedule);
+                return this.formatScheduleArray(parsed);
+            } catch {
+                return [recurringSchedule];
+            }
+        }
+        
+        // If it has schedules array
+        if (recurringSchedule.schedules && Array.isArray(recurringSchedule.schedules)) {
+            const dayNames: { [key: string]: string } = {
+                'monday': 'Thứ 2',
+                'tuesday': 'Thứ 3', 
+                'wednesday': 'Thứ 4',
+                'thursday': 'Thứ 5',
+                'friday': 'Thứ 6',
+                'saturday': 'Thứ 7',
+                'sunday': 'CN'
+            };
+            
+            return recurringSchedule.schedules.map((schedule: any) => {
+                const dayName = dayNames[schedule.day] || schedule.day;
+                return `${dayName}: ${schedule.startTime} → ${schedule.endTime}`;
+            });
+        }
+        
+        return ['Chưa có lịch'];
+    }
 }
