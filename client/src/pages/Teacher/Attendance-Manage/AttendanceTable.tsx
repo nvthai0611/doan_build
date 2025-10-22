@@ -404,7 +404,7 @@ export default function AttendanceTable() {
                 </Badge>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
                 <Check className="h-4 w-4 mr-1" />
                 Có mặt: {getStatusCount('present')}
@@ -417,11 +417,46 @@ export default function AttendanceTable() {
                 <Check className="h-4 w-4 mr-1" />
                 Có phép: {getStatusCount('excused')}
               </Badge>
+              
+              {/* Di chuyển phần thông báo vắng học vào đây */}
+              {absentStudents.length > 0 && (
+                <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex items-center gap-2 ml-2">
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <Checkbox 
+                        id="select-all-absent"
+                        checked={selectAll}
+                        onCheckedChange={handleSelectAll}
+                        className="mr-1 h-4 w-4"
+                      />
+                      <label 
+                        htmlFor="select-all-absent" 
+                        className="text-xs font-medium text-amber-800 cursor-pointer"
+                      >
+                        Chọn {absentStudents.length} học sinh vắng
+                      </label>
+                    </div>
+                    <Button
+                      onClick={sendAbsentEmails}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300',
+                        'flex items-center gap-1 w-full text-xs py-1 h-6'
+                      )}
+                      disabled={selectedStudents.length === 0}
+                    >
+                      <Mail className="h-3 w-3" />
+                      Gửi email ({selectedStudents.length})
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
-
-        <CardContent className="p-6">
+        <CardContent className="p-6 relative">
+          {/* Xóa phần thông báo vắng học ở đây vì đã di chuyển lên trên */}
           <div className="space-y-3">
             <div className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
               <div>Học sinh</div>
@@ -557,45 +592,7 @@ export default function AttendanceTable() {
             )}
           </div>
 
-          {/* Thêm phần UI cho gửi email thông báo vắng học */}
-          {absentStudents.length > 0 && (
-            <div className="mt-8 pt-6 border-t-2 border-slate-200">
-              <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                <h3 className="text-lg font-semibold text-amber-800 mb-3 flex items-center">
-                  <AlertCircle className="h-5 w-5 mr-2" />
-                  Thông báo vắng học
-                </h3>
-                <div className="flex items-center mb-4">
-                  <Checkbox 
-                    id="select-all-absent"
-                    checked={selectAll}
-                    onCheckedChange={handleSelectAll}
-                    className="mr-2"
-                  />
-                  <label 
-                    htmlFor="select-all-absent" 
-                    className="text-sm font-medium text-amber-800 cursor-pointer"
-                  >
-                    Chọn tất cả học sinh vắng mặt ({absentStudents.length})
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <Button
-                    onClick={sendAbsentEmails}
-                    variant="outline"
-                    className={cn(
-                      'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300',
-                      'flex items-center gap-2'
-                    )}
-                    disabled={selectedStudents.length === 0}
-                  >
-                    <Mail className="h-4 w-4" />
-                    Gửi email thông báo ({selectedStudents.length} học sinh)
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           <div className="flex justify-end mt-8 pt-6 border-t-2 border-slate-200">
             <Button

@@ -7,6 +7,7 @@ import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 import { generateQNCode } from '../../../utils/function.util';
 import { DEFAULT_STATUS, ClassStatus } from '../../../common/constants';
+import { DataTransformer } from '../../../../core/transformer';
 import { log } from 'console';
 
 @Injectable()
@@ -930,7 +931,8 @@ export class ClassManagementService {
             if (classInfo.status === 'active') {
                 validationErrors.push(`Lớp học đang ở trạng thái '${classInfo.status}', cần chuyển sang trạng thái 'draft hoặc ready'`);
             }
-
+            console.log(validationErrors);
+            
             // Nếu có lỗi validation, throw exception
             if (validationErrors.length > 0) {
                 throw new HttpException(
@@ -1218,7 +1220,7 @@ export class ClassManagementService {
             }
             
             // Get sessions with pagination
-            const [sessions, total] = await Promise.all([
+            const [sessions, total, studentCount] = await Promise.all([
                 this.prisma.classSession.findMany({
                     where,
                     skip,
@@ -1252,7 +1254,8 @@ export class ClassManagementService {
                         }
                     }
                 }),
-                this.prisma.classSession.count({ where })
+                this.prisma.classSession.count({ where }),
+                this.prisma.enrollment.count({ where: { classId: classId, status: { notIn: ['stopped'] } } })
             ]);
 
             
@@ -1270,10 +1273,10 @@ export class ClassManagementService {
                 teacher: session.class.teacher?.user?.fullName || null,
                 teacherName: session.class.teacher?.user?.fullName || null,
                 totalStudents: session.class.maxStudents || 0,
-                studentCount: session.class.maxStudents || 0,
+                studentCount: studentCount || 0,
                 attendanceCount: session._count.attendances || 0,
                 absentCount: 0, // Will be calculated based on attendance
-                notAttendedCount: (session.class.maxStudents || 0) - (session._count.attendances || 0),
+                notAttendedCount: (studentCount || 0) - (session._count.attendances || 0),
                 rating: 0, // Default rating since not available in schema
                 roomName: session.room?.name || null
             }));
@@ -1991,9 +1994,155 @@ export class ClassManagementService {
         }
     }
 
+    // Lấy dashboard data đầy đủ
+    async getDashboard(classId: string) {
+        try {
+            // Validate class exists
+            const classItem = await this.prisma.class.findUnique({
+                where: { id: classId },
+                include: {
+                    teacher: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    fullName: true
+                                }
+                            }
+                        }
+                    },
+                    enrollments: {
+                        where: {
+                            status: {
+                                in: ['not_been_updated', 'studying', 'graduated']
+                            }
+                        },
+                        select: {
+                            id: true,
+                            status: true,
+                            student: {
+                                select: {
+                                    id: true,
+                                    user: {
+                                        select: {
+                                            fullName: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (!classItem) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không tìm thấy lớp học'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // 1. Số giáo viên
+            const teachersCount = classItem.teacher ? 1 : 0;
+
+            // 2. Số học sinh
+            const studentsCount = classItem.enrollments.length;
+
+            // 3. Số buổi học đã diễn ra
+            const completedSessions = await this.prisma.classSession.count({
+                where: {
+                    classId: classId,
+                    status: 'end'
+                }
+            });
+
+            // 4. Doanh thu từ học phí đã thanh toán
+            const revenue = await this.prisma.payment.aggregate({
+                where: {
+                    status: 'completed',
+                    feeRecord: {
+                        student: {
+                            enrollments: {
+                                some: {
+                                    classId: classId
+                                }
+                            }
+                        }
+                    }
+                },
+                _sum: {
+                    amount: true
+                }
+            });
+
+            // 5. Thống kê điểm danh
+            const attendanceStats = await this.prisma.studentSessionAttendance.groupBy({
+                by: ['status'],
+                where: {
+                    session: {
+                        classId: classId
+                    }
+                },
+                _count: {
+                    status: true
+                }
+            });
+
+            const attendance = {
+                onTime: attendanceStats.find(a => a.status === 'present')?._count.status || 0,
+                late: 0, // Schema không có late status, để mặc định 0
+                excusedAbsence: attendanceStats.find(a => a.status === 'excused')?._count.status || 0,
+                unexcusedAbsence: attendanceStats.find(a => a.status === 'absent')?._count.status || 0,
+                notMarked: 0 // Sẽ tính sau
+            };
+
+            // Tính số chưa điểm danh
+            const totalPossibleAttendances = completedSessions * studentsCount;
+            const totalMarkedAttendances = attendance.onTime + attendance.late + attendance.excusedAbsence + attendance.unexcusedAbsence;
+            attendance.notMarked = totalPossibleAttendances - totalMarkedAttendances;
+
+            // 6. Đánh giá trung bình (chưa có trong schema, để mặc định)
+            const rating = 0;
+            const reviews = 0;
+
+            return {
+                success: true,
+                message: 'Lấy dashboard thành công',
+                data: {
+                    teachers: teachersCount,
+                    students: studentsCount,
+                    lessons: completedSessions,
+                    revenue: revenue._sum.amount || 0,
+                    rating,
+                    reviews,
+                    attendance,
+                    homework: {
+                        assigned: 0,
+                        submitted: 0,
+                        notSubmitted: 0
+                    }
+                }
+            };
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Có lỗi xảy ra khi lấy dashboard',
+                    error: error.message
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
     // Legacy methods (keep for backward compatibility)
     async getClassByTeacherId(query: any, teacherId: string) {
-        const { status, page, limit, search } = query?.params;
+        const { status, page = 1, limit = 10, search } = query;
         
         const where: any = {
             teacherId: teacherId,
@@ -2010,6 +2159,9 @@ export class ClassManagementService {
                 { description: { contains: search, mode: 'insensitive' } }
             ];
         }
+
+        // Count total before pagination
+        const total = await this.prisma.class.count({ where });
 
         const classes = await this.prisma.class.findMany({
             where,
@@ -2032,10 +2184,11 @@ export class ClassManagementService {
         // Transform the data to match frontend expectations
         const transformedClasses = classes.map(cls => ({
             id: cls.id,
+            code: cls.classCode,
             name: cls.name,
             subject: cls.subject?.name || '',
             students: cls._count.enrollments,
-            schedule: cls.recurringSchedule,
+            schedule: DataTransformer.formatScheduleArray(cls.recurringSchedule),
             status: cls.status,
             startDate: cls.actualStartDate?.toISOString().split('T')[0] || cls.expectedStartDate?.toISOString().split('T')[0] || '',
             endDate: cls.actualEndDate?.toISOString().split('T')[0] || '',
@@ -2049,10 +2202,10 @@ export class ClassManagementService {
         return {
             data: transformedClasses,
             meta: { 
-                total: transformedClasses.length,
-                page: parseInt(query.page) || 1,
-                limit: parseInt(query.limit) || 10,
-                totalPages: Math.ceil(transformedClasses.length / (parseInt(query.limit) || 10))
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit))
             },
             message: 'Lấy danh sách lớp học thành công '
         };
@@ -2093,6 +2246,7 @@ export class ClassManagementService {
 
         return {
             id: classItem.id,
+            code: classItem.classCode,
             name: classItem.name,
             subject: classItem.subject?.name || '',
             students: classItem._count.enrollments,
