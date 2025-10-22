@@ -47,11 +47,11 @@ export class GradeService {
         
         await this.ensureTeacherCanAccessClass(userId, classId);
 
-        // Lấy danh sách học sinh đã đăng ký vào lớp với status active
+        // Lấy danh sách học sinh đã đăng ký vào lớp với trạng thái 'studying' (đang theo học)
         const enrollments = await this.prisma.enrollment.findMany({
             where: { 
                 classId,
-                status: 'active' // Chỉ lấy enrollment có status active
+                status: 'studying' // Chỉ lấy enrollment có status studying (đang theo học)
             },
             include: {
                 student: {
@@ -65,10 +65,10 @@ export class GradeService {
             orderBy: { id: 'asc' }
         });
 
-        console.log(`🎓 Tìm thấy ${enrollments.length} học sinh active trong lớp ${classId}`);
+    console.log(`🎓 Tìm thấy ${enrollments.length} học sinh đang theo học trong lớp ${classId}`);
 
         if (enrollments.length === 0) {
-            console.log('⚠️ Không có học sinh nào với status active');
+            console.log('⚠️ Không có học sinh đang theo học (studying)');
             return [];
         }
 
@@ -225,7 +225,7 @@ export class GradeService {
             where: {
                 classId,
                 studentId: { in: studentIds },
-                status: 'active'
+                status: 'studying'
             },
             select: { studentId: true, status: true }
         });
@@ -236,7 +236,7 @@ export class GradeService {
         const allEnrollments = await this.prisma.enrollment.findMany({
             where: {
                 classId,
-                status: 'active'
+                status: 'studying'
             },
             select: { studentId: true, status: true }
         });
@@ -460,7 +460,7 @@ export class GradeService {
             include: {
                 subject: true,
                 enrollments: {
-                    where: { status: 'active' },
+                    where: { status: 'studying' },
                     include: {
                         student: {
                             include: {
@@ -670,7 +670,7 @@ export class GradeService {
             return [];
         }
 
-        // Lấy tất cả lớp học active mà giáo viên đang dạy và include chỉ enrollments active
+        // Lấy tất cả lớp học active mà giáo viên đang dạy và include chỉ enrollments có trạng thái 'studying'
         const classes = await this.prisma.class.findMany({
             where: { 
                 teacherId: teacherId,
@@ -679,7 +679,7 @@ export class GradeService {
             include: {
                 subject: true,
                 enrollments: {
-                    where: { status: 'active' },
+                    where: { status: 'studying' },
                     include: {
                         student: {
                             include: { user: true }

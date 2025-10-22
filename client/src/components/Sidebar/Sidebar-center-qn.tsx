@@ -265,6 +265,11 @@ const parentMenuItems = [
         href: "/parent/courses",
     },
     {
+        title: "Lịch học",
+        icon: BookOpen,
+        href: "/parent/schedule",
+    },
+    {
         title: "Các con của tôi",
         icon: Users,
         href: "/parent/children",
