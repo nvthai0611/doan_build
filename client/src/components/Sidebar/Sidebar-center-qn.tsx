@@ -280,12 +280,10 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { pathname } = useLocation()
     const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems
     
-    // Auto-expand menu item when on a child route
     useEffect(() => {
         if (!isCollapsed) {
             menuItems.forEach((item) => {
                 if ((item as any).children) {
-                    // Check if current path matches this item or any children
                     const isMatch = pathname.startsWith(item.href) && item.href !== '/'
                     const hasChildMatch = (item as any).children.some((c: any) => 
                         pathname === c.href || pathname.startsWith(c.href)
@@ -352,10 +350,8 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                     {menuItems.map((item) => (
                         <div key={item.title}>
                             {(() => {
-                                // Check if current path matches this menu item or any of its children
                                 const isExactMatch = pathname === item.href
                                 const hasChildMatch = (item as any).children?.some((c: any) => c.href === pathname)
-                                // Check if current path starts with item href (for nested routes like /center-qn/teachers/:id)
                                 const isPartialMatch = pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
                                 const isTopActive = isExactMatch || hasChildMatch || isPartialMatch
                                 
@@ -398,7 +394,6 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                 <div className="ml-7 space-y-1 mt-1">
                                     {(item as any).children.map((child: any) => {
                                         const isExactActive = pathname === child.href
-                                        // Check if current path starts with child href (for nested routes)
                                         const isPartialActive = pathname.startsWith(child.href) && child.href !== '/' && !isExactActive
                                         const isActive = isExactActive || isPartialActive
                                         

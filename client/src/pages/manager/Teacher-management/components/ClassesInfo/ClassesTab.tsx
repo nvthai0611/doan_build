@@ -7,53 +7,16 @@ import { Search, RefreshCw } from "lucide-react"
 import { DataTable, type Column } from "../../../../../components/common/Table/DataTable"
 import { useState, useMemo, useEffect } from "react"
 import { useTeacherClassesQuery } from "./useTeacherClassesQuery"
-import { formatSchedule } from "../../../../../utils/format"
 import { useNavigate } from "react-router-dom"
 import { usePagination } from "../../../../../hooks/usePagination"
-
-// API Response interfaces
-interface ApiClassData {
-  id: string
-  name: string
-  subject: string
-  students: number
-  schedule: {
-    days: string[]
-    endTime: string
-    startTime: string
-  }
-  status: string
-  startDate: string
-  endDate: string
-  room: string
-  description: string
-  teacherId: string
-}
-
-// Table Data interface
-interface ClassData {
-  id: string
-  name: string
-  subject: string
-  students: number
-  schedule: string[]
-  status: string
-  startDate: string
-  endDate: string
-  room: string
-  description: string
-  role: string
-  roleStatus: string
-  present: number
-  late: number
-  absent: number
-}
+import { CodeDisplay } from "../../../../../components/common/CodeDisplay"
+import { formatScheduleArray } from "../../../../../utils/format"
 
 interface ClassesInfoProps {
   teacherId: string
-  activeTab: "all" | "teaching" | "stopped"
+  activeTab: "all" | "ready" | "active" | "cancelled" | "completed"
   search: string
-  setActiveTab: (tab: "all" | "teaching" | "stopped") => void
+  setActiveTab: (tab: "all" | "ready" | "active" | "cancelled" | "completed") => void
   setSearch: (search: string) => void
 }
 
@@ -61,36 +24,39 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState(search)
-  // Pagination hook
+  
   const pagination = usePagination({
     initialPage: 1,
-    initialItemsPerPage: 2,
-    totalItems: 0 
+    initialItemsPerPage: 10,
+    totalItems: 0
   })
-  console.log(teacherId);
+
+  const ensureScheduleArray = (schedule: any): string[] => {
+    if (Array.isArray(schedule)) return schedule
+    return formatScheduleArray(schedule)
+  }
   
-  // Debounce search term để giảm số lần gọi API
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search)
-      // Reset về trang 1 khi search thay đổi
       pagination.setCurrentPage(1)
-    }, 500) // Delay 500ms
+    }, 500) 
 
     return () => clearTimeout(timer)
-  }, [search]) // Chỉ depend vào search, không depend vào debouncedSearch
+  }, [search])
   
-  // Gọi API chỉ với status và pagination, không có search
+  // Gọi API với status, search và pagination
   const { data: teacherClassesData, isLoading, isError, refetch } = useTeacherClassesQuery({
     teacherId: teacherId,
     status: activeTab,
-    search: '', // Không gửi search lên API
+    search: debouncedSearch,
     page: pagination.currentPage,
     limit: pagination.itemsPerPage
   })
   
-  console.log(teacherClassesData);
-
+  const meta = (teacherClassesData as any)?.meta
+  const totalItems = meta?.total || 0
+  const totalPages = meta?.totalPages || 0
  
 
   const formatDate = (dateString: string): string => {
@@ -103,114 +69,120 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     switch (status) {
       case 'active':
         return <Badge className="bg-green-100 text-green-800">Đang dạy</Badge>
-      case 'inactive':
-        return <Badge className="bg-red-100 text-red-800">Ngừng dạy</Badge>
+      case 'cancelled':
+        return <Badge className="bg-red-100 text-red-800">Đã hủy</Badge>
       case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800">Hoàn thành</Badge>
+        return <Badge className="bg-blue-100 text-blue-800">Đã kết thúc</Badge>
+      case 'draft':
+        return <Badge className="bg-yellow-100 text-yellow-800">Chưa diễn ra</Badge>
+      case 'ready':
+        return <Badge className="bg-yellow-100 text-yellow-800">Đang tuyển sinh</Badge>
+      case 'suspended':
+        return <Badge className="bg-orange-100 text-orange-800">Tạm dừng</Badge>
+      case 'deleted':
+        return <Badge className="bg-red-100 text-red-800">Đã xóa</Badge>
       default:
         return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
     }
   }
 
-  // Transform API data to table format
-  const transformedData = useMemo(() => {
+  // Filter data (backend already formatted schedule as array of strings)
+  const filteredData = useMemo(() => {
     if (!teacherClassesData?.data || !Array.isArray(teacherClassesData.data)) return []
     
-    let filteredData = teacherClassesData.data
+    let data = teacherClassesData.data.map((item: any) => ({
+      ...item,
+      role: item.role || "Giáo viên chính", // Add default role if not present
+      late: item.late || 0,
+      absent: item.absent || 0
+    }))
 
-    // Filter by status tab
+    // Filter by status tab (local filter as backup)
     if (activeTab !== 'all') {
-      filteredData = filteredData.filter((item: ApiClassData) => {
-        if (activeTab === 'teaching') return item.status === 'active'
-        if (activeTab === 'stopped') return item.status === 'inactive'
+        data = data.filter((item: any) => {
+        if (activeTab === 'active') return item.status === 'active'
+        if (activeTab === 'cancelled') return item.status === 'cancelled'
+        if (activeTab === 'completed') return item.status === 'completed'
+        if (activeTab === 'ready') return item.status === 'ready'
         return true
       })
     }
 
-    // Filter by search term (local filtering as backup)
+    // Filter by search term (local filtering)
     if (debouncedSearch.trim()) {
       const searchLower = debouncedSearch.toLowerCase()
-      filteredData = filteredData.filter((item: ApiClassData) => 
-        item.name.toLowerCase().includes(searchLower) ||
-        item.subject.toLowerCase().includes(searchLower) ||
-        item.room.toLowerCase().includes(searchLower)
+      data = data.filter((item: any) => 
+        item.name?.toLowerCase().includes(searchLower) ||
+        item.subject?.toLowerCase().includes(searchLower) ||
+        item.code?.toLowerCase().includes(searchLower) ||
+        item.room?.toLowerCase().includes(searchLower)
       )
     }
     
-    return filteredData.map((item: ApiClassData) => ({
-      id: item.id,
-      name: item.name,
-      subject: item.subject,
-      students: item.students,
-      schedule: formatSchedule(item.schedule),
-      status: item.status,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      room: item.room,
-      description: item.description,
-      role: "Giáo viên chính", // TODO: role mặc định
-      roleStatus: item.status === 'active' ? 'Đang dạy' : 'Ngừng dạy',
-      present: 0, // These would come from attendance data
-      late: 0,
-      absent: 0
-    }))
+    return data
   }, [teacherClassesData, activeTab, debouncedSearch])
-  // Tab counts based on actual data (before filtering)
+
+  // Tab counts based on filtered data
   const tabCounts = useMemo(() => {
-    if (!teacherClassesData?.data || !Array.isArray(teacherClassesData.data)) return { all: 0, teaching: 0, stopped: 0 }
-    console.log(teacherClassesData.data);
-    const all = teacherClassesData.data.length
-      const teaching = teacherClassesData.data.filter((item: ApiClassData) => item.status === 'active').length
-    const stopped = teacherClassesData.data.filter((item: ApiClassData) => item.status === 'inactive').length
-    return { all, teaching, stopped }
-  }, [teacherClassesData])
+    const all = filteredData.length
+    const ready = filteredData.filter((item: any) => item.status === 'ready').length
+    const active = filteredData.filter((item: any) => item.status === 'active').length
+    const cancelled = filteredData.filter((item: any) => item.status === 'cancelled').length
+    const completed = filteredData.filter((item: any) => item.status === 'completed').length
+    return { all, ready, active, cancelled, completed }
+  }, [filteredData])
 
-  // Filtered counts for display
-  const filteredCounts = useMemo(() => {
-    const all = transformedData.length
-    const teaching = transformedData.filter((item: ClassData) => item.status === 'active').length
-    const stopped = transformedData.filter((item: ClassData) => item.status === 'inactive').length
-    return { all, teaching, stopped }
-  }, [transformedData])
-
-  // Reset page when search or tab changes
-  const handleTabChange = (tab: "all" | "teaching" | "stopped") => {
+  const handleTabChange = (tab: "all" | "ready" | "active" | "cancelled" | "completed") => {
     setActiveTab(tab)
-    pagination.setCurrentPage(1)
   }
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    pagination.setCurrentPage(1)
   }
 
   const handleViewClass = (classId: string) => {
     navigate(`/center-qn/classes/${classId}`)
   }
 
-  const columns: Column<ClassData>[] = [
+  const columns: Column<any>[] = [
     {
       key: "id",
       header: "STT",
-      width: "80px",
+      width: "10px",
       align: "center",
       render: (item, index) => <span className="text-gray-700">{index + 1}</span>,
     },
     {
+      key: "code",
+      header: "Mã lớp",
+      width: "100px",
+      render: (item) => (
+        <>
+          <div className="space-y-1">
+            <CodeDisplay code={item.code} hiddenLength={4} />
+            {getStatusBadge(item.status)}
+          </div>
+        </>
+      ),
+    },  
+    {
       key: "name",
       header: "Tên lớp",
-      width: "300px",
-      render: (item) => (
-        <div className="space-y-1">
-          <div className="text-blue-600 font-medium hover:underline" onClick={() => handleViewClass(item.id)}>{item.name}</div>
-          {item.schedule.map((time, idx) => (
-            <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
-              <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
-              {time}
-            </div>
-          ))}
-        </div>
-      ),
+      width: "200px",
+      render: (item) => {
+        const scheduleArray = ensureScheduleArray(item.schedule)
+        return (
+          <div className="space-y-1">
+            <div className="text-blue-600 font-medium hover:underline cursor-pointer" onClick={() => handleViewClass(item.id)}>{item.name}</div>
+            {scheduleArray.map((time: string, idx: number) => (
+              <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
+                {time}
+              </div>
+            ))}
+          </div>
+        )
+      },
     },
     {
       key: "students",
@@ -222,18 +194,17 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     {
       key: "role",
       header: "Vai trò",
-      width: "180px",
+      width: "100px",
       render: (item) => (
         <div className="space-y-1">
           <div className="text-gray-700">{item.role}</div>
-          {getStatusBadge(item.status)}
         </div>
       ),
     },
     {
       key: "room",
       header: "Phòng học",
-      width: "180px",
+      width: "100px",
       render: (item) => (
         <div className="space-y-1">
           <div className="text-gray-700">{item.room}</div>
@@ -242,25 +213,12 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     },
     {
       key: "startDate",
-      header: "Ngày bắt đầu",
-      width: "120px",
-      align: "center",
-      render: (item) => <div className="text-gray-700">{formatDate(item.startDate)}</div>,
-    },
-    {
-      key: "endDate",
-      header: "Ngày kết thúc",
-      width: "120px",
-      align: "center",
-      render: (item) => <div className="text-gray-700">{formatDate(item.endDate)}</div>,
-    },
-    {
-      key: "present",
-      header: "Có mặt",
+      header: "Ngày bắt đầu/Ngày kết thúc",
       width: "100px",
       align: "center",
-      render: (item) => <div className="text-gray-900 dark:text-white font-medium">{item.present}</div>,
+      render: (item) => <div className="text-gray-700"><p>{formatDate(item.startDate)}</p> <p>{formatDate(item.endDate)}</p></div>,
     },
+   
     {
       key: "late",
       header: "Đi muộn",
@@ -278,9 +236,11 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   ]
 
   const tabs = [
-    { key: "all" as const, label: "Tất cả", count: filteredCounts.all },
-    { key: "teaching" as const, label: "Đang dạy", count: filteredCounts.teaching },
-    { key: "stopped" as const, label: "Ngừng dạy", count: filteredCounts.stopped },
+    { key: "all" as const, label: "Tất cả", count: tabCounts.all },
+    { key: "ready" as const, label: "Đang tuyển sinh", count: tabCounts.ready },
+    { key: "active" as const, label: "Đang dạy", count: tabCounts.active },
+    { key: "cancelled" as const, label: "Đã hủy", count: tabCounts.cancelled },
+    { key: "completed" as const, label: "Đã kết thúc", count: tabCounts.completed },
   ]
 
   return (
@@ -326,7 +286,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
       </div>
 
         <DataTable
-          data={transformedData}
+          data={filteredData}
           columns={columns}
           rowKey="id"
           loading={isLoading}
@@ -335,13 +295,13 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
           emptyMessage="Không có dữ liệu lớp học"
           hoverable={true}
           pagination={{
-            currentPage: pagination.currentPage, // Always show page 1 for filtered data
-            totalPages: pagination.totalPages, // No pagination for filtered data
-            totalItems: transformedData.length,
-            itemsPerPage: transformedData.length,
-            onPageChange: pagination.setCurrentPage, // Disabled for filtered data
-            onItemsPerPageChange: () => {}, // Disabled for filtered data
-            showItemsPerPage: true,
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: filteredData.length,
+            itemsPerPage: filteredData.length,
+            onPageChange: () => {},
+            onItemsPerPageChange: () => {},
+            showItemsPerPage: false,
             showPageInfo: true,
           }}
         />

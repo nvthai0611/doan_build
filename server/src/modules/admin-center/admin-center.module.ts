@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
@@ -28,6 +28,7 @@ import { SettingsManagementController } from './controllers/settings-management.
 import { SettingsManagementService } from './services/settings-management.service';
 import { HolidaysSettingController } from './controllers/holidays-setting.controller';
 import { HolidaysSettingService } from './services/holidays-setting.service';
+import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 
 @Module({
   imports: [
@@ -71,4 +72,12 @@ import { HolidaysSettingService } from './services/holidays-setting.service';
     HolidaysSettingService,
   ],
 })
-export class AdminCenterModule {}
+export class AdminCenterModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(MiddlewareCenterOwner)
+      .forRoutes(
+        { path: 'admin-center/*', method: RequestMethod.ALL }
+      );
+  }
+}
