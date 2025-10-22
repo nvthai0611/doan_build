@@ -68,6 +68,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     SettingsManagementService,
   ],
 })
+//check
 export class AdminCenterModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
