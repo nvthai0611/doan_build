@@ -47,6 +47,12 @@ export const classService = {
         return response;
     },
 
+    // Clone class
+    cloneClass: async (id: string, data: any) => {
+        const response = await apiClient.post(`${BASE_URL}/${id}/clone`, data);
+        return response;
+    },
+
     // Assign teacher to class
     assignTeacher: async (classId: string, data: any) => {
         const response = await apiClient.post(`${BASE_URL}/${classId}/assign-teacher`, data);
