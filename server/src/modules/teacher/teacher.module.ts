@@ -29,6 +29,8 @@ import { IncidentReportController } from './controllers/incident-report.controll
 import { IncidentReportService } from './services/incident-report.service';
 import { TeacherStudentLeaveRequestController } from './controllers/student-leave-request.controller';
 import { TeacherStudentLeaveRequestService } from './services/student-leave-request.service';
+import { ContractsManageController } from './controllers/contracts-manage.controller';
+import { ContractsManageService } from './services/contracts-manage.service';
 import { SharedModule } from '../shared/shared.module';
 import { PrismaService } from 'src/db/prisma.service';
 
@@ -56,6 +58,7 @@ import { PrismaService } from 'src/db/prisma.service';
     LeaveRequestController,
     FileManagementController,
     IncidentReportController,
+    ContractsManageController,
     TeacherStudentLeaveRequestController,
   ],
   providers: [
@@ -74,6 +77,7 @@ import { PrismaService } from 'src/db/prisma.service';
     CloudinaryService,
     FileManagementService,
     IncidentReportService,
+    ContractsManageService,
     TeacherStudentLeaveRequestService,
     PrismaService,
   ],
