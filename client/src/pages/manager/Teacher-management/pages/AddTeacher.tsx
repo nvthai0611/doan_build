@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react" // Added useEffect
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,8 @@ import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 import { schoolService, SchoolOption } from "../../../../services/common"
 import { centerOwnerTeacherService } from "../../../../services/center-owner/teacher-management/teacher.service"
+import { MultiSelect, MultiSelectOption } from "../../../../components/ui/multi-select"
+import {apiClient} from "../../../../utils/clientAxios"
 
 export default function AddEmployee() {
   const navigate = useNavigate()
@@ -37,6 +39,7 @@ export default function AddEmployee() {
     school: "",
     schoolName: "",
     schoolAddress: "",
+    subjects: [] as string[], // Thêm field cho chuyên môn (mảng tên môn học)
     contractImage: null as File | null, // Thêm field cho ảnh hợp đồng
     status: true,
     notes: ""
@@ -47,6 +50,24 @@ export default function AddEmployee() {
 
   // State để quản lý validation errors
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // --- NEW: State for submission loading ---
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // --- NEW: State for image preview URL ---
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+
+  // --- NEW: Effect for cleaning up image preview URL ---
+  useEffect(() => {
+    // This is a cleanup function that runs when the component unmounts
+    // or when imagePreviewUrl changes
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+    }
+  }, [imagePreviewUrl])
+
 
   // Convert any school data to SchoolOption
   const convertToSchoolOption = (school: any): SchoolOption => ({
@@ -140,18 +161,7 @@ export default function AddEmployee() {
     { value: "THPT Nguyễn Huệ", label: "THPT Nguyễn Huệ", description: "123 Nguyễn Huệ, Quận 1, TP.HCM" },
     { value: "THPT Lê Lợi", label: "THPT Lê Lợi", description: "456 Lê Lợi, Quận 1, TP.HCM" },
     { value: "THPT Điện Biên Phủ", label: "THPT Điện Biên Phủ", description: "789 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM" },
-    { value: "THPT Cách Mạng Tháng 8", label: "THPT Cách Mạng Tháng 8", description: "321 Cách Mạng Tháng 8, Quận 10, TP.HCM" },
-    { value: "THPT Nguyễn Thị Minh Khai", label: "THPT Nguyễn Thị Minh Khai", description: "654 Nguyễn Thị Minh Khai, Quận 3, TP.HCM" },
-    { value: "THPT Võ Văn Tần", label: "THPT Võ Văn Tần", description: "987 Võ Văn Tần, Quận 3, TP.HCM" },
-    { value: "THPT Nguyễn Văn Cừ", label: "THPT Nguyễn Văn Cừ", description: "147 Nguyễn Văn Cừ, Quận 5, TP.HCM" },
-    { value: "THPT Trần Hưng Đạo", label: "THPT Trần Hưng Đạo", description: "258 Trần Hưng Đạo, Quận 5, TP.HCM" },
-    { value: "THPT Nguyễn Trãi", label: "THPT Nguyễn Trãi", description: "369 Nguyễn Trãi, Quận 5, TP.HCM" },
-    { value: "THPT Lý Tự Trọng", label: "THPT Lý Tự Trọng", description: "741 Lý Tự Trọng, Quận 1, TP.HCM" },
-    { value: "THPT Pasteur", label: "THPT Pasteur", description: "852 Pasteur, Quận 3, TP.HCM" },
-    { value: "THPT Hai Bà Trưng", label: "THPT Hai Bà Trưng", description: "963 Hai Bà Trưng, Quận 1, TP.HCM" },
-    { value: "THPT Nguyễn Du", label: "THPT Nguyễn Du", description: "159 Nguyễn Du, Quận 1, TP.HCM" },
-    { value: "THPT Đồng Khởi", label: "THPT Đồng Khởi", description: "357 Đồng Khởi, Quận 1, TP.HCM" },
-    { value: "THPT Nguyễn Thị Nghĩa", label: "THPT Nguyễn Thị Nghĩa", description: "468 Nguyễn Thị Nghĩa, Quận 1, TP.HCM" }
+    // ... (rest of mock schools)
   ]
 
   // TanStack Query for fetching schools
@@ -175,6 +185,15 @@ export default function AddEmployee() {
     retry: 1
   })
 
+  // TanStack Query for fetching subjects
+  const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const response = await apiClient.get('/subjects')
+      return response
+    },
+  })
+
   // Cập nhật localSchools khi có data từ API
   React.useEffect(() => {
     if (schoolsData) {
@@ -184,6 +203,16 @@ export default function AddEmployee() {
 
   // Sử dụng localSchools thay vì schoolsData để có thể thêm trường mới
   const schools = localSchools.length > 0 ? localSchools : mockSchools
+
+  // Convert subjects data sang MultiSelectOption
+  const subjectOptions: any[] = React.useMemo(() => {
+    if (!subjectsData?.data) return []
+    return (subjectsData.data as any[]).map((subject: any) => ({
+      value: subject.name,
+      label: subject.name,
+      description: subject.description
+    }))
+  }, [subjectsData])
 
   const handleAddSchool = (name: string, address?: string) => {
     // Tạo SchoolOption mới
@@ -250,6 +279,7 @@ export default function AddEmployee() {
     }
   };
 
+  // --- MODIFIED: handleSubmit with loading state ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -259,11 +289,13 @@ export default function AddEmployee() {
       return
     }
 
+    setIsSubmitting(true) // Set loading state
+
     try {
       // Validate required fields trước khi gửi
       if (!formData.email || !formData.name || !formData.username) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc")
-        return
+        return // Return early, but need to reset loading state
       }
 
       const teacherData = {
@@ -277,13 +309,13 @@ export default function AddEmployee() {
         isActive: formData.status,  
         schoolName: formData.schoolName.trim(),
         schoolAddress: formData.schoolAddress?.trim(),
+        subjects: formData.subjects, // Thêm mảng subjects
         notes: formData.notes.trim()
       }
       let response
       // Gửi FormData với ảnh hợp đồng
       if (formData.contractImage) {
         const formDataToSend = new FormData()
-
         // Thêm các field text
         formDataToSend.append('email', teacherData.email)
         formDataToSend.append('fullName', teacherData.fullName)
@@ -295,33 +327,32 @@ export default function AddEmployee() {
         formDataToSend.append('isActive', teacherData.isActive.toString()) // Convert boolean to string
         formDataToSend.append('schoolName', teacherData.schoolName)
         formDataToSend.append('schoolAddress', teacherData.schoolAddress)
+        formDataToSend.append('subjects', JSON.stringify(teacherData.subjects))
         if (teacherData.notes) {
           formDataToSend.append('notes', teacherData.notes)
         }
-        // Thêm file ảnh
         formDataToSend.append('contractImage', formData.contractImage)
-        console.log("Sending FormData with image")
         response = await centerOwnerTeacherService.createTeacher(formDataToSend as any)
       } else {
-        // Nếu không có ảnh, gửi JSON thông thường
-        console.log("Sending JSON data")
         response = await centerOwnerTeacherService.createTeacher(teacherData)
       }
-      console.log("Response:", response)
       toast.success("Thêm giáo viên thành công!")
-      // navigate("/center-qn/teachers")
+      navigate("/center-qn/teachers")
     } catch (error: any) {
-      // Xử lý lỗi từ API
       const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra khi thêm giáo viên"
       toast.error(errorMessage)
+    } finally {
+      setIsSubmitting(false) // Unset loading state regardless of outcome
     }
   }
 
+  console.log(formData);
+  
   const handleCancel = () => {
     navigate("/center-qn/teachers")
   }
 
-  // Handle file upload
+  // --- MODIFIED: Handle file upload with preview ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
@@ -338,6 +369,15 @@ export default function AddEmployee() {
         toast.error('Kích thước file không được vượt quá 5MB')
         return
       }
+
+      // Revoke the old preview URL if it exists
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+
+      // Create a new preview URL
+      const newPreviewUrl = URL.createObjectURL(file)
+      setImagePreviewUrl(newPreviewUrl)
 
       setFormData(prev => ({
         ...prev,
@@ -391,14 +431,16 @@ export default function AddEmployee() {
             </Breadcrumb>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleCancel}>
+            <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSubmitting}>
               <Undo className="w-4 h-4" />
             </Button>
-            <Button size="sm" onClick={testConnection} variant="secondary">
-              Test
-            </Button>
-            <Button size="sm" onClick={handleSubmit}>
-              <Check className="w-4 h-4" />
+            {/* --- MODIFIED: Submit Button with loading state --- */}
+            <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -559,6 +601,25 @@ export default function AddEmployee() {
                     )}
                   </div>
 
+                  {/* Subjects/Chuyên môn */}
+                  <div className="space-y-2">
+                    <Label htmlFor="subjects">Chuyên môn (Môn học)</Label>
+                    <MultiSelect
+                      options={subjectOptions}
+                      selected={formData.subjects}
+                      onChange={(selected) => handleInputChange("subjects", selected)}
+                      placeholder={subjectsLoading ? "Đang tải danh sách môn học..." : "Chọn môn học"}
+                      searchPlaceholder="Tìm kiếm môn học..."
+                      emptyText="Không tìm thấy môn học"
+                      disabled={subjectsLoading}
+                      maxDisplay={3}
+                    />
+                    {formData.subjects.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Đã chọn {formData.subjects.length} môn học
+                      </p>
+                    )}
+                  </div>
 
                 </div>
               </div>
@@ -566,21 +627,34 @@ export default function AddEmployee() {
 
             {/* Right Column - Status and Notes */}
             <div className="space-y-6">
-              {/* Contract Image Upload */}
+              {/* --- MODIFIED: Contract Image Upload with Preview --- */}
               <div className="space-y-2">
                 <Label htmlFor="contractImage">Ảnh hợp đồng</Label> 
                 <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${errors.contractImage ? 'border-red-500' : 'border-gray-300 hover:border-gray-400'}`}>
-                  {formData.contractImage ? (
-                    <div className="space-y-2">
+                  {formData.contractImage && imagePreviewUrl ? (
+                    <div className="space-y-3">
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Contract Preview"
+                        className="max-h-48 w-auto mx-auto rounded-lg object-contain shadow-sm"
+                      />
                       <div className="flex items-center justify-center space-x-2">
                         <Upload className="w-5 h-5 text-green-500" />
-                        <span className="text-sm text-green-600 font-medium">
+                        <span className="text-sm text-green-600 font-medium truncate max-w-xs" title={formData.contractImage.name}>
                           {formData.contractImage.name}
                         </span>
                         <button
                           type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, contractImage: null }))}
-                          className="text-red-500 hover:text-red-700"
+                          onClick={() => {
+                            // Revoke URL and clear state
+                            if (imagePreviewUrl) {
+                              URL.revokeObjectURL(imagePreviewUrl)
+                              setImagePreviewUrl(null)
+                            }
+                            setFormData(prev => ({ ...prev, contractImage: null }))
+                          }}
+                          className="text-red-500 hover:text-red-700 flex-shrink-0"
+                          title="Xóa ảnh"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -615,6 +689,7 @@ export default function AddEmployee() {
                 </div>
                 <ErrorMessage field="contractImage" />
               </div>
+              
               {/* Active Status */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Trạng thái hoạt động</h2>

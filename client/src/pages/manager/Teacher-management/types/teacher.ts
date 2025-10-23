@@ -17,6 +17,8 @@ export interface Teacher {
     contractEnd?: string
     subjects?: string[]
     salary?: number
+    schoolName?: string
+    schoolAddress?: string
     // New fields from updated schema
     school?: {
       id: string
@@ -24,6 +26,13 @@ export interface Teacher {
       address?: string
       phone?: string
     }
+    contractUploads?: Array<{
+      id: string
+      uploadedImageUrl: string
+      uploadedImageName?: string
+      uploadedAt: string
+      contractType: string
+    }>
     classes?: {
       id: string
       name: string

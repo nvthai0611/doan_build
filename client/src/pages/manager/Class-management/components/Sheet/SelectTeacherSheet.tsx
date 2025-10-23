@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, ArrowLeft, Check, ChevronLeft, ChevronRight, GraduationCap, Mail, Phone, UserPlus } from 'lucide-react';
+import { Search, ArrowLeft, Check, ChevronLeft, ChevronRight, GraduationCap, Mail, Phone, UserPlus, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
 import { apiClient } from '../../../../../utils/clientAxios';
@@ -28,6 +28,7 @@ interface TeacherItem {
   avatar?: string;
   status: boolean;
   role: string;
+  subjects?: string;
 }
 
 export const SelectTeacherSheet = ({
@@ -46,9 +47,10 @@ export const SelectTeacherSheet = ({
   useEffect(() => {
     setPage(1);
   }, [debouncedQuery]);
-
+  console.log(classData);
+  
   const { data, isLoading: isFetchingTeachers } = useQuery({
-    queryKey: ['teachers-selection', { search: debouncedQuery || undefined, page, limit: pageSize, open }],
+    queryKey: ['teachers-selection', { search: debouncedQuery || undefined, page, limit: pageSize, subject: classData?.subject.name, open }],
     queryFn: async () => {
       const params: any = {
         status: 'active', // Chỉ lấy giáo viên đang hoạt động
@@ -58,6 +60,11 @@ export const SelectTeacherSheet = ({
       
       if (debouncedQuery?.trim()) {
         params.search = debouncedQuery.trim();
+      }
+      
+      // Thêm filter theo môn học của lớp
+      if (classData?.subject) {
+        params.subject = classData?.subject?.name;
       }
       
       const response = await apiClient.get('/admin-center/teachers', params);
@@ -80,7 +87,8 @@ export const SelectTeacherSheet = ({
     phone: t.phone,
     avatar: t.avatar,
     status: t.status || false,
-    role: t.role || 'Giáo viên'
+    role: t.role || 'Giáo viên',
+    subjects: t.subjects || []
   })), [apiTeachers]);
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -206,6 +214,22 @@ export const SelectTeacherSheet = ({
                       <GraduationCap className="w-4 h-4 text-gray-400" />
                       <CodeDisplay code={teacher.teacherCode} hiddenLength={4} />
                     </div>
+                    {teacher.subjects && teacher.subjects.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <BookOpen className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex flex-wrap gap-1">
+                          {teacher.subjects.map((subject: string, idx: number) => (
+                            <Badge 
+                              key={idx}
+                              variant="secondary" 
+                              className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              {subject}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="pt-2 mt-2 border-t flex justify-end">
                       <Badge 
                         variant={teacher.status ? "default" : "secondary"}
