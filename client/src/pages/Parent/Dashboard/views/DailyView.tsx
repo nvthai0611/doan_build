@@ -36,7 +36,11 @@ export function DailyView({
   sessions,
 }: DailyViewProps) {
   const dateStr = currentDate.toISOString().split('T')[0];
-  const classSessions = sessions.filter((session) => session.date === dateStr);
+  const classSessions = sessions.filter((session: any) => {
+    // Backend trả về sessionDate, cần convert sang date string
+    const sessionDateStr = session.sessionDate ? session.sessionDate.split('T')[0] : session.date;
+    return sessionDateStr === dateStr;
+  });
 
   // Generate time slots from 8:00 to 20:00
   const timeSlots: string[] = [];
