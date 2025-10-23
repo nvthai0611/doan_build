@@ -1775,15 +1775,13 @@ export class ClassManagementService {
                 }
             });
 
-            // Gửi email thông báo cho giáo viên
+            // Gửi email thông báo cho giáo viên qua queue
             try {
-                // Gửi email trực tiếp
-                await this.emailNotificationService.sendTeacherAssignmentEmailDirect(classId, body.teacherId);
-                console.log(`📧 Email đã được gửi trực tiếp cho giáo viên ${body.teacherId} và lớp ${classId}`);
+                await this.emailNotificationService.sendClassAssignTeacherEmail(classId, body.teacherId);
+                console.log(`📧 Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`);
             } catch (emailError) {
                 // Log lỗi email nhưng không làm fail toàn bộ operation
-                console.error('Failed to send email notification:', emailError);
-                // Có thể thêm vào response để frontend biết email không gửi được
+                console.error('Failed to queue email notification:', emailError);
             }
 
             return {
@@ -1842,11 +1840,14 @@ export class ClassManagementService {
 
             // Gửi email hủy lớp cho giáo viên trước khi xóa
             try {
-                await this.emailNotificationService.sendTeacherCancellationEmailDirect(classId, teacherId);
-                console.log(`📧 Email hủy lớp đã được gửi cho giáo viên ${teacherId}`);
+                await this.emailNotificationService.sendClassRemoveTeacherEmail(
+                    classId, 
+                    teacherId,
+                    'Lớp học đã được hủy phân công'
+                );
+                console.log(`📧 Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`);
             } catch (emailError) {
-                console.error('Failed to send cancellation email to teacher:', emailError);
-                // Không throw error để không làm fail toàn bộ operation
+                console.error('Failed to queue cancellation email to teacher:', emailError);
             }
 
             // Remove teacher assignment and chuyển status về draft

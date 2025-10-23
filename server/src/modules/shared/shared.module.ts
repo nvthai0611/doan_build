@@ -10,6 +10,8 @@ import { EmailQueueService } from './services/email-queue.service';
 import { EmailProcessor } from './services/email-processor.service';
 import { EmailNotificationService } from './services/email-notification.service';
 import { EmailNotificationProcessor } from './consumer/email_notification.processor';
+import { TeacherAccountProcessor } from './consumer/teacher_account.processor';
+import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.processor';
 
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -37,6 +39,14 @@ const DEFAULT_BULL_JOB_OPTIONS = {
       name: 'email_notification',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
     }),
+    BullModule.registerQueue({
+      name: 'teacher_account',
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+    }),
+    BullModule.registerQueue({
+      name: 'class_assign_teacher',
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+    }),
   ],
   controllers:[
     // Shared controllers can be added here
@@ -51,14 +61,16 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,
-    EmailNotificationProcessor
+    EmailNotificationProcessor,
+    TeacherAccountProcessor,
+    ClassAssignTeacherProcessor
   ],
   exports: [
     StudentSharedService, 
     GradeService, 
     PrismaService,
     EmailQueueService,
-    EmailNotificationService,
+    EmailNotificationService, // Export để các module khác sử dụng
   ],
   
 })

@@ -19,6 +19,10 @@ export class CreateTeacherDto {
   role: string;
 
   @IsOptional()
+  @IsArray()
+  subjects?: string[];
+
+  @IsOptional()
   @IsDateString()
   contractEnd?: string;
 

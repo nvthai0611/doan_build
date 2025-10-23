@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
@@ -31,16 +32,20 @@ import { HolidaysSettingService } from './services/holidays-setting.service';
 import { FileManagementController } from './controllers/file-management.controller';
 import { FileManagementService } from './services/file-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { SessionSchedulerService } from './crons/session-scheduler.service';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(), // Enable cron jobs
     RouterModule.register([
       {
         path: "admin-center", 
         module: AdminCenterModule,
       },
     ]),
-    SharedModule, // Import SharedModule để sử dụng email services
+    
+    SharedModule, //sử dụng email services
   ],
   controllers: [
     ApprovalManagementController,
@@ -74,6 +79,8 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     SettingsManagementService,
     HolidaysSettingService,
     FileManagementService,
+    CloudinaryService,
+    // SessionSchedulerService, // Cron jobs service
   ],
 })
 //check

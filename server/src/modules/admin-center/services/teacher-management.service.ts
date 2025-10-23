@@ -1,35 +1,49 @@
-import { Injectable, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
 import { CreateTeacherDto } from '../dto/teacher/create-teacher.dto';
 import { UpdateTeacherDto } from '../dto/teacher/update-teacher.dto';
 import { QueryTeacherDto } from '../dto/teacher/query-teacher.dto';
-import * as bcrypt from 'bcrypt';
 import { Gender } from 'src/common/constants';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import { generateQNCode } from '../../../utils/function.util';
+import Hash from '../../../utils/hasing.util';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
+
 @Injectable()
 export class TeacherManagementService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+    private emailNotificationService: EmailNotificationService
+  ) {}
 
   async createTeacher(createTeacherDto: CreateTeacherDto) {
-    console.log("Create teacher dto:", createTeacherDto)
-    
     return await this.prisma.$transaction(async (prisma) => {
       // Check if email or username already exists
       const existingUser = await prisma.user.findFirst({
         where: {
           OR: [
             { email: createTeacherDto.email },
-            { username: createTeacherDto.username }
-          ]
-        }
+            { username: createTeacherDto.username },
+          ],
+        },
       });
 
       if (existingUser) {
         throw new BadRequestException('Email hoặc username đã tồn tại');
       }
 
+
       // Hash password
-      const hashedPassword = await bcrypt.hash("123456", 10);
+      const passwordData = await Hash.generateRandomPassword();
+      const defaultPassword = passwordData.rawPassword; // Lưu password gốc để gửi email
+      const hashedPassword = passwordData.hashedPassword;
 
       // Handle school creation/finding
       let schoolId = null;
@@ -38,8 +52,8 @@ export class TeacherManagementService {
         let school = await prisma.school.findFirst({
           where: {
             name: createTeacherDto.schoolName,
-            address: createTeacherDto.schoolAddress || undefined
-          }
+            address: createTeacherDto.schoolAddress || undefined,
+          },
         });
 
         // Nếu không tìm thấy, tạo school mới
@@ -48,8 +62,8 @@ export class TeacherManagementService {
             data: {
               name: createTeacherDto.schoolName,
               address: createTeacherDto.schoolAddress || null,
-              phone: null
-            }
+              phone: null,
+            },
           });
         }
         schoolId = school.id;
@@ -66,35 +80,37 @@ export class TeacherManagementService {
           role: createTeacherDto.role,
           isActive: createTeacherDto.isActive ?? true,
           gender: createTeacherDto.gender,
-          birthDate: createTeacherDto.birthDate ? this.parseDateString(createTeacherDto.birthDate) : null,
-        }
+          birthDate: createTeacherDto.birthDate
+            ? this.parseDateString(createTeacherDto.birthDate)
+            : null,
+        },
       });
 
       // Generate unique teacher code
       let teacherCode: string;
       let isUnique = false;
       let attempts = 0;
-      const maxAttempts = 10; 
-      
+      const maxAttempts = 10;
+
       while (!isUnique && attempts < maxAttempts) {
         teacherCode = generateQNCode('teacher');
         const existingTeacher = await prisma.teacher.findUnique({
-          where: { teacherCode }
+          where: { teacherCode },
         });
-        
+
         if (!existingTeacher) {
           isUnique = true;
         }
         attempts++;
       }
-      
+
       if (!isUnique) {
         throw new HttpException(
           {
             success: false,
-            message: 'Không thể tạo mã giáo viên duy nhất sau nhiều lần thử'
+            message: 'Không thể tạo mã giáo viên duy nhất sau nhiều lần thử',
           },
-          HttpStatus.INTERNAL_SERVER_ERROR
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
@@ -104,32 +120,61 @@ export class TeacherManagementService {
           userId: user.id,
           schoolId: schoolId,
           teacherCode: teacherCode,
+          subjects: createTeacherDto.subjects,
         },
         include: {
           user: true,
-          school: true
-        }
+          school: true,
+        },
       });
 
       // Handle contract image upload if provided
       if (createTeacherDto.contractImage) {
-        console.log("Contract image received:", createTeacherDto.contractImage);
-        
-        await prisma.contractUpload.create({
-          data: {
-            teacherId: teacher.id,
-            contractType: 'teacher_contract',
-            uploadedImageUrl: createTeacherDto.contractImage.filename || 'temp-filename',
-            uploadedImageName: createTeacherDto.contractImage.originalname
-          }
-        });
+        try {
+          // Upload image to Cloudinary
+          const uploadResult = await this.cloudinaryService.uploadImage(
+            createTeacherDto.contractImage,
+            'teachers',
+          );
+          await prisma.contractUpload.create({
+            data: {
+              teacherId: teacher.id,
+              contractType: 'teacher_contract',
+              uploadedImageUrl: uploadResult.secure_url, // Save Cloudinary URL
+              uploadedImageName: createTeacherDto.contractImage.originalname,
+            },
+          });
+        } catch (error) {
+          await prisma.contractUpload.create({
+            data: {
+              teacherId: teacher.id,
+              contractType: 'teacher_contract',
+              uploadedImageUrl:
+                createTeacherDto.contractImage.filename || 'temp-filename',
+              uploadedImageName: createTeacherDto.contractImage.originalname,
+            },
+          });
+        }
       }
-      // sent to email verification
-
+      
+      // Gửi email thông báo tài khoản cho giáo viên
+      try {
+        await this.emailNotificationService.sendTeacherAccountEmail(
+          teacher.id,
+          user.fullName,
+          user.username,
+          user.email,
+          defaultPassword,
+          teacherCode
+        );
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email tài khoản:', emailError);
+        // Không throw error, vì teacher đã được tạo thành công
+      }
+      
       return this.formatTeacherResponse(teacher);
     });
   }
-
 
   async findAllTeachers(queryDto: any) {
     const {
@@ -141,9 +186,10 @@ export class TeacherManagementService {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       gender,
-      birthYear
+      birthYear,
+      subject, // Thêm filter theo môn học
     } = queryDto;
-    
+
     const pageNum = parseInt(page.toString());
     const limitNum = parseInt(limit.toString());
     const skip = (pageNum - 1) * limitNum;
@@ -163,14 +209,14 @@ export class TeacherManagementService {
     if (gender) {
       userWhere.gender = gender;
     }
-    
+
     // Add birthYear filter to userWhere
     if (birthYear) {
       const year = parseInt(birthYear);
       if (!isNaN(year)) {
         userWhere.birthDate = {
           gte: new Date(year, 0, 1), // Start of year
-          lt: new Date(year + 1, 0, 1) // Start of next year
+          lt: new Date(year + 1, 0, 1), // Start of next year
         };
       }
     }
@@ -180,22 +226,31 @@ export class TeacherManagementService {
       where.AND.push({ user: userWhere });
     }
 
+    // Add subject filter - chỉ lấy giáo viên có chuyên môn phù hợp
+    if (subject) {
+      where.AND.push({
+        subjects: {
+          has: subject,
+        },
+      });
+    }
+
     // Add search - search in user fields and teacher code
     if (search) {
       where.AND.push({
         OR: [
-          { 
+          {
             user: {
               OR: [
                 { fullName: { contains: search, mode: 'insensitive' } },
                 { email: { contains: search, mode: 'insensitive' } },
                 { username: { contains: search, mode: 'insensitive' } },
-                { phone: { contains: search, mode: 'insensitive' } }
-              ]
-            }
+                { phone: { contains: search, mode: 'insensitive' } },
+              ],
+            },
           },
-          { teacherCode: { contains: search, mode: 'insensitive' } }
-        ]
+          { teacherCode: { contains: search, mode: 'insensitive' } },
+        ],
       });
     }
 
@@ -203,24 +258,23 @@ export class TeacherManagementService {
     if (where.AND.length === 0) {
       delete where.AND;
     }
-   
+
     // hireDate field has been removed from Teacher model
     // Filtering by hire date is no longer supported
 
-    
     const total = await this.prisma.teacher.count({ where });
     const totalPages = Math.ceil(total / limitNum);
 
     let orderBy: any = {};
-    
-      // Map frontend field names to database field names
+
+    // Map frontend field names to database field names
     const fieldMapping: { [key: string]: string } = {
-      'name': 'fullName',
-      'email': 'email',
-      'phone': 'phone',
-      'username': 'username',
-      'createdAt': 'createdAt',
-      'updatedAt': 'updatedAt',
+      name: 'fullName',
+      email: 'email',
+      phone: 'phone',
+      username: 'username',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
     };
 
     const mappedSortBy = fieldMapping[sortBy] || sortBy;
@@ -229,51 +283,56 @@ export class TeacherManagementService {
     if (['fullName', 'email', 'phone', 'username'].includes(mappedSortBy)) {
       orderBy = {
         user: {
-          [mappedSortBy]: sortOrder
-        }
+          [mappedSortBy]: sortOrder,
+        },
       };
     } else {
       orderBy = {
-        [mappedSortBy]: sortOrder
+        [mappedSortBy]: sortOrder,
       };
     }
-    
+
     const teachers = await this.prisma.teacher.findMany({
       where,
       include: {
-        user: true
+        user: true,
       },
       orderBy,
       skip,
-      take: limitNum
+      take: limitNum,
     });
-    
+
     return {
-      data: teachers.map(teacher => this.formatTeacherResponse(teacher)),
+      data: teachers.map((teacher) => this.formatTeacherResponse(teacher)),
       meta: {
         page: pageNum,
         limit: limitNum,
         total,
-        totalPages
+        totalPages,
       },
-      message: 'Lấy danh sách giáo viên thành công'
+      message: 'Lấy danh sách giáo viên thành công',
     };
   }
-  
+
   async findOneTeacher(id: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
       include: {
         user: true,
         school: true,
+        contractUploads: {
+          orderBy: {
+            uploadedAt: 'desc',
+          },
+        },
         classes: {
           include: {
             subject: true,
             grade: true,
-            room: true
-          }
-        }
-      }
+            room: true,
+          },
+        },
+      },
     });
 
     if (!teacher) {
@@ -283,12 +342,10 @@ export class TeacherManagementService {
     return this.formatTeacherResponse(teacher);
   }
 
-
-
   async updateTeacher(id: string, updateTeacherDto: UpdateTeacherDto) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!teacher) {
@@ -304,11 +361,13 @@ export class TeacherManagementService {
             {
               OR: [
                 updateTeacherDto.email ? { email: updateTeacherDto.email } : {},
-                updateTeacherDto.username ? { username: updateTeacherDto.username } : {}
-              ].filter(condition => Object.keys(condition).length > 0)
-            }
-          ]
-        }
+                updateTeacherDto.username
+                  ? { username: updateTeacherDto.username }
+                  : {},
+              ].filter((condition) => Object.keys(condition).length > 0),
+            },
+          ],
+        },
       });
 
       if (existingUser) {
@@ -316,34 +375,77 @@ export class TeacherManagementService {
       }
     }
 
-    // Update user data
+    // Update user data (KHÔNG cho phép update role)
     const userUpdateData: any = {};
     if (updateTeacherDto.email) userUpdateData.email = updateTeacherDto.email;
-    if (updateTeacherDto.fullName) userUpdateData.fullName = updateTeacherDto.fullName;
-    if (updateTeacherDto.username) userUpdateData.username = updateTeacherDto.username;
+    if (updateTeacherDto.fullName)
+      userUpdateData.fullName = updateTeacherDto.fullName;
+    if (updateTeacherDto.username)
+      userUpdateData.username = updateTeacherDto.username;
     if (updateTeacherDto.phone) userUpdateData.phone = updateTeacherDto.phone;
-    if (updateTeacherDto.role) userUpdateData.role = updateTeacherDto.role;
-    if (updateTeacherDto.isActive !== undefined) userUpdateData.isActive = updateTeacherDto.isActive;
-
-
-
+    if (updateTeacherDto.isActive !== undefined)
+      userUpdateData.isActive = updateTeacherDto.isActive;
     if (Object.keys(userUpdateData).length > 0) {
       await this.prisma.user.update({
         where: { id: teacher.userId },
-        data: userUpdateData
+        data: userUpdateData,
       });
     }
 
     // Update teacher data
     const teacherUpdateData: any = {};
-    if (updateTeacherDto.contractEnd) teacherUpdateData.contractEnd = new Date(updateTeacherDto.contractEnd);
+    if (updateTeacherDto.contractEnd)
+      teacherUpdateData.contractEnd = new Date(updateTeacherDto.contractEnd);
     // if (updateTeacherDto.salary !== undefined) teacherUpdateData.salary = updateTeacherDto.salary;
+
+    // Handle school update if schoolName provided
+    if (updateTeacherDto.schoolName) {
+      // Find or create school
+      let school = await this.prisma.school.findFirst({
+        where: { name: updateTeacherDto.schoolName },
+      });
+
+      if (!school) {
+        school = await this.prisma.school.create({
+          data: {
+            name: updateTeacherDto.schoolName,
+            address: updateTeacherDto.schoolAddress || null,
+          },
+        });
+      }
+
+      teacherUpdateData.schoolId = school.id;
+    }
+    if (updateTeacherDto.subjects)
+      teacherUpdateData.subjects = updateTeacherDto.subjects;
 
     if (Object.keys(teacherUpdateData).length > 0) {
       await this.prisma.teacher.update({
         where: { id },
-        data: teacherUpdateData
+        data: teacherUpdateData,
       });
+    }
+
+    // Handle contract image upload - save to ContractUpload table
+    if (updateTeacherDto.contractImage) {
+      try {
+        const cloudinaryResult = await this.cloudinaryService.uploadImage(
+          updateTeacherDto.contractImage,
+          'teachers',
+        );
+
+        // Create new contract upload record
+        await this.prisma.contractUpload.create({
+          data: {
+            teacherId: id,
+            contractType: 'teacher_contract',
+            uploadedImageUrl: cloudinaryResult.secure_url,
+            uploadedImageName: updateTeacherDto.contractImage.originalname,
+          },
+        });
+      } catch (uploadError) {
+        throw new BadRequestException('Không thể upload ảnh hợp đồng');
+      }
     }
 
     // Return updated teacher
@@ -353,7 +455,7 @@ export class TeacherManagementService {
   async removeTeacher(id: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!teacher) {
@@ -362,7 +464,7 @@ export class TeacherManagementService {
 
     // Delete teacher (this will cascade to user due to onDelete: Cascade)
     await this.prisma.teacher.delete({
-      where: { id }
+      where: { id },
     });
 
     return { message: 'Xóa giáo viên thành công' };
@@ -371,7 +473,7 @@ export class TeacherManagementService {
   async toggleTeacherStatus(id: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!teacher) {
@@ -380,7 +482,7 @@ export class TeacherManagementService {
 
     const updatedUser = await this.prisma.user.update({
       where: { id: teacher.userId },
-      data: { isActive: !teacher.user.isActive }
+      data: { isActive: !teacher.user.isActive },
     });
 
     return this.formatTeacherResponse({ ...teacher, user: updatedUser });
@@ -390,36 +492,39 @@ export class TeacherManagementService {
     // Tìm teacher với các lớp học
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
-      include: { 
+      include: {
         user: true,
         classes: {
           include: {
             room: true,
             subject: true,
             sessions: {
-              where: year && month ? {
-                sessionDate: {
-                  gte: new Date(year, month - 1, 1),
-                  lt: new Date(year, month, 1)
-                }
-              } : undefined,
+              where:
+                year && month
+                  ? {
+                      sessionDate: {
+                        gte: new Date(year, month - 1, 1),
+                        lt: new Date(year, month, 1),
+                      },
+                    }
+                  : undefined,
               include: {
                 attendances: {
                   include: {
                     student: {
                       include: {
-                        user: true
-                      }
-                    }
-                  }
-                }
+                        user: true,
+                      },
+                    },
+                  },
+                },
               },
               orderBy: {
-                sessionDate: 'asc'
-              }
-            }
-          }
-        }
+                sessionDate: 'asc',
+              },
+            },
+          },
+        },
       },
     });
 
@@ -428,8 +533,8 @@ export class TeacherManagementService {
     }
 
     // Chuyển đổi dữ liệu thành format phù hợp với frontend
-    const sessions = teacher.classes.flatMap(cls => 
-      cls.sessions.map(session => ({
+    const sessions = teacher.classes.flatMap((cls) =>
+      cls.sessions.map((session) => ({
         id: session.id,
         date: session.sessionDate,
         title: `Buổi ${cls.name}`,
@@ -438,27 +543,29 @@ export class TeacherManagementService {
         class: cls.name,
         room: cls.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
-        status: session.status as "scheduled" | "completed" | "cancelled",
+        status: session.status as 'scheduled' | 'completed' | 'cancelled',
         teacher: teacher.user.fullName || 'Chưa xác định',
-        students: session.attendances.map(attendance => ({
+        students: session.attendances.map((attendance) => ({
           id: attendance.student.id,
           name: attendance.student.user.fullName || 'Chưa xác định',
           avatar: undefined,
-          status: this.mapAttendanceStatus(attendance.status)
+          status: this.mapAttendanceStatus(attendance.status),
         })),
         attendanceWarnings: this.generateAttendanceWarnings(session),
         description: session.notes || 'Phương học: Chưa cập nhật',
-        materials: [] // Có thể thêm materials sau
-      }))
+        materials: [], // Có thể thêm materials sau
+      })),
     );
 
     return {
       teacher: {
         id: teacher.id,
         name: teacher.user.fullName,
-        email: teacher.user.email
+        email: teacher.user.email,
       },
-      sessions: sessions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      sessions: sessions.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      ),
     };
   }
 
@@ -468,7 +575,10 @@ export class TeacherManagementService {
     const sessionDate = new Date(session.sessionDate);
     const sessionTime = session.startTime.split(':');
     const sessionDateTime = new Date(sessionDate);
-    sessionDateTime.setHours(parseInt(sessionTime[0]), parseInt(sessionTime[1]));
+    sessionDateTime.setHours(
+      parseInt(sessionTime[0]),
+      parseInt(sessionTime[1]),
+    );
 
     // Cảnh báo nếu buổi học đã qua mà chưa hoàn thành
     if (sessionDateTime < now && session.status === 'scheduled') {
@@ -476,7 +586,9 @@ export class TeacherManagementService {
     }
 
     // Cảnh báo nếu có học sinh vắng mặt
-    const absentStudents = session.attendances.filter(att => att.status === 'absent').length;
+    const absentStudents = session.attendances.filter(
+      (att) => att.status === 'absent',
+    ).length;
     if (absentStudents > 0) {
       return true;
     }
@@ -484,7 +596,7 @@ export class TeacherManagementService {
     return false;
   }
 
-  private mapAttendanceStatus(status: string): "present" | "absent" | "late" {
+  private mapAttendanceStatus(status: string): 'present' | 'absent' | 'late' {
     switch (status) {
       case 'present':
         return 'present';
@@ -499,11 +611,17 @@ export class TeacherManagementService {
 
   private generateAttendanceWarnings(session: any): string[] {
     const warnings: string[] = [];
-    
+
     const totalStudents = session.attendances.length;
-    const presentStudents = session.attendances.filter(att => att.status === 'present').length;
-    const absentStudents = session.attendances.filter(att => att.status === 'absent').length;
-    const lateStudents = session.attendances.filter(att => att.status === 'late').length;
+    const presentStudents = session.attendances.filter(
+      (att) => att.status === 'present',
+    ).length;
+    const absentStudents = session.attendances.filter(
+      (att) => att.status === 'absent',
+    ).length;
+    const lateStudents = session.attendances.filter(
+      (att) => att.status === 'late',
+    ).length;
 
     if (absentStudents > 0) {
       warnings.push(`*Có ${absentStudents} học viên vắng mặt*`);
@@ -519,7 +637,7 @@ export class TeacherManagementService {
 
     return warnings;
   }
-  
+
   private formatTeacherResponse(teacher: any) {
     return {
       id: teacher.id,
@@ -529,24 +647,38 @@ export class TeacherManagementService {
       username: teacher.user.username,
       code: teacher.teacherCode,
       role: this.mapRoleToVietnamese(teacher.user.role),
-      gender: teacher.user.gender === Gender.MALE ? 'Nam' : teacher.user.gender === Gender.FEMALE ? 'Nữ' : 'Khác',
-      birthDate: teacher.user.birthDate ? this.formatDate(teacher.user.birthDate) : undefined,
+      gender:
+        teacher.user.gender === Gender.MALE
+          ? 'Nam'
+          : teacher.user.gender === Gender.FEMALE
+            ? 'Nữ'
+            : 'Khác',
+      birthDate: teacher.user.birthDate
+        ? this.formatDate(teacher.user.birthDate)
+        : undefined,
       status: teacher.user.isActive,
-      school: teacher.school ? {
-        id: teacher.school.id,
-        name: teacher.school.name,
-        address: teacher.school.address
-      } : null,
+      schoolName: teacher.school?.name,
+      schoolAddress: teacher.school?.address,
+      school: teacher.school
+        ? {
+            id: teacher.school.id,
+            name: teacher.school.name,
+            address: teacher.school.address,
+          }
+        : null,
+      contractUploads: teacher.contractUploads || [],
+      subjects: teacher.subjects || [],
+      notes: teacher.notes,
       createdAt: teacher.createdAt,
-      updatedAt: teacher.updatedAt
+      updatedAt: teacher.updatedAt,
     };
   }
 
   private mapRoleToVietnamese(role: string): string {
     const roleMap = {
-      'teacher': 'Giáo viên',
+      teacher: 'Giáo viên',
       // 'admin': 'Giáo vụ',
-      'center_owner': 'Chủ trung tâm'
+      center_owner: 'Chủ trung tâm',
     };
     return roleMap[role] || 'Giáo viên';
   }
@@ -560,7 +692,7 @@ export class TeacherManagementService {
       successCount: 0,
       errorCount: 0,
       errors: [] as any[],
-      warnings: [] as any[]
+      warnings: [] as any[],
     };
 
     for (let i = 0; i < teachersData.length; i++) {
@@ -574,7 +706,7 @@ export class TeacherManagementService {
             row: rowNumber,
             field: 'required',
             message: 'Thiếu thông tin bắt buộc: email, name, username',
-            value: ''
+            value: '',
           });
           results.errorCount++;
           continue;
@@ -585,9 +717,10 @@ export class TeacherManagementService {
           where: {
             OR: [
               { email: teacherData.email },
-              { username: teacherData.username }
-            ]
-          }
+              { username: teacherData.username },
+              {phone: teacherData.phone},
+            ],
+          },
         });
 
         if (existingUser) {
@@ -595,7 +728,7 @@ export class TeacherManagementService {
             row: rowNumber,
             field: 'duplicate',
             message: 'Email hoặc username đã tồn tại',
-            value: `${teacherData.email} / ${teacherData.username}`
+            value: `${teacherData.email} / ${teacherData.username}`,
           });
           results.errorCount++;
           continue;
@@ -603,13 +736,12 @@ export class TeacherManagementService {
 
         // Nếu không có lỗi
         results.successCount++;
-
       } catch (error: any) {
         results.errors.push({
           row: rowNumber,
           field: 'general',
           message: error.message || 'Lỗi không xác định',
-          value: ''
+          value: '',
         });
         results.errorCount++;
       }
@@ -617,29 +749,30 @@ export class TeacherManagementService {
 
     return {
       ...results,
-      message: results.errorCount === 0 
-        ? `Validation thành công: ${results.successCount} giáo viên hợp lệ`
-        : `Validation thất bại: ${results.errorCount} lỗi`
+      message:
+        results.errorCount === 0
+          ? `Validation thành công: ${results.successCount} giáo viên hợp lệ`
+          : `Validation thất bại: ${results.errorCount} lỗi`,
     };
   }
 
   private parseDateString(dateStr: string): Date {
     // Handle DD/MM/YYYY format
-    const ddMMyyyyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    const ddMMyyyyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
     if (ddMMyyyyRegex.test(dateStr)) {
-      const [, day, month, year] = dateStr.match(ddMMyyyyRegex)!
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      const [, day, month, year] = dateStr.match(ddMMyyyyRegex)!;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     }
-    
+
     // Handle YYYY-MM-DD format
-    const yyyyMMddRegex = /^(\d{4})-(\d{1,2})-(\d{1,2})$/
+    const yyyyMMddRegex = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
     if (yyyyMMddRegex.test(dateStr)) {
-      const [, year, month, day] = dateStr.match(yyyyMMddRegex)!
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      const [, year, month, day] = dateStr.match(yyyyMMddRegex)!;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     }
-    
+
     // Fallback to default Date parsing
-    return new Date(dateStr)
+    return new Date(dateStr);
   }
 
   async bulkImportTeachers(teachersData: any[]) {
@@ -647,7 +780,7 @@ export class TeacherManagementService {
       successCount: 0,
       errorCount: 0,
       errors: [] as any[],
-      warnings: [] as any[]
+      warnings: [] as any[],
     };
 
     for (let i = 0; i < teachersData.length; i++) {
@@ -661,7 +794,7 @@ export class TeacherManagementService {
             row: rowNumber,
             field: 'required',
             message: 'Thiếu thông tin bắt buộc: email, name, username',
-            value: JSON.stringify(teacherData)
+            value: JSON.stringify(teacherData),
           });
           results.errorCount++;
           continue;
@@ -672,9 +805,9 @@ export class TeacherManagementService {
           where: {
             OR: [
               { email: teacherData.email },
-              { username: teacherData.username }
-            ]
-          }
+              { username: teacherData.username },
+            ],
+          },
         });
 
         if (existingUser) {
@@ -682,7 +815,7 @@ export class TeacherManagementService {
             row: rowNumber,
             field: 'duplicate',
             message: 'Email hoặc username đã tồn tại',
-            value: `${teacherData.email} / ${teacherData.username}`
+            value: `${teacherData.email} / ${teacherData.username}`,
           });
           results.errorCount++;
           continue;
@@ -696,11 +829,16 @@ export class TeacherManagementService {
           phone: teacherData.phone || '',
           role: teacherData.role || 'teacher',
           isActive: true,
-          gender: teacherData.gender === 'MALE' ? Gender.MALE : teacherData.gender === 'FEMALE' ? Gender.FEMALE : Gender.OTHER,
+          gender:
+            teacherData.gender === 'MALE'
+              ? Gender.MALE
+              : teacherData.gender === 'FEMALE'
+                ? Gender.FEMALE
+                : Gender.OTHER,
           birthDate: teacherData.birthDate || null,
           schoolName: teacherData.schoolName,
           schoolAddress: teacherData.schoolAddress,
-          notes: teacherData.notes
+          notes: teacherData.notes,
         });
 
         results.successCount++;
@@ -711,16 +849,15 @@ export class TeacherManagementService {
             row: rowNumber,
             field: 'schoolName',
             message: 'Không có thông tin trường học',
-            value: ''
+            value: '',
           });
         }
-
       } catch (error: any) {
         results.errors.push({
           row: rowNumber,
           field: 'general',
           message: error.message || 'Lỗi không xác định',
-          value: JSON.stringify(teacherData)
+          value: JSON.stringify(teacherData),
         });
         results.errorCount++;
       }
@@ -728,7 +865,7 @@ export class TeacherManagementService {
 
     return {
       ...results,
-      message: `Import hoàn thành: ${results.successCount} thành công, ${results.errorCount} lỗi`
+      message: `Import hoàn thành: ${results.successCount} thành công, ${results.errorCount} lỗi`,
     };
   }
 }

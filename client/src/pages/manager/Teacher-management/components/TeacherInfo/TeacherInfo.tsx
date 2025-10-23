@@ -46,8 +46,6 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
   const [activeTab, setActiveTab] = useState("general")
   const [accountStatus, setAccountStatus] = useState(teacher?.status || false)
   const [isVerified, setIsVerified] = useState(true)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editFormData, setEditFormData] = useState<Partial<CreateTeacherRequest>>({})
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -67,7 +65,7 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
   const [timesheetSearch, setTimesheetSearch] = useState("")
 
   // Classes state
-  const [classesActiveTab, setClassesActiveTab] = useState<"all" | "teaching" | "stopped">("all")
+  const [classesActiveTab, setClassesActiveTab] = useState<"all" | "ready" | "active" | "cancelled" | "completed">("all")
   const [classesSearch, setClassesSearch] = useState("")
 
   // Update account status when employee data changes
@@ -108,27 +106,6 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
     toast.success("Cập nhật trạng thái giáo viên thành công")
   }
 
-  const handleEditEmployee = () => {
-    setEditFormData({
-      fullName: teacher.name,
-      email: teacher.email,
-      phone: teacher.phone,  
-      username: teacher.username,
-      isActive: teacher.status,
-      notes: teacher.notes,
-    })
-    setIsEditDialogOpen(true)
-  }
-
-  const handleSaveEdit = () => {
-    updateTeacherMutation.mutate(editFormData)
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditDialogOpen(false)
-    setEditFormData({})
-  }
-
   const tabs = [
     { key: "general", label: "Thông tin chung" },
     { key: "schedule", label: "Lịch dạy" },
@@ -145,15 +122,8 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
             teacher={teacher}
             accountStatus={accountStatus}
             isVerified={isVerified}
-            isEditDialogOpen={isEditDialogOpen}
-            editFormData={editFormData}
             updateTeacherMutation={updateTeacherMutation}
             onAccountStatusToggle={handleAccountStatusToggle}
-            onEditEmployee={handleEditEmployee}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            setEditFormData={setEditFormData}
-            setIsEditDialogOpen={setIsEditDialogOpen}
           />
         )
       case "schedule":
