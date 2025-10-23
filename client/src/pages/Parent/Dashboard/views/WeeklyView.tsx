@@ -71,8 +71,10 @@ export function WeeklyView({
     const dateStr = `${yyyy}-${mm}-${dd}`;
     const hour = Number.parseInt(timeSlot.split(' ')[0].trim());
 
-    return sessions.filter((session) => {
-      if (session.date !== dateStr) return false;
+    return sessions.filter((session: any) => {
+      // Backend trả về sessionDate, cần convert sang date string
+      const sessionDateStr = session.sessionDate ? session.sessionDate.split('T')[0] : session.date;
+      if (sessionDateStr !== dateStr) return false;
       const sessionHour = Number.parseInt(String(session.startTime).slice(0, 2));
       return sessionHour === hour;
     });
