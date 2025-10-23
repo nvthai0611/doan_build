@@ -51,7 +51,15 @@ export class TeacherManagementController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTeacherDto: UpdateTeacherDto) {
+  @UseInterceptors(FileInterceptor('contractImage'))
+  update(
+    @Param('id') id: string, 
+    @Body() updateTeacherDto: UpdateTeacherDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    if (file) {
+      updateTeacherDto.contractImage = file;
+    }
     return this.teacherManagementService.updateTeacher(id, updateTeacherDto);
   }
 

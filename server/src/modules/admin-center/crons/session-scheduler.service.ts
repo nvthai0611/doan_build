@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../../db/prisma.service';
+import * as crypto from 'crypto';
+
+// Make crypto globally available for @nestjs/schedule
+if (typeof global.crypto === 'undefined') {
+  (global as any).crypto = crypto;
+}
 
 @Injectable()
 export class SessionSchedulerService {
@@ -14,7 +20,7 @@ export class SessionSchedulerService {
    * - < 3 ngày: happening (đang diễn ra)
    * - >= 3 ngày: has_not_happened (chưa diễn ra)
    */
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
   async updateSessionStatus() {
     this.logger.log('🔄 Starting session status update cron job...');
 
