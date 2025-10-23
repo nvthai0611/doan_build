@@ -12,22 +12,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import { ClassHeader } from "../../../teacher/Teacher-manage-class/detail-class/class-header"
-import { ClassNavigation } from "../../../teacher/Teacher-manage-class/detail-class/class-navigation"
-import { ClassModals } from "../../../teacher/Teacher-manage-class/detail-class/modals/class-modals"
+import { ClassHeader } from "../detail-class/class-header"
+import { ClassNavigation } from "../detail-class/class-navigation"
+import { ClassModals } from "../detail-class/modals/class-modals"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
 import { daysOfWeek } from "../../../../utils/commonData"
 import Loading from "../../../../components/Loading/LoadingPage"
 import { Loader2 } from "lucide-react"
-import DashboardTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/dashboard-tab"
-import { ThongTinChungTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/thong-tin-chung-tab"
-import { BuoiHocTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/buoi-hoc-tab"
-import { HocVienTab } from "../../../teacher/Teacher-manage-class/detail-class/tabs/hoc-vien-tab"
-import GiaoVienTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/giao-vien-tab"
-import CongViecTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/cong-viec-tab"
-import LichSuDiemDanhTab from "../../../teacher/Teacher-manage-class/detail-class/tabs/lich-su-diem-danh"
+import DashboardTab from "../detail-class/tabs/dashboard-tab"
+import { ThongTinChungTab } from "../detail-class/tabs/thong-tin-chung-tab"
+import { BuoiHocTab } from "../detail-class/tabs/buoi-hoc-tab"
+import { HocVienTab } from "../detail-class/tabs/hoc-vien-tab"
+import GiaoVienTab from "../detail-class/tabs/giao-vien-tab"
+import CongViecTab from "../detail-class/tabs/cong-viec-tab"
+import LichSuDiemDanhTab from "../detail-class/tabs/lich-su-diem-danh"
 
 const TABS = [
   { id: "dashboard", label: "Tổng Quan", icon: "📊" },

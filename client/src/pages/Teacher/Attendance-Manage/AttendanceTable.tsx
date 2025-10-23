@@ -417,7 +417,7 @@ const checkDate =
           <span className="text-gray-900 font-medium">Quản lý điểm danh</span>
         </div>
       </div>
-{hasChanges && (
+{(hasChanges && checkDate) && (
                 <Badge
                   variant="outline"
                   className="bg-amber-50 text-amber-700 border-amber-300"
