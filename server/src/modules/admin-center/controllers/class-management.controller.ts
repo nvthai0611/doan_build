@@ -61,6 +61,15 @@ export class ClassManagementController {
         return this.classManagementService.delete(id);
     }
 
+    @Post(':id/clone')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Clone lớp học' })
+    @ApiResponse({ status: 201, description: 'Clone lớp học thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học gốc' })
+    async cloneClass(@Param('id') id: string, @Body() body: any) {
+        return this.classManagementService.cloneClass(id, body);
+    }
+
     // ============ TEACHER ASSIGNMENT ============
 
     @Post(':id/assign-teacher')
