@@ -1,0 +1,70 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam classFontSize 12
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+}
+
+' ========== Domain entities ==========
+class "Enrollment" as Enrollment {
+  +id: BigInt
+  +studentId: UUID
+  +classId: UUID
+  +status: String
+  +enrolledAt: Date
+}
+
+class "Student" as Student {
+  +id: UUID
+  +studentCode: String
+  +userId: UUID
+  +parentId: UUID
+}
+
+class "User" as User {
+  +id: UUID
+  +fullName: String
+  +email: String
+  +phone: String
+  +isActive: Boolean
+}
+
+class "Parent" as Parent {
+  +id: UUID
+  +userId: UUID
+}
+
+class "Class" as Class {
+  +id: UUID
+  +name: String
+  +status: String
+  +capacity: Number
+}
+
+' ========== Application layer ==========
+class "EnrollmentManagementController" as EnrollmentController {
+  +findByClass(classId: String, query: any): Promise<any>
+  +updateStatus(id: String, body: any): Promise<any>
+}
+
+class "EnrollmentManagementService" as EnrollmentService {
+  +findByClass(classId: String, query: any): Promise<any>
+  +updateStatus(id: String, data: any): Promise<any>
+}
+
+' ========== Relationships ==========
+Enrollment --> Student : studentId
+Enrollment --> Class : classId
+Student --> User : userId
+Student --> Parent : parentId
+Parent --> User : userId
+
+EnrollmentService ..> Enrollment : uses
+EnrollmentService ..> Student : uses
+EnrollmentService ..> User : uses
+EnrollmentService ..> Parent : uses
+EnrollmentController ..> EnrollmentService : calls
+
+@enduml

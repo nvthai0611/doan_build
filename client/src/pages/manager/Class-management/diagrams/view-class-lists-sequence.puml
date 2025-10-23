@@ -1,0 +1,79 @@
+@startuml View Class Lists
+
+title View Class Lists
+
+actor "Manager" as Manager
+boundary "ClassManagement" as UI
+control "ClassService" as Service
+control "ClassController" as Controller
+control "ClassService" as BackendService
+database "Database" as DB
+
+Manager -> UI: Navigate to class list
+activate UI
+UI -> Service: getClasses(params)
+activate Service
+Service -> Controller: GET /admin-center/classes
+activate Controller
+Controller -> BackendService: findAll(queryDto)
+activate BackendService
+BackendService -> DB: prisma.class.findMany()
+activate DB
+DB --> BackendService: classes data
+deactivate DB
+BackendService --> Controller: response with pagination
+deactivate BackendService
+Controller --> Service: API response
+deactivate Controller
+Service --> UI: classes data
+deactivate Service
+UI --> Manager: display classes table
+deactivate UI
+
+alt Search classes
+Manager -> UI: Enter search term
+activate UI
+UI -> Service: getClasses({search})
+activate Service
+Service -> Controller: GET with search params
+activate Controller
+Controller -> BackendService: findAll({search})
+activate BackendService
+BackendService -> DB: prisma.class.findMany(where: OR conditions)
+activate DB
+DB --> BackendService: filtered classes
+deactivate DB
+BackendService --> Controller: filtered response
+deactivate BackendService
+Controller --> Service: API response
+deactivate Controller
+Service --> UI: filtered classes
+deactivate Service
+UI --> Manager: display filtered results
+deactivate UI
+end
+
+alt Filter classes
+Manager -> UI: Apply filters
+activate UI
+UI -> Service: getClasses({filters})
+activate Service
+Service -> Controller: GET with filter params
+activate Controller
+Controller -> BackendService: findAll({filters})
+activate BackendService
+BackendService -> DB: prisma.class.findMany(where: filters)
+activate DB
+DB --> BackendService: filtered classes
+deactivate DB
+BackendService --> Controller: filtered response
+deactivate BackendService
+Controller --> Service: API response
+deactivate Controller
+Service --> UI: filtered classes
+deactivate Service
+UI --> Manager: display filtered results
+deactivate UI
+end
+
+@enduml

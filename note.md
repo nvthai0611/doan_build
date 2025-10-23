@@ -63,39 +63,26 @@ Vẽ sequence diagram bằng PlantUML cho use case [TÊN_USE_CASE] với các y�
 - Có loop cho repeated operations
 - Notes cho SQL queries và business logic
 
-## Example structure:
+## Example structure (Gọn gàng):
 ```plantuml
-@startuml [Use Case Name] - [Part X]
+@startuml [Use Case Name]
 
-title [Use Case Name] - [Part X]
+title [Use Case Name]
 
 actor "User" as User
-boundary "Component1" as Comp1
-control "Controller1" as Ctrl1
-control "Service1" as Svc1
-entity "Entity1" as Ent1
-database "Database" as DB
+boundary "UI" as UI
+control "Controller" as Ctrl
+control "Service" as Svc
+database "DB" as DB
 
-== 1. Section Name ==
-User -> Comp1: Action
-activate Comp1
-Comp1 -> Ctrl1: API call
-activate Ctrl1
-Ctrl1 -> Svc1: business logic
-activate Svc1
-Svc1 -> Ent1: domain operation
-activate Ent1
-Ent1 -> DB: SQL query
-note right: SELECT * FROM table WHERE condition
-DB --> Ent1: result
-Ent1 --> Svc1: data
-deactivate Ent1
-Svc1 --> Ctrl1: response
-deactivate Svc1
-Ctrl1 --> Comp1: response
-deactivate Ctrl1
-Comp1 --> User: display result
-deactivate Comp1
+User -> UI: Action
+UI -> Ctrl: API call
+Ctrl -> Svc: business logic
+Svc -> DB: prisma.query()
+DB --> Svc: data
+Svc --> Ctrl: response
+Ctrl --> UI: response
+UI --> User: display result
 
 @enduml
 ```

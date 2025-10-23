@@ -1,0 +1,69 @@
+@startuml Create Class
+
+title Create Class
+
+actor "Manager" as Manager
+boundary "AddClass" as UI
+control "ClassService" as Service
+control "ClassController" as Controller
+control "ClassService" as BackendService
+database "Database" as DB
+
+Manager -> UI: Navigate to create class
+activate UI
+UI -> Service: Load reference data
+activate Service
+Service -> Controller: GET /subjects, /rooms, /grades, /teachers
+activate Controller
+Controller -> BackendService: findAll()
+activate BackendService
+BackendService -> DB: prisma.findMany()
+activate DB
+DB --> BackendService: reference data
+deactivate DB
+BackendService --> Controller: API response
+deactivate BackendService
+Controller --> Service: reference data
+deactivate Controller
+Service --> UI: subjects, rooms, grades, teachers
+deactivate Service
+UI --> Manager: display form with options
+deactivate UI
+
+alt Fill form data
+Manager -> UI: Enter class information
+activate UI
+UI -> UI: Auto-select subject & grade
+UI --> Manager: show auto-selection notification
+deactivate UI
+end
+
+alt Submit form
+Manager -> UI: Submit form
+activate UI
+UI -> UI: Validate form data
+alt Validation fails
+UI --> Manager: show validation errors
+else Validation passes
+UI -> Service: createClass(formData)
+activate Service
+Service -> Controller: POST /admin-center/classes
+activate Controller
+Controller -> BackendService: create(createClassDto)
+activate BackendService
+BackendService -> DB: prisma.class.create()
+activate DB
+DB --> BackendService: new class
+deactivate DB
+BackendService --> Controller: success response
+deactivate BackendService
+Controller --> Service: API response
+deactivate Controller
+Service --> UI: success
+deactivate Service
+UI --> Manager: show success toast & redirect
+deactivate UI
+end
+end
+
+@enduml
