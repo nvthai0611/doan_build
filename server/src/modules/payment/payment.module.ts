@@ -7,6 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // Services
 import { SepayService } from './service/sepay.service';
 import { PrismaService } from '../../db/prisma.service';
+import { EmailNotificationService } from '../shared/services/email-notification.service';
 
 // Controllers
 
