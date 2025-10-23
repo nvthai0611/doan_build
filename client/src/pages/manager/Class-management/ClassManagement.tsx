@@ -404,8 +404,8 @@ export const ClassManagement = () => {
         },
         {
             key: 'teachers',
-            width: '290px',
-            header: 'Giáo viên phụ trách',
+            width: '120px',
+            header: 'Giáo viên',
             render: (item: any) => {
                 if (item.teacher) {
                     const teacher = item.teacher;
