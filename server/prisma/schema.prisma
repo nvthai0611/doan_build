@@ -198,6 +198,7 @@ model ClassSession {
   teacher                      Teacher?                      @relation(fields: [teacherId], references: [id])
   leaveRequestAffectedSessions LeaveRequestAffectedSession[]
   attendances                  StudentSessionAttendance[]
+  holidayLinks HolidayPeriodSession[]
 
   @@map("class_sessions")
 }
@@ -682,4 +683,32 @@ model SystemSetting {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("system_settings")
+}
+
+model HolidayPeriod {
+  id        String   @id @default(uuid()) @db.Uuid
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date")   @db.Date
+  note      String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  sessions  HolidayPeriodSession[]
+
+  @@map("holiday_periods")
+}
+
+model HolidayPeriodSession {
+  holidayPeriodId String       @map("holiday_period_id") @db.Uuid
+  sessionId       String       @map("session_id")        @db.Uuid
+  linkedAt        DateTime     @default(now()) @map("linked_at") @db.Timestamptz(6)
+
+  holidayPeriod   HolidayPeriod @relation(fields: [holidayPeriodId], references: [id], onDelete: Cascade)
+  session         ClassSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([holidayPeriodId, sessionId])
+  @@index([sessionId], map: "idx_hps_session")
+  @@index([holidayPeriodId], map: "idx_hps_holiday")
+  @@map("holiday_period_sessions")
 }

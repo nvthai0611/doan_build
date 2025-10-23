@@ -144,7 +144,7 @@ const centerOwnerMenuItems = [
       { title: 'Thông tin trung tâm', href: '/center-qn/settings/center-info-setting' },
       { title: 'Ngày nghỉ', href: '/center-qn/settings/holidays-setting' },
       { title: 'Học phí', href: '/center-qn/settings/tuition-setting' },
-      { title: 'Điểm thành phần', href: '/center-qn/settings/score-setting' },
+      { title: 'Bài kiểm tra', href: '/center-qn/settings/score-setting' },
       { title: 'Thông báo', href: '/center-qn/settings/notifications-setting' },
     ],
   },

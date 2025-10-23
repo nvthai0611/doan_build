@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
 import { SettingsManagementService } from '../services/settings-management.service';
 import { UpdateSettingDto } from '../dto/setting/update-setting.dto';
 
-@Controller('admin-center/settings-management')
+@Controller('settings-management')
 export class SettingsManagementController {
   constructor(private service: SettingsManagementService) {}
 

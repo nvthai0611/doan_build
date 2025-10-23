@@ -17,9 +17,9 @@ export class SettingsManagementService {
     return { data: item, message: 'Fetched setting' };
   }
 
-  async upsert(dto: UpdateSettingDto, userId?: string) {
+  async upsert(dto: UpdateSettingDto) {
     const { key, group, value, description } = dto;
-    const data: any = { key, group, value, description, updatedBy: userId };
+    const data: any = { key, group, value, description};
     const item = await this.prisma.systemSetting.upsert({
       where: { key },
       update: data,
