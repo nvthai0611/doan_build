@@ -26,6 +26,8 @@ import { ParentManagementService } from './services/parent-management.service';
 import { SharedModule } from '../shared/shared.module';
 import { SettingsManagementController } from './controllers/settings-management.controller';
 import { SettingsManagementService } from './services/settings-management.service';
+import { HolidaysSettingController } from './controllers/holidays-setting.controller';
+import { HolidaysSettingService } from './services/holidays-setting.service';
 import { FileManagementController } from './controllers/file-management.controller';
 import { FileManagementService } from './services/file-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
@@ -53,6 +55,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     IncidentHandleController,
     ParentManagementController,
     SettingsManagementController,
+    HolidaysSettingController,
     FileManagementController,
   ],
   providers: [
@@ -69,6 +72,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     IncidentHandleService,
     ParentManagementService,
     SettingsManagementService,
+    HolidaysSettingService,
     FileManagementService,
   ],
 })

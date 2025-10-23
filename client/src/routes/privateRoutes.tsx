@@ -44,12 +44,9 @@ import { NotificationSetting } from "../pages/manager/Settings/NotiSetting";
 import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
 import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
-<<<<<<< Updated upstream
 import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
 
-=======
 import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
->>>>>>> Stashed changes
 
 export const privateRoutes = (
   <>
