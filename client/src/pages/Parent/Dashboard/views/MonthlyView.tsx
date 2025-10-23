@@ -74,12 +74,16 @@ export function MonthlyView({
   ];
 
   const getSessionsForDate = (date: Date, classSessions: ClassSessions[]) => {
-    // So sánh theo định dạng local YYYY-MM-DD để khớp với session.date
+    // So sánh theo định dạng local YYYY-MM-DD để khớp với session.sessionDate
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
-    return classSessions.filter((session) => session.date === dateStr);
+    return classSessions.filter((session: any) => {
+      // Backend trả về sessionDate, cần convert sang date string
+      const sessionDateStr = session.sessionDate ? session.sessionDate.split('T')[0] : session.date;
+      return sessionDateStr === dateStr;
+    });
   };
 
   const isCurrentMonth = (date: Date) => {
