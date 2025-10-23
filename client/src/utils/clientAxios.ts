@@ -73,12 +73,19 @@ const client: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Add token vào header
+// Add token và API key vào header
 client.interceptors.request.use((config) => {
   const token = TokenStorage.get();
   if (token && token !== 'undefined') {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // API Key cho production
+  const apiKey = import.meta.env.VITE_API_KEY;
+  if (apiKey) {
+    config.headers['x-api-key'] = apiKey;
+  }
+  
   return config;
 }, (error) => {
   return Promise.reject(error);

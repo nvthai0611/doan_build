@@ -44,7 +44,12 @@ import { NotificationSetting } from "../pages/manager/Settings/NotiSetting";
 import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
 import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
+<<<<<<< Updated upstream
+import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
 
+=======
+import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
+>>>>>>> Stashed changes
 
 export const privateRoutes = (
   <>
@@ -110,6 +115,7 @@ export const privateRoutes = (
         <Route path="session-details/:sessionId" element={<SessionDetails />} />
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
+        <Route path="student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
       </Route>
 
       {/* Học sinh */}
@@ -134,6 +140,7 @@ export const privateRoutes = (
       >
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
+        <Route path="schedule" element={<ChildSchedulePage />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
         <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />
         <Route path="student-leave-requests/create" element={<StudentLeaveRequestForm />} />

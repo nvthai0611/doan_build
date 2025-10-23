@@ -29,10 +29,12 @@ class ParentStudentLeaveRequestService {
     const payload: any = response as any
     const serverData = payload?.data?.data || payload?.data
     const serverMeta = payload?.data?.meta || payload?.meta
+    const serverCounts = payload?.counts || payload?.data?.counts
     
     return {
       data: serverData || [],
-      meta: serverMeta || { total: 0, page: 1, limit: 10, totalPages: 0 }
+      meta: serverMeta || { total: 0, page: 1, limit: 10, totalPages: 0 },
+      counts: serverCounts
     }
   }
 
@@ -98,11 +100,10 @@ class ParentStudentLeaveRequestService {
   }
 
   /**
-   * Lấy các buổi học sẽ bị ảnh hưởng trong khoảng thời gian nghỉ
+   * Lấy các buổi học sẽ bị ảnh hưởng trong khoảng thời gian nghỉ (tất cả lớp của học sinh)
    */
   async getAffectedSessions(params: {
     studentId: string
-    classId: string
     startDate: string
     endDate: string
   }): Promise<any[]> {

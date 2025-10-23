@@ -356,12 +356,12 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
           </Avatar>
           <div>
             <p className="font-medium text-gray-900">{enrollment?.student?.user?.fullName || '-'}</p>
-            <p className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500">
               <CodeDisplay
                 code={enrollment?.student?.studentCode || '-'}
                 hiddenLength={4}
               />
-            </p>
+            </div>
           </div>
         </div>
       ),

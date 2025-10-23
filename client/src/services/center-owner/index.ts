@@ -57,3 +57,13 @@ export type {
 // Settings
 export { settingsService } from './settings-management/settings.service'
 
+// File Management
+export { centerOwnerFileManagementService } from './file-management/file.service'
+export type {
+  Material,
+  CenterClass,
+  UploadMaterialParams,
+  GetMaterialsParams,
+  MaterialsResponse
+} from './file-management/file.types'
+

@@ -49,28 +49,40 @@ export class StudentManagementService {
     }
 
     // Filter by enrollment status if needed
+    // In the DB Enrollment.status uses values: not_been_updated, studying, stopped, graduated
+    // Treat 'studying' as the active/enrolled state
     let enrollmentWhere: any | undefined = undefined;
     if (enrollmentStatus === 'enrolled') {
-      enrollmentWhere = { status: 'active' };
+      enrollmentWhere = { some: { status: 'studying', class: { status: 'active' } } };
     } else if (enrollmentStatus === 'not_enrolled') {
-      enrollmentWhere = { none: {} };
+      // no enrollments matching active studying
+      enrollmentWhere = { none: { status: 'studying', class: { status: 'active' } } };
     }
 
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const take = Math.max(1, limit);
 
+    // If an enrollment filter is provided, apply it to the student.where clause
+    const studentWhere = { ...where };
+    if (enrollmentWhere) {
+      // Prisma expects relation filters on the parent field
+      // e.g., enrollments: { some: { status: 'studying', class: { status: 'active' } } }
+      // We'll attach that to the main where
+      (studentWhere as any).enrollments = enrollmentWhere;
+    }
+
     const [students, total] = await Promise.all([
       this.prisma.student.findMany({
-        where,
+        where: studentWhere,
         skip,
         take,
         include: {
           user: true,
           school: true,
-          // Chỉ lấy enrollment ACTIVE và lớp ACTIVE
+          // Include enrollments but only those that are studying and whose class is active
           enrollments: {
             where: {
-              status: 'active',
+              status: 'studying',
               class: { status: 'active' },
             },
             include: {
@@ -85,7 +97,7 @@ export class StudentManagementService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.student.count({ where }),
+      this.prisma.student.count({ where: studentWhere }),
     ]);
 
     const formatted = students.map((s) => ({
@@ -337,23 +349,54 @@ export class StudentManagementService {
     });
     if (!child) return { data: [], message: 'Không tìm thấy học sinh' };
 
-    // Lấy các lớp mà học sinh đang theo học
+    // Lấy các lớp mà học sinh đang theo học với thông tin enrolledAt và actualStartDate
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { studentId: childId, status: 'active' },
-      select: { classId: true },
+      where: { studentId: childId, status: 'studying' },
+      select: { 
+        classId: true, 
+        enrolledAt: true,
+        class: {
+          select: {
+            actualStartDate: true
+          }
+        }
+      },
     });
+    
+    if (enrollments.length === 0) return { data: [], message: 'Chưa có lịch học' };
+
+    // Tạo map để lưu thời điểm bắt đầu hợp lệ cho mỗi lớp
+    const classValidStartDates = new Map<string, Date>();
+    
+    enrollments.forEach((enrollment) => {
+      const enrolledAt = enrollment.enrolledAt;
+      const actualStartDate = enrollment.class.actualStartDate;
+      
+      // Lấy ngày lớn hơn giữa enrolledAt và actualStartDate
+      let validStartDate = enrolledAt;
+      if (actualStartDate && actualStartDate > enrolledAt) {
+        validStartDate = actualStartDate;
+      }
+      
+      classValidStartDates.set(enrollment.classId, validStartDate);
+    });
+
     const classIds = enrollments.map((e) => e.classId);
-    if (classIds.length === 0) return { data: [], message: 'Chưa có lịch học' };
 
     const dateFilter: any = {};
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
 
+    // Lấy sessions với điều kiện sessionDate phải sau thời điểm bắt đầu hợp lệ của từng lớp
     const sessions = await this.prisma.classSession.findMany({
       where: {
         classId: { in: classIds },
         ...(startDate || endDate ? { sessionDate: dateFilter } : {}),
-        status: 'scheduled',
+        // Thêm điều kiện sessionDate phải >= validStartDate của từng lớp
+        OR: Array.from(classValidStartDates.entries()).map(([classId, validStartDate]) => ({
+          classId: classId,
+          sessionDate: { gte: validStartDate }
+        }))
       },
       include: {
         class: { 

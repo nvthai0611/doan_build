@@ -55,3 +55,13 @@ export type {
   IncidentReportItem,
   IncidentReportListResponse,
 } from './incident-report/incident.types'
+
+// Student Leave Requests
+export { teacherStudentLeaveRequestService } from './student-leave-request/student-leave.service'
+export type {
+  TeacherStudentLeaveRequest,
+  GetTeacherStudentLeaveRequestsParams,
+  TeacherStudentLeaveRequestResponse,
+  ApproveRejectDto,
+  AffectedSessionDetail,
+} from './student-leave-request/student-leave.types'
