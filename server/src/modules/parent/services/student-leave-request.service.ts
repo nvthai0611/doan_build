@@ -85,7 +85,7 @@ export class StudentLeaveRequestService {
       };
     }
 
-    const [total, leaveRequests] = await Promise.all([
+    const [total, leaveRequests, pendingCount, approvedCount, rejectedCount, cancelledCount, allCount] = await Promise.all([
       this.prisma.leaveRequest.count({ where }),
       this.prisma.leaveRequest.findMany({
         where,
@@ -135,72 +135,50 @@ export class StudentLeaveRequestService {
           },
         },
       }),
+      this.prisma.leaveRequest.count({
+        where: { ...where, status: 'pending' },
+      }),
+      this.prisma.leaveRequest.count({
+        where: { ...where, status: 'approved' },
+      }),
+      this.prisma.leaveRequest.count({
+        where: { ...where, status: 'rejected' },
+      }),
+      this.prisma.leaveRequest.count({
+        where: { ...where, status: 'cancelled' },
+      }),
+      this.prisma.leaveRequest.count({
+        where,
+      }),
     ]);
 
-    // Get class info for each request
-    const data = await Promise.all(
-      leaveRequests.map(async (request) => {
-        let classInfo = null;
-        let classId = null;
-
-        if (request.affectedSessions.length > 0) {
-          // Get from first affected session
-          const firstSession = request.affectedSessions[0];
-          classInfo = firstSession?.session?.class;
-          classId = classInfo?.id;
-        } else {
-          // No affected sessions, query enrollment for this student
-          const enrollment = await this.prisma.enrollment.findFirst({
-            where: {
-              studentId: request.studentId,
-            },
-            include: {
-              class: {
-                include: {
-                  subject: true,
-                  teacher: {
-                    include: {
-                      user: {
-                        select: {
-                          fullName: true,
-                          email: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              enrolledAt: 'desc',
-            },
+    // Get all classes for each request
+    const data = leaveRequests.map((request) => {
+      // Get all affected classes from affectedSessions
+      const affectedClasses = new Map();
+      
+      for (const affectedSession of request.affectedSessions) {
+        const classData = affectedSession?.session?.class;
+        if (classData && !affectedClasses.has(classData.id)) {
+          affectedClasses.set(classData.id, {
+            id: classData.id,
+            name: classData.name,
+            subject: classData.subject,
+            teacher: classData.teacher
+              ? {
+                  id: classData.teacher.id,
+                  user: classData.teacher.user,
+                }
+              : null,
           });
-
-          if (enrollment?.class) {
-            classInfo = enrollment.class;
-            classId = classInfo.id;
-          }
         }
+      }
 
-        return {
-          ...request,
-          classId: classId || null,
-          class: classInfo
-            ? {
-                id: classInfo.id,
-                name: classInfo.name,
-                subject: classInfo.subject,
-                teacher: classInfo.teacher
-                  ? {
-                      id: classInfo.teacher.id,
-                      user: classInfo.teacher.user,
-                    }
-                  : null,
-              }
-            : null,
-        };
-      }),
-    );
+      return {
+        ...request,
+        classes: Array.from(affectedClasses.values()),
+      };
+    });
 
     return {
       data,
@@ -209,6 +187,13 @@ export class StudentLeaveRequestService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+      },
+      counts: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        cancelled: cancelledCount,
+        all: allCount,
       },
     };
   }
@@ -306,66 +291,29 @@ export class StudentLeaveRequestService {
       throw new HttpException('Không có quyền truy cập', HttpStatus.FORBIDDEN);
     }
 
-    // Get class info - either from affectedSessions or query by studentId
-    let classInfo = null;
-    let classId = null;
-
-    if (leaveRequest.affectedSessions.length > 0) {
-      // Get from first affected session
-      const firstSession = leaveRequest.affectedSessions[0];
-      classInfo = firstSession?.session?.class;
-      classId = classInfo?.id;
-    } else {
-      // No affected sessions, try to find the most recent class for this student
-      // This is a fallback for when dates don't have any sessions
-      const enrollment = await this.prisma.enrollment.findFirst({
-        where: {
-          studentId: leaveRequest.studentId,
-        },
-        include: {
-          class: {
-            include: {
-              subject: true,
-              teacher: {
-                include: {
-                  user: {
-                    select: {
-                      fullName: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          enrolledAt: 'desc',
-        },
-      });
-      
-      if (enrollment?.class) {
-        classInfo = enrollment.class;
-        classId = classInfo.id;
+    // Get all affected classes from affectedSessions
+    const affectedClasses = new Map();
+    
+    for (const affectedSession of leaveRequest.affectedSessions) {
+      const classData = affectedSession?.session?.class;
+      if (classData && !affectedClasses.has(classData.id)) {
+        affectedClasses.set(classData.id, {
+          id: classData.id,
+          name: classData.name,
+          subject: classData.subject,
+          teacher: classData.teacher
+            ? {
+                id: classData.teacher.id,
+                user: classData.teacher.user,
+              }
+            : null,
+        });
       }
     }
 
     return {
       ...leaveRequest,
-      classId: classId || null,
-      class: classInfo
-        ? {
-            id: classInfo.id,
-            name: classInfo.name,
-            subject: classInfo.subject,
-            teacher: classInfo.teacher
-              ? {
-                  id: classInfo.teacher.id,
-                  user: classInfo.teacher.user,
-                }
-              : null,
-          }
-        : null,
+      classes: Array.from(affectedClasses.values()),
     };
   }
 
@@ -420,28 +368,32 @@ export class StudentLeaveRequestService {
       );
     }
 
-    // Verify student is enrolled in the class
-    const enrollment = await this.prisma.enrollment.findFirst({
+    // Get all classes that student is enrolled in
+    const enrollments = await this.prisma.enrollment.findMany({
       where: {
         studentId: dto.studentId,
-        classId: dto.classId,
         // Tạm thời bỏ điều kiện status để test
         // TODO: Uncomment dòng này khi đã có data đúng
         // status: 'approved',
       },
+      select: {
+        classId: true,
+      },
     });
 
-    if (!enrollment) {
+    if (enrollments.length === 0) {
       throw new HttpException(
-        'Học sinh không thuộc lớp học này',
+        'Học sinh chưa ghi danh vào lớp học nào',
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    // Get affected sessions
+    const classIds = enrollments.map((e) => e.classId);
+
+    // Get affected sessions from ALL enrolled classes in date range
     const sessions = await this.prisma.classSession.findMany({
       where: {
-        classId: dto.classId,
+        classId: { in: classIds },
         sessionDate: {
           gte: start,
           lte: end,
@@ -452,7 +404,7 @@ export class StudentLeaveRequestService {
       },
     });
 
-    // Create leave request with affected sessions
+    // Create leave request with affected sessions (chỉ pending; không auto-approve)
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         requestType: 'student_leave',
@@ -462,6 +414,8 @@ export class StudentLeaveRequestService {
         reason: dto.reason,
         status: 'pending',
         createdBy: parentUserId,
+        notes: null,
+        approvedAt: null,
         affectedSessions: {
           create: sessions.map((session) => ({
             sessionId: session.id,
@@ -506,48 +460,29 @@ export class StudentLeaveRequestService {
       },
     });
 
-    // Get class info - either from affectedSessions or fetch directly using classId
-    let classInfo = null;
-    if (leaveRequest.affectedSessions.length > 0) {
-      // Get from first affected session
-      classInfo = leaveRequest.affectedSessions[0]?.session?.class;
-    } else {
-      // No affected sessions, fetch class info directly
-      const classData = await this.prisma.class.findUnique({
-        where: { id: dto.classId },
-        include: {
-          subject: true,
-          teacher: {
-            include: {
-              user: {
-                select: {
-                  fullName: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      });
-      classInfo = classData;
+    // Get all affected classes from affectedSessions
+    const affectedClasses = new Map();
+    
+    for (const affectedSession of leaveRequest.affectedSessions) {
+      const classData = affectedSession?.session?.class;
+      if (classData && !affectedClasses.has(classData.id)) {
+        affectedClasses.set(classData.id, {
+          id: classData.id,
+          name: classData.name,
+          subject: classData.subject,
+          teacher: classData.teacher
+            ? {
+                id: classData.teacher.id,
+                user: classData.teacher.user,
+              }
+            : null,
+        });
+      }
     }
 
     return {
       ...leaveRequest,
-      classId: dto.classId,
-      class: classInfo
-        ? {
-            id: classInfo.id,
-            name: classInfo.name,
-            subject: classInfo.subject,
-            teacher: classInfo.teacher
-              ? {
-                  id: classInfo.teacher.id,
-                  user: classInfo.teacher.user,
-                }
-              : null,
-          }
-        : null,
+      classes: Array.from(affectedClasses.values()),
     };
   }
 
@@ -608,14 +543,24 @@ export class StudentLeaveRequestService {
       );
     }
 
-    // Get classId from existing affectedSessions
-    const classId = leaveRequest.affectedSessions[0]?.session?.classId;
-    if (!classId) {
+    // Get all classes that student is enrolled in
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        studentId: leaveRequest.studentId,
+      },
+      select: {
+        classId: true,
+      },
+    });
+
+    if (enrollments.length === 0) {
       throw new HttpException(
-        'Không tìm thấy thông tin lớp học',
+        'Học sinh chưa ghi danh vào lớp học nào',
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    const classIds = enrollments.map((e) => e.classId);
 
     // Determine dates to use (new or existing)
     const newStartDate = dto.startDate ? new Date(dto.startDate) : leaveRequest.startDate;
@@ -646,10 +591,10 @@ export class StudentLeaveRequestService {
         where: { leaveRequestId },
       });
 
-      // Get new affected sessions
+      // Get new affected sessions from ALL enrolled classes
       const newSessions = await this.prisma.classSession.findMany({
         where: {
-          classId,
+          classId: { in: classIds },
           sessionDate: {
             gte: newStartDate,
             lte: newEndDate,
@@ -711,26 +656,29 @@ export class StudentLeaveRequestService {
         },
       });
 
-      // Get class info and add classId
-      const firstSession = updated.affectedSessions[0];
-      const classInfo = firstSession?.session?.class;
+      // Get all affected classes from affectedSessions
+      const affectedClasses = new Map();
+      
+      for (const affectedSession of updated.affectedSessions) {
+        const classData = affectedSession?.session?.class;
+        if (classData && !affectedClasses.has(classData.id)) {
+          affectedClasses.set(classData.id, {
+            id: classData.id,
+            name: classData.name,
+            subject: classData.subject,
+            teacher: classData.teacher
+              ? {
+                  id: classData.teacher.id,
+                  user: classData.teacher.user,
+                }
+              : null,
+          });
+        }
+      }
       
       return {
         ...updated,
-        classId: classInfo?.id || null,
-        class: classInfo
-          ? {
-              id: classInfo.id,
-              name: classInfo.name,
-              subject: classInfo.subject,
-              teacher: classInfo.teacher
-                ? {
-                    id: classInfo.teacher.id,
-                    user: classInfo.teacher.user,
-                  }
-                : null,
-            }
-          : null,
+        classes: Array.from(affectedClasses.values()),
       };
     } else {
       // Only update reason if dates didn't change
@@ -777,26 +725,29 @@ export class StudentLeaveRequestService {
         },
       });
 
-      // Get class info and add classId
-      const firstSession = updated.affectedSessions[0];
-      const classInfo = firstSession?.session?.class;
+      // Get all affected classes from affectedSessions
+      const affectedClasses = new Map();
+      
+      for (const affectedSession of updated.affectedSessions) {
+        const classData = affectedSession?.session?.class;
+        if (classData && !affectedClasses.has(classData.id)) {
+          affectedClasses.set(classData.id, {
+            id: classData.id,
+            name: classData.name,
+            subject: classData.subject,
+            teacher: classData.teacher
+              ? {
+                  id: classData.teacher.id,
+                  user: classData.teacher.user,
+                }
+              : null,
+          });
+        }
+      }
       
       return {
         ...updated,
-        classId: classInfo?.id || null,
-        class: classInfo
-          ? {
-              id: classInfo.id,
-              name: classInfo.name,
-              subject: classInfo.subject,
-              teacher: classInfo.teacher
-                ? {
-                    id: classInfo.teacher.id,
-                    user: classInfo.teacher.user,
-                  }
-                : null,
-            }
-          : null,
+        classes: Array.from(affectedClasses.values()),
       };
     }
   }
@@ -966,7 +917,7 @@ export class StudentLeaveRequestService {
   }
 
   /**
-   * Lấy các buổi học bị ảnh hưởng
+   * Lấy các buổi học bị ảnh hưởng từ TẤT CẢ các lớp của học sinh
    */
   async getAffectedSessions(query: GetAffectedSessionsQueryDto) {
     // Validate dates
@@ -985,10 +936,26 @@ export class StudentLeaveRequestService {
       );
     }
 
-    // Get sessions in date range for the class
+    // Get all classes that student is enrolled in
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        studentId: query.studentId,
+      },
+      select: {
+        classId: true,
+      },
+    });
+
+    if (enrollments.length === 0) {
+      return [];
+    }
+
+    const classIds = enrollments.map((e) => e.classId);
+
+    // Get sessions in date range for ALL enrolled classes
     const sessions = await this.prisma.classSession.findMany({
       where: {
-        classId: query.classId,
+        classId: { in: classIds },
         sessionDate: {
           gte: start,
           lte: end,
@@ -1002,6 +969,11 @@ export class StudentLeaveRequestService {
         class: {
           select: {
             name: true,
+            subject: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         room: {
@@ -1018,6 +990,7 @@ export class StudentLeaveRequestService {
       date: s.sessionDate.toISOString().slice(0, 10),
       time: `${s.startTime} - ${s.endTime}`,
       className: s.class?.name || '',
+      subjectName: s.class?.subject?.name || '',
       room: s.room?.name || '',
     }));
   }

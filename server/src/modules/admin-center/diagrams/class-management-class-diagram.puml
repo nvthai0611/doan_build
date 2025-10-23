@@ -1,0 +1,79 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam classFontSize 12
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+}
+
+' ========== Domain entities ==========
+class "Class" as Class {
+  +id: UUID
+  +name: String
+  +code: String
+  +status: String
+  +capacity: Number
+  +subjectId: UUID
+  +teacherId: UUID
+  +roomId: UUID
+  +gradeId: UUID
+}
+
+class "Subject" as Subject {
+  +id: UUID
+  +name: String
+  +code: String
+}
+
+class "Teacher" as Teacher {
+  +id: UUID
+  +teacherCode: String
+  +userId: UUID
+}
+
+class "User" as User {
+  +id: UUID
+  +fullName: String
+  +email: String
+  +phone: String
+  +avatar: String
+}
+
+class "Room" as Room {
+  +id: UUID
+  +name: String
+  +capacity: Number
+}
+
+class "Grade" as Grade {
+  +id: UUID
+  +name: String
+  +level: Number
+}
+
+' ========== Application layer ==========
+class "ClassManagementController" as ClassController {
+  +findAll(queryDto: QueryClassDto): Promise<any>
+}
+
+class "ClassManagementService" as ClassService {
+  +findAll(queryDto: QueryClassDto): Promise<any>
+}
+
+' ========== Relationships ==========
+Class --> Subject : subjectId
+Class --> Teacher : teacherId
+Class --> Room : roomId
+Class --> Grade : gradeId
+Teacher --> User : userId
+
+ClassService ..> Class : uses
+ClassService ..> Subject : uses
+ClassService ..> Teacher : uses
+ClassService ..> User : uses
+ClassService ..> Room : uses
+ClassService ..> Grade : uses
+ClassController ..> ClassService : calls
+
+@enduml

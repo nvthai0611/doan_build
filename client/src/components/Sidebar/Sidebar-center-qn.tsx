@@ -202,6 +202,11 @@ const teacherMenuItems = [
         ],
     },
     {
+        title: "Đơn nghỉ học sinh",
+        icon: FileText,
+        href: "/teacher/student-leave-requests",
+    },
+    {
         title: "Báo cáo sự cố",
         icon: AlertTriangle,
         href: "/teacher/incidents",
