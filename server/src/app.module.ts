@@ -31,6 +31,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ApiKeyMiddleware } from './common/middleware/api-key.middleware';
 // ...existing code...
 
 @Module({
@@ -66,6 +67,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // thích cấu hình như nào thì cấu hình
+    consumer.apply(ApiKeyMiddleware).forRoutes('*');
     consumer.apply(AuthMiddleware).forRoutes(
       {
         path: 'auth/profile',

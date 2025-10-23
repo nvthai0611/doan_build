@@ -64,12 +64,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     queryFn: () => classService.getClassSessions(classId, {
       academicYear: classData?.academicYear,
       page: 1,
-      limit: 10000, // Lấy hết tất cả sessions
+      limit: 999, // Lấy hết tất cả sessions
       sortBy: "sessionDate",
       sortOrder: "asc",
     }),
     enabled: !!classId && !!classData?.academicYear,
-    staleTime: 3000,
+    staleTime: 0,
     refetchOnWindowFocus: true
   });
 

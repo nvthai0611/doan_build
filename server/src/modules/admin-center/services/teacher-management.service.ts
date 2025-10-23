@@ -124,6 +124,7 @@ export class TeacherManagementService {
           }
         });
       }
+      // sent to email verification
 
       return this.formatTeacherResponse(teacher);
     });

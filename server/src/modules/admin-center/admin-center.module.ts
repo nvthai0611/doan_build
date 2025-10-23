@@ -28,6 +28,8 @@ import { SettingsManagementController } from './controllers/settings-management.
 import { SettingsManagementService } from './services/settings-management.service';
 import { HolidaysSettingController } from './controllers/holidays-setting.controller';
 import { HolidaysSettingService } from './services/holidays-setting.service';
+import { FileManagementController } from './controllers/file-management.controller';
+import { FileManagementService } from './services/file-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 
 @Module({
@@ -54,6 +56,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     ParentManagementController,
     SettingsManagementController,
     HolidaysSettingController,
+    FileManagementController,
   ],
   providers: [
     PrismaService,
@@ -70,8 +73,10 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
     ParentManagementService,
     SettingsManagementService,
     HolidaysSettingService,
+    FileManagementService,
   ],
 })
+//check
 export class AdminCenterModule {
   configure(consumer: MiddlewareConsumer) {
     consumer

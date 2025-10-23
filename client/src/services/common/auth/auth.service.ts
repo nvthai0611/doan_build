@@ -1,4 +1,4 @@
-import { ApiService } from "../api/api-client"
+import { apiClient } from "../../../utils/clientAxios"
 import type { 
   LoginRequest, 
   LoginResponse, 
@@ -20,15 +20,15 @@ export const authService = {
    * Đăng nhập
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await ApiService.post<LoginResponse>("/auth/login", credentials)
+    const response = await apiClient.post<LoginResponse>("/auth/login", credentials)
     return response.data as LoginResponse
   },
 
   /**
-   * Đăng ký tài khoản mới
+   * Đăng ký tài khoản mới (phụ huynh)
    */
   register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
-    const response = await ApiService.post<RegisterResponse>("/auth/register", userData)
+    const response = await apiClient.post<RegisterResponse>("/auth/register/parent", userData)
     return response.data as RegisterResponse
   },
 
@@ -36,7 +36,7 @@ export const authService = {
    * Đăng xuất
    */
   logout: async (): Promise<void> => {
-    await ApiService.post("/auth/logout")
+    await apiClient.post("/auth/logout")
   },
 
   /**
@@ -44,7 +44,7 @@ export const authService = {
    * Gửi refresh token qua header thay vì body
    */
   refreshToken: async (refreshToken: string): Promise<RefreshTokenResponse> => {
-    const response = await ApiService.post<RefreshTokenResponse>(
+    const response = await apiClient.post<RefreshTokenResponse>(
       "/auth/refresh", 
       {}, 
       {
@@ -62,21 +62,21 @@ export const authService = {
    * Đổi mật khẩu
    */
   changePassword: async (data: { oldPassword: string; newPassword: string }): Promise<void> => {
-    await ApiService.post("/auth/change-password", data)
+    await apiClient.post("/auth/change-password", data)
   },
 
   /**
    * Quên mật khẩu
    */
   forgotPassword: async (data: ForgotPasswordRequest): Promise<void> => {
-    await ApiService.post("/auth/forgot-password", data)
+    await apiClient.post("/auth/forgot-password", data)
   },
 
   /**
    * Đặt lại mật khẩu
    */
   resetPassword: async (data: ResetPasswordRequest): Promise<void> => {
-    await ApiService.post("/auth/reset-password", data)
+    await apiClient.post("/auth/reset-password", data)
   },
 
   // ===== Profile Management =====
@@ -85,9 +85,7 @@ export const authService = {
    * Lấy thông tin profile hiện tại
    */
   getProfile: async (): Promise<ProfileResponse> => {
-    const response = await ApiService.get<ProfileResponse>("/auth/profile");
-    console.log(response);
-    
+    const response = await apiClient.get<ProfileResponse>("/auth/profile");
     return response.data as ProfileResponse
   },
 
@@ -95,7 +93,7 @@ export const authService = {
    * Cập nhật profile
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<ProfileResponse> => {
-    const response = await ApiService.patch<ProfileResponse>("/auth/profile", data)
+    const response = await apiClient.patch<ProfileResponse>("/auth/profile", data)
     return response.data as ProfileResponse
   },
 
@@ -103,14 +101,14 @@ export const authService = {
    * Xác thực email
    */
   verifyEmail: async (token: string): Promise<void> => {
-    await ApiService.post("/auth/verify-email", { token })
+    await apiClient.post("/auth/verify-email", { token })
   },
 
   /**
    * Gửi lại email xác thực
    */
   resendVerificationEmail: async (): Promise<void> => {
-    await ApiService.post("/auth/resend-verification")
+    await apiClient.post("/auth/resend-verification")
   },
 
   // ===== Session Management =====
@@ -119,7 +117,7 @@ export const authService = {
    * Lấy danh sách session đang hoạt động
    */
   getActiveSessions: async (): Promise<any[]> => {
-    const response = await ApiService.get<any[]>("/auth/sessions")
+    const response = await apiClient.get<any[]>("/auth/sessions")
     return response.data as any[] 
   },
 
@@ -127,14 +125,14 @@ export const authService = {
    * Hủy session cụ thể
    */
   revokeSession: async (sessionId: string): Promise<void> => {
-    await ApiService.delete(`/auth/sessions/${sessionId}`)
+    await apiClient.delete(`/auth/sessions/${sessionId}`)
   },
 
   /**
    * Hủy tất cả session khác
    */
   revokeAllOtherSessions: async (): Promise<void> => {
-    await ApiService.post("/auth/revoke-all-sessions")
+    await apiClient.post("/auth/revoke-all-sessions")
   },
 
   // ===== Permission Management =====
@@ -144,7 +142,7 @@ export const authService = {
    */
   getUserPermissions: async (): Promise<string[]> => {
     try {
-      const response = await ApiService.get<{ data: any[] }>("/auth/permissions")
+      const response = await apiClient.get<{ data: any[] }>("/auth/permissions")
       console.log("getUserPermissions response:", response)
       
       if (response.data && Array.isArray(response.data)) {
@@ -165,7 +163,7 @@ export const authService = {
    */
   checkPermission: async (permissionName: string): Promise<boolean> => {
     try {
-      const response = await ApiService.get<{ data: { hasPermission: boolean } }>(`/auth/permissions/check/${permissionName}`)
+      const response = await apiClient.get<{ data: { hasPermission: boolean } }>(`/auth/permissions/check/${permissionName}`)
       console.log("checkPermission response:", response)
       
       if (response.data && response.data.data) {
@@ -186,7 +184,7 @@ export const authService = {
    */
   getAllRoles: async (): Promise<any[]> => {
     try {
-      const response = await ApiService.get<{ data: any[] }>("/auth/roles")
+      const response = await apiClient.get<{ data: any[] }>("/auth/roles")
       console.log("getAllRoles response:", response)
       
       if (response.data && Array.isArray(response.data)) {
@@ -207,7 +205,7 @@ export const authService = {
    */
   getAllPermissions: async (): Promise<any[]> => {
     try {
-      const response = await ApiService.get<{ data: any[] }>("/auth/all-permissions")
+      const response = await apiClient.get<{ data: any[] }>("/auth/all-permissions")
       console.log("getAllPermissions response:", response)
       
       if (response.data && Array.isArray(response.data)) {

@@ -202,6 +202,11 @@ const teacherMenuItems = [
         ],
     },
     {
+        title: "Đơn nghỉ học sinh",
+        icon: FileText,
+        href: "/teacher/student-leave-requests",
+    },
+    {
         title: "Báo cáo sự cố",
         icon: AlertTriangle,
         href: "/teacher/incidents",
@@ -258,6 +263,11 @@ const parentMenuItems = [
         title: "Đăng ký khoá học",
         icon: Target,
         href: "/parent/courses",
+    },
+    {
+        title: "Lịch học",
+        icon: BookOpen,
+        href: "/parent/schedule",
     },
     {
         title: "Các con của tôi",

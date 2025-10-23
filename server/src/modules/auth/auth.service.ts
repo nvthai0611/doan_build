@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/db/prisma.service';
 import Hash from 'src/utils/hasing.util';
 import JWT from 'src/utils/jwt.util';
 import { PermissionService } from './permission.service';
+import { RegisterParentDto } from './dto/register-parent.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,8 +13,6 @@ export class AuthService {
   ) {}
 
   async getUserByField(field: string = 'id', value: string) {
-    console.log(field, value);
-    
     return this.prisma.user.findFirst({
       where: {
         [field]: value,
@@ -96,6 +95,83 @@ export class AuthService {
   }
 
   /**
+   * Đăng ký tài khoản phụ huynh
+   */
+  async registerParent(registerDto: RegisterParentDto) {
+    // Kiểm tra email đã tồn tại chưa
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: registerDto.email },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('Email đã được sử dụng');
+    }
+
+    // Kiểm tra username đã tồn tại chưa
+    const existingUsername = await this.prisma.user.findUnique({
+      where: { username: registerDto.username },
+    });
+
+    if (existingUsername) {
+      throw new ConflictException('Tên đăng nhập đã được sử dụng');
+    }
+
+    // Tìm role parent
+    const parentRole = await this.prisma.role.findUnique({
+      where: { name: 'parent' },
+    });
+
+    if (!parentRole) {
+      throw new NotFoundException('Không tìm thấy vai trò phụ huynh trong hệ thống');
+    }
+
+    // Hash password
+    const hashedPassword = await Hash.hash(registerDto.password);
+
+    // Tạo user và parent record trong một transaction
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // Tạo user
+      const user = await prisma.user.create({
+        data: {
+          email: registerDto.email,
+          username: registerDto.username,
+          password: hashedPassword,
+          fullName: registerDto.fullName,
+          phone: registerDto.phone,
+          birthDate: new Date(registerDto.birthDate),
+          gender: registerDto.gender,
+          role: 'parent',
+          roleId: parentRole.id,
+          isActive: true,
+        },
+      });
+
+      // Tạo parent record
+      const parent = await prisma.parent.create({
+        data: {
+          userId: user.id,
+        },
+      });
+
+      return { user, parent };
+    });
+
+    return {
+      success: true,
+      message: 'Đăng ký tài khoản thành công',
+      data: {
+        id: result.user.id,
+        email: result.user.email,
+        username: result.user.username,
+        fullName: result.user.fullName,
+        phone: result.user.phone,
+        birthDate: result.user.birthDate,
+        gender: result.user.gender,
+      },
+    };
+  }
+
+  /**
    * Refresh Token với ROTATION
    * Luồng:
    * 1. Verify refresh token có hợp lệ không
@@ -135,7 +211,7 @@ export class AuthService {
       });
 
       if (reusedSession) {
-        // 🚨 CẢNH BÁO: Refresh token reuse detected!
+        //CẢNH BÁO: Refresh token reuse detected!
         // Invalidate tất cả sessions của user
         await this.prisma.userSession.updateMany({
           where: {

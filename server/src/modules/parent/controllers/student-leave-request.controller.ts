@@ -90,9 +90,8 @@ export class StudentLeaveRequestController {
   }
 
   @Get('affected-sessions')
-  @ApiOperation({ summary: 'Lấy các buổi học bị ảnh hưởng trong khoảng thời gian nghỉ' })
+  @ApiOperation({ summary: 'Lấy các buổi học bị ảnh hưởng trong khoảng thời gian nghỉ (tất cả lớp của học sinh)' })
   @ApiQuery({ name: 'studentId', required: true, description: 'ID học sinh' })
-  @ApiQuery({ name: 'classId', required: true, description: 'ID lớp học' })
   @ApiQuery({
     name: 'startDate',
     required: true,
