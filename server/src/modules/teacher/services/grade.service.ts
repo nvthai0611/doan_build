@@ -34,9 +34,8 @@ export class GradeService {
         console.log(`🔍 Teacher ${teacherId} access to class ${classId}:`, classExists ? 'Authorized' : 'Not authorized');
         
         if (!classExists) {
-            console.log(`⚠️ Teacher ${teacherId} is not assigned to class ${classId}`);
-            // Thay vì throw error, chỉ log warning và cho phép tiếp tục
-            console.log('⚠️ Allowing access despite no assignment found');
+            console.log(`⛔ Teacher ${teacherId} is NOT assigned to class ${classId}`);
+            throw new HttpException('Bạn không có quyền thao tác lớp học này', HttpStatus.FORBIDDEN);
         } else {
             console.log(`✅ Teacher ${teacherId} is assigned to class ${classId}`);
         }
@@ -206,6 +205,17 @@ export class GradeService {
             throw new HttpException('Max score phải là 10 điểm', HttpStatus.BAD_REQUEST);
         }
 
+        // Validate date not in the future (server-side guard)
+        if (date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const selectedDate = new Date(date);
+            selectedDate.setHours(0, 0, 0, 0);
+            if (selectedDate.getTime() > today.getTime()) {
+                throw new HttpException('Ngày kiểm tra không được lớn hơn ngày hôm nay', HttpStatus.BAD_REQUEST);
+            }
+        }
+
         // Kiểm tra xem có học sinh nào trong danh sách không
         if (!grades || grades.length === 0) {
             throw new HttpException('Không có học sinh nào để ghi điểm', HttpStatus.BAD_REQUEST);
@@ -268,18 +278,31 @@ export class GradeService {
         
         let assessment;
         try {
-            assessment = await this.prisma.assessment.create({
-                data: {
+            // Reuse existing assessment if same class+name+type+date exists
+            assessment = await this.prisma.assessment.findFirst({
+                where: {
                     classId,
                     name: assessmentName,
                     type: assessmentType,
-                    maxScore: Number(maxScore), // Convert to number
-                    date: new Date(date),
-                    description
+                    date: new Date(date)
                 }
             });
-            
-            console.log('✅ Assessment created successfully:', assessment.id);
+
+            if (!assessment) {
+                assessment = await this.prisma.assessment.create({
+                    data: {
+                        classId,
+                        name: assessmentName,
+                        type: assessmentType,
+                        maxScore: Number(maxScore), // Convert to number
+                        date: new Date(date),
+                        description
+                    }
+                });
+                console.log('✅ Assessment created successfully:', assessment.id);
+            } else {
+                console.log('ℹ️ Reusing existing assessment:', assessment.id);
+            }
         } catch (error) {
             console.error('❌ Error creating assessment:', error);
             throw new HttpException(`Lỗi tạo assessment: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -800,19 +823,22 @@ export class GradeService {
             throw new HttpException('Assessment không tồn tại', HttpStatus.NOT_FOUND);
         }
 
-        // Kiểm tra teacher có quyền truy cập lớp này không (optional - có thể bỏ qua nếu gây lỗi)
-        try {
-            // Lấy userId từ teacherId để kiểm tra quyền truy cập
-            const teacher = await this.prisma.teacher.findUnique({
-                where: { id: teacherId },
-                select: { userId: true }
-            });
-            
-            if (teacher) {
-                await this.ensureTeacherCanAccessClass(teacher.userId, assessment.classId);
-            }
-        } catch (error) {
-            console.log('⚠️ Warning: Teacher access check failed, continuing anyway');
+        // Lấy userId của giáo viên và kiểm tra quyền truy cập lớp
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { id: teacherId },
+            select: { userId: true }
+        });
+        if (!teacher) {
+            throw new HttpException('Giáo viên không tồn tại', HttpStatus.NOT_FOUND);
+        }
+        await this.ensureTeacherCanAccessClass(teacher.userId, assessment.classId);
+
+        // Đảm bảo học sinh thuộc lớp và đang theo học
+        const enrollment = await this.prisma.enrollment.findFirst({
+            where: { classId: assessment.classId, studentId, status: 'studying' }
+        });
+        if (!enrollment) {
+            throw new HttpException('Học sinh không thuộc lớp này hoặc không ở trạng thái đang theo học', HttpStatus.BAD_REQUEST);
         }
 
         // Cập nhật hoặc tạo grade
@@ -831,22 +857,20 @@ export class GradeService {
                 assessmentId,
                 studentId,
                 score: score,
-                gradedBy: teacherId,
+                gradedBy: teacher.userId,
                 gradedAt: new Date()
             }
         });
     }
 
     private getWeightByType(type: string): number {
-        switch (type.toLowerCase()) {
-            case 'kiểm tra 15 phút':
-                return 1;
-            case 'kiểm tra giữa kỳ':
-                return 2;
-            case 'kiểm tra cuối kỳ':
-                return 3;
-            default:
-                return 1;
-        }
+        const t = (type || '').toLowerCase();
+        if (t.includes('15')) return 1;
+        if (t.includes('45')) return 2; // bài 45 phút
+        if (t.includes('60')) return 2; // bài 60 phút ~ hệ số 2
+        if (t.includes('90')) return 3; // bài 90 phút ~ hệ số 3
+        if (t.includes('giữa kỳ')) return 2;
+        if (t.includes('cuối kỳ')) return 3;
+        return 1;
     }
 }
