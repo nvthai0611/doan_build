@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareParent } from './../../common/middleware/parent/parent.middleware';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { AcademicTrackingController } from './controllers/academic-tracking.controller';
 import { ClassInformationController } from './controllers/class-information.controller';
@@ -51,4 +52,12 @@ import { PrismaService } from 'src/db/prisma.service';
     ClassJoinService,
   ],
 })
-export class ParentModule {}
+export class ParentModule {
+  configure(consumer: MiddlewareConsumer){
+    consumer
+          .apply(MiddlewareParent)
+          .forRoutes(
+            { path: 'parent/*', method: RequestMethod.ALL }
+          );
+  }
+}
