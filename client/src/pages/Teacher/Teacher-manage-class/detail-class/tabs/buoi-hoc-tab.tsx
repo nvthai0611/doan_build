@@ -84,11 +84,11 @@ export function BuoiHocTab({ onAddSession, onViewDetailSession, onDeleteSession,
         ))}
       </div>
 
-      {/* Add Session Button */}
+      {/* Request Session Button */}
       <div className="flex justify-end">
         <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddSession}>
           <Plus className="w-4 h-4" />
-          Thêm buổi học
+          Yêu cầu thêm buổi học
         </Button>
       </div>
 

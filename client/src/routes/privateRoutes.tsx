@@ -71,7 +71,7 @@ export const privateRoutes = (
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
-        <Route path="teachers/schedule" element={<CenterSchedulePage />} />
+        <Route path="schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />
