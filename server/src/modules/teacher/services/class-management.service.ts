@@ -349,19 +349,34 @@ export class ClassManagementService {
             }
 
             // Tính toán số lượng học sinh active
-            const activeStudentCount = await this.prisma.enrollment.count({
+            const listStudent = await this.prisma.enrollment.findMany({
                 where: {
                     classId: classItem.id,
                     status: 'active',
-                    completedAt: null,
                     student: {
                         user: {
                             isActive: true
                         }
                     }
+                },
+                include: {
+                    student: {
+                        select: {
+                          studentCode: true,
+                          user: {
+                                select: {
+                                    avatar: true,
+                                    fullName: true,
+                                    email: true,
+                                    phone: true,
+                                    id: true
+                                }
+                            }
+                        }
+                    }
                 }
             });
-
+            
             const classSessionInfo = await this.prisma.classSession.findMany({
                 where: {
                     classId: classItem.id,
@@ -376,6 +391,7 @@ export class ClassManagementService {
                     }
                 }
             });
+            const activeStudentCount = listStudent.length;
 
             // Tính tỷ lệ tham gia
             let totalAttendanceRate = 0;
@@ -428,7 +444,8 @@ export class ClassManagementService {
                 // Relations
                 room: classItem.room,
                 subject: classItem.subject,
-                
+                //list student in class
+                emrollments: listStudent,
                 // Counts (chỉ học sinh active)
                 studentCount: activeStudentCount,
 
@@ -458,7 +475,8 @@ export class ClassManagementService {
 
         } catch (error) {
             if(error instanceof HttpException) throw error;
-
+            console.log(error);
+            
             throw new HttpException(
                 'Có lỗi xảy ra khi lấy chi tiết lớp học',
                 HttpStatus.INTERNAL_SERVER_ERROR

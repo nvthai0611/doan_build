@@ -10,6 +10,7 @@ import ScheduleInfo from "../ScheduleInfo"
 import ClassesInfo from "../ClassesInfo"
 import LeaveRequestsInfo from "../LeaveRequestsInfo"
 import TimesheetInfo from "../TimesheetInfo"
+import ContractsInfoTab from "../ContractsInfo/ContractsInfoTab"
 import { toast } from "sonner"
 import type { CreateTeacherRequest } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import type { Teacher } from "../../types/teacher"
@@ -110,6 +111,7 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
     { key: "general", label: "Thông tin chung" },
     { key: "schedule", label: "Lịch dạy" },
     { key: "classes", label: "Lớp học" },
+    { key: "contracts", label: "Hợp đồng" },
     { key: "leave", label: "Đơn nghỉ phép" },
     { key: "timesheet", label: "Bảng chấm công" },
   ]
@@ -149,6 +151,8 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
             setSearch={setClassesSearch}
           />
         )
+      case "contracts":
+        return <ContractsInfoTab teacherId={teacherId} />
       case "timesheet":
         return (
           <TimesheetInfo

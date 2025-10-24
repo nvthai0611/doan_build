@@ -349,37 +349,21 @@ export class StudentManagementService {
     });
     if (!child) return { data: [], message: 'Không tìm thấy học sinh' };
 
-    // Lấy các lớp mà học sinh đang theo học với thông tin enrolledAt và actualStartDate
+    // Lấy các lớp mà học sinh đang theo học với thông tin enrolledAt
+    // Chỉ lấy những lớp có trạng thái active
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { studentId: childId, status: 'studying' },
+      where: { 
+        studentId: childId, 
+        status: 'studying',
+        class: { status: 'active' }
+      },
       select: { 
         classId: true, 
-        enrolledAt: true,
-        class: {
-          select: {
-            actualStartDate: true
-          }
-        }
+        enrolledAt: true
       },
     });
     
     if (enrollments.length === 0) return { data: [], message: 'Chưa có lịch học' };
-
-    // Tạo map để lưu thời điểm bắt đầu hợp lệ cho mỗi lớp
-    const classValidStartDates = new Map<string, Date>();
-    
-    enrollments.forEach((enrollment) => {
-      const enrolledAt = enrollment.enrolledAt;
-      const actualStartDate = enrollment.class.actualStartDate;
-      
-      // Lấy ngày lớn hơn giữa enrolledAt và actualStartDate
-      let validStartDate = enrolledAt;
-      if (actualStartDate && actualStartDate > enrolledAt) {
-        validStartDate = actualStartDate;
-      }
-      
-      classValidStartDates.set(enrollment.classId, validStartDate);
-    });
 
     const classIds = enrollments.map((e) => e.classId);
 
@@ -387,17 +371,23 @@ export class StudentManagementService {
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
 
-    // Lấy sessions với điều kiện sessionDate phải sau thời điểm bắt đầu hợp lệ của từng lớp
+    // Tạo OR conditions cho từng enrollment
+    const orConditions = enrollments.map((enrollment) => ({
+      classId: enrollment.classId,
+      sessionDate: { gte: enrollment.enrolledAt }
+    }));
+
+    const whereCondition = {
+      classId: { in: classIds },
+      class: { status: 'active' },
+      ...(startDate || endDate ? { sessionDate: dateFilter } : {}),
+      OR: orConditions
+    };
+
+    // Lấy sessions với điều kiện sessionDate phải sau enrolledAt của từng lớp
+    // Chỉ lấy sessions của các lớp có trạng thái active
     const sessions = await this.prisma.classSession.findMany({
-      where: {
-        classId: { in: classIds },
-        ...(startDate || endDate ? { sessionDate: dateFilter } : {}),
-        // Thêm điều kiện sessionDate phải >= validStartDate của từng lớp
-        OR: Array.from(classValidStartDates.entries()).map(([classId, validStartDate]) => ({
-          classId: classId,
-          sessionDate: { gte: validStartDate }
-        }))
-      },
+      where: whereCondition,
       include: {
         class: { 
           include: { 
@@ -543,11 +533,12 @@ export class StudentManagementService {
       return { success: false, message: 'Không tìm thấy học sinh' };
     }
 
-    // Lấy các lớp học sinh đang học
+    // Lấy các lớp học sinh đang học (chỉ những lớp có trạng thái active)
     const enrollments = await this.prisma.enrollment.findMany({
       where: { 
         studentId: student.id, 
         status: 'studying',
+        class: { status: 'active' },
         ...(filters.classId ? { classId: filters.classId } : {})
       },
       select: { classId: true }

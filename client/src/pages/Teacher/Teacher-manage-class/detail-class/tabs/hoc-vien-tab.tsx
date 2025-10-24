@@ -104,7 +104,8 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
         return status
     }
   }
-
+  console.log(student);
+  
   // Show error toast when error occurs
   if (errorDetail) {
     toast.error("Không thể tải thông tin chi tiết học viên", { duration: 3000 })
@@ -177,7 +178,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Email</label>
-                        <p>{student.student?.user?.email || 'N/A'}</p>
+                        <p>{student.student?.user?.email || 'Không có email'}</p>
                       </div>
                     </div>
                     
@@ -185,7 +186,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
-                        <p>{student.student?.user?.phone || 'N/A'}</p>
+                        <p>{student.student?.user?.phone || 'Không có số điện thoại'}</p>
                       </div>
                     </div>
                     
@@ -199,7 +200,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
                     
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Giới tính</label>
-                      <p>{student.student?.user?.gender === 'male' ? 'Nam' : student.student?.user?.gender === 'female' ? 'Nữ' : 'N/A'}</p>
+                      <p>{student.student?.user?.gender === 'male' ? 'Nam' : student.student?.user?.gender === 'female' ? 'Nữ' : 'Khác'}</p>
                     </div>
                   </div>
                 </div>
@@ -296,10 +297,10 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
                     <label className="text-sm font-medium text-muted-foreground">Mã môn</label>
                     <p className="font-mono text-sm">{student.class?.subject?.code || 'N/A'}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="text-sm font-medium text-muted-foreground">Khối</label>
                     <p>{student.class?.grade || 'N/A'}</p>
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
@@ -321,7 +322,7 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Ngày ghi danh</label>
-                    <p>{formatDateTime(student.enrolledAt)}</p>
+                    <p>{formatDateTime(student.enrolledAt) || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Học kỳ</label>
@@ -341,22 +342,22 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
   )
 }
 
-export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teacherClassAssignmentId }: any) {
+export function HocVienTab({ classId, classData }: any) {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [students, setStudents] = useState<any[]>([])
 
-  const { data: listStudents, isLoading, error } = useQuery({
-    queryKey: ['students', teacherClassAssignmentId],
-    queryFn: async () => {
-      const response = await teacherCommonService.getListStudentOfClass(teacherClassAssignmentId)
-      return response as any
-    },
-    enabled: !!teacherClassAssignmentId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
-  })
+  // const { data: listStudents, isLoading, error } = useQuery({
+  //   queryKey: ['students', teacherClassAssignmentId],
+  //   queryFn: async () => {
+  //     const response = await teacherCommonService.getListStudentOfClass(teacherClassAssignmentId)
+  //     return response as any
+  //   },
+  //   enabled: !!teacherClassAssignmentId,
+  //   staleTime: 30000,
+  //   refetchOnWindowFocus: false
+  // })
 
   // Thay đổi handleStudentClick để sử dụng TanStack Query
   const handleStudentClick = (studentId: string) => {
@@ -369,27 +370,29 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
     setSelectedStudentId(null)
   }
 
-  const filteredStudents = listStudents?.filter((student: any) => {
+  const filteredStudents = classData?.emrollments?.filter((student: any) => {
     return student.student?.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
       || student.student?.studentCode?.toLowerCase().includes(searchQuery.toLowerCase())
   })
+  
+  
+  // if (isLoading) {
+  //   return <Loading />
+  // }
 
-  if (isLoading) {
-    return <Loading />
-  }
+  // if (error) {
+  //   toast.error("Đã có lỗi xảy ra khi tải danh sách học viên.", { duration: 3000 })
+  //   return null
+  // }
 
-  if (error) {
-    toast.error("Đã có lỗi xảy ra khi tải danh sách học viên.", { duration: 3000 })
-    return null
-  }
-
+  
   return (
     <div>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Danh sách học viên ({listStudents?.length || 0})
+            Danh sách học viên ({classData?.enrolment?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -467,7 +470,7 @@ export function HocVienTab({ onAddStudent, onEditStudent, onDeleteStudent, teach
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         studentId={selectedStudentId}
-        teacherClassAssignmentId={teacherClassAssignmentId}
+        teacherClassAssignmentId={classId}
       />
     </div>
   )

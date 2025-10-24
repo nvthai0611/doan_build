@@ -1,18 +1,39 @@
-import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsNotEmpty, MaxLength, ValidateIf } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsDateRange, IsEndDateAfterStart } from '../../../../common/validators/date-range.validator';
 
 export class CreateHolidayDto {
-  @IsDateString()
+  @IsNotEmpty({ message: 'Ngày bắt đầu không được để trống' })
+  @IsDateString({}, { message: 'Ngày bắt đầu phải có định dạng ngày hợp lệ' })
+  @IsDateRange({ message: 'Ngày bắt đầu không hợp lệ' })
+  @Transform(({ value }) => {
+    if (value) {
+      const date = new Date(value);
+      return date.toISOString().split('T')[0];
+    }
+    return value;
+  })
   startDate!: string;
 
-  @IsDateString()
+  @IsNotEmpty({ message: 'Ngày kết thúc không được để trống' })
+  @IsDateString({}, { message: 'Ngày kết thúc phải có định dạng ngày hợp lệ' })
+  @IsEndDateAfterStart({ message: 'Ngày kết thúc phải sau ngày bắt đầu' })
+  @Transform(({ value }) => {
+    if (value) {
+      const date = new Date(value);
+      return date.toISOString().split('T')[0];
+    }
+    return value;
+  })
   endDate!: string;
 
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Ghi chú phải là chuỗi ký tự' })
+  @MaxLength(500, { message: 'Ghi chú không được vượt quá 500 ký tự' })
   note?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Trạng thái phải là true hoặc false' })
   isActive?: boolean;
 }
 

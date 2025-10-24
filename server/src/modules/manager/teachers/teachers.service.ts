@@ -326,4 +326,70 @@ export class TeachersService {
   async remove(id: string) {
     return `This action removes a #${id} teacher`;
   }
+
+  async getTeacherContracts(teacherId: string) {
+    try {
+      // Verify teacher exists
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+
+      if (!teacher) {
+        throw new Error('Không tìm thấy giáo viên');
+      }
+
+      // Get all contracts for this teacher
+      const contracts = await this.prisma.contractUpload.findMany({
+        where: {
+          teacherId: teacherId,
+        },
+        orderBy: {
+          uploadedAt: 'desc',
+        },
+      });
+
+      return contracts;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteTeacherContract(teacherId: string, contractId: string) {
+    try {
+      // Verify teacher exists
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id: teacherId },
+      });
+
+      if (!teacher) {
+        throw new Error('Không tìm thấy giáo viên');
+      }
+
+      // Verify contract exists and belongs to this teacher
+      const contract = await this.prisma.contractUpload.findFirst({
+        where: {
+          id: contractId,
+          teacherId: teacherId,
+        },
+      });
+
+      if (!contract) {
+        throw new Error('Không tìm thấy hợp đồng hoặc hợp đồng không thuộc về giáo viên này');
+      }
+
+      // Delete the contract
+      await this.prisma.contractUpload.delete({
+        where: {
+          id: contractId,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Xóa hợp đồng thành công',
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }

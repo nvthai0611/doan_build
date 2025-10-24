@@ -101,4 +101,19 @@ export class TeacherManagementController {
     
     return this.teacherManagementService.bulkImportTeachers(body.teachers);
   }
+
+  @Get(':id/contracts')
+  @HttpCode(HttpStatus.OK)
+  getTeacherContracts(@Param('id') id: string) {
+    return this.teacherManagementService.getTeacherContracts(id);
+  }
+
+  @Delete(':id/contracts/:contractId')
+  @HttpCode(HttpStatus.OK)
+  deleteTeacherContract(
+    @Param('id') teacherId: string,
+    @Param('contractId') contractId: string
+  ) {
+    return this.teacherManagementService.deleteTeacherContract(teacherId, contractId);
+  }
 }

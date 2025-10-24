@@ -202,4 +202,92 @@ export class TeachersController {
       );
     }
   }
+
+  @Get(':id/contracts')
+  @ApiOperation({ summary: 'Lấy danh sách hợp đồng của giáo viên' })
+  @ApiParam({ name: 'id', description: 'ID của giáo viên (UUID)' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lấy danh sách hợp đồng thành công'
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Không tìm thấy giáo viên' 
+  })
+  async getTeacherContracts(@Param('id') id: string) {
+    try {
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'ID không hợp lệ'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      return await this.teachersService.getTeacherContracts(id);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách hợp đồng',
+          error: error.message
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Delete(':id/contracts/:contractId')
+  @ApiOperation({ summary: 'Xóa hợp đồng của giáo viên' })
+  @ApiParam({ name: 'id', description: 'ID của giáo viên (UUID)' })
+  @ApiParam({ name: 'contractId', description: 'ID của hợp đồng (UUID)' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Xóa hợp đồng thành công'
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Không tìm thấy hợp đồng' 
+  })
+  async deleteTeacherContract(
+    @Param('id') teacherId: string,
+    @Param('contractId') contractId: string
+  ) {
+    try {
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(teacherId) || !uuidRegex.test(contractId)) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'ID không hợp lệ'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      return await this.teachersService.deleteTeacherContract(teacherId, contractId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi xóa hợp đồng',
+          error: error.message
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }

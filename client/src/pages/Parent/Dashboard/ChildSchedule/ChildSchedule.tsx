@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Bell } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ChevronLeft, ChevronRight, Bell, Users, Calendar } from "lucide-react"
 import { parentChildService } from "../../../../services"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 
 interface CalendarDay {
   date: number
@@ -16,6 +17,14 @@ interface CalendarDay {
 }
 
 import type { Child } from "../../../../services/parent/child-management/child.types"
+
+// Hàm tiện ích để format Date thành YYYY-MM-DD theo múi giờ cục bộ
+const formatDateToYYYYMMDD = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface ChildScheduleProps {
   childId?: string
@@ -30,11 +39,59 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
   const [attendanceLoading, setAttendanceLoading] = useState<Record<string, boolean>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedChildId, setSelectedChildId] = useState<string>(childId || "")
+  const [showYearPicker, setShowYearPicker] = useState(false)
   
-  if (!childId) {
+  // Fetch children list
+  const { data: children = [], isLoading: childrenLoading } = useQuery({
+    queryKey: ['parent-children'],
+    queryFn: () => parentChildService.getChildren(),
+    enabled: true
+  })
+
+  // Update selected child when childId prop changes
+  useEffect(() => {
+    if (childId && childId !== selectedChildId) {
+      setSelectedChildId(childId)
+    }
+  }, [childId])
+
+  // Auto select first child if none is selected
+  useEffect(() => {
+    if (!selectedChildId && children.length > 0) {
+      setSelectedChildId(children[0].id)
+    }
+  }, [children, selectedChildId])
+
+  // Reset states when changing selected child
+  useEffect(() => {
+    if (selectedChildId) {
+      setSessions([])
+      setExpandedSessionId(null)
+      setAttendanceBySession({})
+      setSelectedDate(new Date())
+    }
+  }, [selectedChildId])
+
+  // Đóng year picker khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (showYearPicker && !target.closest('.year-picker-container')) {
+        setShowYearPicker(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showYearPicker])
+  
+  if (!selectedChildId && children.length === 0) {
     return (
       <div className="text-center p-6 text-muted-foreground">
-        Không có dữ liệu học sinh
+        {childrenLoading ? "Đang tải danh sách con..." : "Không có dữ liệu học sinh"}
       </div>
     )
   }
@@ -49,8 +106,20 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
 
   // Data fetching
   const getMonthRange = (date: Date) => {
-    const start = new Date(date.getFullYear(), date.getMonth(), 1)
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    
+    // Ngày đầu tháng
+    const start = new Date(year, month, 1)
+    
+    // Ngày cuối tháng
+    const end = new Date(year, month + 1, 0)
+    
+    console.log(`Month range for ${year}-${month + 1}:`, {
+      start: formatDateToYYYYMMDD(start),
+      end: formatDateToYYYYMMDD(end)
+    })
+    
     return { start, end }
   }
 
@@ -60,9 +129,18 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
       setError(null)
       try {
         const { start, end } = getMonthRange(currentDate)
-        const response = await parentChildService.getChildSchedule(childId, {
-          startDate: start.toISOString().slice(0, 10),
-          endDate: end.toISOString().slice(0, 10),
+        const startDateStr = formatDateToYYYYMMDD(start)
+        const endDateStr = formatDateToYYYYMMDD(end)
+        
+        console.log('Fetching schedule with dates:', {
+          startDate: startDateStr,
+          endDate: endDateStr,
+          childId: selectedChildId
+        })
+        
+        const response = await parentChildService.getChildSchedule(selectedChildId, {
+          startDate: startDateStr,
+          endDate: endDateStr,
         })
         return response
       } catch (err) {
@@ -82,10 +160,10 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
   })
 
   useEffect(() => {
-    if (childId) {
+    if (selectedChildId) {
       fetchSchedule()
     }
-  }, [currentDate, childId])
+  }, [currentDate, selectedChildId])
 
   const generateCalendarDays = (): CalendarDay[] => {
     const daysInMonth = getDaysInMonth(currentDate)
@@ -102,15 +180,17 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
       })
     }
 
-    // Group sessions by date
+    // Group sessions by date (sử dụng logic nhất quán với các view khác)
     const sessionsMap = new Map<number, any[]>()
     sessions.forEach((session) => {
-      const sessionDate = new Date(session.sessionDate)
+      // Parse date string trực tiếp để tránh timezone issues
+      const sessionDateStr = session.sessionDate.split('T')[0] // Lấy YYYY-MM-DD
+      const [year, month, day] = sessionDateStr.split('-').map(Number)
+      
       if (
-        sessionDate.getMonth() === currentDate.getMonth() &&
-        sessionDate.getFullYear() === currentDate.getFullYear()
+        month - 1 === currentDate.getMonth() && // month trong Date là 0-based
+        year === currentDate.getFullYear()
       ) {
-        const day = sessionDate.getDate()
         const arr = sessionsMap.get(day) || []
         arr.push(session)
         sessionsMap.set(day, arr)
@@ -146,17 +226,53 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
   }
 
+  const handleToday = () => {
+    const today = new Date()
+    setCurrentDate(today)
+    setSelectedDate(today)
+  }
+
+  // Tạo danh sách năm từ 2020 đến 2030
+  const generateYears = () => {
+    const years = []
+    for (let year = 2003; year <= 2099; year++) {
+      years.push(year)
+    }
+    return years
+  }
+
+  const handleYearSelect = (year: number) => {
+    const newDate = new Date(year, currentDate.getMonth(), 1)
+    setCurrentDate(newDate)
+    setShowYearPicker(false)
+  }
+
   const calendarDays = generateCalendarDays()
   const monthName = currentDate.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })
   const weekDays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+  
+  const selectedChild = children.find(child => child.id === selectedChildId)
 
   return (
-    <div className="p-6 space-y-6">
+    <>
+      <style>{`
+        /* Hide scrollbar but keep scrolling */
+        .year-picker-scroll {
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+        .year-picker-scroll::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
+        }
+      `}</style>
+      <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">Lịch</h1>
-          <p className="text-muted-foreground mt-1">Lịch học của con em</p>
+          <p className="text-muted-foreground mt-1">
+            {selectedChild ? `Lịch học của ${selectedChild.user.fullName}` : "Lịch học của con em"}
+          </p>
           {isLoading && <p className="text-sm text-muted-foreground mt-1">Đang tải...</p>}
           {error && <p className="text-sm text-destructive mt-1">{error}</p>}
         </div>
@@ -167,6 +283,38 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
         </div>
       </div>
 
+      {/* Child Filter */}
+      {children.length > 1 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Chọn con:</span>
+              </div>
+              <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Chọn con để xem lịch học" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{child.user.fullName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {child.studentCode && `Mã học sinh: ${child.studentCode}`}
+                          {child.grade && ` - Lớp: ${child.grade}`}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
@@ -174,9 +322,40 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>{monthName}</CardTitle>
+                <div className="relative year-picker-container">
+                  <button
+                    onClick={() => setShowYearPicker(!showYearPicker)}
+                    className="flex items-center gap-2 hover:bg-accent rounded-md p-2 -m-2 transition-colors"
+                  >
+                    <CardTitle>{monthName}</CardTitle>
+                    <ChevronRight className="w-4 h-4 rotate-90" />
+                  </button>
                   <CardDescription>Lịch học tháng này</CardDescription>
+                  
+                  {/* Year Picker Dropdown */}
+                  {showYearPicker && (
+                    <div
+                      role="dialog"
+                      aria-label="Chọn năm"
+                      className="absolute top-full left-0 mt-2 bg-background border border-border rounded-lg shadow-lg z-50 p-2 min-w-[200px] max-h-[240px] overflow-auto year-picker-scroll"
+                    >
+                      <div className="grid grid-cols-3 gap-2 p-2">
+                        {generateYears().map((year) => (
+                          <button
+                            key={year}
+                            onClick={() => handleYearSelect(year)}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                              year === currentDate.getFullYear()
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-accent text-foreground'
+                            }`}
+                          >
+                            {year}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={handlePrevMonth}>
@@ -184,6 +363,15 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleNextMonth}>
                     <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleToday}
+                    className="ml-2"
+                  >
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Hôm nay
                   </Button>
                 </div>
               </div>
@@ -248,8 +436,10 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                 (() => {
                   const sel = selectedDate
                   const selectedSessions = sessions.filter((session) => {
-                    const d = new Date(session.sessionDate)
-                    return d.getDate() === sel.getDate() && d.getMonth() === sel.getMonth() && d.getFullYear() === sel.getFullYear()
+                    // Parse date string trực tiếp để tránh timezone issues
+                    const sessionDateStr = session.sessionDate.split('T')[0] // Lấy YYYY-MM-DD
+                    const [year, month, day] = sessionDateStr.split('-').map(Number)
+                    return day === sel.getDate() && month - 1 === sel.getMonth() && year === sel.getFullYear()
                   })
                   if (selectedSessions.length === 0) {
                     return (
@@ -279,7 +469,7 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                                     try {
                                       setAttendanceLoading((s) => ({ ...s, [session.id]: true }))
                                       const iso = new Date(session.sessionDate).toISOString().slice(0, 10)
-                                      const records: any[] = await parentChildService.getChildAttendance(childId, session.classId || session.class?.id, iso, iso)
+                                      const records: any[] = await parentChildService.getChildAttendance(selectedChildId, session.classId || session.class?.id, iso, iso)
                                       // find the record for this session id
                                       const rec = (records || []).find(r => r.sessionId === session.id) || (records && records[0]) || null
                                       setAttendanceBySession((s) => ({ ...s, [session.id]: rec }))
@@ -397,5 +587,6 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
         </div>
       </div>
     </div>
+    </>
   )
 }
