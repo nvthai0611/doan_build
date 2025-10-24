@@ -145,33 +145,38 @@ model Class {
   gradeId           String?               @map("grade_id") @db.Uuid
   maxStudents       Int?                  @map("max_students")
   name              String
-  status            String                @default("draft")
-  subjectId         String                @map("subject_id") @db.Uuid
-  recurringSchedule Json?                 @map("recurring_schedule")
-  academicYear      String?               @map("academic_year")
-  expectedStartDate DateTime?             @map("expected_start_date") @db.Date
-  actualStartDate   DateTime?             @map("actual_start_date") @db.Date
-  actualEndDate     DateTime?             @map("actual_end_date") @db.Date
-  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  feeAmount         Decimal?              @map("fee_amount") @db.Decimal(12, 2)
-  feePeriod         String?               @map("fee_period")
-  feeCurrency       String?               @default("VND") @map("fee_currency")
-  feeLockedAt       DateTime?             @map("fee_locked_at") @db.Timestamptz(6)
-  assessments       Assessment[]
-  feeHistories      ClassFeeHistory[]
-  sessions          ClassSession[]
-  feeStructure      FeeStructure?         @relation(fields: [feeStructureId], references: [id])
-  grade             Grade?                @relation(fields: [gradeId], references: [id])
-  room              Room?                 @relation(fields: [roomId], references: [id])
-  subject           Subject               @relation(fields: [subjectId], references: [id])
-  teacher           Teacher?              @relation(fields: [teacherId], references: [id])
-  enrollments       Enrollment[]
-  feeRecords        FeeRecord[]
-  incidentReports   IncidentReport[]
-  materials         Material[]
-  scheduleChanges   ScheduleChange[]
-  classRequests     StudentClassRequest[]
+  status            String    @default("draft") // draft, ready, active, completed, cancelled, deleted
+  subjectId         String    @map("subject_id") @db.Uuid
+  recurringSchedule Json?     @map("recurring_schedule")
+  academicYear      String?   @map("academic_year")
+  expectedStartDate DateTime? @map("expected_start_date") @db.Date
+  actualStartDate   DateTime? @map("actual_start_date") @db.Date
+  actualEndDate     DateTime? @map("actual_end_date") @db.Date
+  password          String?   @map("password") // Password bảo vệ lớp học (optional)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // NEW: Snapshot học phí trên lớp
+  feeAmount   Decimal?  @map("fee_amount") @db.Decimal(12, 2)
+  feePeriod   String?   @map("fee_period")
+  feeCurrency String?   @default("VND") @map("fee_currency")
+  feeLockedAt DateTime? @map("fee_locked_at") @db.Timestamptz(6)
+
+  // Relations
+  assessments     Assessment[]
+  sessions        ClassSession[]
+  feeStructure    FeeStructure?         @relation(fields: [feeStructureId], references: [id])
+  room            Room?                 @relation(fields: [roomId], references: [id])
+  teacher         Teacher?              @relation(fields: [teacherId], references: [id])
+  subject         Subject               @relation(fields: [subjectId], references: [id])
+  enrollments     Enrollment[]
+  materials       Material[]
+  scheduleChanges ScheduleChange[]
+  classRequests   StudentClassRequest[]
+  grade           Grade?                @relation(fields: [gradeId], references: [id])
+  incidentReports IncidentReport[]
+  feeRecords      FeeRecord[] // NEW: Quan hệ với FeeRecord
+  feeHistories    ClassFeeHistory[] // NEW: Lịch sử thay đổi học phí
 
   @@map("classes")
 }

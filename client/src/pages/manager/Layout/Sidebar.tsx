@@ -198,7 +198,7 @@ export function Sidebar({ className }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const navigate = useNavigate()
   const menuItems = user?.role === "center_owner" ? centerOwnerMenuItems : teacherMenuItems
-
+  
   const toggleExpanded = (title: string) => {
     setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
   }
@@ -219,7 +219,7 @@ export function Sidebar({ className }: SidebarProps) {
           <div>
             <h2 className="font-semibold text-lg">QN Edu System</h2>
             <p className="text-xs text-muted-foreground">
-              {user?.role === "center_owner" ? "Quản lý trung tâm" : "Giáo viên"}
+              {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : "Phụ Huynh/Học Sinh"}
             </p>
           </div>
         </div>
@@ -270,9 +270,9 @@ export function Sidebar({ className }: SidebarProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-3 h-12">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.avatar || "/placeholder.svg"} />
+                <AvatarImage src={user?.avatar || ""} />
                 <AvatarFallback>
-                  {user?.name
+                  {user?.fullName
                     ?.split(" ")
                     .map((n: string) => n[0])
                     .join("")
@@ -280,7 +280,7 @@ export function Sidebar({ className }: SidebarProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-sm font-medium">{user?.fullName}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <ChevronDown className="w-4 h-4" />
