@@ -45,6 +45,7 @@ import { useDebounce } from '../../../../hooks/useDebounce';
 import { usePagination } from '../../../../hooks/usePagination';
 import { CodeDisplay } from '../../../../components/common/CodeDisplay';
 import { useToast } from '../../../../hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface StudentsInfoProps {
   classId: string;
@@ -58,7 +59,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
+  const navigate = useNavigate();
   const pagination = usePagination({
     initialPage: 1,
     initialItemsPerPage: 10,
@@ -350,8 +351,8 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
             <AvatarImage src={enrollment?.student?.user?.avatar} alt={enrollment?.student?.user?.fullName} />
-            <AvatarFallback className="bg-blue-100 text-blue-600">
-              {getInitials(enrollment?.student?.user?.fullName || 'NA')}
+            <AvatarFallback className="bg-blue-100 text-blue-600" >
+              <p className="text-sm text-center text-blue-600 cursor-pointer hover:underline" onClick={() => navigate(`/center-qn/students/${enrollment?.student?.id}`)}>{getInitials(enrollment?.student?.user?.fullName || 'NA')}</p>
             </AvatarFallback>
           </Avatar>
           <div>

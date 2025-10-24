@@ -51,6 +51,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
 import { SelectTeacherSheet } from './Sheet/SelectTeacherSheet';
+import { ShareClassSheet } from './Sheet/ShareClassSheet';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -72,6 +73,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [isAssignTeacherModalOpen, setIsAssignTeacherModalOpen] = useState(false);
   const [isAssignTeacherLoading, setIsAssignTeacherLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const { toast } = useToast();
   
 
@@ -113,6 +115,26 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     staleTime: 3000,
     refetchOnWindowFocus: true
   });
+
+  // Fetch pending requests count
+  const { data: requestsData } = useQuery({
+    queryKey: ['classJoinRequests', classData.id],
+    queryFn: async () => {
+      const response = await apiClient.get(`/admin-center/classes/${classData.id}/join-requests`, { status: 'pending' });
+      return { data: response?.data, meta: { total: response?.data || 1 } }; 
+    },
+    enabled: !!classData.id,
+    refetchInterval: 1000, 
+    refetchOnWindowFocus: true
+  });
+
+  // Update pending requests count
+  useEffect(() => {
+    if (requestsData) {
+      const count = (requestsData as any)?.meta?.total || 0;
+      setPendingRequestsCount(count);
+    }
+  }, [requestsData]);
 
 
   const subjects = (subjectsData as any)?.data || [];
@@ -487,8 +509,18 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
               <Button variant="ghost" size="sm">
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setIsShareModalOpen(true)}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsShareModalOpen(true)}
+                className="relative"
+              >
                 <Share2 className="h-4 w-4" />
+                {pendingRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                  </span>
+                )}
               </Button>
               {isEditing ? (
                 <div className="flex gap-2">
@@ -915,105 +947,17 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         </CardContent>
       </Card>
 
-      {/* Modal chia sẻ lớp học */}
-      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Chia sẻ lớp học</DialogTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setIsShareModalOpen(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Kích hoạt chia sẻ */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Kích hoạt chia sẻ</span>
-              <Switch
-                checked={isShareEnabled}
-                onCheckedChange={(checked) => {
-                  setIsShareEnabled(checked);
-                  if (checked) {
-                    toast({
-                      title: "Thông báo",
-                      description: "Lớp học đã được kích hoạt chia sẻ",
-                    });
-                  } else {
-                    toast({
-                      title: "Thông báo", 
-                      description: "Lớp học đã tắt chia sẻ",
-                    });
-                  }
-                }}
-              />
-            </div>
-
-            {/* Link chia sẻ */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Link chia sẻ</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={`https://staging.studentup.vn/student-app/classes/${classData.id || '276ebec0-c8cf-4c'}`}
-                  readOnly
-                  className="flex-1"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(`https://staging.studentup.vn/student-app/classes/${classData.id || '276ebec0-c8cf-4c'}`)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Mật khẩu */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Mật khẩu</Label>
-              <Input
-                value={sharePassword}
-                onChange={(e) => setSharePassword(e.target.value)}
-                placeholder="Nhập mật khẩu"
-                type="password"
-              />
-            </div>
-
-            {/* Danh sách yêu cầu truy cập */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Danh sách yêu cầu truy cập vào lớp học</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">0 người</span>
-                <Button variant="ghost" size="sm">
-                  →
-                </Button>
-              </div>
-            </div>
-
-            {/* QR Code */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Mã QR của lớp học</h3>
-              <div className="space-y-2">
-                <p className="text-xs text-gray-600">1. Mở ứng dụng camera trên máy điện thoại</p>
-                <p className="text-xs text-gray-600">2. Di chuyển camera và quét mã QR để đăng ký nhanh</p>
-              </div>
-              <div className="flex justify-center">
-                <div className="border-2 border-dashed border-purple-500 p-4 rounded-lg">
-                  <div className="w-32 h-32 bg-black flex items-center justify-center">
-                    <QrCode className="h-16 w-16 text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Sheet chia sẻ lớp học */}
+      <ShareClassSheet
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+        classData={classData}
+        pendingRequestsCount={pendingRequestsCount}
+        onUpdatePassword={(password) => {
+          // TODO: Implement API call to update class password
+          console.log('Update password:', password);
+        }}
+      />
 
       {/* Sheet gán giáo viên */}
       <SelectTeacherSheet
