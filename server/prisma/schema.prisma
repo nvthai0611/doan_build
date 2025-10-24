@@ -408,6 +408,7 @@ model Alert {
   message     String
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
   severity    String    @default("medium")
+  isRead      Boolean   @default(false) @map("is_read")
   title       String
 
   @@map("alerts")
