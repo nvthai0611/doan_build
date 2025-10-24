@@ -53,8 +53,7 @@ export class SepayController {
     return this.sepayService.getPaymentHistory(studentId);
   }
 
-  @Post('sepay/test-email'
-  )
+  @Post('sepay/test-email')
   async sendTestEmail() {
     return this.sepayService.sendTestEmail();
   }
