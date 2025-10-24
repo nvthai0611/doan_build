@@ -19,9 +19,7 @@ export class SessionRequestService {
 
   async getMySessionRequests(filters?: SessionRequestFilters): Promise<SessionRequestListResponse> {
     try {
-      const response = await apiClient.get('/teacher/session-request/my-requests', { 
-        params: filters 
-      });
+      const response = await apiClient.get('/teacher/session-request/my-requests', filters || {});
       return response.data as any;
     } catch (error) {
       console.error('Error fetching session requests:', error);

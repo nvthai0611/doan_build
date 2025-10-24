@@ -73,7 +73,7 @@ export class SessionRequestController {
       
       return {
         success: true,
-        data: result.data,
+        data: result,
         meta: {
           total: result.total,
           page: result.page,
