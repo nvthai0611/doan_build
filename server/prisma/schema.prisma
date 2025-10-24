@@ -153,6 +153,7 @@ model Class {
   expectedStartDate DateTime? @map("expected_start_date") @db.Date
   actualStartDate   DateTime? @map("actual_start_date") @db.Date
   actualEndDate     DateTime? @map("actual_end_date") @db.Date
+  password          String?   @map("password") // Password bảo vệ lớp học (optional)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

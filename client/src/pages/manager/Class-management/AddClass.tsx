@@ -247,6 +247,8 @@ export const CreateClass = () => {
     return { selectedSubjectId, selectedGrade, notification };
   };
 
+  
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -591,7 +593,7 @@ export const CreateClass = () => {
                 <ErrorMessage field="academicYear" />
               </div>
 
-       
+                  
 
               {/* Lịch học hàng tuần */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
@@ -684,7 +686,7 @@ export const CreateClass = () => {
                           </div>
                           {schedule.roomName && (
                             <div className="text-blue-600 dark:text-blue-400">
-                              📍 {schedule.roomName}
+                             {schedule.roomName}
                             </div>
                           )}
                         </div>
