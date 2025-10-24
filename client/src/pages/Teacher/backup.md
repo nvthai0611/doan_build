@@ -208,7 +208,154 @@ export default function TeacherProfilePage() {
       {/* Page Title */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-foreground">Thông tin cá nhân</h1>
+        <Button 
+          onClick={testPermissions}
+          variant="outline"
+          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+        >
+          🧪 Kiểm tra quyền hạn
+        </Button>
       </div>
+
+      {/* Permission Info Card */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Vai trò & Quyền hạn hiện tại (Database)</h3>
+                <p className="text-sm text-blue-700">
+                  Vai trò: <span className="font-medium">{userRole || "Chưa đăng nhập"}</span>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Quyền hạn DB: <span className="font-medium">{user?.permissions ? user.permissions.length : 0} đã tải</span>
+                </p>
+              <div className="flex gap-4 mt-2 text-xs text-blue-600">
+                <span className={`px-2 py-1 rounded ${hasPermission("students.view") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  Xem học sinh: {hasPermission("students.view") ? "✅" : "❌"}
+                </span>
+                <span className={`px-2 py-1 rounded ${hasPermission("teachers.view") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  Xem giáo viên: {hasPermission("teachers.view") ? "✅" : "❌"}
+                </span>
+                <span className={`px-2 py-1 rounded ${hasPermission("courses.view") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  Xem khóa học: {hasPermission("courses.view") ? "✅" : "❌"}
+                </span>
+                <span className={`px-2 py-1 rounded ${hasPermission("schedule.view") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  Xem lịch học: {hasPermission("schedule.view") ? "✅" : "❌"}
+                </span>
+              </div>
+              
+              {/* Database Permissions List */}
+              <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <h4 className="text-sm font-medium text-purple-800 mb-2">Danh sách quyền hạn từ Database:</h4>
+                {user?.permissions && user.permissions.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {user.permissions.map((permission, index) => (
+                      <div key={index} className="px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                        {permission}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-purple-600">
+                    Không có quyền hạn nào được tải từ database
+                  </div>
+                )}
+              </div>
+
+              {/* Test Center Owner Only Buttons */}
+              <div className="mt-4 space-y-3">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-yellow-800 mb-2">Kiểm tra nút chỉ dành cho Chủ trung tâm:</h4>
+                  <div className="space-y-2">
+                    {/* Test Create Students Permission */}
+                    {hasPermission("students.create") ? (
+                      <Button 
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                        onClick={() => alert("❌ Nút này KHÔNG nên hiển thị cho giáo viên!")}
+                      >
+                        🚨 Tạo học sinh (Chỉ Chủ trung tâm)
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-green-700">
+                        ✅ Nút Tạo học sinh đã được ẩn đúng cách
+                      </div>
+                    )}
+                    
+                    {/* Test Delete Students Permission */}
+                    {hasPermission("students.delete") ? (
+                      <Button 
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs ml-2"
+                        onClick={() => alert("❌ Nút này KHÔNG nên hiển thị cho giáo viên!")}
+                      >
+                        🚨 Xóa học sinh (Chỉ Chủ trung tâm)
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-green-700">
+                        ✅ Nút Xóa học sinh đã được ẩn đúng cách
+                      </div>
+                    )}
+                    
+                    {/* Test Finance Permission */}
+                    {hasPermission("finance.create") ? (
+                      <Button 
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs ml-2"
+                        onClick={() => alert("❌ Nút này KHÔNG nên hiển thị cho giáo viên!")}
+                      >
+                        🚨 Quản lý tài chính (Chỉ Chủ trung tâm)
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-green-700">
+                         Nút Quản lý tài chính đã được ẩn đúng cách
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Test Teacher Allowed Buttons */}
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-green-800 mb-2">Kiểm tra nút được phép cho Giáo viên:</h4>
+                  <div className="space-y-2">
+                    {hasPermission("students.view") ? (
+                      <Button 
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                        onClick={() => alert("✅ Giáo viên có thể xem học sinh - Đúng rồi!")}
+                      >
+                        ✅ Xem học sinh (Giáo viên được phép)
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-red-700">
+                        ❌ Nút Xem học sinh nên hiển thị cho giáo viên
+                      </div>
+                    )}
+                    
+                    {hasPermission("schedule.view") ? (
+                      <Button 
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs ml-2"
+                        onClick={() => alert("✅ Giáo viên có thể xem lịch học - Đúng rồi!")}
+                      >
+                        ✅ Xem lịch học (Giáo viên được phép)
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-red-700">
+                        ❌ Nút Xem lịch học nên hiển thị cho giáo viên
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-blue-600">Nhấn "Kiểm tra quyền hạn" để xem kết quả chi tiết</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Permission Test Component */}
+      <PermissionTest 
+        userRole={userRole} 
+        userPermissions={user?.permissions || []} 
+      />
 
       {/* Profile Tabs */}
       <Tabs defaultValue="profile" className="space-y-6">

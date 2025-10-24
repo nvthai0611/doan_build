@@ -10,7 +10,8 @@ export type UserRole = "center_owner" | "teacher" | "admin" | "student" | "paren
 export interface User {
   id: string
   email: string
-  fullName: string
+  avatar?: string
+  fullName?: string
   role: UserRole
   phone?: string
   isActive: boolean

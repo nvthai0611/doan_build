@@ -12,8 +12,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Check, Plus, Clock, Trash2, Undo } from 'lucide-react';
+import { ArrowLeft, Check, Plus, Clock, Trash2, Undo, Calendar } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,12 +32,16 @@ import 'react-quill/dist/quill.snow.css';
 import { convertDateToISO } from '../../../utils/format';
 import { GRADE_LEVEL_OPTIONS } from '../../../lib/gradeConstants';
 import { dayOptions } from '../../../utils/commonData';
+import { WeeklySchedulePicker } from '../../../components/common/WeeklySchedulePicker';
 
 interface ScheduleItem {
   id: string;
   day: string;
   startTime: string;
+  endTime: string;
   duration: number;
+  roomId?: string;
+  roomName?: string;
 }
 
 export const CreateClass = () => {
@@ -60,6 +65,8 @@ export const CreateClass = () => {
 
   const [useTemplate, setUseTemplate] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [useCalendarPicker, setUseCalendarPicker] = useState(true); // Mặc định dùng calendar picker
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   
   // State để quản lý validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -119,6 +126,7 @@ export const CreateClass = () => {
       id: Date.now().toString(),
       day: nextAvailableDay,
       startTime: '08:00',
+      endTime: '09:30',
       duration: 90,
     };
     setSchedules([...schedules, newSchedule]);
@@ -239,6 +247,8 @@ export const CreateClass = () => {
     return { selectedSubjectId, selectedGrade, notification };
   };
 
+  
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -308,7 +318,7 @@ export const CreateClass = () => {
             schedules: schedules.map((schedule) => ({
               day: schedule.day,
               startTime: schedule.startTime,
-              endTime: new Date(
+              endTime: schedule.endTime || new Date(
                 new Date(`2000-01-01 ${schedule.startTime}`).getTime() +
                   schedule.duration * 60000,
               )
@@ -318,10 +328,16 @@ export const CreateClass = () => {
           }
         : null;
 
+    // Nếu dùng calendar picker và có chọn phòng, tự động set roomId từ lịch đầu tiên
+    let finalRoomId = formData.roomId;
+    if (useCalendarPicker && schedules.length > 0 && schedules[0].roomId) {
+      finalRoomId = schedules[0].roomId;
+    }
+
     const submitData = {
       ...formData,
       subjectId: formData.subjectId === 'none' ? undefined : formData.subjectId,
-      roomId: formData.roomId === 'none' || formData.roomId === '' ? undefined : formData.roomId,
+      roomId: finalRoomId === 'none' || finalRoomId === '' ? undefined : finalRoomId,
       teacherId: formData.teacherId === 'none' || formData.teacherId === '' ? undefined : formData.teacherId,
       maxStudents: formData.maxStudents
         ? parseInt(formData.maxStudents)
@@ -510,30 +526,40 @@ export const CreateClass = () => {
                   />
                   <ErrorMessage field="expectedStartDate" />
                 </div>
-                <div>
-                  <Label htmlFor="roomId" className="text-sm font-medium">
-                    Chọn phòng học 
-                  </Label>
-                  <Select
-                    value={formData.roomId}
-                    onValueChange={(value) => handleInputChange("roomId", value)}
-                  >
-                    <SelectTrigger className={`mt-1.5 ${errors.roomId ? "border-red-500" : ""}`}>
-                      <SelectValue placeholder="Chọn phòng học" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Không chọn</SelectItem>
-                      {rooms &&
-                        rooms.length > 0 &&
-                        rooms.map((room: any) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <ErrorMessage field="roomId" />
-                </div>
+                {!useCalendarPicker && (
+                  <div>
+                    <Label htmlFor="roomId" className="text-sm font-medium">
+                      Chọn phòng học 
+                    </Label>
+                    <Select
+                      value={formData.roomId}
+                      onValueChange={(value) => handleInputChange("roomId", value)}
+                    >
+                      <SelectTrigger className={`mt-1.5 ${errors.roomId ? "border-red-500" : ""}`}>
+                        <SelectValue placeholder="Chọn phòng học" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Không chọn</SelectItem>
+                        {rooms &&
+                          rooms.length > 0 &&
+                          rooms.map((room: any) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <ErrorMessage field="roomId" />
+                  </div>
+                )}
+                {useCalendarPicker && schedules.length > 0 && schedules[0].roomName && (
+                  <div>
+                    <Label className="text-sm font-medium">Phòng học</Label>
+                    <div className="mt-1.5 px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800">
+                      {schedules[0].roomName}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Năm học */}
@@ -567,7 +593,7 @@ export const CreateClass = () => {
                 <ErrorMessage field="academicYear" />
               </div>
 
-       
+                  
 
               {/* Lịch học hàng tuần */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
@@ -575,113 +601,205 @@ export const CreateClass = () => {
                   <Label className="text-base font-semibold">
                     Lịch học hàng tuần
                   </Label>
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    onClick={handleAddSchedule}
-                    className="text-blue-600 hover:text-blue-700 h-auto p-0"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Lịch học
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {useCalendarPicker ? (
+                      <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            Chọn từ lịch
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Chọn thời gian học từ lịch hệ thống</DialogTitle>
+                          </DialogHeader>
+                          <WeeklySchedulePicker
+                            selectedSlots={schedules}
+                            onSlotsChange={setSchedules}
+                            defaultDuration={90}
+                          />
+                          <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setIsScheduleModalOpen(false)}
+                            >
+                              Đóng
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => setIsScheduleModalOpen(false)}
+                            >
+                              <Check className="w-4 h-4 mr-2" />
+                              Xong
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddSchedule}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Thêm lịch học
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant={useCalendarPicker ? "ghost" : "default"}
+                      size="sm"
+                      onClick={() => setUseCalendarPicker(!useCalendarPicker)}
+                    >
+                      {useCalendarPicker ? 'Nhập thủ công' : 'Chọn từ lịch'}
+                    </Button>
+                  </div>
                 </div>
 
+                {/* Hiển thị lịch đã chọn */}
                 <div className="space-y-3">
-                  {schedules.map((schedule) => (
-                    <div
-                      key={schedule.id}
-                      className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800"
-                    >
-                      <div className="flex items-end gap-3">
-                        {/* Thứ */}
-                        <div className="flex-1">
-                          <Label className="text-xs text-gray-600 dark:text-gray-400">
-                            Thứ
-                          </Label>
-                          <Select
-                            value={schedule.day}
-                            onValueChange={(value: string) =>
-                              handleScheduleChange(schedule.id, 'day', value)
-                            }
-                          >
-                            <SelectTrigger className="mt-1 h-9">
-                              <SelectValue placeholder="Chọn" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {dayOptions.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Bắt đầu */}
-                        <div className="flex-1">
-                          <Label className="text-xs text-gray-600 dark:text-gray-400">
-                            Bắt đầu <span className="text-red-500">*</span>
-                          </Label>
-                          <div className="relative mt-1">
-                            <Clock className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                            <Input
-                              type="time"
-                              value={schedule.startTime}
-                              onChange={(e: any) =>
-                                handleScheduleChange(
-                                  schedule.id,
-                                  'startTime',
-                                  e.target.value,
-                                )
-                              }
-                              className="pl-9 h-9"
-                            />
+                  {schedules.length > 0 ? (
+                    schedules.map((schedule) => (
+                      <div
+                        key={schedule.id}
+                        className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span className="font-medium">
+                              {dayOptions.find(d => d.value === schedule.day)?.label || schedule.day}
+                            </span>
                           </div>
+                          <div className="text-gray-600 dark:text-gray-400">
+                            {schedule.startTime} - {schedule.endTime}
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400">
+                            ({schedule.duration} phút)
+                          </div>
+                          {schedule.roomName && (
+                            <div className="text-blue-600 dark:text-blue-400">
+                             {schedule.roomName}
+                            </div>
+                          )}
                         </div>
-
-                        {/* Thời lượng */}
-                        <div className="flex-1">
-                          <Label className="text-xs text-gray-600 dark:text-gray-400">
-                            Thời lượng (phút){' '}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="number"
-                            value={schedule.duration}
-                            onChange={(e: any) =>
-                              handleScheduleChange(
-                                schedule.id,
-                                'duration',
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            min={0}
-                            step={15}
-                            className="mt-1 h-9"
-                          />
-                        </div>
-
-                        {/* Delete button */}
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemoveSchedule(schedule.id)}
-                          className="text-red-600 hover:text-red-700 h-9 w-9 p-0"
+                          className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  ))}
-
-                  {schedules.length === 0 && (
+                    ))
+                  ) : (
                     <div className="text-center py-8 text-gray-500 text-sm border border-dashed rounded-lg">
-                      Chưa có lịch học. Click "+ Lịch học" để thêm.
+                      Chưa có lịch học. Click "{useCalendarPicker ? 'Chọn từ lịch' : 'Thêm lịch học'}" để thêm.
+                    </div>
+                  )}
+
+                  {/* Form nhập thủ công khi không dùng calendar */}
+                  {!useCalendarPicker && schedules.length > 0 && (
+                    <div className="space-y-3 pt-3 border-t">
+                      {schedules.map((schedule) => (
+                        <div
+                          key={schedule.id}
+                          className="p-3 border rounded-lg bg-white dark:bg-gray-900"
+                        >
+                          <div className="flex items-end gap-3">
+                            {/* Thứ */}
+                            <div className="flex-1">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                                Thứ
+                              </Label>
+                              <Select
+                                value={schedule.day}
+                                onValueChange={(value: string) =>
+                                  handleScheduleChange(schedule.id, 'day', value)
+                                }
+                              >
+                                <SelectTrigger className="mt-1 h-9">
+                                  <SelectValue placeholder="Chọn" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {dayOptions.map((option) => (
+                                    <SelectItem
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Bắt đầu */}
+                            <div className="flex-1">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                                Bắt đầu <span className="text-red-500">*</span>
+                              </Label>
+                              <div className="relative mt-1">
+                                <Clock className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                <Input
+                                  type="time"
+                                  value={schedule.startTime}
+                                  onChange={(e: any) =>
+                                    handleScheduleChange(
+                                      schedule.id,
+                                      'startTime',
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="pl-9 h-9"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Thời lượng */}
+                            <div className="flex-1">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                                Thời lượng (phút){' '}
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                type="number"
+                                value={schedule.duration}
+                                onChange={(e: any) =>
+                                  handleScheduleChange(
+                                    schedule.id,
+                                    'duration',
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
+                                min={0}
+                                step={15}
+                                className="mt-1 h-9"
+                              />
+                            </div>
+
+                            {/* Delete button */}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSchedule(schedule.id)}
+                              className="text-red-600 hover:text-red-700 h-9 w-9 p-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -47,7 +47,6 @@ export const SelectTeacherSheet = ({
   useEffect(() => {
     setPage(1);
   }, [debouncedQuery]);
-  console.log(classData);
   
   const { data, isLoading: isFetchingTeachers } = useQuery({
     queryKey: ['teachers-selection', { search: debouncedQuery || undefined, page, limit: pageSize, subject: classData?.subject.name, open }],

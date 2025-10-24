@@ -232,9 +232,9 @@ export class ClassManagementService {
                 gradeLevel: cls.grade?.level || null,
                 status: cls.status,
                 maxStudents: cls.maxStudents,
-                currentStudents: cls._count.enrollments,
+                currentStudents: cls._count.enrollments,    
                 roomId: cls.roomId,
-                roomName: cls.room?.name || 'Chưa xác định',
+                roomName: cls.room?.name || "-",
                 description: cls.description,
                 actualStartDate: cls.actualStartDate,
                 actualEndDate: cls.actualEndDate,
@@ -1656,6 +1656,209 @@ export class ClassManagementService {
                 {
                     success: false,
                     message: 'Có lỗi xảy ra khi xóa lớp học',
+                    error: error.message
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    // Clone lớp học
+    async cloneClass(id: string, cloneData: any) {
+        try {
+            // Validate UUID
+            if (!this.isValidUUID(id)) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'ID lớp học không hợp lệ'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Get source class with all relations
+            const sourceClass = await this.prisma.class.findUnique({
+                where: { id },
+                include: {
+                    subject: true,
+                    grade: true,
+                    room: true,
+                    teacher: {
+                        include: {
+                            user: true
+                        }
+                    }
+                }
+            });
+
+            // Get enrollments separately if needed
+            const enrollments = cloneData.cloneStudents 
+                ? await this.prisma.enrollment.findMany({
+                    where: {
+                        classId: id,
+                        status: {
+                            in: ['active', 'studying']
+                        }
+                    },
+                    include: {
+                        student: true
+                    }
+                })
+                : [];
+
+            // // Get lessons separately if needed
+            // const lessons = cloneData.cloneCurriculum
+            //     ? await this.prisma.classLesson.findMany({
+            //         where: { classId: id },
+            //         include: {
+            //             materials: true
+            //         }
+            //     })
+            //     : [];
+
+            if (!sourceClass) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không tìm thấy lớp học gốc'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Check duplicate name
+            const duplicateCheck = await this.checkDuplicateClassName(
+                cloneData.name,
+                sourceClass.academicYear
+            );
+
+            if (duplicateCheck.isDuplicate) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: `Tên lớp "${cloneData.name}" đã tồn tại trong năm học ${sourceClass.academicYear}`,
+                        suggestedName: duplicateCheck.suggestedName
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Generate new code
+            const newCode = generateQNCode('class');
+
+            // Prepare new class data
+            const newClassData: any = {
+                classCode: newCode,
+                name: cloneData.name,
+                subjectId: sourceClass.subjectId,
+                gradeId: sourceClass.gradeId,
+                academicYear: sourceClass.academicYear,
+                maxStudents: sourceClass.maxStudents,
+                description: sourceClass.description,
+                status: 'draft', // Always create as draft
+                recurringSchedule: cloneData.cloneSchedule ? sourceClass.recurringSchedule : null,
+                roomId: cloneData.cloneRoom ? sourceClass.roomId : null,
+                teacherId: cloneData.cloneTeacher ? sourceClass.teacherId : null,
+            };
+
+            // Create new class
+            const newClass = await this.prisma.class.create({
+                data: newClassData,
+                include: {
+                    subject: true,
+                    grade: true,
+                    room: true,
+                    teacher: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    email: true,
+                                    phone: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Clone curriculum (lessons & materials)
+            // if (cloneData.cloneCurriculum && lessons && lessons.length > 0) {
+            //     for (const lesson of lessons) {
+            //         const newLesson = await this.prisma.classLesson.create({
+            //             data: {
+            //                 title: lesson.title,
+            //                 description: lesson.description,
+            //                 lessonNumber: lesson.lessonNumber,
+            //                 duration: lesson.duration,
+            //                 objectives: lesson.objectives,
+            //                 content: lesson.content,
+            //                 classId: newClass.id
+            //             }
+            //         });
+
+            //         // Clone materials for each lesson
+            //         if (lesson.materials && lesson.materials.length > 0) {
+            //             const materialData = lesson.materials.map((material: any) => ({
+            //                 title: material.title,
+            //                 type: material.type,
+            //                 url: material.url,
+            //                 description: material.description,
+            //                 lessonId: newLesson.id
+            //             }));
+
+            //             // await this.prisma.classMaterial.createMany({
+            //             //     data: materialData
+            //             // });
+            //         }
+            //     }
+            // }
+
+            // Clone students (enrollments)
+            if (cloneData.cloneStudents && enrollments && enrollments.length > 0) {
+                const enrollmentData = enrollments.map((enrollment: any) => ({
+                    studentId: enrollment.studentId,
+                    classId: newClass.id,
+                    enrollmentDate: new Date(),
+                    status: 'active'
+                }));
+
+                await this.prisma.enrollment.createMany({
+                    data: enrollmentData
+                });
+            }
+
+            // Build response
+            const responseData = {
+                ...newClass,
+                gradeName: newClass.grade?.name,
+                gradeLevel: newClass.grade?.level,
+                subjectName: newClass.subject?.name,
+                roomName: newClass.room?.name,
+                teacher: newClass.teacher ? {
+                    id: newClass.teacher.id,
+                    name: newClass.teacher.user?.fullName,
+                    email: newClass.teacher.user?.email,
+                    phone: newClass.teacher.user?.phone,
+                } : null
+            };
+
+            return {
+                success: true,
+                message: `Clone lớp học thành công! Lớp mới: ${newClass.name}`,
+                data: responseData
+            };
+
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            
+            console.error('Error cloning class:', error);
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Có lỗi xảy ra khi clone lớp học',
                     error: error.message
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR

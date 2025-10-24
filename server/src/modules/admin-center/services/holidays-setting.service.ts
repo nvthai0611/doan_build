@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { CreateHolidayDto } from '../dto/holiday/create-holiday.dto';
 import { UpdateHolidayDto } from '../dto/holiday/update-holiday.dto';
@@ -33,6 +33,15 @@ export class HolidaysSettingService {
     const { startDate, endDate, note, isActive } = dto as any;
     const startAt = new Date(startDate);
     const endAt = new Date(endDate);
+    
+    // Check for overlapping holidays
+    const overlappingHoliday = await this.checkOverlappingHolidays(startAt, endAt);
+    if (overlappingHoliday) {
+      throw new ConflictException(
+        `Kỳ nghỉ này trùng với kỳ nghỉ đã tồn tại từ ${overlappingHoliday.startDate.toLocaleDateString('vi-VN')} đến ${overlappingHoliday.endDate.toLocaleDateString('vi-VN')}`
+      );
+    }
+    
     const created = await this.prisma.holidayPeriod.create({
       data: { startDate: startAt, endDate: endAt, note, isActive: isActive ?? true },
     });
@@ -42,11 +51,25 @@ export class HolidaysSettingService {
   async update(id: string, dto: UpdateHolidayDto) {
     const existed = await this.prisma.holidayPeriod.findUnique({ where: { id } });
     if (!existed) throw new NotFoundException('Holiday period not found');
+    
+    // If dates are being updated, check for overlaps
+    if (dto.startDate || dto.endDate) {
+      const newStartDate = dto.startDate ? new Date(dto.startDate) : existed.startDate;
+      const newEndDate = dto.endDate ? new Date(dto.endDate) : existed.endDate;
+      
+      const overlappingHoliday = await this.checkOverlappingHolidays(newStartDate, newEndDate, id);
+      if (overlappingHoliday) {
+        throw new ConflictException(
+          `Kỳ nghỉ này trùng với kỳ nghỉ đã tồn tại từ ${overlappingHoliday.startDate.toLocaleDateString('vi-VN')} đến ${overlappingHoliday.endDate.toLocaleDateString('vi-VN')}`
+        );
+      }
+    }
+    
     const updated = await this.prisma.holidayPeriod.update({
       where: { id },
       data: {
-        startDate: new Date(dto.startDate) ?? undefined,
-        endDate: new Date(dto.endDate) ?? undefined,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         note: dto.note ?? undefined,
         isActive: dto.isActive ?? undefined,
       },
@@ -92,6 +115,65 @@ export class HolidaysSettingService {
     );
 
     return { data: { created: created.length }, message: 'Liên kết kỳ nghỉ vào phiên học thành công' };
+  }
+
+  /**
+   * Check for overlapping holiday periods
+   * @param startDate Start date of the new/updated holiday
+   * @param endDate End date of the new/updated holiday
+   * @param excludeId ID to exclude from overlap check (for updates)
+   * @returns Overlapping holiday if found, null otherwise
+   */
+  private async checkOverlappingHolidays(startDate: Date, endDate: Date, excludeId?: string) {
+    const where: any = {
+      OR: [
+        // New holiday starts within existing holiday
+        {
+          AND: [
+            { startDate: { lte: startDate } },
+            { endDate: { gte: startDate } }
+          ]
+        },
+        // New holiday ends within existing holiday
+        {
+          AND: [
+            { startDate: { lte: endDate } },
+            { endDate: { gte: endDate } }
+          ]
+        },
+        // New holiday completely contains existing holiday
+        {
+          AND: [
+            { startDate: { gte: startDate } },
+            { endDate: { lte: endDate } }
+          ]
+        },
+        // Existing holiday completely contains new holiday
+        {
+          AND: [
+            { startDate: { lte: startDate } },
+            { endDate: { gte: endDate } }
+          ]
+        }
+      ]
+    };
+
+    // Exclude current holiday when updating
+    if (excludeId) {
+      where.id = { not: excludeId };
+    }
+
+    const overlappingHoliday = await this.prisma.holidayPeriod.findFirst({
+      where,
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        note: true
+      }
+    });
+
+    return overlappingHoliday;
   }
 }
 

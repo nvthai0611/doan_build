@@ -47,6 +47,7 @@ import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveR
 import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
 
 import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
+import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
 
 export const privateRoutes = (
   <>
@@ -113,6 +114,7 @@ export const privateRoutes = (
         <Route path="schedule/leave" element={<LeaveRequestPage />} />
         <Route path="schedule/my-requests" element={<MyRequests />} />
         <Route path="student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
+        <Route path="contracts" element={<ContractsManageme />} />
       </Route>
 
       {/* Học sinh */}

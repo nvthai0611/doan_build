@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, Edit, Trash2, Eye, UserPlus, Search, Filter, MoreHorizontal, Download, Upload, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, UserPlus, Search, Filter, MoreHorizontal, Download, Upload, RefreshCw, Copy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/clientAxios';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { CodeDisplay } from '../../../components/common/CodeDisplay';
 
 import { EditScheduleSheet } from './components/Sheet/EditScheduleSheet';
+import { CloneClassDialog } from './components/Dialog/CloneClassDialog';
 // import { EnrollStudentDialog } from './components/EnrollStudentDialog';
 
 // Hooks
@@ -67,6 +68,7 @@ export const ClassManagement = () => {
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isAssignTeacherDialogOpen, setIsAssignTeacherDialogOpen] = useState(false);
     const [isEnrollStudentDialogOpen, setIsEnrollStudentDialogOpen] = useState(false);
+    const [isCloneDialogOpen, setIsCloneDialogOpen] = useState(false);
     const [selectedClass, setSelectedClass] = useState<any>(null);
 
     // Debounce search term
@@ -278,6 +280,32 @@ export const ClassManagement = () => {
         setIsEnrollStudentDialogOpen(true);
     };
 
+    const handleCloneClass = (classItem: any) => {
+        setSelectedClass(classItem);
+        setIsCloneDialogOpen(true);
+    };
+
+    const handleCloneSubmit = async (cloneData: any) => {
+        if (!selectedClass) return;
+
+        try {
+            const response = await classService.cloneClass(selectedClass.id, cloneData);
+            
+            if (response?.success) {
+                toast.success(`Clone lớp học thành công! Lớp mới: ${cloneData.name}`);
+                refetch();
+                setIsCloneDialogOpen(false);
+                setSelectedClass(null);
+            } else {
+                toast.error(response?.message || 'Có lỗi xảy ra khi clone lớp học');
+            }
+        } catch (error: any) {
+            console.error('Error cloning class:', error);
+            const errorMessage = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi clone lớp học';
+            toast.error(errorMessage);
+        }
+    };
+
     const handleRefreshPage = () => {
         setSearchTerm('');
         setDebouncedSearchTerm('');
@@ -404,8 +432,8 @@ export const ClassManagement = () => {
         },
         {
             key: 'teachers',
-            width: '290px',
-            header: 'Giáo viên phụ trách',
+            width: '120px',
+            header: 'Giáo viên',
             render: (item: any) => {
                 if (item.teacher) {
                     const teacher = item.teacher;
@@ -526,6 +554,13 @@ export const ClassManagement = () => {
                         >
                             <UserPlus className="w-4 h-4" />
                             Cập nhật chương trình học theo khoá học
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            className="gap-2 cursor-pointer text-blue-600 hover:text-blue-700 focus:text-blue-700"
+                            onClick={() => handleCloneClass(item)}
+                        >
+                            <Copy className="w-4 h-4" />
+                            Clone lớp học
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                             className="gap-2 cursor-pointer text-red-600 hover:text-red-700 focus:text-red-700"
@@ -831,6 +866,13 @@ export const ClassManagement = () => {
                 classData={selectedClass}
                 onSubmit={handleScheduleSubmit}
                 isLoading={isLoadingClasses}
+            />
+            <CloneClassDialog
+                open={isCloneDialogOpen}
+                onOpenChange={setIsCloneDialogOpen}
+                classData={selectedClass}
+                onSubmit={handleCloneSubmit}
+                isLoading={false}
             />
         </div>
     );

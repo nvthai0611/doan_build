@@ -35,11 +35,7 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
-  console.log(email);
-      
     const user = await this.getUserByField('email', email);
-    console.log(user);
-    
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
@@ -84,6 +80,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        avatar: user.avatar,
         fullName: user.fullName,
         role: user.role,
         phone: user.phone,
