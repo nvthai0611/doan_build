@@ -11,6 +11,14 @@ export type {
   ChildQueryParams
 } from './child-management/child.types'
 
+// Child Classes
+export { parentChildClassesService } from './child-classes/child-classes.service'
+export type {
+  ChildClass as ChildClassInfo,
+  ChildClassesResponse,
+  ChildClassResponse
+} from './child-classes/child-classes.types'
+
 // Communication
 export { parentCommunicationService } from './communication/communication.service'
 export type {
