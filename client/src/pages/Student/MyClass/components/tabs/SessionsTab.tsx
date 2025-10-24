@@ -8,6 +8,7 @@ import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentClassInformationService } from "../../../../../services/student/classInformation/classInformation.service"
 import type { StudentSession } from "../../../../../services/student/schedule/schedule.types"
 import { SessionDetailsDialog } from "./SessionDetailsDialog"
+import { getDisplaySessionStatus, type SessionData } from "../../../../../utils/session-status.util"
 
 interface SessionsTabProps {
   classId: string
@@ -66,6 +67,8 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
     if (s === 'completed') return "bg-green-100 text-green-700 border border-green-200"
     if (s === 'cancelled') return "bg-red-100 text-red-700 border border-red-200"
     if (s === 'has_not_happened') return "bg-gray-100 text-gray-700 border border-gray-200"
+    if (s === 'happening') return "bg-amber-100 text-amber-700 border border-amber-200"
+    if (s === 'incomplete') return "bg-orange-100 text-orange-700 border border-orange-200"
     return "bg-gray-100 text-gray-700 border border-gray-200"
   }
 
@@ -75,6 +78,8 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
     if (s === 'completed') return 'Hoàn thành'
     if (s === 'cancelled') return 'Đã hủy'
     if (s === 'has_not_happened') return 'Chưa diễn ra'
+    if (s === 'happening') return 'Đang diễn ra'
+    if (s === 'incomplete') return 'Chưa hoàn thành'
     return 'Không xác định'
   }
 
@@ -210,34 +215,34 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
         ) : (
           <div className="space-y-4">
             {rows.map((s, idx) => (
-                <div key={s.id} className="flex items-center justify-between p-5 border rounded-xl hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-500">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                  <p className="font-medium">{`Buổi ${idx + 1}`}</p>
-                      <Badge className={statusBadge(s.status)}>{statusTextVi(s.status)}</Badge>
+              <div key={s.id} className="flex items-center justify-between p-5 border rounded-xl hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-500">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <p className="font-medium">{`Buổi ${idx + 1}`}</p>
+                    <Badge className={statusBadge(getDisplaySessionStatus(s as unknown as SessionData))}>{statusTextVi(getDisplaySessionStatus(s as unknown as SessionData))}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(s.sessionDate).toLocaleDateString('vi-VN')}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(s.sessionDate).toLocaleDateString('vi-VN')}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {s.startTime} → {s.endTime}
-                      </div>
-                  {s.room?.name && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {s.room?.name}
-                        </div>
-                  )}
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {s.startTime} → {s.endTime}
                     </div>
+                    {s.room?.name && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {s.room?.name}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    {getAttendanceBadge(s.attendanceStatus)}
-                    <Button variant="ghost" size="sm" onClick={() => { setSelectedSessionId(s.id); setSelectedSession(s); setDetailOpen(true) }}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                  {getAttendanceBadge(s.attendanceStatus)}
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedSessionId(s.id); setSelectedSession(s); setDetailOpen(true) }}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}

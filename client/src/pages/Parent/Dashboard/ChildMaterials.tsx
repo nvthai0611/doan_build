@@ -17,7 +17,9 @@ interface ChildMaterialsProps {
 export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["parentMaterials", { childId, classId }],
-    queryFn: () => parentMaterialsService.list({ childId, classId, limit: 50 }),
+    queryFn: () => {
+      return parentMaterialsService.list({ childId, classId, limit: 50 });
+    },
     enabled: !!childId,
     staleTime: 30000,
     refetchOnWindowFocus: false,
