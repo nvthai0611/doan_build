@@ -32,7 +32,7 @@ export function PaymentSummary({ selectedCount, totalAmount, onPayment }: Paymen
           className="w-full bg-green-600 hover:bg-green-700 text-white"
           size="lg"
         >
-          Chọ thanh toán
+          Chọn thanh toán
         </Button>
 
         <p className="text-xs text-muted-foreground text-center">Chọn ít nhất 1 khoản để thanh toán</p>

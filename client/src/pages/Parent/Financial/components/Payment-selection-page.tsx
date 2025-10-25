@@ -1,112 +1,365 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FeeRecordItem } from "./Fee-record-item"
 import { PaymentSummary } from "./Payment-summary"
 import { PaymentHistory } from "./Payment-history"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import financialParentService from "../../../../services/parent/financial-management/financial-parent.service"
+import Loading from "../../../../components/Loading/LoadingPage"
+import { toast } from "sonner"
+import { X, Download, Copy, CheckCircle, Clock } from "lucide-react"
+import { parentChildService } from "../../../../services/parent/child-management/child.service"
+import { paymentSocketService } from "../../../../services/socket/payment-socket.service"
 
-// Mock data - replace with actual API calls
-const mockFeeRecords = [
-  {
-    id: "1",
-    studentName: "Nguyễn Văn A",
-    className: "Lớp 10A",
-    schoolName: "CenterUp - Demo",
-    courseName: "Học thêm",
-    courseDetails: "2 buổi học",
-    pricePerSession: "200.000 đ/buổi học",
-    dueDate: "17/10/2025",
-    status: "pending",
-    amount: 400000,
-    paidAmount: 0,
-    discount: 0,
-    totalAmount: 400000,
-  },
-  {
-    id: "2",
-    studentName: "Nguyễn Văn A",
-    className: "Lớp 10A",
-    schoolName: "CenterUp - Demo",
-    courseName: "TOEIC 5.5",
-    courseDetails: "1 buổi học",
-    pricePerSession: "1.600 đ/buổi học",
-    dueDate: "17/10/2025",
-    status: "pending",
-    amount: 2000,
-    paidAmount: 400,
-    discount: -400,
-    totalAmount: 1600,
-  },
-  {
-    id: "3",
-    studentName: "Nguyễn Văn A",
-    className: "Lớp 10A",
-    schoolName: "CenterUp - Demo",
-    courseName: "SB Growth Pre A1 Part 2 in thương",
-    courseDetails: "1 Quyển",
-    pricePerSession: "55.000 đ/Quyển",
-    dueDate: "17/10/2025",
-    status: "pending",
-    amount: 110000,
-    paidAmount: 0,
-    discount: -55000,
-    totalAmount: 55000,
-  },
-]
+interface FeeRecordData {
+  id: string
+  studentId: string
+  feeStructureId: string
+  classId: string
+  amount: number
+  dueDate: string
+  paidAmount: number
+  status: string
+  discount: number
+  notes: string
+  createdAt: string
+  totalAmount: number | null
+  feeStructure: {
+    amount: number
+  }
+  class: {
+    id: string
+    name: string
+    classCode: string
+    feeAmount: number
+    feePeriod: string
+  }
+  student: {
+    id: string
+    userId: string
+    studentCode: string
+    user: {
+      fullName: string
+    }
+    school: {
+      name: string
+    }
+  }
+}
 
-const mockPaymentHistory = [
-  {
-    id: "1",
-    date: "17/10/2025",
-    amount: 400000,
-    method: "Chuyển khoản",
-    status: "completed",
-  },
-  {
-    id: "2",
-    date: "15/10/2025",
-    amount: 200000,
-    method: "Thẻ tín dụng",
-    status: "completed",
-  },
-  {
-    id: "3",
-    date: "10/10/2025",
-    amount: 100000,
-    method: "Ví điện tử",
-    status: "completed",
-  },
-]
+interface PaymentData {
+  orderCode: string
+  qrCodeUrl: string
+  totalAmount: number
+  content: string
+  accountNumber: string
+  bankCode: string
+  bankName: string
+  expiresAt: string
+}
+
+const QR_EXPIRY_TIME = 15 * 60 * 1000 // 15 minutes in milliseconds
 
 export function PaymentSelectionPage() {
   const [selectedFees, setSelectedFees] = useState<string[]>([])
   const [expandedFee, setExpandedFee] = useState<string | null>(null)
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null)
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [remainingTime, setRemainingTime] = useState<number>(0)
+  const [selectedStudent, setSelectedStudent] = useState<string>("all")
+  
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data: response, isLoading, isError } = useQuery({
+    queryKey: ['feeRecords', 'pending'],
+    queryFn: async () => {
+      return await financialParentService.getAllFeeRecordsOfParent('pending')
+    },
+    staleTime: 3 * 60 * 1000,
+    retry: 1,
+  })
+
+  const { data: children, isLoading: isLoadingChildren, isError: isErrorChildren } = useQuery({
+    queryKey: ['listStudent'],
+    queryFn: async () => {
+      return await parentChildService.getChildren()
+    },
+    staleTime: 3 * 60 * 1000,
+    retry: 1,
+  })
+  
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current)
+      }
+    }
+  }, [])
+
+  // Start countdown when modal opens
+  useEffect(() => {
+    if (showQrModal && paymentData) {
+      setRemainingTime(QR_EXPIRY_TIME)
+
+      timerRef.current = setTimeout(() => {
+        handleCloseModal()
+        toast.warning('Mã QR đã hết hạn. Vui lòng tạo mã mới.')
+      }, QR_EXPIRY_TIME)
+
+      countdownRef.current = setInterval(() => {
+        setRemainingTime((prev) => {
+          if (prev <= 1000) {
+            return 0
+          }
+          return prev - 1000
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current)
+      }
+    }
+  }, [showQrModal, paymentData])
+
+  // Connect socket khi component mount
+  useEffect(() => {
+    paymentSocketService.connect()
+    
+    return () => {
+      paymentSocketService.disconnect()
+    }
+  }, [])
+
+  // Subscribe payment updates khi QR modal mở
+  useEffect(() => {
+    if (showQrModal && paymentData?.orderCode) {
+      paymentSocketService.subscribeToPayment(
+        paymentData.orderCode,
+        {
+          onSuccess: (data) => {
+            // ✅ Thanh toán thành công
+            toast.success('Thanh toán thành công! 🎉', {
+              description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
+              duration: 5000,
+            })
+            
+            // Invalidate queries để refresh data
+            queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
+            queryClient.invalidateQueries({ queryKey: ['payment-history'] })
+            
+            // Đóng modal
+            handleCloseModal()
+            
+            // Clear selected fees
+            setSelectedFees([])
+          },
+          onFailure: (data) => {
+            // ❌ Thanh toán thất bại
+            toast.error('Thanh toán thất bại', {
+              description: data.reason || 'Vui lòng thử lại',
+            })
+            
+            handleCloseModal()
+          },
+          onExpired: () => {
+            // ⏰ QR code hết hạn
+            toast.warning('Mã QR đã hết hạn', {
+              description: 'Vui lòng tạo mã mới',
+            })
+            
+            handleCloseModal()
+          }
+        }
+      )
+    }
+
+    return () => {
+      if (paymentData?.orderCode) {
+        paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
+      }
+    }
+  }, [showQrModal, paymentData?.orderCode])
+
+  const formatTime = (milliseconds: number): string => {
+    const totalSeconds = Math.floor(milliseconds / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
 
   const handleSelectFee = (feeId: string) => {
-    setSelectedFees((prev) => (prev.includes(feeId) ? prev.filter((id) => id !== feeId) : [...prev, feeId]))
+    setSelectedFees((prev) => 
+      prev.includes(feeId) 
+        ? prev.filter((id) => id !== feeId) 
+        : [...prev, feeId]
+    )
   }
 
   const handleSelectAll = () => {
-    if (selectedFees.length === mockFeeRecords.length) {
+    if (selectedFees.length === filteredFeeRecords.length) {
       setSelectedFees([])
     } else {
-      setSelectedFees(mockFeeRecords.map((fee) => fee.id))
+      setSelectedFees(filteredFeeRecords.map((fee) => fee.id))
     }
   }
 
-  const selectedRecords = mockFeeRecords.filter((fee) => selectedFees.includes(fee.id))
-  const totalAmount = selectedRecords.reduce((sum, fee) => sum + fee.totalAmount, 0)
+  const handleSelectPayment = async () => {
+    try {
+      if (selectedFees.length === 0) {
+        toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
+        return
+      }
+      
+      const response: any = await financialParentService.createQrCodeForPayment(selectedFees)
+      if (!response?.qrCodeUrl) {
+        toast.error(response?.message || "Không thể tạo mã QR")
+        return
+      }
 
+      setPaymentData(response)
+      setShowQrModal(true)
+      toast.success("Mã QR thanh toán đã được tạo thành công")
+    } catch (error) {
+      console.error("Error creating QR code:", error)
+      toast.error("Có lỗi xảy ra khi tạo mã QR")
+    }
+  }
+
+  const handleCopyContent = async () => {
+    if (paymentData?.content) {
+      try {
+        await navigator.clipboard.writeText(paymentData.content)
+        setCopied(true)
+        toast.success("Đã sao chép nội dung chuyển khoản")
+        setTimeout(() => setCopied(false), 2000)
+      } catch (error) {
+        toast.error("Không thể sao chép")
+      }
+    }
+  }
+
+  const handleDownloadQR = () => {
+    if (paymentData?.qrCodeUrl) {
+      const link = document.createElement('a')
+      link.href = paymentData.qrCodeUrl
+      link.download = `QR_Payment_${paymentData.orderCode}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("Đã tải xuống mã QR")
+    }
+  }
+
+  const handleCloseModal = () => {
+    // Unsubscribe trước khi đóng
+    if (paymentData?.orderCode) {
+      paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
+    }
+
+    // Cleanup timers
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current)
+      countdownRef.current = null
+    }
+
+    setShowQrModal(false)
+    setPaymentData(null)
+    setCopied(false)
+    setRemainingTime(0)
+  }
+
+  if (isLoading || isLoadingChildren) {
+    return <Loading />
+  }
+
+  if (isError || !response || isErrorChildren) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-destructive">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const feeRecords = response as any[]
+  const childrenList = children as any[]
+
+  const transformedFeeRecords = feeRecords.map((fee) => {
+    const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
+    const remainingAmount = calculatedTotal - Number(fee.paidAmount)
+
+    return {
+      id: fee.id,
+      studentId: fee.studentId,
+      studentName: fee.student.user.fullName,
+      studentCode: fee.student.studentCode,
+      className: fee.class.name,
+      classCode: fee.class.classCode,
+      schoolName: fee.student.school.name || "QNEdu",
+      courseName: fee.class.name,
+      courseDetails: `${fee.class.feePeriod === 'per_session' ? 'Theo buổi học' : fee.class.feePeriod === 'monthly' ? 'Theo tháng' : fee.class.feePeriod === 'semester' ? 'Theo học kỳ' : 'Theo năm'}`,
+      pricePerSession: `${Number(fee.class.feeAmount).toLocaleString('vi-VN')} đ/${fee.class.feePeriod === 'per_session' ? 'buổi học' : fee.class.feePeriod}`,
+      dueDate: new Date(fee.dueDate).toLocaleDateString('vi-VN'),
+      status: fee.status,
+      feeStructureAmount: Number(fee.feeStructure.amount),
+      amount: Number(fee.amount),
+      paidAmount: Number(fee.paidAmount),
+      discount: Number(fee.discount),
+      totalAmount: calculatedTotal,
+      remainingAmount: remainingAmount,
+      attendanceCount: fee.student.attendedSessionsCount, 
+      notes: fee.notes,
+    }
+  })
+
+  // Filter fee records by selected student
+  const filteredFeeRecords = selectedStudent === "all" 
+    ? transformedFeeRecords 
+    : transformedFeeRecords.filter(fee => fee.studentId === selectedStudent)
+
+  const selectedRecords = filteredFeeRecords.filter((fee) => 
+    selectedFees.includes(fee.id)
+  )
+  
+  const totalAmount = selectedRecords.reduce((sum, fee) => 
+    sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
+  )
+  
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Danh sách hoá đơn</h1>
-          <p className="text-muted-foreground">Dashboard</p>
+          {/* <p className="text-muted-foreground">
+            Tổng số hoá đơn: {filteredFeeRecords.length}
+          </p> */}
         </div>
 
         <Tabs defaultValue="fees" className="w-full">
@@ -117,82 +370,244 @@ export function PaymentSelectionPage() {
 
           {/* Fee List Tab */}
           <TabsContent value="fees" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-4">
-                {/* Select All */}
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id="select-all"
-                        checked={selectedFees.length === mockFeeRecords.length}
-                        onCheckedChange={handleSelectAll}
+            {/* Student Filter */}
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <label className="text-sm font-medium whitespace-nowrap">Lọc theo học sinh:</label>
+                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                    <SelectTrigger className="w-full max-w-xs">
+                      <SelectValue placeholder="Chọn học sinh" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả học sinh</SelectItem>
+                      {childrenList.map((child: any) => (
+                        <SelectItem key={child.id} value={child.id}>
+                          {child.user.fullName} ({child.studentCode})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {filteredFeeRecords.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 pb-6">
+                  <p className="text-center text-muted-foreground">
+                    {selectedStudent === "all" 
+                      ? "Không có hoá đơn nào cần thanh toán"
+                      : "Không có hoá đơn nào cho học sinh này"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Main Content */}
+                <div className="lg:flex-[2] space-y-4 overflow-hidden">
+                  {/* Select All */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="select-all"
+                          checked={selectedFees.length === filteredFeeRecords.length && filteredFeeRecords.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                          Chọn tất cả ({selectedFees.length}/{filteredFeeRecords.length})
+                        </label>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Fee Records */}
+                  <div className="space-y-4">
+                    {filteredFeeRecords.map((fee) => (
+                      <FeeRecordItem
+                        key={fee.id}
+                        fee={fee}
+                        isSelected={selectedFees.includes(fee.id)}
+                        isExpanded={expandedFee === fee.id}
+                        onSelect={() => handleSelectFee(fee.id)}
+                        onExpand={() => setExpandedFee(expandedFee === fee.id ? null : fee.id)}
                       />
-                      <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                        Chọn tất cả ({selectedFees.length}/{mockFeeRecords.length})
-                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="lg:flex-1 lg:self-start">
+                  <div className="lg:sticky lg:top-4 space-y-6">
+                    {/* Payment Summary */}
+                    <PaymentSummary
+                      selectedCount={selectedFees.length}
+                      totalAmount={totalAmount}
+                      onPayment={handleSelectPayment}
+                    />
+
+                    {/* Details Card */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Chi tiết thanh toán</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {selectedRecords.length > 0 ? (
+                          selectedRecords.map((fee) => (
+                            <div key={fee.id} className="text-sm border-b pb-3 last:border-b-0">
+                              <p className="font-medium text-foreground">{fee.courseName}</p>
+                              <p className="text-muted-foreground text-xs">
+                                {fee.studentName} ({fee.studentCode})
+                              </p>
+                              <div className="flex justify-between items-center mt-2">
+                                <span className="text-xs text-muted-foreground">Số tiền cần thanh toán:</span>
+                                <span className="text-primary font-semibold">
+                                  {fee.remainingAmount.toLocaleString("vi-VN")} đ
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Chọn khoản thanh toán để xem chi tiết
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+            
+          {/* Payment History Tab */}
+          <TabsContent value="history" className="mt-0">
+            <PaymentHistory children={childrenList} />
+          </TabsContent>
+        </Tabs>
+
+        {/* QR Code Modal - Giữ nguyên code cũ */}
+        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>Quét mã QR để thanh toán</span>
+                {/* <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={handleCloseModal}
+                >
+                  <X className="h-4 w-4" />
+                </Button> */}
+              </DialogTitle>
+              <DialogDescription>
+                Sử dụng ứng dụng ngân hàng để quét mã QR này
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Countdown Timer */}
+              <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  Mã QR hết hạn sau: <span className="font-mono font-bold">{formatTime(remainingTime)}</span>
+                </span>
+              </div>
+
+              {/* QR Code Image */}
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                {paymentData?.qrCodeUrl ? (
+                  <img 
+                    src={paymentData.qrCodeUrl} 
+                    alt="QR Code Payment" 
+                    className="w-72 h-72 object-contain"
+                    onError={() => {
+                      console.error("QR Code load error")
+                      toast.error("Không thể tải mã QR")
+                    }}
+                  />
+                ) : (
+                  <div className="w-64 h-64 flex items-center justify-center bg-muted rounded">
+                    <p className="text-muted-foreground">Đang tải mã QR...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Info */}
+              {paymentData && (
+                <Card>
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Mã đơn hàng:</span>
+                      <span className="font-mono font-semibold">{paymentData.orderCode}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Số tiền:</span>
+                      <span className="font-semibold text-primary">
+                        {paymentData.totalAmount?.toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Ngân hàng:</span>
+                      <span className="font-semibold">{paymentData.bankName}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Số tài khoản:</span>
+                      <span className="font-mono">{paymentData.accountNumber}</span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <span className="text-xs text-muted-foreground block mb-1">Nội dung chuyển khoản:</span>
+                          <span className="text-sm font-mono break-all">{paymentData.content}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={handleCopyContent}
+                        >
+                          {copied ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
+              )}
 
-                {/* Fee Records */}
-                <div className="space-y-4">
-                  {mockFeeRecords.map((fee) => (
-                    <FeeRecordItem
-                      key={fee.id}
-                      fee={fee}
-                      isSelected={selectedFees.includes(fee.id)}
-                      isExpanded={expandedFee === fee.id}
-                      onSelect={() => handleSelectFee(fee.id)}
-                      onExpand={() => setExpandedFee(expandedFee === fee.id ? null : fee.id)}
-                    />
-                  ))}
-                </div>
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleDownloadQR}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Tải xuống
+                </Button>
+                <Button 
+                  variant="default" 
+                  className="flex-1"
+                  onClick={handleCloseModal}
+                >
+                  Đóng
+                </Button>
               </div>
 
-              {/* Sidebar */}
-              <div className="lg:flex-1">
-                <div className="lg:sticky lg:top-4 space-y-6">
-                {/* Payment Summary */}
-                <PaymentSummary
-                  selectedCount={selectedFees.length}
-                  totalAmount={totalAmount}
-                  onPayment={() => console.log("Processing payment for:", selectedRecords)}
-                />
-
-                {/* Details Card */}
-                <Card  >
-                  <CardHeader>
-                    <CardTitle className="text-base">Chi tiết thanh toán</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {selectedRecords.length > 0 ? (
-                      selectedRecords.map((fee) => (
-                        <div key={fee.id} className="text-sm border-b pb-3 last:border-b-0">
-                          <p className="font-medium text-foreground">{fee.courseName}</p>
-                          <p className="text-muted-foreground text-xs">{fee.studentName}</p>
-                          <p className="text-primary font-semibold mt-1">{fee.totalAmount.toLocaleString("vi-VN")} đ</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Chọn khoản thanh toán để xem chi tiết
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+              {/* Warning */}
+              <div className="text-xs text-muted-foreground text-center p-3 bg-muted rounded">
+                ⚠️ Vui lòng kiểm tra kỹ thông tin trước khi chuyển khoản, không thay đổi nội dung để không xảy ra lỗi. 
+                Có lỗi hãy liên hệ với chủ trung tâm của QNEdu để được giúp đỡ.
               </div>
-              </div>
-
             </div>
-          </TabsContent>
-
-          {/* Payment History Tab */}
-          <TabsContent value="history" className="mt-0">
-            <PaymentHistory history={mockPaymentHistory} />
-          </TabsContent>
-        </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

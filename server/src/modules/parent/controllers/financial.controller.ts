@@ -1,4 +1,4 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { FinancialService } from '../services/financial.service';
 
@@ -8,9 +8,16 @@ export class FinancialController {
     constructor(private readonly financialService: FinancialService){}
 
     @Get('fee-records')
-    async getAllFeeRecordsForParent(@Req() req){
-        console.log(req.user.parentId);
+    async getAllFeeRecordsForParent(@Req() req, @Query('status') status: string){
+        const parentId = req.user.parentId
+        console.log(status);
         
-        // return this.financialService.getAllFeeRecordsForParent()
+        return this.financialService.getAllFeeRecordsForParent(parentId, status)
+    }
+
+    @Get('payment-history')
+    async getPaymentHistory(@Req() req: any) {
+        const parentId = req.user.parentId
+        return await this.financialService.getPaymentHistoryForParent(parentId)
     }
 }
