@@ -7,6 +7,8 @@ import { LeaveRequestController } from './controllers/leave-request.controller';
 import { MaterialController } from './controllers/material.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { SessionController } from './controllers/session.controller';
+import { SessionRequestController } from './controllers/session-request.controller';
+import { ScheduleChangeController } from './controllers/schedule-change.controller';
 import { StudentManagementController } from './controllers/student-management.controller';
 import { AttendanceService } from './services/attendance.service';
 import { ClassManagementService } from './services/class-management.service';
@@ -17,6 +19,8 @@ import { MaterialService } from './services/material.service';
 import { ReportService } from './services/report.service';
 import { ScheduleService } from './services/schedule.service';
 import { SessionService } from './services/session.service';
+import { SessionRequestService } from './services/session-request.service';
+import { ScheduleChangeService } from './services/schedule-change.service';
 import { StudentManagementService } from './services/student-management.service';
 import { RouterModule } from '@nestjs/core';
 import { MiddlewareTeacher } from 'src/common/middleware/teacher/teacher.middleware';
@@ -53,6 +57,8 @@ import { PrismaService } from 'src/db/prisma.service';
     MaterialController,
     ScheduleController,
     SessionController,
+    SessionRequestController,
+    ScheduleChangeController,
     StudentManagementController,
     CommonController,
     LeaveRequestController,
@@ -71,6 +77,8 @@ import { PrismaService } from 'src/db/prisma.service';
     ReportService,
     ScheduleService,
     SessionService,
+    SessionRequestService,
+    ScheduleChangeService,
     StudentManagementService,
     CommonService,
     LeaveRequestService,

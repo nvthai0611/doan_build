@@ -19,7 +19,6 @@ export class LeaveRequestsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Số lượng mỗi trang (mặc định: 10)' })
   async getLeaveRequests(@Query() query: any) {
     try {
-      console.log(query);
       
       return await this.leaveRequestsService.getLeaveRequests(query);
     } catch (error) {
@@ -99,6 +98,25 @@ export class LeaveRequestsController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Lỗi khi lấy thống kê đơn xin nghỉ',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Lấy chi tiết đơn xin nghỉ' })
+  @ApiResponse({ status: 200, description: 'Chi tiết đơn xin nghỉ' })
+  async getLeaveRequestById(@Param('id') id: string) {
+    try {
+      return {
+        success: true,
+        data: await this.leaveRequestsService.getLeaveRequestById(id),
+        message: 'Lấy chi tiết đơn xin nghỉ thành công'
+      };
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Lỗi khi lấy chi tiết đơn xin nghỉ',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

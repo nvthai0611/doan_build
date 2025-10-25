@@ -523,7 +523,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                 onClick={() => setFilter(filterOption.key as any)}
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                   filter === filterOption.key
-                    ? "border-purple-600 text-purple-600 bg-purple-50"
+                    ? "border-blue-600 text-blue-600 "
                     : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-white"
                 }`}
               >

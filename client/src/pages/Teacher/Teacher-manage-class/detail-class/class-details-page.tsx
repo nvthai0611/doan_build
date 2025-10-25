@@ -15,6 +15,7 @@ import {
 import { ClassHeader } from "../detail-class/class-header"
 import { ClassNavigation } from "../detail-class/class-navigation"
 import { ClassModals } from "../detail-class/modals/class-modals"
+import { SessionRequestModal } from "../detail-class/modals/session-request-modal"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getClassDetail } from "../../../../services/teacher-service/manage-class.service"
@@ -50,6 +51,7 @@ export function ClassDetailsPage() {
   const [addTeacherOpen, setAddTeacherOpen] = useState(false)
   const [editTeacherOpen, setEditTeacherOpen] = useState(false)
   const [addSessionOpen, setAddSessionOpen] = useState(false)
+  const [addSessionRequestOpen, setAddSessionRequestOpen] = useState(false)
   const [editSessionOpen, setEditSessionOpen] = useState(false)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
   const [editTaskOpen, setEditTaskOpen] = useState(false)
@@ -157,7 +159,7 @@ export function ClassDetailsPage() {
       case "sessions":
         return (
           <BuoiHocTab
-            onAddSession={() => setAddSessionOpen(true)}
+            onAddSession={() => setAddSessionRequestOpen(true)}
             onViewDetailSession={handleViewDetailSession}
             onDeleteSession={(session) => handleDelete("session", session)}
             teacherClassAssignmentId={classId ?? ""}
@@ -226,6 +228,14 @@ export function ClassDetailsPage() {
         classId={classDetail?.id}
         teacherClassAssignmentId={classId as string}
         classDetails={classDetail}
+      />
+
+      <SessionRequestModal
+        isOpen={addSessionRequestOpen}
+        onClose={() => setAddSessionRequestOpen(false)}
+        classId={classDetail?.id}
+        teacherClassAssignmentId={classId as string}
+        assignmentRoom={classDetail?.room}
       />
 
       {/* Delete Confirmation Modal */}

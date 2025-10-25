@@ -585,7 +585,7 @@ export const paymentSuccessEmailTemplate = (data: {
       border: 1px solid #e5e7eb;
       border-radius: 6px;
       padding: 24px;
-      margin: 24px 0;
+      margin: 24px 0 40px 0;
     }
 
     .info-title {
@@ -598,8 +598,8 @@ export const paymentSuccessEmailTemplate = (data: {
     }
 
     .info-row {
-      display: flex;
-      justify-content: space-between;
+      display: table;
+      width: 100%;
       padding: 12px 0;
       font-size: 14px;
       border-bottom: 1px solid #f3f4f6;
@@ -610,13 +610,17 @@ export const paymentSuccessEmailTemplate = (data: {
     }
 
     .info-label {
+      display: table-cell;
+      width: 40%;
       font-weight: 600;
       color: #6b7280;
+      padding-right: 16px;
     }
 
     .info-value {
+      display: table-cell;
       color: #1f2937;
-      text-align: right;
+      text-align: left;
     }
 
     /* Student Section */
@@ -629,12 +633,22 @@ export const paymentSuccessEmailTemplate = (data: {
     }
 
     .student-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      display: table;
+      width: 100%;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid #bae6fd;
+    }
+
+    .student-header-left {
+      display: table-cell;
+      vertical-align: top;
+    }
+
+    .student-header-right {
+      display: table-cell;
+      vertical-align: top;
+      text-align: right;
     }
 
     .student-name {
@@ -657,21 +671,25 @@ export const paymentSuccessEmailTemplate = (data: {
       border-radius: 4px;
       border: 1px solid #bae6fd;
       font-weight: 600;
+      display: inline-block;
     }
 
     .student-row {
-      display: flex;
-      justify-content: space-between;
+      display: table;
+      width: 100%;
       padding: 10px 0;
       font-size: 14px;
     }
 
     .student-label {
+      display: table-cell;
+      width: 30%;
       color: #0c4a6e;
       font-weight: 600;
     }
 
     .student-value {
+      display: table-cell;
       color: #0369a1;
     }
 
@@ -687,7 +705,7 @@ export const paymentSuccessEmailTemplate = (data: {
       border: 1px solid #fde68a;
       border-radius: 6px;
       padding: 24px;
-      margin: 24px 0;
+      margin: 40px 0 24px 0;
       text-align: center;
     }
 
@@ -789,14 +807,14 @@ export const paymentSuccessEmailTemplate = (data: {
     .divider {
       height: 1px;
       background-color: #e5e7eb;
-      margin: 24px 0;
+      margin: 32px 0;
     }
 
     .section-title {
       font-size: 15px;
       font-weight: 600;
       color: #065f46;
-      margin: 24px 0 16px 0;
+      margin: 32px 0 24px 0;
     }
   </style>
 </head>
@@ -812,46 +830,50 @@ export const paymentSuccessEmailTemplate = (data: {
     <!-- Content -->
     <div class="content">
       <div class="greeting">
-        Kính gửi <strong>Phụ huynh</strong>,
+        Kính gửi <strong>${parentName}</strong>,
       </div>
 
       <div class="success-box">
-        <p>Cảm ơn Quý phụ huynh đã thanh toán học phí. Chúng tôi xin xác nhận đã nhận được khoản thanh toán của bạn.</p>
+        <p>Cảm ơn Quý phụ huynh đã thanh toán học phí cho ${students.length > 1 ? 'các con em' : 'con em'}. Chúng tôi xin xác nhận đã nhận được khoản thanh toán.</p>
       </div>
 
       <!-- Amount -->
       <div class="amount-box">
         <div class="amount-label">Tổng số tiền thanh toán</div>
-        <div class="amount-value">5,000,000đ</div>
+        <div class="amount-value">${totalAmount.toLocaleString('vi-VN')}đ</div>
       </div>
 
       <!-- Transaction Info -->
       <div class="info-box">
         <div class="info-title">Thông tin giao dịch</div>
         <div class="info-row">
-          <span class="info-label">Mã đơn hàng</span>
-          <span class="info-value">ORD-2024-001</span>
+          <span class="info-label">Mã đơn hàng:</span>
+          <span class="info-value"><strong>${orderCode}</strong></span>
         </div>
         <div class="info-row">
-          <span class="info-label">Ngày thanh toán</span>
-          <span class="info-value">23/10/2024</span>
+          <span class="info-label">Ngày thanh toán:</span>
+          <span class="info-value">${paymentDate}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Thời gian</span>
-          <span class="info-value">14:30</span>
+          <span class="info-label">Thời gian:</span>
+          <span class="info-value">${paymentTime}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Phương thức</span>
-          <span class="info-value">Chuyển khoản ngân hàng</span>
+          <span class="info-label">Phương thức:</span>
+          <span class="info-value">${paymentMethod}</span>
         </div>
+        ${bankName ? `
         <div class="info-row">
-          <span class="info-label">Ngân hàng</span>
-          <span class="info-value">Vietcombank</span>
+          <span class="info-label">Ngân hàng:</span>
+          <span class="info-value">${bankName}</span>
         </div>
+        ` : ''}
+        ${transactionCode ? `
         <div class="info-row">
-          <span class="info-label">Mã giao dịch</span>
-          <span class="info-value">TXN-2024-123456</span>
+          <span class="info-label">Mã giao dịch:</span>
+          <span class="info-value">${transactionCode}</span>
         </div>
+        ` : ''}
       </div>
 
       <div class="divider"></div>
@@ -859,47 +881,35 @@ export const paymentSuccessEmailTemplate = (data: {
       <!-- Student Details -->
       <div class="section-title">Chi tiết học phí</div>
 
+      ${students.map((student, index) => `
       <div class="student-box">
         <div class="student-header">
-          <div>
-            <div class="student-name">1. Nguyễn Văn A</div>
-            <div class="student-description">Học phí tháng 10/2024</div>
+          <div class="student-header-left">
+            <div class="student-name">${index + 1}. ${student.studentName}</div>
+            ${student.feeDescription ? `<div class="student-description">${student.feeDescription}</div>` : ''}
           </div>
-          <div class="student-code">SV-001</div>
+          <div class="student-header-right">
+            <div class="student-code">${student.studentCode}</div>
+          </div>
         </div>
         <div class="student-row">
-          <span class="student-label">Lớp học</span>
-          <span class="student-value">Lớp 10A1</span>
+          <span class="student-label">Lớp học:</span>
+          <span class="student-value">${student.className}</span>
         </div>
         <div class="student-row">
-          <span class="student-label">Số tiền</span>
-          <span class="fee-amount">2,500,000đ</span>
+          <span class="student-label">Số tiền:</span>
+          <span class="fee-amount">${student.feeAmount.toLocaleString('vi-VN')}đ</span>
         </div>
       </div>
+      `).join('')}
 
-      <div class="student-box">
-        <div class="student-header">
-          <div>
-            <div class="student-name">2. Nguyễn Văn B</div>
-            <div class="student-description">Học phí tháng 10/2024</div>
-          </div>
-          <div class="student-code">SV-002</div>
-        </div>
-        <div class="student-row">
-          <span class="student-label">Lớp học</span>
-          <span class="student-value">Lớp 11B2</span>
-        </div>
-        <div class="student-row">
-          <span class="student-label">Số tiền</span>
-          <span class="fee-amount">2,500,000đ</span>
-        </div>
-      </div>
-
+      ${students.length > 1 ? `
       <!-- Total -->
       <div class="total-box">
-        <div class="total-label">Tổng cộng (2 học sinh)</div>
-        <div class="total-amount">5,000,000đ</div>
+        <div class="total-label">Tổng cộng (${students.length} học sinh)</div>
+        <div class="total-amount">${totalAmount.toLocaleString('vi-VN')}đ</div>
       </div>
+      ` : ''}
 
       <!-- Notes -->
       <div class="notes-box">
@@ -933,11 +943,10 @@ export const paymentSuccessEmailTemplate = (data: {
       <p><strong>Email xác nhận tự động từ hệ thống</strong></p>
       <p>Vui lòng không trả lời email này</p>
       <p style="margin-top: 12px; color: #9ca3af;">
-        © 2025 QNEdu - Educational Center Management System. All rights reserved.
+        © ${new Date().getFullYear()} QNEdu - Educational Center Management System. All rights reserved.
       </p>
     </div>
   </div>
 </body>
-</html>
-`
+</html>`;
 };

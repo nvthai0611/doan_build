@@ -42,7 +42,7 @@ export class AttendanceService {
             include: {
               enrollments: {
                 where:{
-                  status: 'active',
+                  status: 'studying',
                   enrolledAt: {
                     lte: classStartDate
                   }
@@ -207,6 +207,9 @@ export class AttendanceService {
         });
 
         return Promise.all(upsertPromises);
+      }, {
+        maxWait: 10000, // chờ tối đa 10s để bắt đầu
+        timeout: 20000, // 20 seconds
       });
 
       return {
