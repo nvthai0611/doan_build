@@ -153,6 +153,11 @@ const centerOwnerMenuItems = [
     href: '/users',
   },
   {
+    title: "Feedback Phụ Huynh",
+    icon: MessageSquare,
+    href: "/center-qn/feedback",
+  },
+  {
     title: 'Báo cáo sự cố',
     icon: AlertTriangle,
     href: '/center-qn/incidents',
