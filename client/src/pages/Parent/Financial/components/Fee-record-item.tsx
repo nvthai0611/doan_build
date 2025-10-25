@@ -67,7 +67,7 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-3">
               <div>
-                <h3 className="font-semibold text-foreground">{fee.studentName}</h3>
+                <h3 className="font-semibold text-foreground">{`${fee.studentName} - ${fee.studentCode}`}</h3>
                 <p className="text-sm text-muted-foreground">{fee.className}</p>
               </div>
               <span className={`text-sm font-medium whitespace-nowrap ${getStatusColor(fee.status)}`}>

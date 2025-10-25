@@ -85,6 +85,9 @@ export class FinancialService {
 
             return feeRecordsWithAttendanceCount;
         } catch (error) {
+            if(error instanceof HttpException){
+                throw error;
+            }
             throw new HttpException({
                 message: 'Lỗi khi lấy danh sách nộp học phí',
                 error: error.message,

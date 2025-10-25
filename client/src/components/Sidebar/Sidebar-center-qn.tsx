@@ -34,6 +34,7 @@ import {
     AlertTriangle,
     FileText,
     Briefcase,
+    CircleDollarSign
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -307,6 +308,11 @@ const parentMenuItems = [
         title: "Các con của tôi",
         icon: Users,
         href: "/parent/children",
+    },
+    {
+        title: "Hóa đơn học phí",
+        icon: CircleDollarSign,
+        href: "/parent/financial",
     },
     {
         title: "Đơn nghỉ học",
