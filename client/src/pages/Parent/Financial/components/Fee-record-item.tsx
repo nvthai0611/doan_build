@@ -13,6 +13,7 @@ interface FeeRecord {
   courseName: string
   courseDetails: string
   pricePerSession: string
+  feeStructureAmount: number
   dueDate: string
   status: string
   amount: number
@@ -22,14 +23,14 @@ interface FeeRecord {
 }
 
 interface FeeRecordItemProps {
-  fee: FeeRecord
+  fee: any
   isSelected: boolean
   isExpanded: boolean
   onSelect: () => void
   onExpand: () => void
 }
 
-export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand }: FeeRecordItemProps) {
+export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand }: any) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -55,7 +56,7 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
         return status
     }
   }
-
+  
   return (
     <Card className={`transition-all ${isSelected ? "ring-2 ring-primary" : ""}`}>
       <CardContent className="p-4">
@@ -66,7 +67,7 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-3">
               <div>
-                <h3 className="font-semibold text-foreground">{fee.schoolName}</h3>
+                <h3 className="font-semibold text-foreground">{fee.studentName}</h3>
                 <p className="text-sm text-muted-foreground">{fee.className}</p>
               </div>
               <span className={`text-sm font-medium whitespace-nowrap ${getStatusColor(fee.status)}`}>
@@ -82,8 +83,8 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground text-sm">{fee.courseName}</p>
-                  <p className="text-xs text-muted-foreground">{fee.courseDetails}</p>
-                  <p className="text-xs text-muted-foreground">{fee.pricePerSession}</p>
+                  <p className="text-xs text-muted-foreground">{fee.attendanceCount || 0} buổi đã học</p>
+                  <p className="text-xs text-muted-foreground">{fee.feeStructureAmount}/ 1 buổi</p>
                 </div>
               </div>
             </div>
@@ -95,7 +96,7 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
                 <p className="font-semibold text-foreground">{fee.amount.toLocaleString("vi-VN")} đ</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Số tiền</p>
+                <p className="text-xs text-muted-foreground mb-1">Tổng tiền</p>
                 <p className="font-semibold text-primary">{fee.totalAmount.toLocaleString("vi-VN")} đ</p>
               </div>
             </div>
@@ -122,15 +123,15 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1">Giảm giá khác</p>
-                    <p className="font-medium text-red-600">{fee.discount.toLocaleString("vi-VN")} đ</p>
+                    <p className="font-medium ">{fee.discount.toLocaleString("vi-VN")} đ</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1">Đã thanh toán</p>
                     <p className="font-medium text-green-600">{fee.paidAmount.toLocaleString("vi-VN")} đ</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground mb-1">Còn nợ</p>
-                    <p className="font-medium text-primary">
+                    <p className="text-muted-foreground mb-1">Còn tiền còn nợ</p>
+                    <p className="font-medium text-primary text-red-600">
                       {(fee.totalAmount - fee.paidAmount).toLocaleString("vi-VN")} đ
                     </p>
                   </div>

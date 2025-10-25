@@ -124,7 +124,7 @@ export class SepayService {
 
         if (remainingAmount <= 0) {
           throw new BadRequestException(
-            `Hóa đơn của học sinh ${feeRecord.student.user.fullName} đã được thanh toán đủ`,
+            `Hóa đơn của học sinh ${feeRecord.student.user.fullName} đã được thanh toán đủ, vui lòng không chọn thanh toán`,
           );
         }
 
@@ -234,7 +234,7 @@ export class SepayService {
 
       return response.data.transactions || [];
     } catch (error) {
-      this.logger.error('Failed to get Sepay transactions', error);
+      this.logger.error('Lỗi khi lấy danh sách giao dịch từ Sepay', error);
       throw error;
     }
   }
@@ -245,51 +245,51 @@ export class SepayService {
    */
   async handleWebhook(webhookData: SepayWebhookDto) {
     try {
-      this.logger.log(`Received Sepay webhook: ${JSON.stringify(webhookData)}`);
+      this.logger.log(`Nhận webhook từ Sepay: ${JSON.stringify(webhookData)}`);
 
       // 1. Kiểm tra giao dịch là tiền vào
       if (!webhookData.transferAmount || webhookData.transferAmount <= 0) {
         this.logger.warn(
-          'Transaction amount is invalid or not incoming payment',
+          'Số tiền giao dịch không hợp lệ hoặc không phải giao dịch nhận tiền',
         );
-        return { success: false, message: 'Invalid transaction amount' };
+        return { success: false, message: 'Số tiền giao dịch không hợp lệ' };
       }
 
       if (webhookData.transferType !== 'in') {
-        this.logger.warn('Transaction is not incoming payment');
-        return { success: false, message: 'Not incoming payment' };
+        this.logger.warn('Giao dịch không phải là tiền vào');
+        return { success: false, message: 'Không phải giao dịch nhận tiền' };
       }
 
       // 2. Kiểm tra content tồn tại
       if (!webhookData.content) {
-        this.logger.warn('Transaction content is empty');
-        return { success: false, message: 'Transaction content is empty' };
+        this.logger.warn('Nội dung giao dịch trống');
+        return { success: false, message: 'Nội dung giao dịch trống' };
       }
 
       // 3. Trích xuất mã đơn hàng từ nội dung giao dịch
       const orderCode = this.extractOrderCode(webhookData.content);
       if (!orderCode) {
         this.logger.warn(
-          `Order code not found in transaction content: ${webhookData.content}`,
+          `Không tìm thấy mã đơn hàng trong nội dung giao dịch: ${webhookData.content}`,
         );
-        return { success: false, message: 'Order code not found' };
+        return { success: false, message: 'Không tìm thấy mã đơn hàng' };
       }
 
-      this.logger.log(`Extracted order code: ${orderCode}`);
+      this.logger.log(`Trích xuất mã đơn hàng: ${orderCode}`);
 
       // 4. Trích xuất mã học sinh (có thể nhiều học sinh)
       const studentCodesStr = webhookData.content.replace(orderCode, '').trim();
 
       if (!studentCodesStr) {
-        this.logger.warn('Student codes not found in transaction content');
-        return { success: false, message: 'Student codes not found' };
+        this.logger.warn('Không tìm thấy mã học sinh trong nội dung giao dịch');
+        return { success: false, message: 'Không tìm thấy mã học sinh' };
       }
 
       // Parse danh sách mã học sinh (format: STU001,STU002,STU003)
       const studentCodes = studentCodesStr
         .split(',')
         .map((code) => code.trim());
-      this.logger.log(`Extracted student codes: ${studentCodes.join(', ')}`);
+      this.logger.log(`Trích xuất mã học sinh: ${studentCodes.join(', ')}`);
 
       // 5. Tìm tất cả học sinh
       const students = await this.prisma.student.findMany({
@@ -305,16 +305,16 @@ export class SepayService {
 
       if (students.length === 0) {
         this.logger.warn(
-          `No students found with codes: ${studentCodes.join(', ')}`,
+          `Không tìm thấy học sinh với mã: ${studentCodes.join(', ')}`,
         );
-        return { success: false, message: 'Students not found' };
+        return { success: false, message: 'Không tìm thấy học sinh' };
       }
 
       if (students.length !== studentCodes.length) {
-        this.logger.warn('Some students not found');
+        this.logger.warn('Một số học sinh không tìm thấy');
       }
 
-      this.logger.log(`Found ${students.length} students`);
+      this.logger.log(`Tìm thấy ${students.length} học sinh`);
 
       // 6. Tìm tất cả FeeRecord chưa thanh toán đủ
       const studentIds = students.map((s) => s.id);
@@ -333,11 +333,11 @@ export class SepayService {
       });
 
       if (feeRecords.length === 0) {
-        this.logger.warn(`No fee records found for students`);
-        return { success: false, message: 'Fee records not found' };
+        this.logger.warn(`Không tìm thấy hóa đơn cho học sinh`);
+        return { success: false, message: 'Không tìm thấy hóa đơn' };
       }
 
-      this.logger.log(`Found ${feeRecords.length} fee records`);
+      this.logger.log(`Tìm thấy ${feeRecords.length} hóa đơn`);
 
       // 7. Kiểm tra đã xử lý giao dịch này chưa (tránh trùng lặp)
       const existingPayment = await this.prisma.payment.findFirst({
@@ -348,9 +348,9 @@ export class SepayService {
 
       if (existingPayment) {
         this.logger.warn(
-          `Transaction already processed: ${webhookData.referenceCode}`,
+          `Giao dịch đã được xử lý: ${webhookData.referenceCode}`,
         );
-        return { success: false, message: 'Transaction already processed' };
+        return { success: false, message: 'Giao dịch đã được xử lý trước đó' };
       }
 
       // 8. Tính tổng số tiền cần thanh toán và phân bổ
@@ -368,13 +368,13 @@ export class SepayService {
       }
 
       this.logger.log(
-        `Total remaining amount: ${totalRemainingAmount}, Paid amount: ${webhookData.transferAmount}`,
+        `Tổng số tiền cần thanh toán: ${totalRemainingAmount}, Số tiền đã thanh toán: ${webhookData.transferAmount}`,
       );
 
       // 9. Kiểm tra số tiền thanh toán
       if (webhookData.transferAmount > totalRemainingAmount) {
         this.logger.warn(
-          `Paid amount (${webhookData.transferAmount}) exceeds remaining amount (${totalRemainingAmount})`,
+          `Số tiền thanh toán (${webhookData.transferAmount}) vượt quá số tiền cần thanh toán (${totalRemainingAmount})`,
         );
       }
 
@@ -419,8 +419,8 @@ export class SepayService {
               amount: amountToPay,
               method: 'bank_transfer', // Chuyển khoản ngân hàng
               status: 'completed',
-              reference: orderCode,
-              transactionCode: webhookData.referenceCode,
+              reference: webhookData.referenceCode,
+              transactionCode: orderCode,
               paidAt: new Date(webhookData.transactionDate),
               notes: `Thanh toán qua ${webhookData.gateway} - ${webhookData.content} (Thanh toán nhiều học sinh)`,
             },
@@ -453,7 +453,7 @@ export class SepayService {
 
           remainingPaidAmount -= amountToPay;
           this.logger.log(
-            `Processed fee record ${feeRecord.id}: paid ${amountToPay}, status: ${newStatus}`,
+            `Đã xử lý hóa đơn ${feeRecord.id}: đã thanh toán ${amountToPay}, trạng thái: ${newStatus}`,
           );
         }
 
@@ -490,12 +490,12 @@ export class SepayService {
         return { payments: createdPayments, feeRecords: updatedFeeRecords };
       });
 
-      this.logger.log(`Successfully processed payment for order: ${orderCode}`);
-      this.logger.log(`Created ${result.payments.length} payment records`);
+      this.logger.log(`Xử lý thanh toán thành công cho đơn hàng: ${orderCode}`);
+      this.logger.log(`Đã tạo ${result.payments.length} bản ghi thanh toán`);
 
       return {
         success: true,
-        message: 'Payment processed successfully',
+        message: 'Xử lý thanh toán thành công',
         data: {
           orderCode: orderCode,
           totalAmount: webhookData.transferAmount,
@@ -677,4 +677,33 @@ export class SepayService {
       return false;
     }
   }
+  // Tính toán phân bổ số tiền thanh toán cho từng FeeRecord
+  // Nếu 100k mà có 2 hóa đơn thì sẽ trả cho 1 hóa đơn nếu đủ thì sẽ thay status
+  // Nếu hóa đơn 1 70k thì hóa đơn 2 chỉ trả được 30k
+  private calculatePaymentAllocations(
+  feeRecords: any[],
+  totalPaidAmount: number,
+) {
+  const allocations = []
+  let remainingAmount = totalPaidAmount
+
+  for (const feeRecord of feeRecords) {
+    const remainingFeeAmount = 
+      Number(feeRecord.totalAmount) - Number(feeRecord.paidAmount)
+    
+    const amountToPay = Math.min(remainingAmount, remainingFeeAmount)
+
+    allocations.push({
+      feeRecordId: feeRecord.id,
+      studentId: feeRecord.studentId,
+      remainingFeeAmount,
+      amountToPay,
+    })
+
+    remainingAmount -= amountToPay
+    if (remainingAmount <= 0) break
+  }
+
+  return allocations
+}
 }
