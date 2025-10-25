@@ -167,6 +167,10 @@ export class StudentManagementService {
         user: true,
         school: true,
         enrollments: {
+          where: {
+            status: 'studying',
+            class: { status: 'active', teacherId: { not: null } },
+          },
           include: {
             class: { 
               include: { 
@@ -284,9 +288,13 @@ export class StudentManagementService {
     const child = await this.prisma.student.findFirst({ where: { id: childId, parentId: parent.id }, select: { id: true } });
     if (!child) return { data: null, message: 'Không tìm thấy học sinh' };
 
-    // Lấy danh sách lớp đang học (active)
+    // Lấy danh sách lớp đang học (class active + enrollment studying + có giáo viên)
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { studentId: childId, status: 'active', class: { status: 'active' } },
+      where: { 
+        studentId: childId, 
+        status: 'studying',
+        class: { status: 'active', teacherId: { not: null } }
+      },
       select: { classId: true },
     });
     const classIds = enrollments.map((e) => e.classId);
@@ -302,7 +310,7 @@ export class StudentManagementService {
       _avg: { score: true },
       where: { studentId: childId, assessment: { classId: { in: classIds } }, score: { not: null } },
     });
-    const averageGrade = studentGradeAgg._avg.score ? Number(studentGradeAgg._avg.score) : 0;
+    const averageGrade = studentGradeAgg._avg.score != null ? Number(studentGradeAgg._avg.score) : null;
 
     // Xếp hạng: tính điểm TB cho tất cả học sinh trong các lớp này, sắp xếp và tìm vị trí
     const classmates = await this.prisma.studentAssessmentGrade.groupBy({
@@ -314,14 +322,15 @@ export class StudentManagementService {
       .map((c) => ({ studentId: c.studentId, avg: c._avg.score ? Number(c._avg.score) : 0 }))
       .sort((a, b) => b.avg - a.avg);
     const totalStudents = sorted.length;
-    const classRank = Math.max(1, sorted.findIndex((s) => s.studentId === childId) + 1) || null;
+    const idx = sorted.findIndex((s) => s.studentId === childId);
+    const classRank = idx >= 0 ? idx + 1 : null;
 
     // Tỷ lệ điểm danh: present / total trong các lớp đang học
     const [attendanceTotal, attendancePresent] = await Promise.all([
       this.prisma.studentSessionAttendance.count({ where: { studentId: childId, session: { classId: { in: classIds } } } }),
       this.prisma.studentSessionAttendance.count({ where: { studentId: childId, status: 'present', session: { classId: { in: classIds } } } }),
     ]);
-    const attendanceRate = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
+    const attendanceRate = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : null;
 
     return {
       data: { averageGrade, classRank, totalStudents, attendanceRate },

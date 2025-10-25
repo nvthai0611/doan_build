@@ -135,10 +135,7 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
-      
-      // Debug log
-      console.log(`Class ${classData.name}: ${classData.sessions.length} sessions, schedule:`, schedule);
-
+     
       return {
         id: classData.id,
         name: classData.name,
@@ -329,9 +326,6 @@ export class ClassInformationService {
 
       const schedule = Array.from(scheduleMap.values());
       
-      // Debug log
-      console.log(`Class ${classData.name}: ${classData.sessions.length} sessions, schedule:`, schedule);
-
       return {
         id: classData.id,
         name: classData.name,
