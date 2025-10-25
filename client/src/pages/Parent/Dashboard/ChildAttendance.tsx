@@ -10,6 +10,7 @@ import Loading from "../../../components/Loading/LoadingPage"
 import { parentChildService } from "../../../services/parent/child-management/child.service"
 import type { Child } from "../../../services/parent/child-management/child.types"
 import { AttendanceDetailsDialog } from "./AttendanceDetailsDialog"
+import { getDisplaySessionStatus } from "../../../utils/session-status.util"
 
 interface ChildAttendanceProps {
   child: Child
@@ -57,17 +58,23 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
 
   const statusBadge = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'has_not_happened') return "bg-blue-100 text-blue-700 border border-blue-200"
-    if (s === 'ended') return "bg-green-100 text-green-700 border border-green-200"
+    if (s === 'scheduled') return "bg-blue-100 text-blue-700 border border-blue-200"
+    if (s === 'completed') return "bg-green-100 text-green-700 border border-green-200"
+    if (s === 'cancelled') return "bg-red-100 text-red-700 border border-red-200"
+    if (s === 'has_not_happened') return "bg-gray-100 text-gray-700 border border-gray-200"
     if (s === 'happening') return "bg-amber-100 text-amber-700 border border-amber-200"
+    if (s === 'incomplete') return "bg-orange-100 text-orange-700 border border-orange-200"
     return "bg-gray-100 text-gray-700 border border-gray-200"
   }
 
   const statusTextVi = (status?: string) => {
     const s = (status || '').toLowerCase()
+    if (s === 'scheduled') return 'Sắp tới'
+    if (s === 'completed') return 'Hoàn thành'
+    if (s === 'cancelled') return 'Đã hủy'
     if (s === 'has_not_happened') return 'Chưa diễn ra'
-    if (s === 'ended') return 'Đã kết thúc'
     if (s === 'happening') return 'Đang diễn ra'
+    if (s === 'incomplete') return 'Chưa hoàn thành'
     return 'Không xác định'
   }
 
@@ -207,7 +214,7 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <p className="font-medium">{`Buổi ${idx + 1}`}</p>
-                      <Badge className={statusBadge(s.status)}>{statusTextVi(s.status)}</Badge>
+                      <Badge className={statusBadge(getDisplaySessionStatus(s as any))}>{statusTextVi(getDisplaySessionStatus(s as any))}</Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">

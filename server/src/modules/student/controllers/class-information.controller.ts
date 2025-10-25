@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Req } from '@nestjs/common';
 import { ClassInformationService } from '../services/class-information.service';
 import { PrismaService } from 'src/db/prisma.service';
+import { getSessionStatus } from '../../../utils/session-status.util';
 
 @Controller('class-information')
 export class ClassInformationController {
@@ -62,7 +63,7 @@ export class ClassInformationController {
         sessionDate: s.sessionDate as any,
         startTime: (s as any).startTime,
         endTime: (s as any).endTime,
-        status: (s as any).status || 'scheduled',
+        status: getSessionStatus(s), // Override status với tính toán động
         room: s.room ? { id: s.room.id, name: s.room.name } : null,
         attendanceStatus: attendance?.status || null,
         attendanceNote: attendance?.note || null,

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { ScheduleFiltersDto } from '../dto/schedule-filters.dto';
+import { getSessionStatus } from '../../../utils/session-status.util';
 
 @Injectable()
 export class StudentScheduleService {
@@ -80,13 +81,19 @@ export class StudentScheduleService {
       ],
     });
 
-    return sessions.map((s: any) => ({
-      ...s,
-      attendanceStatus: s.attendances?.[0]?.status ?? null,
-      attendanceNote: s.attendances?.[0]?.note ?? null,
-      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
-      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
-    }));
+    return sessions.map((s: any) => {
+      // Kiểm tra xem có attendance data không
+      const hasAttendance = s.attendances && s.attendances.length > 0;
+      
+      return {
+        ...s,
+        status: getSessionStatus(s, hasAttendance ? undefined : 'no_attendance'), // Pass attendance info
+        attendanceStatus: s.attendances?.[0]?.status ?? null,
+        attendanceNote: s.attendances?.[0]?.note ?? null,
+        attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+        attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
+      };
+    });
   }
 
   async getMonthlySchedule(studentId: string, year: number, month: number) {
@@ -162,13 +169,19 @@ export class StudentScheduleService {
       ],
     });
 
-    return sessions.map((s: any) => ({
-      ...s,
-      attendanceStatus: s.attendances?.[0]?.status ?? null,
-      attendanceNote: s.attendances?.[0]?.note ?? null,
-      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
-      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
-    }));
+    return sessions.map((s: any) => {
+      // Kiểm tra xem có attendance data không
+      const hasAttendance = s.attendances && s.attendances.length > 0;
+      
+      return {
+        ...s,
+        status: getSessionStatus(s, hasAttendance ? undefined : 'no_attendance'), // Pass attendance info
+        attendanceStatus: s.attendances?.[0]?.status ?? null,
+        attendanceNote: s.attendances?.[0]?.note ?? null,
+        attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+        attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
+      };
+    });
   }
 
   async getSchedule(studentId: string, filters: ScheduleFiltersDto) {
@@ -247,13 +260,19 @@ export class StudentScheduleService {
     });
 
     // Chuẩn hoá output: gắn trực tiếp attendanceStatus (nếu có) cho tiện frontend
-    return sessions.map((s: any) => ({
-      ...s,
-      attendanceStatus: s.attendances?.[0]?.status ?? null,
-      attendanceNote: s.attendances?.[0]?.note ?? null,
-      attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
-      attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
-    }));
+    return sessions.map((s: any) => {
+      // Kiểm tra xem có attendance data không
+      const hasAttendance = s.attendances && s.attendances.length > 0;
+      
+      return {
+        ...s,
+        status: getSessionStatus(s, hasAttendance ? undefined : 'no_attendance'), // Pass attendance info
+        attendanceStatus: s.attendances?.[0]?.status ?? null,
+        attendanceNote: s.attendances?.[0]?.note ?? null,
+        attendanceRecordedAt: s.attendances?.[0]?.recordedAt ?? null,
+        attendanceRecordedBy: s.attendances?.[0]?.recordedByUser ?? null,
+      };
+    });
   }
 
   async getSessionById(studentId: string, sessionId: string) {

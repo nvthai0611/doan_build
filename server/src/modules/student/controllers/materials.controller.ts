@@ -12,10 +12,20 @@ export class MaterialsController {
       throw new HttpException({ success: false, message: 'Không tìm thấy thông tin học sinh' }, HttpStatus.UNAUTHORIZED);
     }
 
+    // Extract classId from params if it exists (query might have nested params)
+    const queryAny = query as any;
+    const classId = queryAny.params?.classId || query.classId;
+    const limit = queryAny.params?.limit || query.limit;
+    const page = queryAny.params?.page || query.page;
+    const category = queryAny.params?.category || query.category;
+    const search = queryAny.params?.search || query.search;
+
     const data = await this.materialsService.getMaterialsForStudent(studentId, {
-      ...query,
-      page: query.page ? Number(query.page) : 1,
-      limit: query.limit ? Number(query.limit) : 10,
+      classId,
+      category,
+      search,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 10,
     });
 
     return { success: true, data, message: 'Lấy danh sách tài liệu thành công' };

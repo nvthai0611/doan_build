@@ -5,7 +5,7 @@ export const parentMaterialsService = {
   async list(params: GetParentMaterialsParams): Promise<ParentMaterialsResponse> {
     const response = await apiClient.get<{ data: ParentMaterialsResponse }>(
       '/parent/materials',
-      params
+      { params }
     )
     const fallback: ParentMaterialsResponse = {
       items: [],
