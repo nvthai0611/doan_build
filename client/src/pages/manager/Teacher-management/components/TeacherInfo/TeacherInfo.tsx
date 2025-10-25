@@ -37,7 +37,6 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
       centerOwnerTeacherService.updateTeacher(teacherId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher', teacherId] })
-      toast.success("Cập nhật thông tin giáo viên thành công")
     },
     onError: (error) => {
       toast.error(error.message || "Có lỗi xảy ra khi cập nhật thông tin giáo viên")

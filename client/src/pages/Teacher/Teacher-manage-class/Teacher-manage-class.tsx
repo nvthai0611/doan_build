@@ -57,6 +57,7 @@ const statusColors = {
   active: 'bg-green-100 text-green-700',
   completed: 'bg-blue-100 text-blue-700',
   cancelled: 'bg-red-100 text-red-700',
+  ready: 'bg-yellow-100 text-yellow-700',
 };
 
 const daysOfWeek = [
@@ -216,9 +217,9 @@ export default function ClassManagement() {
       color: 'bg-blue-100 text-blue-700',
     },
     {
-      key: 'draft',
-      label: 'Chưa diễn ra',
-      count: countData?.draft ?? 0,
+      key: 'ready',
+      label: 'Đang tuyển sinh',
+      count: countData?.ready ?? 0,
       color: 'bg-yellow-100 text-yellow-700',
     },
     {

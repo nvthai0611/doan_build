@@ -270,7 +270,8 @@ export class ClassManagementService {
                 active: 0,
                 draft: 0,
                 completed: 0,
-                cancelled: 0
+                cancelled: 0,
+                ready: 0
             };
 
             // Tính tổng
@@ -286,6 +287,8 @@ export class ClassManagementService {
                     result.completed = count;
                 } else if (item.status === 'cancelled') {
                     result.cancelled = count;
+                }else if (item.status === 'ready') {
+                    result.ready = count;
                 }
             });
 

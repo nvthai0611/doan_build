@@ -44,11 +44,9 @@ export class LeaveRequestsService {
       if (toDate) {
         where.startDate.lte = new Date(toDate);
       }
-    }
-    console.log(where);
+    } 
     
     const total = await this.prisma.leaveRequest.count({ where });
-    console.log("total", total);
     
     const skip = (pageNum - 1) * limitNum;
     const data = await this.prisma.leaveRequest.findMany({
@@ -258,7 +256,14 @@ export class LeaveRequestsService {
 
   async approveLeaveRequest(leaveRequestId: string, action: 'approve' | 'reject', approverId: string, notes?: string) {
     const existingRequest = await this.prisma.leaveRequest.findUnique({
-      where: { id: leaveRequestId }
+      where: { id: leaveRequestId },
+      include: {
+        affectedSessions: {
+          include: {
+            session: true
+          }
+        }
+      }
     });
 
     if (!existingRequest) {
@@ -269,47 +274,67 @@ export class LeaveRequestsService {
       throw new BadRequestException('Đơn này đã được xử lý');
     }
 
-    const updatedRequest = await this.prisma.leaveRequest.update({
-      where: { id: leaveRequestId },
-      data: {
-        status: action === 'approve' ? 'approved' : 'rejected',
-        approvedBy: approverId,
-        approvedAt: new Date(),
-        notes: notes || existingRequest.notes
-      },
-      include: {
-        teacher: {
-          include: {
-            user: {
-              select: {
-                fullName: true,
-                email: true
+    // Use transaction to ensure data consistency
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Update leave request status
+      const updatedRequest = await tx.leaveRequest.update({
+        where: { id: leaveRequestId },
+        data: {
+          status: action === 'approve' ? 'approved' : 'rejected',
+          approvedBy: approverId,
+          approvedAt: new Date(),
+          notes: notes || existingRequest.notes
+        },
+        include: {
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true
+                }
               }
             }
-          }
-        },
-        approvedByUser: {
-          select: {
-            fullName: true,
-            email: true
+          },
+          approvedByUser: {
+            select: {
+              fullName: true,
+              email: true
+            }
           }
         }
+      });
+
+      // If approved, cancel all affected sessions
+      if (action === 'approve' && existingRequest.affectedSessions.length > 0) {
+        const sessionIds = existingRequest.affectedSessions.map(affected => affected.sessionId);
+        
+        await tx.classSession.updateMany({
+          where: {
+            id: { in: sessionIds }
+          },
+          data: {
+            status: 'cancelled'
+          }
+        });
       }
+
+      return updatedRequest;
     });
 
     return {    
       data: {
-        id: updatedRequest.id,
-        type: updatedRequest.requestType,
-        reason: updatedRequest.reason,
-        startDate: updatedRequest.startDate.toISOString().split('T')[0],
-        endDate: updatedRequest.endDate.toISOString().split('T')[0],
-        status: updatedRequest.status,
-        submittedDate: updatedRequest.createdAt.toISOString().split('T')[0],
-        approvedBy: updatedRequest.approvedByUser?.fullName || null,
-        approvedDate: updatedRequest.approvedAt ? updatedRequest.approvedAt.toISOString().split('T')[0] : null,
-        notes: updatedRequest.notes,
-        teacherId: updatedRequest.teacherId
+        id: result.id,
+        type: result.requestType,
+        reason: result.reason,
+        startDate: result.startDate.toISOString().split('T')[0],
+        endDate: result.endDate.toISOString().split('T')[0],
+        status: result.status,
+        submittedDate: result.createdAt.toISOString().split('T')[0],
+        approvedBy: result.approvedByUser?.fullName || null,
+        approvedDate: result.approvedAt ? result.approvedAt.toISOString().split('T')[0] : null,
+        notes: result.notes,
+        teacherId: result.teacherId
       },
       message: action === 'approve' ? 'Duyệt đơn xin nghỉ thành công' : 'Từ chối đơn xin nghỉ thành công'
     };
@@ -339,6 +364,49 @@ export class LeaveRequestsService {
         rejectedRequests
       },
       message: 'Lấy thống kê đơn xin nghỉ thành công'
+    };
+  }
+
+
+  async getLeaveRequestById(id: string) {
+    const leaveRequest = await this.prisma.leaveRequest.findUnique({
+      where: { id },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        },
+        approvedByUser: {
+          select: {
+            fullName: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    return {
+      data: {
+        id: leaveRequest.id,
+        type: leaveRequest.requestType,
+        reason: leaveRequest.reason,
+        startDate: leaveRequest.startDate,
+        endDate: leaveRequest.endDate,
+        status: leaveRequest.status,
+        submittedDate: leaveRequest.createdAt,
+        approvedBy: leaveRequest.approvedByUser?.fullName || null,
+        approvedDate: leaveRequest.approvedAt ? leaveRequest.approvedAt : null,
+        notes: leaveRequest.notes,
+        teacherId: leaveRequest.teacherId,
+        createdAt: leaveRequest.createdAt,
+      },
+      message: 'Lấy chi tiết đơn xin nghỉ thành công'
     };
   }
 }
