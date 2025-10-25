@@ -10,6 +10,7 @@ export class ClassInformationService {
       where: {
         classes: {
           some: {
+            status: 'active', // Chỉ lấy lớp có trạng thái active
             enrollments: { some: { studentId } },
           },
         },

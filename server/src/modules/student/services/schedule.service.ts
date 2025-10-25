@@ -17,6 +17,7 @@ export class StudentScheduleService {
       where: {
         sessionDate: { gte: start, lte: end },
         class: {
+          status: 'active', // Chỉ lấy lớp có trạng thái active
           enrollments: {
             some: {
               studentId,
@@ -105,6 +106,7 @@ export class StudentScheduleService {
       where: {
         sessionDate: { gte: start, lte: end },
         class: {
+          status: 'active', // Chỉ lấy lớp có trạng thái active
           enrollments: {
             some: {
               studentId,
@@ -195,6 +197,7 @@ export class StudentScheduleService {
         ...(startDate ? { sessionDate: { gte: new Date(startDate) } } : {}),
         ...(endDate ? { sessionDate: { lte: new Date(endDate) } } : {}),
         class: {
+          status: 'active', // Chỉ lấy lớp có trạng thái active
           enrollments: {
             some: {
               studentId,
