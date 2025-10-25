@@ -39,14 +39,15 @@ model User {
 }
 
 model Parent {
-  id              String           @id @default(uuid()) @db.Uuid
-  userId          String           @unique @map("user_id") @db.Uuid
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @unique @map("user_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   contractUploads ContractUpload[]
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments        Payment[]
   students        Student[]
+  feedbacks       TeacherFeedback[]
 
   @@map("parents")
 }
@@ -71,6 +72,9 @@ model Teacher {
   payrolls            Payroll[]
   recordedAttendances StudentSessionAttendance[]    @relation("RecordedBy")
   documents           TeacherDocument[]
+  feedbacks           TeacherFeedback[]
+  classTransfers      TeacherClassTransfer[]        @relation("TeacherClassTransferTeacher")
+  replacementFor      TeacherClassTransfer[]        @relation("TeacherClassTransferReplacement")
   school              School?                       @relation(fields: [schoolId], references: [id])
   user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -94,6 +98,7 @@ model Student {
   classRequests  StudentClassRequest[]
   studentReports StudentReport[]
   attendances    StudentSessionAttendance[]
+  feedbacks      TeacherFeedback[]
   parent         Parent?                    @relation(fields: [parentId], references: [id])
   school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -180,7 +185,10 @@ model Class {
   incidentReports IncidentReport[]
   feeRecords      FeeRecord[] // NEW: Quan hệ với FeeRecord
   feeHistories    ClassFeeHistory[] // NEW: Lịch sử thay đổi học phí
-
+  feedbacks       TeacherFeedback[]
+  transfersFrom   TeacherClassTransfer[] @relation("TeacherClassTransferFromClass")
+  transfersTo     TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
+  // feedback
   @@map("classes")
 }
 
@@ -748,6 +756,84 @@ model HolidayPeriodSession {
   @@index([sessionId], map: "idx_hps_session")
   @@index([holidayPeriodId], map: "idx_hps_holiday")
   @@map("holiday_period_sessions")
+}
+
+model TeacherFeedback {
+  id          String                    @id @default(uuid()) @db.Uuid
+  teacherId   String                    @map("teacher_id") @db.Uuid
+  parentId    String                    @map("parent_id") @db.Uuid
+  classId     String?                   @map("class_id") @db.Uuid
+  studentId   String?                   @map("student_id") @db.Uuid
+  rating      Int                       // 1-5 stars
+  comment     String?                   @db.Text
+  categories  Json?                     // {teaching_quality, communication, punctuality, professionalism}
+  isAnonymous Boolean                   @default(false) @map("is_anonymous")
+  status      String                    @default("pending") // pending, approved, rejected, archived
+  createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  teacher     Teacher                   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  parent      Parent                    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student     Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  class       Class?                    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  analysis    TeacherFeedbackAnalysis[]
+
+  @@index([teacherId], map: "idx_feedback_teacher")
+  @@index([parentId], map: "idx_feedback_parent")
+  @@index([classId], map: "idx_feedback_class")
+  @@index([createdAt], map: "idx_feedback_created")
+  @@map("teacher_feedbacks")
+}
+
+model TeacherFeedbackAnalysis {
+  id                  String           @id @default(uuid()) @db.Uuid
+  feedbackId          String           @map("feedback_id") @db.Uuid
+  sentimentScore      Decimal          @map("sentiment_score") @db.Decimal(5, 2) // -1.0 to 1.0
+  sentimentLabel      String           @map("sentiment_label") // positive, neutral, negative, very_negative
+  toxicityScore       Decimal?         @map("toxicity_score") @db.Decimal(5, 2) // 0.0 to 1.0
+  keyPhrases          Json?            @map("key_phrases") // Array of important phrases
+  categorizedIssues   Json?            @map("categorized_issues") // {teaching: [], communication: [], behavior: []}
+  aiSummary           String?          @map("ai_summary") @db.Text
+  recommendedAction   String?          @map("recommended_action") // no_action, monitor, intervention_required, immediate_action
+  confidenceScore     Decimal?         @map("confidence_score") @db.Decimal(5, 2)
+  analyzedAt          DateTime         @default(now()) @map("analyzed_at") @db.Timestamptz(6)
+  aiModel             String           @default("gpt-4") @map("ai_model")
+  processingTimeMs    Int?             @map("processing_time_ms")
+  feedback            TeacherFeedback  @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId], map: "idx_analysis_feedback")
+  @@index([sentimentLabel], map: "idx_analysis_sentiment")
+  @@index([recommendedAction], map: "idx_analysis_action")
+  @@map("teacher_feedback_analyses")
+}
+
+model TeacherClassTransfer {
+  id                String    @id @default(uuid()) @db.Uuid
+  teacherId         String    @map("teacher_id") @db.Uuid
+  fromClassId       String?   @map("from_class_id") @db.Uuid
+  toClassId         String?   @map("to_class_id") @db.Uuid
+  replacementTeacherId String? @map("replacement_teacher_id") @db.Uuid
+  reason            String    // poor_feedback, performance_issues, request, other
+  reasonDetail      String?   @map("reason_detail") @db.Text
+  status            String    @default("pending") // pending, approved, completed, cancelled
+  requestedBy       String    @map("requested_by") @db.Uuid
+  approvedBy        String?   @map("approved_by") @db.Uuid
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz(6)
+  effectiveDate     DateTime? @map("effective_date") @db.Date
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+  notes             String?   @db.Text
+  feedbackSummary   Json?     @map("feedback_summary") // Summary statistics that led to this decision
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  teacher           Teacher   @relation("TeacherClassTransferTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  fromClass         Class?    @relation("TeacherClassTransferFromClass", fields: [fromClassId], references: [id], onDelete: SetNull)
+  toClass           Class?    @relation("TeacherClassTransferToClass", fields: [toClassId], references: [id], onDelete: SetNull)
+  replacementTeacher Teacher? @relation("TeacherClassTransferReplacement", fields: [replacementTeacherId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId], map: "idx_transfer_teacher")
+  @@index([fromClassId], map: "idx_transfer_from_class")
+  @@index([status], map: "idx_transfer_status")
+  @@index([effectiveDate], map: "idx_transfer_effective_date")
+  @@map("teacher_class_transfers")
 }
 
 enum PaymentMethod {
