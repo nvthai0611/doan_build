@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2 } from 'lucide-react';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
@@ -135,7 +135,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const statusFilters = [
     { key: SessionStatus.HAPPENING, label: SESSION_STATUS_LABELS[SessionStatus.HAPPENING], count: allSessions.filter((s: any) => s.status === SessionStatus.HAPPENING).length }, 
     { key: SessionStatus.END, label: SESSION_STATUS_LABELS[SessionStatus.END], count: allSessions.filter((s: any) => s.status === SessionStatus.END).length },
-    { key: SessionStatus.HAS_NOT_HAPPENED, label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED], count: allSessions.filter((s: any) => s.status === SessionStatus.HAS_NOT_HAPPENED).length }
+    { key: SessionStatus.HAS_NOT_HAPPENED, label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED], count: allSessions.filter((s: any) => s.status === SessionStatus.HAS_NOT_HAPPENED).length },
+    { key: SessionStatus.DAY_OFF, label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF], count: allSessions.filter((s: any) => s.status === SessionStatus.DAY_OFF).length }
   ];
 
   // Handle delete selected sessions
@@ -186,6 +187,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED],
         className: SESSION_STATUS_COLORS[SessionStatus.HAS_NOT_HAPPENED],
         icon: XCircle
+      },
+      [SessionStatus.DAY_OFF]: {   
+        variant: 'outline', 
+        label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF],
+        className: SESSION_STATUS_COLORS[SessionStatus.DAY_OFF],
+        icon: CalendarOff
       }
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];

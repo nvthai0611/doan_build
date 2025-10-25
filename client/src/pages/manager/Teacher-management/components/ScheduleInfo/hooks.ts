@@ -34,7 +34,8 @@ export const useTeachingSessions = (teacherId: string, year: number, month: numb
             students: session.students || [],
             attendanceWarnings: session.attendanceWarnings || [],
             description: session.description,
-            materials: session.materials || []
+            materials: session.materials || [],
+            cancellationReason: session.cancellationReason
           }))
           setSessions(formattedSessions)
         } else {

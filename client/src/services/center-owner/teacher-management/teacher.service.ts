@@ -299,9 +299,10 @@ export const centerOwnerTeacherService = {
     if (year) params.year = year.toString()
     if (month) params.month = month.toString()
       const response = await apiClient.get(`${centerOwnerTeacherService.BASE_URL}/${teacherId}/schedule`, params)
+    
     return response
   },
-
+  
   updateAttendance: async (sessionId: string, studentId: string, status: "present" | "absent" | "late") => {
     const response = await apiClient.patch(`${centerOwnerTeacherService.BASE_URL}/${sessionId}/attendance`, {
       studentId,
