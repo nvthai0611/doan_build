@@ -80,6 +80,22 @@ const centerOwnerMenuItems = [
     ],
   },
   {
+    title: 'Quản lý yêu cầu',
+    icon: FileText,
+    href: '/center-qn/requests',
+    children: [
+      { title: 'Đơn xin nghỉ phép', href: '/center-qn/requests/leave-requests' },
+      {
+        title: 'Yêu cầu đổi lịch',
+        href: '/center-qn/requests/change-schedule-requests',
+      },
+      {
+        title: 'Yêu cầu tạo buổi học',
+        href: '/center-qn/requests/session-requests',
+      },
+    ],
+  },
+  {
     title: 'Lớp học & Khóa học',
     icon: BookOpen,
     href: '/center-qn/classes',

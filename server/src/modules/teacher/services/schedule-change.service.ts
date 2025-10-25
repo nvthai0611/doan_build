@@ -148,7 +148,7 @@ export class ScheduleChangeService {
     ]);
 
     // Get teacher info for mapping
-    const teacher = await this.prisma.teacher.findUnique({
+    const teacher = await this.prisma.teacher.findFirst({
       where: { id: teacherId },
       include: {
         user: {

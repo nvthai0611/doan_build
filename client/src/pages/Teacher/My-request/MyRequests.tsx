@@ -109,8 +109,15 @@ const fetchSessionRequests = async (params: {
   status?: string;
   requestType?: string;
 }) => {
-  const res = await sessionRequestService.getMySessionRequests(params);
-  return res;
+  try {
+    console.log('fetchSessionRequests called with params:', params);
+    const res = await sessionRequestService.getMySessionRequests(params);
+    console.log('fetchSessionRequests response:', res);
+    return res;
+  } catch (error) {
+    console.error('fetchSessionRequests error:', error);
+    throw error;
+  }
 };
 
 const fetchScheduleChanges = async (params: {
@@ -179,7 +186,7 @@ export default function MyRequests() {
         status: activeTab === 'all' ? undefined : activeTab,
       }),
     enabled: requestType === 'leave',
-    staleTime: 30000,
+    staleTime: 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -198,7 +205,7 @@ export default function MyRequests() {
         status: activeTab === 'all' ? undefined : activeTab,
       }),
     enabled: requestType === 'session',
-    staleTime: 30000,
+    staleTime: 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -217,7 +224,7 @@ export default function MyRequests() {
         status: activeTab === 'all' ? undefined : activeTab,
       }),
     enabled: requestType === 'schedule',
-    staleTime: 30000,
+    staleTime: 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -266,11 +273,10 @@ export default function MyRequests() {
   const isError = currentData.isError;
   const isFetching = currentData.isFetching;
 
-  console.log('requests:', requests);
-  console.log('meta:', meta);
-
   // Get columns based on request type
   const getColumns = (): Column<RequestUnion>[] => {
+    console.log('requests:', currentData);
+
     switch (requestType) {
       case 'leave':
         return [
@@ -522,7 +528,7 @@ export default function MyRequests() {
   };
 
   const columns = getColumns();
-
+  
   // Event handlers
   const handleViewDetails = (leaveRequest: LeaveRequest) => {
     setSelectedLeaveRequest(leaveRequest);
@@ -574,9 +580,9 @@ export default function MyRequests() {
 
   // Request type tabs
   const requestTypeTabs = [
-    { id: 'leave', label: 'Đơn xin nghỉ', icon: '🏥' },
-    { id: 'session', label: 'Yêu cầu tạo buổi', icon: '📅' },
-    { id: 'schedule', label: 'Đơn dời lịch', icon: '🔄' },
+    { id: 'leave', label: 'Đơn xin nghỉ' },
+    { id: 'session', label: 'Yêu cầu tạo buổi' },
+    { id: 'schedule', label: 'Đơn dời lịch' },
   ];
 
   // Status tabs
@@ -613,7 +619,6 @@ export default function MyRequests() {
                   : 'bg-muted hover:bg-muted/80'
               }`}
             >
-              <span className="text-lg">{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -652,30 +657,6 @@ export default function MyRequests() {
             }}
           />
         </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Tìm kiếm theo lý do..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="5">5 / trang</SelectItem>
-            <SelectItem value="10">10 / trang</SelectItem>
-            <SelectItem value="20">20 / trang</SelectItem>
-            <SelectItem value="50">50 / trang</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Data Table */}
