@@ -55,3 +55,11 @@ export { parentClassJoinService } from './class-join/class-join.service'
 
 // Students
 export { parentStudentsService } from './students/students.service'
+
+// Teacher Feedback
+export { parentTeacherFeedbackService } from './teacher-feedback/teacherfeedback.service'
+export type {
+  AvailableTeacher,
+  CreateTeacherFeedbackDto,
+  TeacherFeedbackItem
+} from './teacher-feedback/teacherfeedback.types'

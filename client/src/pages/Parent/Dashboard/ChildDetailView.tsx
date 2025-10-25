@@ -6,11 +6,11 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { parentChildService } from "../../../services"
 import { ChildGeneralInfo } from "./ChildGeneralInfo"
-import { ChildTimetable } from "./ChildTimetable"
 import { ChildExamResults } from "./ChildGradeResults"
 import { ChildProgressReports } from "./ChildProgressReports"
 import { ChildAttendance } from "./ChildAttendance"
 import { ChildMaterials } from "./ChildMaterials"
+import { ChildTeacherFeedback } from "./TeacherFeedback"
 
 interface ChildDetailViewProps {
   childId: string
@@ -59,73 +59,67 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
       <div className="flex items-center gap-6 border-b">
         <button
           onClick={() => setActiveTab("info")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "info"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "info"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
         >
           Thông tin chung
         </button>
         <button
-          onClick={() => setActiveTab("timetable")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "timetable"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Lịch học
-        </button>
-        <button
           onClick={() => setActiveTab("exams")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "exams"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "exams"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
         >
           Kết quả thi
         </button>
         <button
           onClick={() => setActiveTab("progress")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "progress"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "progress"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
         >
           Báo cáo tiến độ
         </button>
         <button
           onClick={() => setActiveTab("attendance")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "attendance"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "attendance"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
         >
           Điểm danh
         </button>
         <button
           onClick={() => setActiveTab("materials")}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === "materials"
-              ? "border-primary text-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "materials"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
         >
           Tài liệu
+        </button>
+        <button
+          onClick={() => setActiveTab("teacherfeedback")}
+          className={`pb-3 border-b-2 transition-colors ${activeTab === "teacherfeedback"
+            ? "border-primary text-primary font-medium"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+        >
+          Phản hồi giáo viên
         </button>
       </div>
 
       {/* Tab Content */}
       {activeTab === "info" && child && <ChildGeneralInfo child={child} />}
-      {activeTab === "timetable" && child && <ChildTimetable child={child} />}
       {activeTab === "exams" && child && <ChildExamResults child={child} />}
       {activeTab === "progress" && child && <ChildProgressReports child={child} />}
       {activeTab === "attendance" && child && <ChildAttendance child={child} />}
       {activeTab === "materials" && child && <ChildMaterials childId={child.id} />}
+      {activeTab === "teacherfeedback" && child && <ChildTeacherFeedback child={child} />}
     </div>
   )
 }
