@@ -45,6 +45,9 @@ import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
 import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
 import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
+import LeaveRequestManagement from "../pages/manager/RequestsManagement/LeaveRequestManagement";
+import SessionRequestManagement from "../pages/manager/RequestsManagement/SessionRequestManagement";
+import ChangeScheduleRequestManagement from "../pages/manager/RequestsManagement/ChangeScheduleRequestManagement";
 
 import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
 import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
@@ -83,6 +86,9 @@ export const privateRoutes = (
         <Route path="settings/score-setting" element={<ScoreSetting />} />
         <Route path="settings/notifications-setting" element={<NotificationSetting />} />
         <Route path="settings/tuition-setting" element={<TuitionSetting />} />
+        <Route path="requests/leave-requests" element={<LeaveRequestManagement />} />
+        <Route path="requests/session-requests" element={<SessionRequestManagement />} />
+        <Route path="requests/change-schedule-requests" element={<ChangeScheduleRequestManagement />} />
       </Route>
 
       {/* Giáo viên */}
