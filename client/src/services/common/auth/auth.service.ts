@@ -20,8 +20,13 @@ export const authService = {
    * Đăng nhập
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>("/auth/login", credentials)
-    return response.data as LoginResponse
+    try {
+      const response = await apiClient.post<LoginResponse>("/auth/login", credentials)
+      // Backend trả về format: { success: true, message: "...", data: { accessToken, refreshToken, user } }
+      return response.data as LoginResponse
+    } catch (error: any) {
+      throw error
+    }
   },
 
   /**
