@@ -16,7 +16,9 @@ interface MaterialsTabProps {
 export function MaterialsTab({ classId }: MaterialsTabProps) {
   const { data, isLoading } = useQuery({
     queryKey: ["studentMaterials", { classId }],
-    queryFn: () => studentMaterialsService.list({ classId, limit: 50 }),
+    queryFn: () => {
+      return studentMaterialsService.list({ classId, limit: 50 });
+    },
     enabled: !!classId,
     staleTime: 30000,
     refetchOnWindowFocus: false,

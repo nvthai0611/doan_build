@@ -45,10 +45,14 @@ import { TuitionSetting } from "../pages/manager/Settings/TuitionSetting";
 import StudentLeaveRequestList from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestList";
 import { StudentLeaveRequestForm } from "../pages/Parent/Dashboard/StudentLeaveRequest/StudentLeaveRequestForm";
 import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pages/Teacher/StudentLeaveRequests";
+import LeaveRequestManagement from "../pages/manager/RequestsManagement/LeaveRequestManagement";
+import SessionRequestManagement from "../pages/manager/RequestsManagement/SessionRequestManagement";
+import ChangeScheduleRequestManagement from "../pages/manager/RequestsManagement/ChangeScheduleRequestManagement";
 
 import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
 import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
 import FinancialPage from "../pages/Parent/Financial/Financial-Home";
+import {ChildrenClasses} from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
 
 export const privateRoutes = (
   <>
@@ -71,7 +75,7 @@ export const privateRoutes = (
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
-        <Route path="teachers/schedule" element={<CenterSchedulePage />} />
+        <Route path="schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />
@@ -83,6 +87,9 @@ export const privateRoutes = (
         <Route path="settings/score-setting" element={<ScoreSetting />} />
         <Route path="settings/notifications-setting" element={<NotificationSetting />} />
         <Route path="settings/tuition-setting" element={<TuitionSetting />} />
+        <Route path="requests/leave-requests" element={<LeaveRequestManagement />} />
+        <Route path="requests/session-requests" element={<SessionRequestManagement />} />
+        <Route path="requests/change-schedule-requests" element={<ChangeScheduleRequestManagement />} />
       </Route>
 
       {/* Giáo viên */}
@@ -140,6 +147,7 @@ export const privateRoutes = (
       >
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
+        <Route path="classes" element={<ChildrenClasses />} />
         <Route path="schedule" element={<ChildSchedulePage />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
         <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />

@@ -36,21 +36,41 @@ export class MaterialsService {
       } as any;
     }
 
-    // Lấy các lớp student đang active (hoặc filter theo classId nếu có)
-    const enrolled = await this.prisma.enrollment.findMany({
-      where: { studentId: student.id, status: 'studying', ...(classId ? { classId } : {}) },
-      select: { classId: true },
-    });
-    const classIds = enrolled.map((e) => e.classId);
-    if (classIds.length === 0) {
-      return {
-        items: [],
-        meta: { total: 0, page: 1, limit, totalPages: 0 },
-        stats: { totalSize: 0, recentUploads: 0 },
-      } as any;
+    // Xây dựng where clause
+    const where: any = {
+      class: {
+        enrollments: {
+          some: {
+            studentId: student.id,
+            status: { in: ['active', 'studying'] },
+          },
+        },
+      },
+    };
+
+    // Nếu có classId, kiểm tra enrollment và chỉ lấy materials của lớp đó
+    if (classId) {
+      const enrollment = await this.prisma.enrollment.findFirst({
+        where: {
+          studentId: student.id,
+          classId,
+          status: { in: ['active', 'studying'] },
+        },
+      });
+
+      if (!enrollment) {
+        // Học sinh không enroll vào lớp này
+        return {
+          items: [],
+          meta: { total: 0, page: 1, limit, totalPages: 0 },
+          stats: { totalSize: 0, recentUploads: 0 },
+        } as any;
+      }
+
+      // Chỉ lấy materials của lớp này
+      where.classId = classId;
     }
 
-    const where: any = { classId: { in: classIds } };
     if (category) where.category = category;
     if (search) {
       where.OR = [

@@ -5,6 +5,7 @@ import { ClassManagementController } from './controllers/class-management.contro
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
 import { FinancialManagementController } from './controllers/financial-management.controller';
 import { LeaveRequestsController } from './controllers/leave-requests.controller';
+import { SessionRequestsController } from './controllers/session-requests.controller';
 import { ScheduleManagementController } from './controllers/schedule-management.controller';
 import { TeacherManagementController } from './controllers/teacher-management.controller';
 import { UsersController } from './controllers/user-management.controller';
@@ -13,6 +14,7 @@ import { ClassManagementService } from './services/class-management.service';
 import { EnrollmentManagementService } from './services/enrollment-management.service';
 import { FinancialManagementService } from './services/financial-management.service';
 import { LeaveRequestsService } from './services/leave-requests.service';
+import { SessionRequestsService } from './services/session-requests.service';
 import { ScheduleManagementService } from './services/schedule-management.service';
 import { TeacherManagementService } from './services/teacher-management.service';
 import { UsersService } from './services/user-management.service';
@@ -53,6 +55,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     EnrollmentManagementController,
     FinancialManagementController,
     LeaveRequestsController,
+    SessionRequestsController,
     ScheduleManagementController,
     TeacherManagementController,
     UsersController,
@@ -70,6 +73,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     EnrollmentManagementService,
     FinancialManagementService,
     LeaveRequestsService,
+    SessionRequestsService,
     ScheduleManagementService,
     TeacherManagementService,
     UsersService,

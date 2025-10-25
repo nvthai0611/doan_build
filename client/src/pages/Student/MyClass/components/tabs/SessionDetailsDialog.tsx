@@ -2,10 +2,11 @@ import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDays, UserCheck, XCircle, AlertCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, BookOpen, User, CheckCircle, UserCheck, XCircle, AlertCircle } from "lucide-react"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentScheduleService } from "../../../../../services/student/schedule/schedule.service"
 import type { StudentSession } from "../../../../../services/student/schedule/schedule.types"
+import { getDisplaySessionStatus } from "../../../../../utils/session-status.util"
 
 interface SessionDetailsDialogProps {
   open: boolean
@@ -49,6 +50,8 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
       case 'completed': return 'bg-green-100 text-green-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
       case 'has_not_happened': return 'bg-gray-100 text-gray-800'
+      case 'happening': return 'bg-amber-100 text-amber-800'
+      case 'incomplete': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -59,6 +62,8 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
     if (s === 'completed') return 'Hoàn thành'
     if (s === 'cancelled') return 'Đã hủy'
     if (s === 'has_not_happened') return 'Chưa diễn ra'
+    if (s === 'happening') return 'Đang diễn ra'
+    if (s === 'incomplete') return 'Chưa hoàn thành'
     return 'Không xác định'
   }
 
@@ -135,7 +140,7 @@ export function SessionDetailsDialog({ open, onOpenChange, sessionId, session: s
                 <div className="text-muted-foreground">{getClassName()}</div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={getStatusColor(session?.status)}>{statusTextVi(session?.status)}</Badge>
+                <Badge className={getStatusColor(getDisplaySessionStatus(session as any))}>{statusTextVi(getDisplaySessionStatus(session as any))}</Badge>
                 {getAttendanceBadge((session as any)?.attendanceStatus)}
               </div>
             </div>

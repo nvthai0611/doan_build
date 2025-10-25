@@ -19,20 +19,20 @@ export class MiddlewareStudent implements NestMiddleware {
         return res.status(401).json({ message: 'Token không hợp lệ' });
       }
 
-      if (payload.userId) {
-        const findStudent = await this.prismaService.student.findUnique({
-          where: { userId: payload.userId },
-        });
+          if (payload.userId) {
+            const findStudent = await this.prismaService.student.findUnique({
+              where: { userId: payload.userId },
+            });
 
-        if (findStudent) {
-          req.user = {
-            ...payload,
-            studentId: findStudent.id,
-          };
-        } else {
-          req.user = payload;
-        }
-      }
+            if (findStudent) {
+              req.user = {
+                ...payload,
+                studentId: findStudent.id,
+              };
+            } else {
+              req.user = payload;
+            }
+          }
       
       next();
     } catch (error) {

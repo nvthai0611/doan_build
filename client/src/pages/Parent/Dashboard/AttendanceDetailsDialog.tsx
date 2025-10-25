@@ -6,6 +6,7 @@ import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDa
 import Loading from "../../../components/Loading/LoadingPage"
 import { parentChildService } from "../../../services/parent/child-management/child.service"
 import type { Child } from "../../../services/parent/child-management/child.types"
+import { getDisplaySessionStatus } from "../../../utils/session-status.util"
 
 interface AttendanceDetailsDialogProps {
   open: boolean
@@ -46,18 +47,24 @@ export function AttendanceDetailsDialog({ open, onOpenChange, sessionId, session
 
   const getStatusColor = (status?: string) => {
     switch ((status || '').toLowerCase()) {
-      case 'has_not_happened': return 'bg-blue-100 text-blue-800'
-      case 'ended': return 'bg-green-100 text-green-800'
+      case 'scheduled': return 'bg-blue-100 text-blue-800'
+      case 'completed': return 'bg-green-100 text-green-800'
+      case 'cancelled': return 'bg-red-100 text-red-800'
+      case 'has_not_happened': return 'bg-gray-100 text-gray-800'
       case 'happening': return 'bg-amber-100 text-amber-800'
+      case 'incomplete': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const statusTextVi = (status?: string) => {
     const s = (status || '').toLowerCase()
+    if (s === 'scheduled') return 'Sắp tới'
+    if (s === 'completed') return 'Hoàn thành'
+    if (s === 'cancelled') return 'Đã hủy'
     if (s === 'has_not_happened') return 'Chưa diễn ra'
-    if (s === 'ended') return 'Đã kết thúc'
     if (s === 'happening') return 'Đang diễn ra'
+    if (s === 'incomplete') return 'Chưa hoàn thành'
     return 'Không xác định'
   }
 
@@ -134,7 +141,7 @@ export function AttendanceDetailsDialog({ open, onOpenChange, sessionId, session
                 <div className="text-muted-foreground">{getClassName()}</div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={getStatusColor(session?.status)}>{statusTextVi(session?.status)}</Badge>
+                <Badge className={getStatusColor(getDisplaySessionStatus(session as any))}>{statusTextVi(getDisplaySessionStatus(session as any))}</Badge>
                 {getAttendanceBadge((session as any)?.attendanceStatus)}
               </div>
             </div>
