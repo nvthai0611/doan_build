@@ -52,6 +52,7 @@ import ChangeScheduleRequestManagement from "../pages/manager/RequestsManagement
 import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
 import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
 import FinancialPage from "../pages/Parent/Financial/Financial-Home";
+import {ChildrenClasses} from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
 
 export const privateRoutes = (
   <>
@@ -146,6 +147,7 @@ export const privateRoutes = (
       >
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
         <Route path="children" element={<ParentDashboard />} />
+        <Route path="classes" element={<ChildrenClasses />} />
         <Route path="schedule" element={<ChildSchedulePage />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
         <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />

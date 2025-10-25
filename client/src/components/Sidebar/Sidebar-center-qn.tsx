@@ -294,8 +294,13 @@ const parentMenuItems = [
         href: "/parent/courses",
     },
     {
-        title: "Lịch học",
+        title: "Lớp học",
         icon: BookOpen,
+        href: "/parent/classes",
+    },
+    {
+        title: "Lịch học",
+        icon: Calendar,
         href: "/parent/schedule",
     },
     {
@@ -367,7 +372,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             <div>
                                 <h2 className="font-semibold text-lg">QN Edu System</h2>
                                 <p className="text-xs text-muted-foreground">
-                                {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : "Phụ Huynh/Học Sinh"}
+                                    {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : "Phụ Huynh/Học Sinh"}
                                 </p>
                             </div>
                         </div>
