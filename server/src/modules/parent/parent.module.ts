@@ -19,6 +19,8 @@ import { StudentManagementService } from './services/student-management.service'
 import { StudentLeaveRequestService } from './services/student-leave-request.service';
 import { ClassJoinService } from './services/class-join.service';
 import { PrismaService } from 'src/db/prisma.service';
+import { ChildTeacherFeedbackController } from './controllers/child-teacher-feedback.controller';
+import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.service';
 
 @Module({
   imports: [
@@ -36,9 +38,10 @@ import { PrismaService } from 'src/db/prisma.service';
     FinancialController,
     MaterialsController,
     StudentManagementController,
-    StudentLeaveRequestController,
+  StudentLeaveRequestController,
     ChildClassesController,
     ClassJoinController,
+  ChildTeacherFeedbackController,
   ],
   providers: [
     PrismaService,
@@ -50,6 +53,7 @@ import { PrismaService } from 'src/db/prisma.service';
     StudentManagementService,
     StudentLeaveRequestService,
     ClassJoinService,
+    ChildTeacherFeedbackService,
   ],
 })
 export class ParentModule {
