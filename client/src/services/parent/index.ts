@@ -49,3 +49,9 @@ export type {
   AffectedSessionDetail,
   ChildClass
 } from './student-leave-request/student-leave.types'
+
+// Class Join
+export { parentClassJoinService } from './class-join/class-join.service'
+
+// Students
+export { parentStudentsService } from './students/students.service'

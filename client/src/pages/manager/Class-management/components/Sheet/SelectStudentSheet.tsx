@@ -115,7 +115,6 @@ export const SelectStudentSheet = ({
         studentIds: selected
       });
 
-      console.log(response);
       // Parse response
       const result = response?.data || response;
       const successCount = result?.success?.length || 0;
