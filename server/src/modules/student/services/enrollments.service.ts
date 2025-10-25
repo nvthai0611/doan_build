@@ -7,7 +7,12 @@ export class EnrollmentsService {
 
   async getEnrollmentsOfStudent(studentId: string) {
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { studentId },
+      where: { 
+        studentId,
+        class: {
+          status: 'active' // Chỉ lấy lớp có trạng thái active
+        }
+      },
       orderBy: { enrolledAt: 'desc' },
       include: {
         class: {

@@ -398,6 +398,9 @@ export class StudentLeaveRequestService {
           gte: start,
           lte: end,
         },
+        class: {
+          status: 'active', // Chỉ lấy lớp có trạng thái active
+        },
       },
       select: {
         id: true,
@@ -598,6 +601,9 @@ export class StudentLeaveRequestService {
           sessionDate: {
             gte: newStartDate,
             lte: newEndDate,
+          },
+          class: {
+            status: 'active', // Chỉ lấy lớp có trạng thái active
           },
         },
         select: {
@@ -871,6 +877,7 @@ export class StudentLeaveRequestService {
     const classes = await this.prisma.class.findMany({
       where: {
         id: { in: classIds },
+        status: 'active', // Chỉ lấy lớp có trạng thái active
       },
       include: {
         subject: true,
@@ -959,6 +966,9 @@ export class StudentLeaveRequestService {
         sessionDate: {
           gte: start,
           lte: end,
+        },
+        class: {
+          status: 'active', // Chỉ lấy lớp có trạng thái active
         },
       },
       select: {

@@ -39,7 +39,6 @@ export class MiddlewareParent implements NestMiddleware {
           req.user = payload; // Nếu không tìm thấy parent, vẫn gán payload gốc
         }
       }
-      
       next();
     } catch (error) {
       console.error('Teacher middleware error:', error);

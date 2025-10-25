@@ -21,6 +21,7 @@ export class GradesController {
       JOIN classes c ON c.id = e.class_id
       JOIN subjects s ON s.id = c.subject_id
       WHERE e.student_id = $1::uuid
+      AND c.status = 'active'
       ORDER BY c.name ASC
       `,
       studentId || null,

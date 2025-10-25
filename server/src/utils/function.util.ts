@@ -14,4 +14,49 @@ function generateQNCode(type: CodeType = 'default'): string {
   return `${prefix}${n.toString().padStart(6, '0')}`;
 }
 
-export { generateQNCode, CodeType };
+
+ // Format lịch học
+ const formatSchedule = (schedule: any) => {
+  let scheduleArray = schedule;
+  
+  // Nếu schedule là string JSON, parse nó
+  if (typeof schedule === 'string') {
+    try {
+      scheduleArray = JSON.parse(schedule);
+    } catch (error) {
+      return 'Chưa có lịch học';
+    }
+  }
+  
+  // Nếu schedule có property 'schedules', lấy nó
+  if (scheduleArray && typeof scheduleArray === 'object' && scheduleArray.schedules) {
+    scheduleArray = scheduleArray.schedules;
+  }
+  
+  if (!scheduleArray || !Array.isArray(scheduleArray)) {
+    return 'Chưa có lịch học';
+  }
+
+  const dayNames = {
+    'monday': 'Thứ 2',
+    'tuesday': 'Thứ 3', 
+    'wednesday': 'Thứ 4',
+    'thursday': 'Thứ 5',
+    'friday': 'Thứ 6',
+    'saturday': 'Thứ 7',
+    'sunday': 'Chủ nhật'
+  };
+
+  const result = scheduleArray.map((item: any) => {
+    // Hỗ trợ cả 'day' và 'dayOfWeek' để tương thích
+    const dayKey = item.day || item.dayOfWeek;
+    const day = dayNames[dayKey as keyof typeof dayNames] || dayKey;
+    const startTime = item.startTime || 'Chưa xác định';
+    const endTime = item.endTime || 'Chưa xác định';
+    return `${day}: ${startTime} - ${endTime}`;
+  }).join('<br>');
+  
+  return result;
+};
+
+export { generateQNCode, CodeType , formatSchedule};

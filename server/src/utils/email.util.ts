@@ -40,7 +40,6 @@ export default async function emailUtil(
     }
 
     await transporter.verify();
-    console.log('✅ SMTP connection verified successfully');
 
     const info = await transporter.sendMail({
       from: `"${SMTP_FROMNAME}" <${SMTP_FROMEMAIL || SMTP_USERNAME}>`,
@@ -49,10 +48,8 @@ export default async function emailUtil(
       html,
     });
 
-    console.log(`📧 Email sent successfully: ${info.messageId}`);
     return info;
   } catch (error: any) {
-    console.error('❌ Failed to send email:', error);
     throw new Error(
       error.message || 'Không thể gửi email, vui lòng kiểm tra cấu hình.',
     );

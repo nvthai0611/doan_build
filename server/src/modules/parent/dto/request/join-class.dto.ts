@@ -6,11 +6,6 @@ export class JoinClassByCodeDto {
   @IsString()
   @IsNotEmpty({ message: 'Mã lớp hoặc link không được để trống' })
   codeOrLink: string;
-
-  @ApiProperty({ description: 'Mật khẩu lớp học (nếu có)', required: false })
-  @IsOptional()
-  @IsString()
-  password?: string;
 }
 
 export class RequestJoinClassDto {
@@ -24,6 +19,10 @@ export class RequestJoinClassDto {
   @IsNotEmpty({ message: 'Student ID không được để trống' })
   studentId: string;
 
+  @ApiProperty({ description: 'Mật khẩu lớp học (nếu có)', required: false })
+  @IsOptional()
+  @IsString()
+  password?: string;
   @ApiProperty({ description: 'Lời nhắn gửi (tùy chọn)', required: false })
   @IsOptional()
   @IsString()

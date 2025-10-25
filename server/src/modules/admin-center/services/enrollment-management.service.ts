@@ -1,9 +1,13 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
 
 @Injectable()
 export class EnrollmentManagementService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private emailNotificationService: EmailNotificationService
+    ) {}
 
     // Enroll 1 học sinh vào lớp
     async create(body: any) {
@@ -282,6 +286,17 @@ export class EnrollmentManagementService {
                         reason: error.message
                     });
                 }
+            }
+
+            // Gửi email thông báo hàng loạt cho phụ huynh (non-blocking)
+            const successStudentIds = results.success.map(r => r.studentId);
+            if (successStudentIds.length > 0) {
+                this.emailNotificationService.sendBulkEnrollmentEmail(
+                    successStudentIds,
+                    body.classId
+                ).catch(error => {
+                    console.error('❌ Lỗi khi gửi email thông báo đăng ký:', error.message);
+                });
             }
 
             return {
