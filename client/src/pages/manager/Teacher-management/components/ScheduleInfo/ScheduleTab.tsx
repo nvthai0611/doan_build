@@ -210,7 +210,7 @@ export default function ScheduleTab({
    * Action: Lưu session vào state và mở dialog để hiển thị chi tiết
    */
   const handleSessionClick = (session: TeachingSession) => {
-    setSelectedSession(session)
+    setSelectedSession(session);
     setIsDialogOpen(true)
   }
 
@@ -431,20 +431,31 @@ export default function ScheduleTab({
                 </div>
 
                 <div className="space-y-1 max-h-20 overflow-y-auto">
-                  {daySessions.slice(0, 3).map((session) => (
-                    <div
-                      key={session.id}
-                      className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                      title={`${session.title} - ${session.time} - ${session.room}`}
-                      onClick={() => handleSessionClick(session)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">{session.title}</span>
-                        {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                  {daySessions.slice(0, 3).map((session) => {
+                    const isDayOff = session.status === 'day_off';
+                    return (
+                      <div
+                        key={session.id}
+                        className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${
+                          isDayOff 
+                            ? 'bg-orange-100 border border-orange-300 text-orange-700' 
+                            : getSubjectColor(session.subject)
+                        }`}
+                        title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                        onClick={() => handleSessionClick(session)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium truncate">
+                            {isDayOff ? '🏖️ Nghỉ lễ' : session.title}
+                          </span>
+                          {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                        </div>
+                        <div className="text-xs opacity-90 truncate">
+                          {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
+                        </div>
                       </div>
-                      <div className="text-xs opacity-90 truncate">{session.time}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {daySessions.length > 3 && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">+{daySessions.length - 3} buổi khác</div>
                   )}
@@ -542,22 +553,33 @@ export default function ScheduleTab({
                     key={`${hour}-${dayIndex}`}
                     className="min-h-[60px] border-b border-r bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900 transition-colors relative"
                   >
-                    {hourSessions.map((session, sessionIndex) => (
-                      <div
-                        key={session.id}
-                        className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                        title={`${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => handleSessionClick(session)}
-                        style={{
-                          top: `${sessionIndex * 20}px`,
-                          height: '36px',
-                          fontSize: '12px'
-                        }}
-                      >
-                        <div className="truncate font-medium">{session.title}</div>
-                        <div className="truncate opacity-90">{session.time}</div>
-                      </div>
-                    ))}
+                    {hourSessions.map((session, sessionIndex) => {
+                      const isDayOff = session.status === 'day_off';
+                      return (
+                        <div
+                          key={session.id}
+                          className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${
+                            isDayOff 
+                              ? 'bg-orange-100 border border-orange-300 text-orange-700' 
+                              : getSubjectColor(session.subject)
+                          }`}
+                          title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                          onClick={() => handleSessionClick(session)}
+                          style={{
+                            top: `${sessionIndex * 20}px`,
+                            height: '36px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          <div className="truncate font-medium">
+                            {isDayOff ? '🏖️ Nghỉ lễ' : session.title}
+                          </div>
+                          <div className="truncate opacity-90">
+                            {isDayOff ? 'Ngày nghỉ' : session.time}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )
               })}
@@ -661,14 +683,16 @@ export default function ScheduleTab({
                     <div className="flex items-center space-x-2">
                       {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
                       <Badge
-                        variant={session.status === "completed" ? "default" : "secondary"}
+                        variant={session.status === "end" ? "default" : session.status === "day_off" ? "outline" : "secondary"}
                         className={getStatusColor(session.status)}
                       >
-                        {session.status === "completed"
+                        {session.status === "end"
                           ? "Hoàn thành"
-                          : session.status === "cancelled"
-                            ? "Hủy"
-                            : "Đã lên lịch"}
+                          : session.status === "postponed"
+                            ? "Tạm Hoãn"
+                            : session.status === "day_off"
+                              ? "Nghỉ lễ"
+                              : "Đã lên lịch"}
                       </Badge>
                     </div>
                   </div>

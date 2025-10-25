@@ -32,6 +32,7 @@ export interface TeachingSession {
   attendanceWarnings: string[]
   description?: string
   materials?: string[]
+  cancellationReason?: string
 }
 
 export interface UseTeachingSessionsReturn {
