@@ -70,6 +70,13 @@ export class LeaveRequestsService {
             fullName: true,
             email: true
           }
+        },
+        affectedSessions: {
+          include: {
+            session: {
+              
+            }
+          }
         }
       }
     });
@@ -88,7 +95,10 @@ export class LeaveRequestsService {
         approvedBy: item.approvedByUser?.fullName || null,
         approvedDate: item.approvedAt ? item.approvedAt.toISOString().split('T')[0] : null,
         notes: item.notes || null,
-        teacherId: item.teacherId
+        teacherId: item.teacherId,
+        teacherInfo: item.teacher?.user,
+        affectedSessions: item.affectedSessions,
+        createdAt: item.createdAt.toISOString().split('T')[0]
       })),
       meta: {
         total,
@@ -387,7 +397,24 @@ export class LeaveRequestsService {
             fullName: true,
             email: true
           }
+        },
+        affectedSessions: {
+          include: {
+            session: {
+              include: {
+                class: {
+                  include: {
+                    subject: {
+                      select: {
+                        name: true
+                      }
+                    }
+                  }
+                }
+            }
+          }
         }
+      }
       }
     });
     
@@ -405,6 +432,15 @@ export class LeaveRequestsService {
         notes: leaveRequest.notes,
         teacherId: leaveRequest.teacherId,
         createdAt: leaveRequest.createdAt,
+        teacherInfo: leaveRequest.teacher?.user,
+        affectedSessions: leaveRequest.affectedSessions?.map(session => ({
+          id: session.id,
+          sessionDate: session.session.sessionDate,
+          startTime: session.session.startTime,
+          endTime: session.session.endTime,
+          class: session.session.class.name,
+          subject: session.session.class.subject.name
+        }))
       },
       message: 'Lấy chi tiết đơn xin nghỉ thành công'
     };
