@@ -105,16 +105,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       const response = await authService.refreshToken(refreshToken)
       
-      // ✅ Lưu access token mới
-      Cookies.set("accessToken", response.accessToken)
       TokenStorage.set(response.accessToken)
       
-      // ✅ Lưu refresh token mới (ROTATION)
       if (response.refreshToken) {
         Cookies.set("refreshToken", response.refreshToken)
       }
       
-      // ✅ Cập nhật user
       if (response.user) {
         setUser(response.user as User)
         Cookies.set("user", JSON.stringify(response.user))
@@ -141,21 +137,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await authService.login({ email, password })
       
-      // ✅ Store tokens and user data
       Cookies.set("accessToken", response.accessToken)
       Cookies.set("refreshToken", response.refreshToken)
       Cookies.set("user", JSON.stringify(response.user))
       
-      // ✅ Update TokenStorage
       TokenStorage.set(response.accessToken)
       
       toast.success("Đăng nhập thành công")
       setUser(response.user as User)
-      
-      // ✅ Return user data for role validation
       return { user: response.user as User }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Đăng nhập thất bại"
+      const errorMessage = error.message || error.response?.data?.message || "Email hoặc mật khẩu không đúng"
       toast.error(errorMessage)
       setError(errorMessage)
       throw new Error(errorMessage)
