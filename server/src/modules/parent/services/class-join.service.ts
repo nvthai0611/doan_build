@@ -9,7 +9,7 @@ export class ClassJoinService {
   /**
    * Lấy thông tin lớp học từ classCode hoặc link
    */
-  async getClassInfoByCodeOrLink(userId: string, dto: JoinClassByCodeDto) {
+  async getClassInfoByCodeOrLink(userId: string, dto: any) {
     // Tìm parent
     const parent = await this.prisma.parent.findUnique({
       where: { userId },
@@ -109,31 +109,8 @@ export class ClassJoinService {
       );
     }
 
-    // Kiểm tra password nếu lớp có password
-    if (classData.password) {
-      if (!dto.password) {
-        throw new HttpException(
-          { 
-            success: false, 
-            message: 'Lớp học này yêu cầu mật khẩu',
-            requirePassword: true // Flag để FE biết cần nhập password
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      // So sánh password (plain text - nên hash trong production)
-      if (classData.password !== dto.password) {
-        throw new HttpException(
-          { 
-            success: false, 
-            message: 'Mật khẩu không chính xác',
-            requirePassword: true
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-    }
+    // KHÔNG check password ở đây - chỉ xem thông tin
+    // Password sẽ được check khi request join
 
     // Parse recurring schedule để hiển thị lịch học
     let scheduleText = 'Chưa có lịch học';
@@ -168,7 +145,7 @@ export class ClassJoinService {
       classCode: classInfo.classCode,
       description: classInfo.description,
       status: classInfo.status,
-      requirePassword: !!classInfo.password, // Cho FE biết lớp có yêu cầu password không
+      requirePassword: !!classInfo.password,
       subject: classInfo.subject
         ? {
             id: classInfo.subject.id,
@@ -285,6 +262,31 @@ export class ClassJoinService {
         { success: false, message: 'Không tìm thấy lớp học hoặc lớp học không khả dụng' },
         HttpStatus.NOT_FOUND,
       );
+    }
+
+    // Kiểm tra password nếu lớp có password
+    if (classData.password) {
+      if (!dto.password) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Lớp học này yêu cầu mật khẩu',
+            requirePassword: true,
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      if (classData.password !== dto.password) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Mật khẩu không chính xác',
+            requirePassword: true,
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     }
 
     // Kiểm tra lớp đã đầy chưa

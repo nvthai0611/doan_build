@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { parentStudentsService } from "../../../../services/parent/students/students.service"
 import { parentChildClassesService } from "../../../../services/parent/child-classes/child-classes.service"
+import { JoinClassSheet } from "./components/JoinClassSheet"
 
 const statusConfig = {
   ready: {
@@ -31,6 +32,7 @@ const statusConfig = {
 export function ChildrenClasses() {
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
   const [expandedClass, setExpandedClass] = useState<string | null>(null)
+  const [isJoinClassOpen, setIsJoinClassOpen] = useState(false)
 
   // Fetch danh sách con
   const { data: studentsResponse, isLoading: isLoadingStudents } = useQuery({
@@ -92,7 +94,10 @@ export function ChildrenClasses() {
             Xem danh sách lớp học của các con 
           </p>
         </div>
-        <Button className="gap-2 bg-foreground text-background hover:bg-foreground/90">
+        <Button 
+          className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+          onClick={() => setIsJoinClassOpen(true)}
+        >
           <Plus className="w-4 h-4" />
           Tham gia lớp học
         </Button>
@@ -353,6 +358,12 @@ export function ChildrenClasses() {
           ))}
         </div>
       )}
+
+      {/* Join Class Sheet */}
+      <JoinClassSheet
+        open={isJoinClassOpen}
+        onOpenChange={setIsJoinClassOpen}
+      />
     </div>
   )
 }

@@ -10,7 +10,8 @@ export class EmailNotificationService {
     private prisma: PrismaService,
     @InjectQueue('email_notification') private readonly emailNotificationQueue: Queue,
     @InjectQueue('teacher_account') private readonly teacherAccountQueue: Queue,
-    @InjectQueue('class_assign_teacher') private readonly classAssignTeacherQueue: Queue
+    @InjectQueue('class_assign_teacher') private readonly classAssignTeacherQueue: Queue,
+    @InjectQueue('enrollment_email') private readonly enrollmentEmailQueue: Queue
   ) {}
 
 
@@ -473,6 +474,180 @@ export class EmailNotificationService {
       throw new HttpException(
         `Không thể gửi email hủy phân công lớp: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Gửi email thông báo đăng ký lớp hàng loạt cho phụ huynh
+   * @param studentIds Mảng ID của các học sinh được đăng ký
+   * @param classId ID của lớp học
+   */
+  async sendBulkEnrollmentEmail(studentIds: string[], classId: string) {
+    try {
+      console.log(`🚀 Bắt đầu xử lý gửi email đăng ký cho ${studentIds.length} học sinh`);
+
+      // Lấy thông tin lớp học
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        include: {
+          subject: true,
+          teacher: {
+            include: {
+              user: true
+            }
+          },
+          _count: {
+            select: { sessions: true }
+          }
+        }
+      });
+
+      if (!classData) {
+        throw new HttpException('Không tìm thấy lớp học', HttpStatus.NOT_FOUND);
+      }
+
+      // Xác định trạng thái enrollment
+      const hasSession = classData._count.sessions > 0;
+      const enrollmentStatus = hasSession ? 'studying' : 'not_been_updated';
+
+      // Lấy thông tin học sinh và phụ huynh
+      const students = await this.prisma.student.findMany({
+        where: {
+          id: { in: studentIds }
+        },
+        include: {
+          user: true,
+          parent: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+
+      if (students.length === 0) {
+        throw new HttpException('Không tìm thấy học sinh nào', HttpStatus.NOT_FOUND);
+      }
+
+      // Chuẩn bị dữ liệu chung
+      const className = classData.name || 'N/A';
+      const subjectName = classData.subject?.name || 'N/A';
+      const teacherName = classData.teacher?.user?.fullName || undefined;
+      const startDate = classData.actualStartDate 
+        ? new Date(classData.actualStartDate).toLocaleDateString('vi-VN')
+        : undefined;
+      const schedule = classData.recurringSchedule || undefined;
+
+      console.log(`Thông tin lớp học:\n` +
+        `   - Tên lớp: ${className}\n` +
+        `   - Môn học: ${subjectName}\n` +
+        `   - Giáo viên: ${teacherName || 'Chưa có'}\n` +
+        `   - Ngày bắt đầu: ${startDate || 'Chưa có'}\n` +
+        `   - Có lịch học: ${schedule ? 'Có' : 'Chưa có'}`
+      );
+
+      // Thêm từng email vào queue
+      const emailResults = [];
+      const jobPromises = [];
+
+      for (const student of students) {
+        const parentEmail = student.parent?.user?.email;
+        const parentName = student.parent?.user?.fullName || 'Quý phụ huynh';
+        
+        if (!parentEmail) {
+          console.warn(
+            `Không tìm thấy email phụ huynh cho học sinh ${student.user?.fullName}`
+          );
+          
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            success: false,
+            reason: 'Không có email phụ huynh'
+          });
+          continue;
+        }
+
+        try {
+          // Thêm job vào queue
+          const jobPromise = this.enrollmentEmailQueue.add(
+            'send_enrollment_notification',
+            {
+              to: parentEmail,
+              studentName: student.user?.fullName || 'N/A',
+              parentName,
+              className,
+              subjectName,
+              teacherName,
+              startDate,
+              schedule,
+              enrollmentStatus,
+              studentId: student.id,
+              classId
+            },
+            {
+              priority: 2,
+              delay: 1000, // Delay 1s giữa các email
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000
+              },
+              removeOnComplete: 10,
+              removeOnFail: 5
+            }
+          );
+
+          jobPromises.push(jobPromise);
+
+          console.log(`📨 Đã thêm job gửi email đăng ký cho ${student.user?.fullName} vào queue`);
+
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            parentEmail,
+            success: true
+          });
+        } catch (error: any) {
+          console.error(
+            `❌ Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
+          );
+          
+          emailResults.push({
+            studentId: student.id,
+            studentName: student.user?.fullName,
+            success: false,
+            reason: error.message
+          });
+        }
+      }
+
+      // Đợi tất cả jobs được thêm vào queue
+      await Promise.all(jobPromises);
+
+      const successCount = emailResults.filter(r => r.success).length;
+      const failCount = emailResults.filter(r => !r.success).length;
+
+      console.log(
+        `✅ Đã thêm ${successCount}/${studentIds.length} email vào queue thành công\n` +
+        `   - Thành công: ${successCount}\n` +
+        `   - Thất bại: ${failCount}`
+      );
+
+      return {
+        success: true,
+        sentCount: successCount,
+        failCount,
+        totalStudents: studentIds.length,
+        details: emailResults,
+        message: `Đã thêm ${successCount} email thông báo đăng ký vào hàng đợi.`
+      };
+    } catch (error: any) {
+      console.error('❌ Lỗi khi xử lý gửi email đăng ký:', error);
+      throw new HttpException(
+        error.message || 'Lỗi khi gửi email thông báo đăng ký',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
