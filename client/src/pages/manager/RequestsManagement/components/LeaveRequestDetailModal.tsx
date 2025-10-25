@@ -31,11 +31,9 @@ interface LeaveRequest {
   imageUrl?: string
   createdAt: string
   approvedAt?: string
-  teacher: {
-    user: {
-      fullName: string
-      email: string
-    }
+  teacherInfo: {
+    fullName: string
+    email: string
   }
   approvedByUser?: {
     fullName: string
@@ -43,14 +41,15 @@ interface LeaveRequest {
   }
   affectedSessions?: Array<{
     id: string
+    class: string
+    subject: string
     sessionDate: string
     startTime: string
     endTime: string
-    class: {
-      name: string
-      subject: {
-        name: string
-      }
+    session: {
+      sessionDate: string
+      startTime: string
+      endTime: string
     }
   }>
 }
@@ -135,27 +134,27 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <div className="flex items-center gap-4">
               <Avatar className="h-12 w-12">
                 <AvatarFallback>
-                  {(request.teacher?.user?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+                  {(request.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{request.teacher?.user?.fullName || 'Unknown'}</h3>
-                <p className="text-sm text-muted-foreground">{request.teacher?.user?.email || 'No email'}</p>
+                <h3 className="text-lg font-semibold">{request.teacherInfo?.fullName || 'Unknown'}</h3>
+                <p className="text-sm text-muted-foreground">{request.teacherInfo?.email || 'No email'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
-                className={requestTypeColors[request.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={requestTypeColors[request?.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
               >
-                {requestTypeLabels[request.requestType as keyof typeof requestTypeLabels] || request.requestType}
+                {requestTypeLabels[request?.requestType as keyof typeof requestTypeLabels] || request?.requestType}
               </Badge>
               <Badge
                 variant="secondary"
-                className={statusColors[request.status] || statusColors.pending}
+                className={statusColors[request?.status as keyof typeof statusColors] || statusColors.pending}
               >
                 {getStatusIcon(request.status)}
-                {statusLabels[request.status] || request.status}
+                {statusLabels[request?.status as keyof typeof statusLabels] || request?.status}
               </Badge>
             </div>
           </div>
@@ -174,16 +173,16 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Ngày bắt đầu</label>
-                  <p className="text-sm">{formatDate(request.startDate)}</p>
+                  <p className="text-sm">{formatDate(request?.startDate)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Ngày kết thúc</label>
-                  <p className="text-sm">{formatDate(request.endDate)}</p>
+                  <p className="text-sm">{formatDate(request?.endDate)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Số ngày nghỉ</label>
                   <p className="text-sm">
-                    {Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày
+                    {Math.ceil((new Date(request?.endDate).getTime() - new Date(request?.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày
                   </p>
                 </div>
               </CardContent>
@@ -199,18 +198,18 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Ngày tạo</label>
-                  <p className="text-sm">{formatDateTime(request.createdAt)}</p>
+                  <p className="text-sm">{formatDateTime(request?.createdAt)}</p>
                 </div>
                 {request.approvedAt && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Ngày xử lý</label>
-                    <p className="text-sm">{formatDateTime(request.approvedAt)}</p>
+                    <p className="text-sm">{formatDateTime(request?.approvedAt)}</p>
                   </div>
                 )}
                 {request.approvedByUser && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Người xử lý</label>
-                    <p className="text-sm">{request.approvedByUser.fullName}</p>
+                    <p className="text-sm">{request?.approvedByUser?.fullName}</p>
                   </div>
                 )}
               </CardContent>
@@ -226,36 +225,37 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{request.reason}</p>
+              <p className="text-sm whitespace-pre-wrap">{request?.reason}</p>
               {request.notes && (
                 <div className="mt-4">
                   <label className="text-sm font-medium text-muted-foreground">Ghi chú</label>
-                  <p className="text-sm whitespace-pre-wrap">{request.notes}</p>
+                  <p className="text-sm whitespace-pre-wrap">{request?.notes}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Affected Sessions */}
-          {request.affectedSessions && request.affectedSessions.length > 0 && (
+          {request?.affectedSessions && request?.affectedSessions.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
-                  Sessions bị ảnh hưởng ({request.affectedSessions.length})
+                  Sessions bị ảnh hưởng ({request?.affectedSessions.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {request.affectedSessions.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  {request?.affectedSessions.map((session) => (
+                    <div key={session?.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div>
-                        <p className="font-medium">{session.class.name}</p>
-                        <p className="text-sm text-muted-foreground">{session.class.subject.name}</p>
+                        <p className="font-medium">{session?.class}</p>
+                        <p className="text-sm text-muted-foreground">{session?.subject}</p>
+                        <p className="font-medium">{session?.session?.sessionDate}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm">{formatDate(session.sessionDate)}</p>
-                        <p className="text-sm text-muted-foreground">{session.startTime} - {session.endTime}</p>
+                        <p className="text-sm">{formatDate(session?.sessionDate)}</p>
+                        <p className="text-sm text-muted-foreground">{session?.startTime} - {session?.endTime}</p>
                       </div>
                     </div>
                   ))}
