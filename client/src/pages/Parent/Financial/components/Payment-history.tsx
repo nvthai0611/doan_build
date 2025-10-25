@@ -132,7 +132,8 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
         )
         return matchingChild?.id === selectedStudent
       })
-
+  console.log(historyData);
+  
   return (
     <>
       {/* Student Filter */}

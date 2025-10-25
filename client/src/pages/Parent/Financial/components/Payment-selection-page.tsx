@@ -75,6 +75,7 @@ export function PaymentSelectionPage() {
   const [copied, setCopied] = useState(false)
   const [remainingTime, setRemainingTime] = useState<number>(0)
   const [selectedStudent, setSelectedStudent] = useState<string>("all")
+  const [loading, setLoading] = useState<boolean>(false)
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
@@ -228,13 +229,13 @@ export function PaymentSelectionPage() {
         toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
         return
       }
-      
+      setLoading(true)
       const response: any = await financialParentService.createQrCodeForPayment(selectedFees)
       if (!response?.qrCodeUrl) {
         toast.error(response?.message || "Không thể tạo mã QR")
         return
       }
-
+      setLoading(false)
       setPaymentData(response)
       setShowQrModal(true)
       toast.success("Mã QR thanh toán đã được tạo thành công")
