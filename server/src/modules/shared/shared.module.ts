@@ -12,7 +12,8 @@ import { EmailNotificationService } from './services/email-notification.service'
 import { EmailNotificationProcessor } from './consumer/email_notification.processor';
 import { TeacherAccountProcessor } from './consumer/teacher_account.processor';
 import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.processor';
-
+import { EnrollmentEmailProcessor } from './consumer/enrollment-email.processor';
+  
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
   removeOnFail: 5,      // Giữ lại 5 job thất bại gần nhất
@@ -47,6 +48,10 @@ const DEFAULT_BULL_JOB_OPTIONS = {
       name: 'class_assign_teacher',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
     }),
+    BullModule.registerQueue({
+      name: 'enrollment_email',
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+    }),
   ],
   controllers:[
     // Shared controllers can be added here
@@ -63,7 +68,8 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     EmailNotificationService,
     EmailNotificationProcessor,
     TeacherAccountProcessor,
-    ClassAssignTeacherProcessor
+    ClassAssignTeacherProcessor,
+    EnrollmentEmailProcessor
   ],
   exports: [
     StudentSharedService, 

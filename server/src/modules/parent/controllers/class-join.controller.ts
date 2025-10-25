@@ -15,9 +15,7 @@ import { ClassJoinService } from '../services/class-join.service';
 import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-class.dto';
 
 @ApiTags('Parent - Class Join')
-@Controller('parent/class-join')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT') 
+@Controller('class-join')
 export class ClassJoinController {
   constructor(private readonly classJoinService: ClassJoinService) {}
 

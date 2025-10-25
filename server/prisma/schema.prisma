@@ -194,7 +194,7 @@ model ClassSession {
   startTime                    String                        @map("start_time")
   endTime                      String                        @map("end_time")
   roomId                       String?                       @map("room_id") @db.Uuid
-  status                       String                        @default("happening")
+  status                       String                        @default("happening") // happening, has_not_happened, end
   createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   notes                        String?
   class                        Class                         @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -226,7 +226,7 @@ model Enrollment {
   studentId        String           @map("student_id") @db.Uuid
   classId          String           @map("class_id") @db.Uuid
   enrolledAt       DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
-  status           String           @default("not_been_updated")
+  status           String           @default("not_been_updated") // not_been_updated, studying, stopped, graduated, withdrawn 
   semester         String?
   completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
   finalGrade       String?          @map("final_grade")
@@ -245,7 +245,7 @@ model StudentClassRequest {
   studentId   String    @map("student_id") @db.Uuid
   classId     String    @map("class_id") @db.Uuid
   message     String?
-  status      String    @default("pending")
+  status      String    @default("pending") // pending, accepted, rejected
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   class       Class     @relation(fields: [classId], references: [id])
@@ -258,7 +258,7 @@ model StudentSessionAttendance {
   id                BigInt       @id @default(autoincrement())
   sessionId         String       @map("session_id") @db.Uuid
   studentId         String       @map("student_id") @db.Uuid
-  status            String
+  status            String       // present, adsent,...
   note              String?
   recordedBy        String       @map("recorded_by") @db.Uuid
   recordedAt        DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
