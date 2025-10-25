@@ -190,11 +190,11 @@ export class StudentManagementService {
           orderBy: { gradedAt: 'desc' },
           take: 50,
         },
-        payments: {
-          include: { feeRecord: { include: { feeStructure: true } } },
-          orderBy: { paidAt: 'desc' },
-          take: 50,
-        },
+        // payments: {
+        //   include: { feeRecord: { include: { feeStructure: true } } },
+        //   orderBy: { paidAt: 'desc' },
+        //   take: 50,
+        // },
       },
     });
 
@@ -263,14 +263,14 @@ export class StudentManagementService {
           class: { name: g.assessment.class.name },
         },
       })),
-      payments: student.payments.map((p: any) => ({
-        id: p.id,
-        amount: Number(p.amount),
-        method: p.method,
-        status: p.status,
-        paidAt: p.paidAt.toISOString(),
-        feeRecord: { feeStructure: { name: p.feeRecord.feeStructure.name } },
-      })),
+      // payments: student.payments.map((p: any) => ({
+      //   id: p.id,
+      //   amount: Number(p.amount),
+      //   method: p.method,
+      //   status: p.status,
+      //   paidAt: p.paidAt.toISOString(),
+      //   feeRecord: { feeStructure: { name: p.feeRecord.feeStructure.name } },
+      // })),
     };
 
     return { data: result, message: 'Lấy chi tiết học sinh thành công' };

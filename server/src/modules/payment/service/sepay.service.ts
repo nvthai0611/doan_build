@@ -6,6 +6,7 @@ import { PrismaService } from 'src/db/prisma.service';
 import { FeeRecordPaymentInfo } from '../dto/create-payment-qr.dto';
 import { paymentSuccessEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 import emailUtil from 'src/utils/email.util';
+import { PaymentGateway } from '../gateway/payment.gateway';
 
 export interface SepayTransaction {
   id: string;
@@ -60,6 +61,7 @@ export class SepayService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly paymentGateway: PaymentGateway, // Inject Gateway
   ) {
     this.apiKey = this.configService.get<string>('SEPAY_API_KEY');
     this.accountNumber =
@@ -124,7 +126,7 @@ export class SepayService {
 
         if (remainingAmount <= 0) {
           throw new BadRequestException(
-            `Hóa đơn của học sinh ${feeRecord.student.user.fullName} đã được thanh toán đủ`,
+            `Hóa đơn của học sinh ${feeRecord.student.user.fullName} đã được thanh toán đủ, vui lòng không chọn thanh toán`,
           );
         }
 
@@ -234,7 +236,7 @@ export class SepayService {
 
       return response.data.transactions || [];
     } catch (error) {
-      this.logger.error('Failed to get Sepay transactions', error);
+      this.logger.error('Lỗi khi lấy danh sách giao dịch từ Sepay', error);
       throw error;
     }
   }
@@ -245,268 +247,205 @@ export class SepayService {
    */
   async handleWebhook(webhookData: SepayWebhookDto) {
     try {
-      this.logger.log(`Received Sepay webhook: ${JSON.stringify(webhookData)}`);
+      this.logger.log(`Nhận webhook từ Sepay: ${JSON.stringify(webhookData)}`);
 
-      // 1. Kiểm tra giao dịch là tiền vào
+      // Validate cơ bản
       if (!webhookData.transferAmount || webhookData.transferAmount <= 0) {
-        this.logger.warn(
-          'Transaction amount is invalid or not incoming payment',
-        );
-        return { success: false, message: 'Invalid transaction amount' };
+        this.logger.warn('Số tiền giao dịch không hợp lệ');
+        return { data: null, message: 'Số tiền giao dịch không hợp lệ' };
       }
-
       if (webhookData.transferType !== 'in') {
-        this.logger.warn('Transaction is not incoming payment');
-        return { success: false, message: 'Not incoming payment' };
+        this.logger.warn('Không phải giao dịch nhận tiền');
+        return { data: null, message: 'Không phải giao dịch nhận tiền' };
       }
-
-      // 2. Kiểm tra content tồn tại
       if (!webhookData.content) {
-        this.logger.warn('Transaction content is empty');
-        return { success: false, message: 'Transaction content is empty' };
+        this.logger.warn('Nội dung giao dịch trống');
+        return { data: null, message: 'Nội dung giao dịch trống' };
       }
 
-      // 3. Trích xuất mã đơn hàng từ nội dung giao dịch
+      // Trích xuất orderCode và danh sách studentCode
       const orderCode = this.extractOrderCode(webhookData.content);
       if (!orderCode) {
         this.logger.warn(
-          `Order code not found in transaction content: ${webhookData.content}`,
+          `Không tìm thấy mã đơn hàng trong nội dung: ${webhookData.content}`,
         );
-        return { success: false, message: 'Order code not found' };
+        return { data: null, message: 'Không tìm thấy mã đơn hàng' };
       }
-
-      this.logger.log(`Extracted order code: ${orderCode}`);
-
-      // 4. Trích xuất mã học sinh (có thể nhiều học sinh)
       const studentCodesStr = webhookData.content.replace(orderCode, '').trim();
-
       if (!studentCodesStr) {
-        this.logger.warn('Student codes not found in transaction content');
-        return { success: false, message: 'Student codes not found' };
+        this.logger.warn('Không tìm thấy mã học sinh');
+        return { data: null, message: 'Không tìm thấy mã học sinh' };
       }
+      const studentCodes = studentCodesStr.split(',').map((s) => s.trim());
 
-      // Parse danh sách mã học sinh (format: STU001,STU002,STU003)
-      const studentCodes = studentCodesStr
-        .split(',')
-        .map((code) => code.trim());
-      this.logger.log(`Extracted student codes: ${studentCodes.join(', ')}`);
-
-      // 5. Tìm tất cả học sinh
-      const students = await this.prisma.student.findMany({
+      // Idempotency: kiểm tra Payment theo transactionCode (orderCode) hoặc reference (referenceCode)
+      const existed = await this.prisma.payment.findFirst({
         where: {
-          studentCode: {
-            in: studentCodes,
-          },
-        },
-        include: {
-          user: true,
+          OR: [
+            { transactionCode: orderCode },
+            { reference: webhookData.referenceCode || '' },
+          ],
         },
       });
-
-      if (students.length === 0) {
+      if (existed) {
         this.logger.warn(
-          `No students found with codes: ${studentCodes.join(', ')}`,
+          `Giao dịch đã được xử lý: orderCode=${orderCode}, ref=${webhookData.referenceCode}`,
         );
-        return { success: false, message: 'Students not found' };
+        return {
+          data: { paymentId: existed.id },
+          message: 'Giao dịch đã được xử lý trước đó',
+        };
       }
 
-      if (students.length !== studentCodes.length) {
-        this.logger.warn('Some students not found');
+      // Tìm students
+      const students = await this.prisma.student.findMany({
+        where: { studentCode: { in: studentCodes } },
+        include: { user: true },
+      });
+      if (students.length === 0) {
+        return { data: null, message: 'Không tìm thấy học sinh' };
       }
-
-      this.logger.log(`Found ${students.length} students`);
-
-      // 6. Tìm tất cả FeeRecord chưa thanh toán đủ
       const studentIds = students.map((s) => s.id);
+
+      // Lấy các FeeRecord còn nợ (ưu tiên theo createdAt desc)
       const feeRecords = await this.prisma.feeRecord.findMany({
         where: {
-          studentId: {
-            in: studentIds,
-          },
-          status: {
-            in: ['pending', 'partially_paid'],
-          },
+          studentId: { in: studentIds },
+          status: { in: ['pending', 'partially_paid'] },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
       });
-
       if (feeRecords.length === 0) {
-        this.logger.warn(`No fee records found for students`);
-        return { success: false, message: 'Fee records not found' };
+        return { data: null, message: 'Không tìm thấy hóa đơn cần thanh toán' };
       }
 
-      this.logger.log(`Found ${feeRecords.length} fee records`);
-
-      // 7. Kiểm tra đã xử lý giao dịch này chưa (tránh trùng lặp)
-      const existingPayment = await this.prisma.payment.findFirst({
-        where: {
-          transactionCode: webhookData.referenceCode,
-        },
-      });
-
-      if (existingPayment) {
-        this.logger.warn(
-          `Transaction already processed: ${webhookData.referenceCode}`,
-        );
-        return { success: false, message: 'Transaction already processed' };
-      }
-
-      // 8. Tính tổng số tiền cần thanh toán và phân bổ
-      let totalRemainingAmount = 0;
-      const feeRecordMap = new Map<string, any>();
-
-      for (const feeRecord of feeRecords) {
-        const remainingAmount =
-          Number(feeRecord.totalAmount) - Number(feeRecord.paidAmount);
-        totalRemainingAmount += remainingAmount;
-        feeRecordMap.set(feeRecord.id, {
-          ...feeRecord,
-          remainingAmount,
-        });
-      }
-
-      this.logger.log(
-        `Total remaining amount: ${totalRemainingAmount}, Paid amount: ${webhookData.transferAmount}`,
+      // Phân bổ số tiền (có thể trả một phần)
+      const allocations = this.calculatePaymentAllocations(
+        feeRecords,
+        webhookData.transferAmount,
       );
-
-      // 9. Kiểm tra số tiền thanh toán
-      if (webhookData.transferAmount > totalRemainingAmount) {
-        this.logger.warn(
-          `Paid amount (${webhookData.transferAmount}) exceeds remaining amount (${totalRemainingAmount})`,
-        );
+      if (allocations.length === 0) {
+        return { data: null, message: 'Số tiền không đủ để phân bổ' };
       }
 
-      // 10. TẠO Payment records và cập nhật FeeRecords
+      // Transaction: tạo 1 Payment + N FeeRecordPayment + cập nhật FeeRecord
       const result = await this.prisma.$transaction(async (tx) => {
-        const createdPayments = [];
-        const updatedFeeRecords = [];
-        let remainingPaidAmount = webhookData.transferAmount;
-
-        // Tìm phụ huynh
+        // Tìm phụ huynh theo danh sách học sinh
         const parent = await tx.parent.findFirst({
-          where: {
-            students: {
-              some: {
-                id: {
-                  in: studentIds,
-                },
-              },
-            },
-          },
-          include: {
-            user: true,
+          where: { students: { some: { id: { in: studentIds } } } },
+          include: { user: true },
+        });
+
+        // Tạo 1 Payment duy nhất (tổng số tiền giao dịch)
+        const payment = await tx.payment.create({
+          data: {
+            amount: webhookData.transferAmount,
+            method: 'bank_transfer',
+            status: 'completed',
+            reference: webhookData.referenceCode || null,
+            transactionCode: orderCode,
+            paidAt: new Date(webhookData.transactionDate),
+            notes: `Thanh toán ${allocations.length} hóa đơn qua ${webhookData.gateway}`,
+            parent: parent ? { connect: { id: parent.id } } : undefined,
           },
         });
 
-        // Phân bổ số tiền cho từng FeeRecord
-        for (const feeRecord of feeRecords) {
-          if (remainingPaidAmount <= 0) break;
+        // Tạo allocations và update FeeRecord
+        for (const alloc of allocations) {
+          await tx.feeRecordPayment.create({
+            data: {
+              paymentId: payment.id,
+              feeRecordId: alloc.feeRecordId,
+              amount: alloc.amountToPay,
+              notes: webhookData.description || undefined,
+            },
+          });
 
-          const feeInfo = feeRecordMap.get(feeRecord.id);
-          const amountToPay = Math.min(
-            remainingPaidAmount,
-            feeInfo.remainingAmount,
+          const fr = feeRecords.find((f) => f.id === alloc.feeRecordId)!;
+          const newPaid = Number(fr.paidAmount) + alloc.amountToPay;
+          const total = Number(
+            fr.totalAmount ?? Number(fr.amount) - Number(fr.discount ?? 0),
           );
 
-          // Tạo Payment record cho từng học sinh
-          const payment = await tx.payment.create({
+          await tx.feeRecord.update({
+            where: { id: fr.id },
             data: {
-              feeRecordId: feeRecord.id,
-              studentId: feeRecord.studentId,
-              parentId: parent?.id || null,
-              amount: amountToPay,
-              method: 'bank_transfer', // Chuyển khoản ngân hàng
-              status: 'completed',
-              reference: orderCode,
-              transactionCode: webhookData.referenceCode,
-              paidAt: new Date(webhookData.transactionDate),
-              notes: `Thanh toán qua ${webhookData.gateway} - ${webhookData.content} (Thanh toán nhiều học sinh)`,
+              paidAmount: newPaid,
+              status:
+                newPaid >= total
+                  ? 'paid'
+                  : newPaid > 0
+                  ? 'partially_paid'
+                  : 'pending',
             },
           });
+        }
 
-          createdPayments.push(payment);
-
-          // Cập nhật FeeRecord
-          const newPaidAmount = Number(feeRecord.paidAmount) + amountToPay;
-          const totalAmount = Number(feeRecord.totalAmount);
-
-          let newStatus = 'pending';
-          if (newPaidAmount === 0) {
-            newStatus = 'pending';
-          } else if (newPaidAmount < totalAmount) {
-            newStatus = 'partially_paid';
-          } else {
-            newStatus = 'paid';
-          }
-
-          const updatedFeeRecord = await tx.feeRecord.update({
-            where: { id: feeRecord.id },
-            data: {
-              paidAmount: newPaidAmount,
-              status: newStatus,
-            },
-          });
-
-          updatedFeeRecords.push(updatedFeeRecord);
-
-          remainingPaidAmount -= amountToPay;
-          this.logger.log(
-            `Processed fee record ${feeRecord.id}: paid ${amountToPay}, status: ${newStatus}`,
+        // Gửi email thông báo
+        if (parent?.user?.email) {
+          const emailData = {
+            parentName: parent.user.fullName,
+            orderCode,
+            totalAmount: webhookData.transferAmount,
+            paymentDate: new Date(webhookData.transactionDate).toLocaleDateString('vi-VN'),
+            paymentTime: new Date(webhookData.transactionDate).toLocaleTimeString('vi-VN'),
+            paymentMethod: 'Chuyển khoản ngân hàng',
+            bankName: webhookData.gateway,
+            transactionCode: webhookData.referenceCode,
+            students: allocations.map((alloc) => {
+              const fr = feeRecords.find((f) => f.id === alloc.feeRecordId)!;
+              const st = students.find((s) => s.id === fr.studentId)!;
+              return {
+                studentName: st.user.fullName,
+                studentCode: st.studentCode,
+                className: null,
+                feeAmount: alloc.amountToPay,
+                feeDescription: `Thanh toán học phí`,
+              };
+            }),
+          };
+          await this.sendSuccessPayment(
+            emailData,
+            parent.user.email,
+            'Xác nhận thanh toán học phí thành công',
           );
         }
 
-        // Gửi thông báo cho phụ huynh
-        // Chuẩn bị dữ liệu cho email template
-        const emailData = {
-          parentName: parent.user.fullName,
-          orderCode: orderCode,
-          totalAmount: webhookData.transferAmount,
-          paymentDate: new Date(webhookData.transactionDate).toLocaleDateString(
-            'vi-VN',
-          ),
-          paymentTime: new Date(webhookData.transactionDate).toLocaleTimeString(
-            'vi-VN',
-          ),
-          paymentMethod: 'Chuyển khoản ngân hàng',
-          bankName: webhookData.gateway,
-          transactionCode: webhookData.referenceCode,
-          students: result.feeRecords.map((feeRecord, index) => ({
-            studentName: students[index].user.fullName,
-            studentCode: students[index].studentCode,
-            className: feeRecord.class?.name || 'N/A',
-            feeAmount: Number(result.payments[index].amount),
-            feeDescription: `Học phí tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
-          })),
-        };
-        await this.sendSuccessPayment(
-          emailData,
-          parent.user.email,
-          'Xác nhận thanh toán học phí thành công',
-        );
-        console.log('Đã gửi email cho phụ huynh');
-
-        return { payments: createdPayments, feeRecords: updatedFeeRecords };
+        return { payment, allocations, students, feeRecords };
       });
 
-      this.logger.log(`Successfully processed payment for order: ${orderCode}`);
-      this.logger.log(`Created ${result.payments.length} payment records`);
+      // ✅ BẮN SOCKET SAU KHI TRANSACTION THÀNH CÔNG
+      this.paymentGateway.notifyPaymentSuccess(orderCode, {
+        orderCode,
+        paymentId: result.payment.id,
+        amount: webhookData.transferAmount,
+        paidAt: result.payment.paidAt.toISOString(),
+        allocations: result.allocations.map((alloc) => {
+          const fr = result.feeRecords.find((f) => f.id === alloc.feeRecordId)!;
+          const st = result.students.find((s) => s.id === fr.studentId)!;
+          return {
+            feeRecordId: alloc.feeRecordId,
+            amount: alloc.amountToPay,
+            studentName: st.user.fullName,
+            studentCode: st.studentCode,
+          };
+        }),
+      });
 
+      this.logger.log(
+        `✅ 1 payment → phân bổ cho ${result.allocations.length} hóa đơn (orderCode=${orderCode})`,
+      );
+      
       return {
-        success: true,
-        message: 'Payment processed successfully',
-        data: {
-          orderCode: orderCode,
-          totalAmount: webhookData.transferAmount,
-          studentsCount: students.length,
-          studentCodes: studentCodes,
-          paymentsCreated: result.payments.length,
+        data: { 
+          paymentId: result.payment.id, 
+          orderCode, 
+          allocatedCount: result.allocations.length 
         },
+        message: 'Xử lý thanh toán thành công',
       };
     } catch (error) {
-      this.logger.error('Failed to handle Sepay webhook', error);
-      this.logger.error(`Error stack: ${error.stack}`);
+      this.logger.error('Lỗi khi xử lý webhook', error);
       throw error;
     }
   }
@@ -523,90 +462,98 @@ export class SepayService {
    * Kiểm tra trạng thái thanh toán theo mã đơn hàng
    */
   async verifyTransaction(orderCode: string) {
-    try {
-      // Tìm payment đã hoàn thành với orderCode
-      const payment = await this.prisma.payment.findFirst({
-        where: {
-          reference: orderCode,
-          status: 'completed',
+  try {
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        OR: [
+          { transactionCode: orderCode },
+          { reference: orderCode } // fallback nếu client truyền nhầm
+        ],
+        status: 'completed'
+      },
+      include: {
+        feeRecordPayments: {
+          include: {
+            feeRecord: {
+              include: {
+                student: { include: { user: true } },
+                class: true,
+                feeStructure: true
+              }
+            }
+          }
         },
-        include: {
-          feeRecord: {
-            include: {
-              student: {
-                include: { user: true },
-              },
-              class: true,
-            },
-          },
-        },
-      });
-
-      if (!payment) {
-        return {
-          data: {
-            orderCode,
-            status: 'waiting',
-            message:
-              'Giao dịch chưa được xác nhận. Vui lòng chờ sau khi chuyển khoản.',
-          },
-          message: 'Chưa tìm thấy giao dịch',
-        };
+        parent: { include: { user: true } }
       }
+    });
 
+    if (!payment) {
       return {
-        data: {
-          orderCode,
-          amount: payment.amount,
-          status: payment.status,
-          paidAt: payment.paidAt,
-          feeRecord: payment.feeRecord,
-        },
-        message: 'Lấy thông tin giao dịch thành công',
+        data: { orderCode, status: 'waiting', message: 'Giao dịch chưa được xác nhận' },
+        message: 'Chưa tìm thấy giao dịch'
       };
-    } catch (error) {
-      this.logger.error(`Failed to verify transaction: ${orderCode}`, error);
-      throw error;
     }
+
+    return {
+      data: {
+        orderCode,
+        paymentId: payment.id,
+        amount: payment.amount,
+        status: payment.status,
+        paidAt: payment.paidAt,
+        allocations: payment.feeRecordPayments.map(pr => ({
+          feeRecordId: pr.feeRecordId,
+          amount: pr.amount,
+          studentName: pr.feeRecord.student.user.fullName,
+          studentCode: pr.feeRecord.student.studentCode,
+          className: pr.feeRecord.class?.name
+        }))
+      },
+      message: 'Lấy thông tin giao dịch thành công'
+    };
+  } catch (error) {
+    this.logger.error(`Lỗi khi xác minh giao dịch: ${orderCode}`, error);
+    throw error;
   }
+}
 
   /**
    * Lấy lịch sử thanh toán của học sinh
    * CHỈ LẤY CÁC PAYMENT ĐÃ COMPLETED
    */
-  async getPaymentHistory(studentId: string) {
-    try {
-      const payments = await this.prisma.payment.findMany({
-        where: {
-          studentId,
-          status: 'completed',
-        },
-        include: {
-          feeRecord: {
-            include: {
-              class: true,
-            },
-          },
-          parent: {
-            include: {
-              user: true,
-            },
-          },
-        },
-        orderBy: {
-          paidAt: 'desc',
-        },
-      });
+  // async getPaymentHistory(studentId: string) {
+  //   try {
+  //     const payments = await this.prisma.payment.findMany({
+  //       where: {
+  //         studentId,
+  //         status: 'completed',
+  //       },
+  //       include: {
+  //         feeRecord: {
+  //           include: {
+  //             class: true,
+  //           },
+  //         },
+  //         parent: {
+  //           include: {
+  //             user: true,
+  //           },
+  //         },
+  //       },
+  //       orderBy: {
+  //         paidAt: 'desc',
+  //       },
+  //     });
 
-      return {
-        data: payments,
-        message: 'Lấy lịch sử thanh toán thành công',
-      };
-    } catch (error) {
-      this.logger.error('Failed to get payment history', error);
-      throw error;
-    }
-  }
+  //     return {
+  //       data: payments,
+  //       message: 'Lấy lịch sử thanh toán thành công',
+  //     };
+  //   } catch (error) {
+  //     this.logger.error('Failed to get payment history', error);
+  //     throw error;
+  //   }
+  // }
 
   private generateVietQRContent(params: {
     accountNumber: string;
@@ -676,5 +623,34 @@ export class SepayService {
       );
       return false;
     }
+  }
+  // Tính toán phân bổ số tiền thanh toán cho từng FeeRecord
+  // Nếu 100k mà có 2 hóa đơn thì sẽ trả cho 1 hóa đơn nếu đủ thì sẽ thay status
+  // Nếu hóa đơn 1 70k thì hóa đơn 2 chỉ trả được 30k
+  private calculatePaymentAllocations(
+    feeRecords: any[],
+    totalPaidAmount: number,
+  ) {
+    const allocations = [];
+    let remainingAmount = totalPaidAmount;
+
+    for (const feeRecord of feeRecords) {
+      const remainingFeeAmount =
+        Number(feeRecord.totalAmount) - Number(feeRecord.paidAmount);
+
+      const amountToPay = Math.min(remainingAmount, remainingFeeAmount);
+
+      allocations.push({
+        feeRecordId: feeRecord.id,
+        studentId: feeRecord.studentId,
+        remainingFeeAmount,
+        amountToPay,
+      });
+
+      remainingAmount -= amountToPay;
+      if (remainingAmount <= 0) break;
+    }
+
+    return allocations;
   }
 }

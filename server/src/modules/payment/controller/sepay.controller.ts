@@ -48,10 +48,10 @@ export class SepayController {
    * Lấy lịch sử thanh toán của học sinh
    * GET /payment/history/:studentId
    */
-  @Get('history/:studentId')
-  async getPaymentHistory(@Param('studentId') studentId: string) {
-    return this.sepayService.getPaymentHistory(studentId);
-  }
+  // @Get('history/:studentId')
+  // async getPaymentHistory(@Param('studentId') studentId: string) {
+  //   return this.sepayService.getPaymentHistory(studentId);
+  // }
 
   @Post('sepay/test-email')
   async sendTestEmail() {

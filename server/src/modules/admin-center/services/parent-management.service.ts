@@ -827,6 +827,7 @@ export class ParentManagementService {
      */
     async getParentById(parentId: string) {
         try {
+            // Get parent without payments first
             const parent = await this.prisma.parent.findUnique({
                 where: { id: parentId },
                 include: {
@@ -874,27 +875,6 @@ export class ParentManagementService {
                                 }
                             }
                         }
-                    },
-                    payments: {
-                        include: {
-                            feeRecord: {
-                                include: {
-                                    feeStructure: true,
-                                    student: {
-                                        include: {
-                                            user: {
-                                                select: {
-                                                    fullName: true
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        orderBy: {
-                            paidAt: 'desc'
-                        }
                     }
                 }
             });
@@ -906,9 +886,62 @@ export class ParentManagementService {
                 };
             }
 
+            // Load payments with allocations to fee records
+            const payments = await this.prisma.payment.findMany({
+                where: { parentId: parent.id },
+                include: {
+                    feeRecordPayments: {
+                        include: {
+                            feeRecord: {
+                                include: {
+                                    class: {
+                                        select: {
+                                            name: true,
+                                            classCode: true
+                                        }
+                                    },
+                                    feeStructure: true,
+                                    student: {
+                                        include: {
+                                            user: {
+                                                select: { fullName: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { paidAt: 'desc' }
+            });
+
+            const formattedPayments = payments.map((payment) => ({
+                id: payment.id,
+                amount: Number(payment.amount),
+                status: payment.status,
+                reference: payment.reference,
+                paidAt: payment.paidAt,
+                notes: payment.notes,
+                transactionCode: payment.transactionCode,
+                method: payment.method || 'bank_transfer',
+                allocations: (payment.feeRecordPayments || []).map((frp) => ({
+                    id: frp.id,
+                    amount: Number(frp.amount),
+                    feeRecordId: frp.feeRecordId,
+                    notes: frp.notes,
+                    studentId: frp.feeRecord?.studentId,
+                    studentName: frp.feeRecord?.student?.user?.fullName,
+                    className: frp.feeRecord?.class?.name,
+                    classCode: frp.feeRecord?.class?.classCode,
+                    feeName: frp.feeRecord?.feeStructure?.name
+                }))
+            }));
+
             // Calculate payment statistics
-            const totalPaid = parent.payments.reduce((sum, payment) => 
-                sum + Number(payment.amount), 0
+            const totalPaid = formattedPayments.reduce(
+                (sum, p) => sum + (p.status === 'completed' ? Number(p.amount) : 0),
+                0
             );
 
             const pendingFees = await this.prisma.feeRecord.findMany({
@@ -932,25 +965,27 @@ export class ParentManagementService {
                 }
             });
 
-            const totalPending = pendingFees.reduce((sum, fee) => 
-                sum + Number(fee.amount) - Number(fee.paidAmount), 0
+            const totalPending = pendingFees.reduce(
+                (sum, fee) => sum + Number(fee.amount) - Number(fee.paidAmount),
+                0
             );
 
             return {
                 data: {
                     ...parent,
+                    payments: formattedPayments,
                     studentCount: parent.students.length,
                     paymentStats: {
                         totalPaid,
                         totalPending,
-                        paymentCount: parent.payments.length
+                        paymentCount: formattedPayments.length
                     },
                     pendingFees
                 },
                 message: 'Lấy thông tin phụ huynh thành công'
             };
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error getting parent by id:', error);
             throw new Error(`Error getting parent by id: ${error.message}`);
         }

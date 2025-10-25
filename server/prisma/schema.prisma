@@ -8,32 +8,32 @@ datasource db {
 }
 
 model User {
-  email                 String?                  @unique
-  password              String
-  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  fullName              String?                  @map("full_name")
-  isActive              Boolean                  @default(true) @map("is_active")
-  avatar                String?                  @map("avatar")
-  phone                 String?
-  role                  String
-  roleId                String?                  @map("role_id") @db.Uuid
-  updatedAt             DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  username              String                   @unique
-  id                    String                   @id @default(uuid()) @db.Uuid
-  gender                Gender?                  @map("gender")
-  birthDate             DateTime?                @map("birth_date") @db.Date
-  auditLogs             AuditLog[]               @relation("PerformedBy")
-  approvedLeaveRequests LeaveRequest[]           @relation("ApprovedBy")
-  createdLeaveRequests  LeaveRequest[]           @relation("CreatedBy")
-  createdSessionRequests SessionRequest[]       @relation("SessionRequestCreatedBy")
-  approvedSessionRequests SessionRequest[]      @relation("SessionRequestApprovedBy")
-  createdNotifications  Notification[]           @relation("CreatedBy")
-  parent                Parent?
-  gradedAssessments     StudentAssessmentGrade[] @relation("GradedBy")
-  student               Student?
-  teacher               Teacher?
-  sessions              UserSession[]
-  roleData              Role?                    @relation(fields: [roleId], references: [id])
+  email                   String?                  @unique
+  password                String
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  fullName                String?                  @map("full_name")
+  isActive                Boolean                  @default(true) @map("is_active")
+  avatar                  String?                  @map("avatar")
+  phone                   String?
+  role                    String
+  roleId                  String?                  @map("role_id") @db.Uuid
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  username                String                   @unique
+  id                      String                   @id @default(uuid()) @db.Uuid
+  gender                  Gender?                  @map("gender")
+  birthDate               DateTime?                @map("birth_date") @db.Date
+  auditLogs               AuditLog[]               @relation("PerformedBy")
+  approvedLeaveRequests   LeaveRequest[]           @relation("ApprovedBy")
+  createdLeaveRequests    LeaveRequest[]           @relation("CreatedBy")
+  createdSessionRequests  SessionRequest[]         @relation("SessionRequestCreatedBy")
+  approvedSessionRequests SessionRequest[]         @relation("SessionRequestApprovedBy")
+  createdNotifications    Notification[]           @relation("CreatedBy")
+  parent                  Parent?
+  gradedAssessments       StudentAssessmentGrade[] @relation("GradedBy")
+  student                 Student?
+  teacher                 Teacher?
+  sessions                UserSession[]
+  roleData                Role?                    @relation(fields: [roleId], references: [id])
 
   @@map("users")
 }
@@ -90,7 +90,6 @@ model Student {
   enrollments    Enrollment[]
   feeRecords     FeeRecord[]
   leaveRequests  LeaveRequest[]
-  payments       Payment[]
   grades         StudentAssessmentGrade[]
   classRequests  StudentClassRequest[]
   studentReports StudentReport[]
@@ -139,14 +138,14 @@ model Grade {
 }
 
 model Class {
-  id                String                @id @default(uuid()) @db.Uuid
-  roomId            String?               @map("room_id") @db.Uuid
-  teacherId         String?               @map("teacher_id") @db.Uuid
-  classCode         String?               @unique @map("class_code")
+  id                String    @id @default(uuid()) @db.Uuid
+  roomId            String?   @map("room_id") @db.Uuid
+  teacherId         String?   @map("teacher_id") @db.Uuid
+  classCode         String?   @unique @map("class_code")
   description       String?
-  feeStructureId    String?               @map("fee_structure_id") @db.Uuid
-  gradeId           String?               @map("grade_id") @db.Uuid
-  maxStudents       Int?                  @map("max_students")
+  feeStructureId    String?   @map("fee_structure_id") @db.Uuid
+  gradeId           String?   @map("grade_id") @db.Uuid
+  maxStudents       Int?      @map("max_students")
   name              String
   status            String    @default("draft") // draft, ready, active, completed, cancelled, deleted
   subjectId         String    @map("subject_id") @db.Uuid
@@ -218,6 +217,7 @@ model Room {
   classes         Class[]
   scheduleChanges ScheduleChange[]
   sessionRequests SessionRequest[]
+
   @@map("rooms")
 }
 
@@ -342,42 +342,54 @@ model FeeStructure {
 }
 
 model FeeRecord {
-  id             String       @id @default(uuid()) @db.Uuid
-  studentId      String       @map("student_id") @db.Uuid
-  feeStructureId String       @map("fee_structure_id") @db.Uuid
-  classId        String?      @map("class_id") @db.Uuid
-  amount         Decimal      @db.Decimal(12, 2)
-  dueDate        DateTime     @map("due_date") @db.Date
-  paidAmount     Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  status         String       @default("pending")
-  discount       Decimal?     @default(0) @db.Decimal(12, 2)
-  notes          String?
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  totalAmount    Decimal?     @map("total_amount") @db.Decimal(12, 2)
-  class          Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
-  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
-  student        Student      @relation(fields: [studentId], references: [id])
-  payments       Payment[]
+  id                String             @id @default(uuid()) @db.Uuid
+  studentId         String             @map("student_id") @db.Uuid
+  feeStructureId    String             @map("fee_structure_id") @db.Uuid
+  classId           String?            @map("class_id") @db.Uuid
+  amount            Decimal            @db.Decimal(12, 2)
+  dueDate           DateTime           @map("due_date") @db.Date
+  paidAmount        Decimal            @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status            String             @default("pending") // pending, partially_paid, paid, overdue:
+  // đang chờ, đã thanh toán một phần, đã thanh toán, quá hạn
+  discount          Decimal?           @default(0) @db.Decimal(12, 2)
+  notes             String?
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  totalAmount       Decimal?           @map("total_amount") @db.Decimal(12, 2)
+  class             Class?             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  feeStructure      FeeStructure       @relation(fields: [feeStructureId], references: [id])
+  student           Student            @relation(fields: [studentId], references: [id])
+  feeRecordPayments FeeRecordPayment[] // 1 Payment → N allocations
 
   @@index([classId], map: "idx_fee_records_class_id")
   @@map("fee_records")
 }
 
+model FeeRecordPayment {
+  id          String     @id @default(uuid()) @db.Uuid
+  paymentId   String?    @db.Uuid
+  feeRecordId String?    @db.Uuid
+  amount      Decimal    @db.Decimal(12, 2)
+  createdAt   DateTime   @default(now())
+  notes       String?
+  payment     Payment?   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  feeRecord   FeeRecord? @relation(fields: [feeRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, feeRecordId])
+}
+
 model Payment {
-  id              String         @id @default(uuid()) @db.Uuid
-  feeRecordId     String         @map("fee_record_id") @db.Uuid
-  studentId       String         @map("student_id") @db.Uuid
-  parentId        String?        @map("parent_id") @db.Uuid
-  amount          Decimal        @db.Decimal(12, 2)
-  status          String         @default("completed")
-  reference       String?
-  paidAt          DateTime       @default(now()) @map("paid_at") @db.Timestamptz(6)
-  notes           String?
-  transactionCode String?        @unique @map("transaction_code")
-  method          PaymentMethod? @map("payment_method")
-  feeRecord       FeeRecord      @relation(fields: [feeRecordId], references: [id])
-  parent          Parent?        @relation(fields: [parentId], references: [id])
-  student         Student        @relation(fields: [studentId], references: [id])
+  id                String             @id @default(uuid()) @db.Uuid
+  parentId          String?            @map("parent_id") @db.Uuid
+  amount            Decimal            @db.Decimal(12, 2)
+  status            String             @default("completed")
+  reference         String?
+  paidAt            DateTime           @default(now()) @map("paid_at") @db.Timestamptz(6)
+  notes             String?
+  transactionCode   String?            @unique @map("transaction_code")
+  method            PaymentMethod?     @map("payment_method")
+  feeRecordPayments FeeRecordPayment[] // N allocations từ nhiều Payment
+
+  parent Parent? @relation(fields: [parentId], references: [id])
 
   @@map("payments")
 }
@@ -457,27 +469,27 @@ model ScheduleChange {
 }
 
 model SessionRequest {
-  id               String    @id @default(uuid()) @db.Uuid
-  requestType      String    @map("request_type") // "makeup_session", "extra_session"
-  teacherId        String    @map("teacher_id") @db.Uuid
-  classId          String    @map("class_id") @db.Uuid
-  sessionDate      DateTime  @map("session_date") @db.Date
-  startTime        String    @map("start_time")
-  endTime          String    @map("end_time")
-  roomId           String?   @map("room_id") @db.Uuid
-  reason           String
-  notes            String?
-  status           String    @default("pending") // pending, approved, rejected
-  createdBy        String    @map("created_by") @db.Uuid
-  approvedBy       String?   @map("approved_by") @db.Uuid
-  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
-  teacher          Teacher   @relation(fields: [teacherId], references: [id])
-  class            Class     @relation(fields: [classId], references: [id])
-  room             Room?     @relation(fields: [roomId], references: [id])
-  createdByUser    User      @relation("SessionRequestCreatedBy", fields: [createdBy], references: [id])
-  approvedByUser   User?     @relation("SessionRequestApprovedBy", fields: [approvedBy], references: [id])
+  id          String    @id @default(uuid()) @db.Uuid
+  requestType String    @map("request_type") // "makeup_session", "extra_session"
+  teacherId   String    @map("teacher_id") @db.Uuid
+  classId     String    @map("class_id") @db.Uuid
+  sessionDate DateTime  @map("session_date") @db.Date
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  roomId      String?   @map("room_id") @db.Uuid
+  reason      String
+  notes       String?
+  status      String    @default("pending") // pending, approved, rejected
+  createdBy   String    @map("created_by") @db.Uuid
+  approvedBy  String?   @map("approved_by") @db.Uuid
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  teacher        Teacher @relation(fields: [teacherId], references: [id])
+  class          Class   @relation(fields: [classId], references: [id])
+  room           Room?   @relation(fields: [roomId], references: [id])
+  createdByUser  User    @relation("SessionRequestCreatedBy", fields: [createdBy], references: [id])
+  approvedByUser User?   @relation("SessionRequestApprovedBy", fields: [approvedBy], references: [id])
 
   @@map("session_requests")
 }
