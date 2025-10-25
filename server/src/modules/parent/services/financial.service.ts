@@ -93,71 +93,78 @@ export class FinancialService {
     }
 
     async getPaymentHistoryForParent(parentId: string) {
-    try {
-        if(!checkId(parentId)){
-            throw new HttpException({
-                message: 'ID phụ huynh không hợp lệ',
-            }, HttpStatus.BAD_REQUEST)
-        }
+        try {
+            if (!checkId(parentId)) {
+                throw new HttpException(
+                    { message: 'ID phụ huynh không hợp lệ' },
+                    HttpStatus.BAD_REQUEST
+                )
+            }
 
-        const payments = await this.prisma.payment.findMany({
-            where: {
-                parentId: parentId,
-            },
-            include: {
-                student: {
-                    include: {
-                        user: {
-                            select: {
-                                fullName: true,
+            const payments = await this.prisma.payment.findMany({
+                where: { parentId },
+                include: {
+                    feeRecordPayments: {
+                        include: {
+                            feeRecord: {
+                                include: {
+                                    class: {
+                                        select: {
+                                            name: true,
+                                            classCode: true,
+                                        }
+                                    },
+                                    feeStructure: {
+                                        select: {
+                                            name: true,
+                                        }
+                                    },
+                                    student: {
+                                        include: {
+                                            user: {
+                                                select: { fullName: true }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 },
-                feeRecord: {
-                    include: {
-                        class: {
-                            select: {
-                                name: true,
-                                classCode: true,
-                            }
-                        },
-                        feeStructure: {
-                            select: {
-                                name: true,
-                            }
-                        }
-                    }
-                }
-            },
-            orderBy: {
-                paidAt: 'desc'
-            }
-        })
+                orderBy: { paidAt: 'desc' }
+            })
 
-        const formattedPayments = payments.map(payment => ({
-            id: payment.id,
-            date: payment.paidAt.toLocaleDateString('vi-VN'),
-            amount: Number(payment.amount),
-            method: payment.method || 'bank_transfer',
-            status: payment.status,
-            transactionCode: payment.transactionCode,
-            reference: payment.reference,
-            notes: payment.notes,
-            feeRecordId: payment.feeRecordId,
-            studentId: payment.studentId,
-            studentName: payment.student?.user?.fullName,
-            className: payment.feeRecord?.class?.name,
-            classCode: payment.feeRecord?.class?.classCode,
-            feeName: payment.feeRecord?.feeStructure?.name,
-        }))
+            const formattedPayments = payments.map((payment: any) => ({
+                id: payment.id,
+                date: payment.paidAt?.toLocaleDateString('vi-VN'),
+                amount: Number(payment.amount),
+                method: payment.method || 'bank_transfer',
+                status: payment.status,
+                transactionCode: payment.transactionCode,
+                reference: payment.reference,
+                notes: payment.notes,
+                allocations: (payment.feeRecordPayments || []).map((frp: any) => ({
+                    feeRecordPaymentId: frp.id,
+                    amount: Number(frp.amount),
+                    feeRecordId: frp.feeRecordId,
+                    studentId: frp.feeRecord?.studentId,
+                    studentName: frp.feeRecord?.student?.user?.fullName,
+                    className: frp.feeRecord?.class?.name,
+                    classCode: frp.feeRecord?.class?.classCode,
+                    feeName: frp.feeRecord?.feeStructure?.name,
+                    notes: frp.notes,
+                }))
+            }))
 
-        return formattedPayments
-    } catch (error) {
-        throw new HttpException({
-            message: 'Lỗi khi lấy lịch sử thanh toán',
-            error: error.message,
-        }, HttpStatus.INTERNAL_SERVER_ERROR)
+            return formattedPayments
+        } catch (error: any) {
+            throw new HttpException(
+                {
+                    message: 'Lỗi khi lấy lịch sử thanh toán',
+                    error: error.message,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
     }
-}
 }

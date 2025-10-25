@@ -8,6 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SepayService } from './service/sepay.service';
 import { PrismaService } from '../../db/prisma.service';
 import { EmailNotificationService } from '../shared/services/email-notification.service';
+import { PaymentGateway } from './gateway/payment.gateway';
 
 // Controllers
 
@@ -32,10 +33,12 @@ import { EmailNotificationService } from '../shared/services/email-notification.
   ],
   providers: [
     SepayService,
+    PaymentGateway,
     PrismaService,
   ],
   exports: [
     SepayService,
+    PaymentGateway,
   ],
 })
 export class PaymentModule {}

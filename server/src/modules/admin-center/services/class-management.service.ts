@@ -2269,11 +2269,15 @@ export class ClassManagementService {
             const revenue = await this.prisma.payment.aggregate({
                 where: {
                     status: 'completed',
-                    feeRecord: {
-                        student: {
-                            enrollments: {
-                                some: {
-                                    classId: classId
+                    feeRecordPayments: {
+                        some: {
+                            feeRecord: {
+                                student: {
+                                    enrollments: {
+                                        some: {
+                                            classId: classId
+                                        }
+                                    }
                                 }
                             }
                         }

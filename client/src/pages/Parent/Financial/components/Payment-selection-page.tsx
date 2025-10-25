@@ -16,6 +16,7 @@ import Loading from "../../../../components/Loading/LoadingPage"
 import { toast } from "sonner"
 import { X, Download, Copy, CheckCircle, Clock } from "lucide-react"
 import { parentChildService } from "../../../../services/parent/child-management/child.service"
+import { paymentSocketService } from "../../../../services/socket/payment-socket.service"
 
 interface FeeRecordData {
   id: string
@@ -139,6 +140,65 @@ export function PaymentSelectionPage() {
     }
   }, [showQrModal, paymentData])
 
+  // Connect socket khi component mount
+  useEffect(() => {
+    paymentSocketService.connect()
+    
+    return () => {
+      paymentSocketService.disconnect()
+    }
+  }, [])
+
+  // Subscribe payment updates khi QR modal mở
+  useEffect(() => {
+    if (showQrModal && paymentData?.orderCode) {
+      paymentSocketService.subscribeToPayment(
+        paymentData.orderCode,
+        {
+          onSuccess: (data) => {
+            // ✅ Thanh toán thành công
+            toast.success('Thanh toán thành công! 🎉', {
+              description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
+              duration: 5000,
+            })
+            
+            // Invalidate queries để refresh data
+            queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
+            queryClient.invalidateQueries({ queryKey: ['payment-history'] })
+            
+            // Đóng modal
+            handleCloseModal()
+            
+            // Clear selected fees
+            setSelectedFees([])
+          },
+          onFailure: (data) => {
+            // ❌ Thanh toán thất bại
+            toast.error('Thanh toán thất bại', {
+              description: data.reason || 'Vui lòng thử lại',
+            })
+            
+            handleCloseModal()
+          },
+          onExpired: () => {
+            // ⏰ QR code hết hạn
+            toast.warning('Mã QR đã hết hạn', {
+              description: 'Vui lòng tạo mã mới',
+            })
+            
+            handleCloseModal()
+          }
+        }
+      )
+    }
+
+    return () => {
+      if (paymentData?.orderCode) {
+        paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
+      }
+    }
+  }, [showQrModal, paymentData?.orderCode])
+
   const formatTime = (milliseconds: number): string => {
     const totalSeconds = Math.floor(milliseconds / 1000)
     const minutes = Math.floor(totalSeconds / 60)
@@ -210,6 +270,12 @@ export function PaymentSelectionPage() {
   }
 
   const handleCloseModal = () => {
+    // Unsubscribe trước khi đóng
+    if (paymentData?.orderCode) {
+      paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
+    }
+
+    // Cleanup timers
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
@@ -219,8 +285,6 @@ export function PaymentSelectionPage() {
       countdownRef.current = null
     }
 
-    queryClient.invalidateQueries({ queryKey: ['qrCode'] })
-    
     setShowQrModal(false)
     setPaymentData(null)
     setCopied(false)
