@@ -404,22 +404,34 @@ export default function ScheduleTab({
             const daySessions = getSessionsForDay(sessions, day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
             const isCurrentDay = isToday(day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
             const hasMultipleSessions = daySessions.length > 1
+            const hasHoliday = daySessions.some(s => s.status === 'day_off')
 
             return (
               <div
                 key={day}
-                className={`p-2 min-h-[120px] border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors ${
-                  isCurrentDay ? "bg-blue-50 border-blue-300" : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900"
-                }`}
+                className={`p-2 min-h-[120px] border transition-colors ${
+                  hasHoliday 
+                    ? "bg-orange-50/50 border-orange-200 dark:bg-orange-950/20" 
+                    : isCurrentDay 
+                      ? "bg-blue-50 border-blue-300" 
+                      : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                } ${!hasHoliday && "cursor-pointer"}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isCurrentDay ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900 dark:text-white"
-                    }`}
-                  >
-                    {day}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`text-sm font-medium ${
+                        hasHoliday
+                          ? "text-orange-600 font-bold"
+                          : isCurrentDay 
+                            ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" 
+                            : "text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      {day}
+                    </span>
+                    {hasHoliday && <span className="text-xs">🏖️</span>}
+                  </div>
                   <div className="flex items-center space-x-1">
                     {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
                     {hasMultipleSessions && (
@@ -436,21 +448,22 @@ export default function ScheduleTab({
                     return (
                       <div
                         key={session.id}
-                        className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${
+                        className={`text-xs p-2 rounded transition-all ${
                           isDayOff 
-                            ? 'bg-orange-100 border border-orange-300 text-orange-700' 
-                            : getSubjectColor(session.subject)
+                            ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                            : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
                         }`}
                         title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => handleSessionClick(session)}
+                        onClick={() => !isDayOff && handleSessionClick(session)}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-medium truncate">
-                            {isDayOff ? '🏖️ Nghỉ lễ' : session.title}
+                          <span className="font-medium truncate flex items-center gap-1">
+                            {isDayOff && <span className="text-base">🏖️</span>}
+                            <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
                           </span>
-                          {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                          {session.hasAlert && !isDayOff && <AlertTriangle className="w-3 h-3 text-orange-300" />}
                         </div>
-                        <div className="text-xs opacity-90 truncate">
+                        <div className="text-xs opacity-90 truncate mt-0.5">
                           {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
                         </div>
                       </div>
@@ -558,24 +571,25 @@ export default function ScheduleTab({
                       return (
                         <div
                           key={session.id}
-                          className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${
+                          className={`absolute inset-1 rounded text-xs p-1 transition-all ${
                             isDayOff 
-                              ? 'bg-orange-100 border border-orange-300 text-orange-700' 
-                              : getSubjectColor(session.subject)
+                              ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                              : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
                           }`}
                           title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
-                          onClick={() => handleSessionClick(session)}
+                          onClick={() => !isDayOff && handleSessionClick(session)}
                           style={{
                             top: `${sessionIndex * 20}px`,
                             height: '36px',
                             fontSize: '12px'
                           }}
                         >
-                          <div className="truncate font-medium">
-                            {isDayOff ? '🏖️ Nghỉ lễ' : session.title}
+                          <div className="truncate font-medium flex items-center gap-0.5">
+                            {isDayOff && <span>🏖️</span>}
+                            <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
                           </div>
-                          <div className="truncate opacity-90">
-                            {isDayOff ? 'Ngày nghỉ' : session.time}
+                          <div className="truncate opacity-90 text-[10px]">
+                            {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
                           </div>
                         </div>
                       );

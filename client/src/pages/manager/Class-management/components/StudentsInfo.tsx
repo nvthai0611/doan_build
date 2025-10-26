@@ -430,7 +430,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         const isActive = enrollment?.student?.user?.isActive === true;
         return (
           <div className="flex items-center gap-2">
-            <Switch
+            <Switch className='bg-blue-200'
               checked={isActive}
               onCheckedChange={(checked) => {
                 updateStudentStatusMutation.mutate({
