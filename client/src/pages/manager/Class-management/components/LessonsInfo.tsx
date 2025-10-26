@@ -295,20 +295,20 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         <span className="text-sm">{session.notAttendedCount || 0}</span>
       )
     },
-    {
-      key: 'rating',
-      header: 'Đánh giá',
-      width: '150px',
-      align: 'center',
-      render: (session: any) => (
-        <div className="flex items-center gap-1">
-          <div className="flex">
-            {renderStars(session.rating || 0)}
-                    </div>
-          <span className="text-sm text-gray-500">({session.rating || 0})</span>
-                    </div>
-      )
-    },
+    // {
+    //   key: 'rating',
+    //   header: 'Đánh giá',
+    //   width: '150px',
+    //   align: 'center',
+    //   render: (session: any) => (
+    //     <div className="flex items-center gap-1">
+    //       <div className="flex">
+    //         {renderStars(session.rating || 0)}
+    //                 </div>
+    //       <span className="text-sm text-gray-500">({session.rating || 0})</span>
+    //                 </div>
+    //   )
+    // },
     {
       key: 'actions',
       header: '',

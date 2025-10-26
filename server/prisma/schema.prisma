@@ -746,6 +746,7 @@ model HolidayPeriod {
   @@map("holiday_periods")
 }
 
+// xây gựng hệ thống coding
 model HolidayPeriodSession {
   holidayPeriodId String        @map("holiday_period_id") @db.Uuid
   sessionId       String        @map("session_id") @db.Uuid
