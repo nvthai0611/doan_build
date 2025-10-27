@@ -2,7 +2,7 @@
 export type ViewType = "month" | "week" | "day" | "list"
 
 // Session status
-export type SessionStatus = "scheduled" | "completed" | "cancelled"
+export type SessionStatus = "happening" | "end" | "has_not_happened" | "day_off" | "teacher_absent" | "postponed"
 
 // Student status
 export type StudentStatus = "present" | "absent" | "late"
@@ -45,9 +45,12 @@ export const SUBJECT_COLORS: { [key: string]: string } = {
 
 // Status colors mapping
 export const STATUS_COLORS: { [key: string]: string } = {
-  "completed": "bg-green-100 text-green-800 border-green-200",
-  "cancelled": "bg-red-100 text-red-800 border-red-200", 
-  "scheduled": "bg-blue-100 text-blue-800 border-blue-200",
+  "happening": "bg-green-100 text-green-800 border-green-200",
+  "end": "bg-gray-100 text-gray-800 border-gray-200",
+  "has_not_happened": "bg-blue-100 text-blue-800 border-blue-200",
+  "day_off": "bg-orange-100 text-orange-800 border-orange-200",
+  "teacher_absent": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "postponed": "bg-purple-100 text-purple-800 border-purple-200",
 } as const
 
 // Student status text mapping

@@ -53,6 +53,7 @@ import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
 import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
 import FinancialPage from "../pages/Parent/Financial/Financial-Home";
 import {ChildrenClasses} from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
+import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/TeacherFeedback";
 
 export const privateRoutes = (
   <>
@@ -90,6 +91,7 @@ export const privateRoutes = (
         <Route path="requests/leave-requests" element={<LeaveRequestManagement />} />
         <Route path="requests/session-requests" element={<SessionRequestManagement />} />
         <Route path="requests/change-schedule-requests" element={<ChangeScheduleRequestManagement />} />
+        <Route path="feedback" element={<FeedbackTeacher />} />
       </Route>
 
       {/* Giáo viên */}

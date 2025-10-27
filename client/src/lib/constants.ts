@@ -178,20 +178,23 @@ export const ACTIVE_TO_COMPLETED_CONDITIONS = {
 export enum SessionStatus {
   HAPPENING = 'happening',    // Đang diễn ra
   END = 'end',    // Đã hoàn thành
-  HAS_NOT_HAPPENED = 'has_not_happened',    // Đã hủy
+  HAS_NOT_HAPPENED = 'has_not_happened',    // Chưa diễn ra
+  DAY_OFF = 'day_off',    // Nghỉ lễ
 
 }
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.HAPPENING]: 'Đang diễn ra',
   [SessionStatus.END]: 'Đã hoàn thành',
-  [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra'
+  [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
+  [SessionStatus.DAY_OFF]: 'Nghỉ lễ'
 }
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
   [SessionStatus.HAPPENING]: 'border-green-500 text-green-700 bg-green-50',
   [SessionStatus.END]: 'border-red-500 text-red-700 bg-red-50',
-  [SessionStatus.HAS_NOT_HAPPENED]: 'border-gray-500 text-gray-700 bg-gray-50'
+  [SessionStatus.HAS_NOT_HAPPENED]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [SessionStatus.DAY_OFF]: 'border-orange-500 text-orange-700 bg-orange-50'
 }
 
 // ==================== SESSION TYPE ====================

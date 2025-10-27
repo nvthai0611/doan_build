@@ -45,7 +45,13 @@ export class HolidaysSettingService {
     const created = await this.prisma.holidayPeriod.create({
       data: { startDate: startAt, endDate: endAt, note, isActive: isActive ?? true },
     });
-    return { data: created, message: 'Tạo kỳ nghỉ thành công' };
+
+    // Auto-apply: Tự động đánh dấu các sessions bị ảnh hưởng
+    if (isActive !== false) {
+      await this.apply(created.id);
+    }
+
+    return { data: created, message: 'Tạo kỳ nghỉ và đánh dấu các buổi học thành công' };
   }
 
   async update(id: string, dto: UpdateHolidayDto) {
@@ -80,8 +86,59 @@ export class HolidaysSettingService {
   async remove(id: string) {
     const existed = await this.prisma.holidayPeriod.findUnique({ where: { id } });
     if (!existed) throw new NotFoundException('Holiday period not found');
-    await this.prisma.holidayPeriod.delete({ where: { id } });
-    return { data: true, message: 'Xóa kỳ nghỉ thành công' };
+
+    // Lấy các sessions bị ảnh hưởng để revert status
+    const affectedLinks = await this.prisma.holidayPeriodSession.findMany({
+      where: { holidayPeriodId: id },
+      select: { sessionId: true },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Revert status của sessions về 'has_not_happened' (hoặc check theo thời gian)
+      if (affectedLinks.length > 0) {
+        const now = new Date();
+        const sessionIds = affectedLinks.map(link => link.sessionId);
+
+        // Lấy thông tin sessions để xác định status phù hợp
+        const sessions = await tx.classSession.findMany({
+          where: { id: { in: sessionIds } },
+          select: { id: true, sessionDate: true, startTime: true },
+        });
+
+        // Update status dựa trên thời gian
+        for (const session of sessions) {
+          const sessionDateTime = new Date(session.sessionDate);
+          // Parse startTime (format: "HH:mm")
+          const [hours, minutes] = session.startTime.split(':').map(Number);
+          sessionDateTime.setHours(hours, minutes);
+
+          let newStatus = 'has_not_happened';
+          if (sessionDateTime < now) {
+            // Session đã qua → 'end'
+            newStatus = 'end';
+          } else {
+            // Session chưa diễn ra → 'has_not_happened'
+            newStatus = 'has_not_happened';
+          }
+
+          await tx.classSession.update({
+            where: { id: session.id },
+            data: {
+              status: newStatus,
+              cancellationReason: null,
+            },
+          });
+        }
+      }
+
+      // 2. Xóa holiday period (cascade sẽ xóa links)
+      await tx.holidayPeriod.delete({ where: { id } });
+    });
+
+    return { 
+      data: { revertedSessions: affectedLinks.length }, 
+      message: `Xóa kỳ nghỉ và khôi phục ${affectedLinks.length} buổi học thành công` 
+    };
   }
 
   async apply(id: string) {
@@ -103,18 +160,38 @@ export class HolidaysSettingService {
       return { data: { created: 0 }, message: 'Không có phiên học để liên kết' };
     }
 
-    // Tạo các link vào bảng join, tránh trùng bằng upsert theo composite key
-    const created = await this.prisma.$transaction(
-      sessions.map(s =>
-        this.prisma.holidayPeriodSession.upsert({
-          where: { holidayPeriodId_sessionId: { holidayPeriodId: id, sessionId: s.id } },
-          create: { holidayPeriodId: id, sessionId: s.id },
-          update: {},
-        })
-      )
-    );
+    // Transaction: Update status + Tạo links
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Update status của tất cả sessions thành 'day_off'
+      await tx.classSession.updateMany({
+        where: {
+          id: { in: sessions.map(s => s.id) },
+        },
+        data: {
+          status: 'day_off',
+          cancellationReason: holiday.note,
+        },
+      });
 
-    return { data: { created: created.length }, message: 'Liên kết kỳ nghỉ vào phiên học thành công' };
+      // 2. Tạo các link vào bảng join
+      await Promise.all(
+        sessions.map(s =>
+          tx.holidayPeriodSession.upsert({
+            where: { holidayPeriodId_sessionId: { holidayPeriodId: id, sessionId: s.id } },
+            create: { holidayPeriodId: id, sessionId: s.id },
+            update: {},
+          })
+        )
+      );
+    });
+
+    return { 
+      data: { 
+        affectedSessions: sessions.length,
+        holidayNote: holiday.note,
+      }, 
+      message: `Đã đánh dấu ${sessions.length} buổi học là ngày nghỉ` 
+    };
   }
 
   /**

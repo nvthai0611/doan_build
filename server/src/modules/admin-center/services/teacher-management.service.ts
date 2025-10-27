@@ -632,7 +632,7 @@ export class TeacherManagementService {
     }
 
     if (totalStudents === 0) {
-      warnings.push('*Chưa có học viên nào đăng ký buổi học này*');
+      warnings.push('*Chưa có học viên nào điểm danh buổi học này*');
     }
 
     return warnings;

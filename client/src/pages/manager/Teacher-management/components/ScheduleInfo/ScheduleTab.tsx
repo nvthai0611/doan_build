@@ -210,7 +210,7 @@ export default function ScheduleTab({
    * Action: Lưu session vào state và mở dialog để hiển thị chi tiết
    */
   const handleSessionClick = (session: TeachingSession) => {
-    setSelectedSession(session)
+    setSelectedSession(session);
     setIsDialogOpen(true)
   }
 
@@ -404,22 +404,34 @@ export default function ScheduleTab({
             const daySessions = getSessionsForDay(sessions, day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
             const isCurrentDay = isToday(day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
             const hasMultipleSessions = daySessions.length > 1
+            const hasHoliday = daySessions.some(s => s.status === 'day_off')
 
             return (
               <div
                 key={day}
-                className={`p-2 min-h-[120px] border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors ${
-                  isCurrentDay ? "bg-blue-50 border-blue-300" : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900"
-                }`}
+                className={`p-2 min-h-[120px] border transition-colors ${
+                  hasHoliday 
+                    ? "bg-orange-50/50 border-orange-200 dark:bg-orange-950/20" 
+                    : isCurrentDay 
+                      ? "bg-blue-50 border-blue-300" 
+                      : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                } ${!hasHoliday && "cursor-pointer"}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isCurrentDay ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900 dark:text-white"
-                    }`}
-                  >
-                    {day}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`text-sm font-medium ${
+                        hasHoliday
+                          ? "text-orange-600 font-bold"
+                          : isCurrentDay 
+                            ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" 
+                            : "text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      {day}
+                    </span>
+                    {hasHoliday && <span className="text-xs">🏖️</span>}
+                  </div>
                   <div className="flex items-center space-x-1">
                     {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
                     {hasMultipleSessions && (
@@ -431,20 +443,32 @@ export default function ScheduleTab({
                 </div>
 
                 <div className="space-y-1 max-h-20 overflow-y-auto">
-                  {daySessions.slice(0, 3).map((session) => (
-                    <div
-                      key={session.id}
-                      className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                      title={`${session.title} - ${session.time} - ${session.room}`}
-                      onClick={() => handleSessionClick(session)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">{session.title}</span>
-                        {session.hasAlert && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                  {daySessions.slice(0, 3).map((session) => {
+                    const isDayOff = session.status === 'day_off';
+                    return (
+                      <div
+                        key={session.id}
+                        className={`text-xs p-2 rounded transition-all ${
+                          isDayOff 
+                            ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                            : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
+                        }`}
+                        title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                        onClick={() => !isDayOff && handleSessionClick(session)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium truncate flex items-center gap-1">
+                            {isDayOff && <span className="text-base">🏖️</span>}
+                            <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
+                          </span>
+                          {session.hasAlert && !isDayOff && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                        </div>
+                        <div className="text-xs opacity-90 truncate mt-0.5">
+                          {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
+                        </div>
                       </div>
-                      <div className="text-xs opacity-90 truncate">{session.time}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {daySessions.length > 3 && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">+{daySessions.length - 3} buổi khác</div>
                   )}
@@ -542,22 +566,34 @@ export default function ScheduleTab({
                     key={`${hour}-${dayIndex}`}
                     className="min-h-[60px] border-b border-r bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-900 transition-colors relative"
                   >
-                    {hourSessions.map((session, sessionIndex) => (
-                      <div
-                        key={session.id}
-                        className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getSubjectColor(session.subject)}`}
-                        title={`${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => handleSessionClick(session)}
-                        style={{
-                          top: `${sessionIndex * 20}px`,
-                          height: '36px',
-                          fontSize: '12px'
-                        }}
-                      >
-                        <div className="truncate font-medium">{session.title}</div>
-                        <div className="truncate opacity-90">{session.time}</div>
-                      </div>
-                    ))}
+                    {hourSessions.map((session, sessionIndex) => {
+                      const isDayOff = session.status === 'day_off';
+                      return (
+                        <div
+                          key={session.id}
+                          className={`absolute inset-1 rounded text-xs p-1 transition-all ${
+                            isDayOff 
+                              ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                              : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
+                          }`}
+                          title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                          onClick={() => !isDayOff && handleSessionClick(session)}
+                          style={{
+                            top: `${sessionIndex * 20}px`,
+                            height: '36px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          <div className="truncate font-medium flex items-center gap-0.5">
+                            {isDayOff && <span>🏖️</span>}
+                            <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
+                          </div>
+                          <div className="truncate opacity-90 text-[10px]">
+                            {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )
               })}
@@ -661,14 +697,16 @@ export default function ScheduleTab({
                     <div className="flex items-center space-x-2">
                       {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
                       <Badge
-                        variant={session.status === "completed" ? "default" : "secondary"}
+                        variant={session.status === "end" ? "default" : session.status === "day_off" ? "outline" : "secondary"}
                         className={getStatusColor(session.status)}
                       >
-                        {session.status === "completed"
+                        {session.status === "end"
                           ? "Hoàn thành"
-                          : session.status === "cancelled"
-                            ? "Hủy"
-                            : "Đã lên lịch"}
+                          : session.status === "postponed"
+                            ? "Tạm Hoãn"
+                            : session.status === "day_off"
+                              ? "Nghỉ lễ"
+                              : "Đã lên lịch"}
                       </Badge>
                     </div>
                   </div>
