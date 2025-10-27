@@ -2,6 +2,8 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import hash from '../../../utils/hasing.util';
 import { generateQNCode } from '../../../utils/function.util';
+import { templateParentStudentAccount } from 'src/modules/shared/template-email/template-parent-student-account';
+import emailUtil from '../../../utils/email.util';
 
 @Injectable()
 export class ParentManagementService {
@@ -304,6 +306,28 @@ export class ParentManagementService {
                     students: createdStudents
                 };
             });
+
+            // Gửi email thông báo tài khoản cho parent (nếu có email)
+            if (result.parent.user.email) {
+                const parentInfo = {
+                    fullName: result.parent.user.fullName,
+                    username: result.parent.user.username,
+                    email: result.parent.user.email,
+                    password: defaultPassword
+                };
+                const studentsInfo = result.students.map((s: any) => ({
+                    fullName: s.user.fullName,
+                    username: s.user.username,
+                    email: s.user.email,
+                    password: s.user.password
+                }));
+
+                await emailUtil(
+                    result.parent.user.email,
+                    'Thông tin tài khoản phụ huynh và học sinh QNE',
+                    templateParentStudentAccount(parentInfo, studentsInfo)
+                );
+            }
 
             // Return success response
             return {
