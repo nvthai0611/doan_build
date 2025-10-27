@@ -1,9 +1,28 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsDateString, IsEnum, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
   OTHER = 'OTHER'
+}
+
+export class ChildDto {
+  @ApiProperty({ description: 'Họ và tên con', example: 'Nguyễn Văn B' })
+  @IsString()
+  @IsNotEmpty({ message: 'Họ và tên con không được để trống' })
+  fullName: string;
+
+  @ApiProperty({ description: 'Ngày sinh con', example: '2015-01-01' })
+  @IsDateString({}, { message: 'Ngày sinh không hợp lệ' })
+  @IsNotEmpty({ message: 'Ngày sinh con không được để trống' })
+  dateOfBirth: string;
+
+  @ApiProperty({ description: 'Giới tính', enum: Gender, example: 'MALE' })
+  @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
+  @IsNotEmpty({ message: 'Giới tính con không được để trống' })
+  gender: Gender;
 }
 
 export class RegisterParentDto {
@@ -35,5 +54,15 @@ export class RegisterParentDto {
   @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
   @IsNotEmpty({ message: 'Giới tính không được để trống' })
   gender: Gender;
-}
 
+  @ApiProperty({ 
+    description: 'Danh sách con (ít nhất 1 con)', 
+    type: [ChildDto],
+    example: [{ fullName: 'Nguyễn Văn B', dateOfBirth: '2015-01-01', gender: 'MALE' }]
+  })
+  @IsArray({ message: 'Danh sách con phải là một mảng' })
+  @ValidateNested({ each: true })
+  @Type(() => ChildDto)
+  @ArrayMinSize(1, { message: 'Phải có ít nhất 1 con' })
+  children: ChildDto[];
+}

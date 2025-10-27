@@ -25,10 +25,10 @@ model User {
   auditLogs               AuditLog[]               @relation("PerformedBy")
   approvedLeaveRequests   LeaveRequest[]           @relation("ApprovedBy")
   createdLeaveRequests    LeaveRequest[]           @relation("CreatedBy")
-  createdSessionRequests  SessionRequest[]         @relation("SessionRequestCreatedBy")
-  approvedSessionRequests SessionRequest[]         @relation("SessionRequestApprovedBy")
   createdNotifications    Notification[]           @relation("CreatedBy")
   parent                  Parent?
+  approvedSessionRequests SessionRequest[]         @relation("SessionRequestApprovedBy")
+  createdSessionRequests  SessionRequest[]         @relation("SessionRequestCreatedBy")
   gradedAssessments       StudentAssessmentGrade[] @relation("GradedBy")
   student                 Student?
   teacher                 Teacher?
@@ -67,14 +67,14 @@ model Teacher {
   reportedIncidents   IncidentReport[]
   replacementSessions LeaveRequestAffectedSession[]
   leaveRequests       LeaveRequest[]
-  sessionRequests     SessionRequest[]
   uploadedMaterials   Material[]                    @relation("UploadedBy")
   payrolls            Payroll[]
+  sessionRequests     SessionRequest[]
   recordedAttendances StudentSessionAttendance[]    @relation("RecordedBy")
+  replacementFor      TeacherClassTransfer[]        @relation("TeacherClassTransferReplacement")
+  classTransfers      TeacherClassTransfer[]        @relation("TeacherClassTransferTeacher")
   documents           TeacherDocument[]
   feedbacks           TeacherFeedback[]
-  classTransfers      TeacherClassTransfer[]        @relation("TeacherClassTransferTeacher")
-  replacementFor      TeacherClassTransfer[]        @relation("TeacherClassTransferReplacement")
   school              School?                       @relation(fields: [schoolId], references: [id])
   user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -98,10 +98,10 @@ model Student {
   classRequests  StudentClassRequest[]
   studentReports StudentReport[]
   attendances    StudentSessionAttendance[]
-  feedbacks      TeacherFeedback[]
   parent         Parent?                    @relation(fields: [parentId], references: [id])
   school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedbacks      TeacherFeedback[]
 
   @@map("students")
 }
@@ -143,52 +143,48 @@ model Grade {
 }
 
 model Class {
-  id                String    @id @default(uuid()) @db.Uuid
-  roomId            String?   @map("room_id") @db.Uuid
-  teacherId         String?   @map("teacher_id") @db.Uuid
-  classCode         String?   @unique @map("class_code")
+  id                String                 @id @default(uuid()) @db.Uuid
+  roomId            String?                @map("room_id") @db.Uuid
+  teacherId         String?                @map("teacher_id") @db.Uuid
+  classCode         String?                @unique @map("class_code")
   description       String?
-  feeStructureId    String?   @map("fee_structure_id") @db.Uuid
-  gradeId           String?   @map("grade_id") @db.Uuid
-  maxStudents       Int?      @map("max_students")
+  feeStructureId    String?                @map("fee_structure_id") @db.Uuid
+  gradeId           String?                @map("grade_id") @db.Uuid
+  maxStudents       Int?                   @map("max_students")
   name              String
-  status            String    @default("draft") // draft, ready, active, completed, cancelled, deleted
-  subjectId         String    @map("subject_id") @db.Uuid
-  recurringSchedule Json?     @map("recurring_schedule")
-  academicYear      String?   @map("academic_year")
-  expectedStartDate DateTime? @map("expected_start_date") @db.Date
-  actualStartDate   DateTime? @map("actual_start_date") @db.Date
-  actualEndDate     DateTime? @map("actual_end_date") @db.Date
-  password          String?   @map("password") // Password bảo vệ lớp học (optional)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  status            String                 @default("draft")
+  subjectId         String                 @map("subject_id") @db.Uuid
+  recurringSchedule Json?                  @map("recurring_schedule")
+  academicYear      String?                @map("academic_year")
+  expectedStartDate DateTime?              @map("expected_start_date") @db.Date
+  actualStartDate   DateTime?              @map("actual_start_date") @db.Date
+  actualEndDate     DateTime?              @map("actual_end_date") @db.Date
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  feeAmount         Decimal?               @map("fee_amount") @db.Decimal(12, 2)
+  feePeriod         String?                @map("fee_period")
+  feeCurrency       String?                @default("VND") @map("fee_currency")
+  feeLockedAt       DateTime?              @map("fee_locked_at") @db.Timestamptz(6)
+  password          String?                @map("password")
+  assessments       Assessment[]
+  feeHistories      ClassFeeHistory[]
+  sessions          ClassSession[]
+  feeStructure      FeeStructure?          @relation(fields: [feeStructureId], references: [id])
+  grade             Grade?                 @relation(fields: [gradeId], references: [id])
+  room              Room?                  @relation(fields: [roomId], references: [id])
+  subject           Subject                @relation(fields: [subjectId], references: [id])
+  teacher           Teacher?               @relation(fields: [teacherId], references: [id])
+  enrollments       Enrollment[]
+  feeRecords        FeeRecord[]
+  incidentReports   IncidentReport[]
+  materials         Material[]
+  scheduleChanges   ScheduleChange[]
+  sessionRequests   SessionRequest[]
+  classRequests     StudentClassRequest[]
+  transfersFrom     TeacherClassTransfer[] @relation("TeacherClassTransferFromClass")
+  transfersTo       TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
+  feedbacks         TeacherFeedback[]
 
-  // NEW: Snapshot học phí trên lớp
-  feeAmount   Decimal?  @map("fee_amount") @db.Decimal(12, 2)
-  feePeriod   String?   @map("fee_period")
-  feeCurrency String?   @default("VND") @map("fee_currency")
-  feeLockedAt DateTime? @map("fee_locked_at") @db.Timestamptz(6)
-
-  // Relations
-  assessments     Assessment[]
-  sessions        ClassSession[]
-  feeStructure    FeeStructure?         @relation(fields: [feeStructureId], references: [id])
-  room            Room?                 @relation(fields: [roomId], references: [id])
-  teacher         Teacher?              @relation(fields: [teacherId], references: [id])
-  subject         Subject               @relation(fields: [subjectId], references: [id])
-  enrollments     Enrollment[]
-  materials       Material[]
-  scheduleChanges ScheduleChange[]
-  sessionRequests SessionRequest[]
-  classRequests   StudentClassRequest[]
-  grade           Grade?                @relation(fields: [gradeId], references: [id])
-  incidentReports IncidentReport[]
-  feeRecords      FeeRecord[] // NEW: Quan hệ với FeeRecord
-  feeHistories    ClassFeeHistory[] // NEW: Lịch sử thay đổi học phí
-  feedbacks       TeacherFeedback[]
-  transfersFrom   TeacherClassTransfer[] @relation("TeacherClassTransferFromClass")
-  transfersTo     TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
-  // feedback
   @@map("classes")
 }
 
@@ -201,10 +197,10 @@ model ClassSession {
   startTime                    String                        @map("start_time")
   endTime                      String                        @map("end_time")
   roomId                       String?                       @map("room_id") @db.Uuid
-  status                       String                        @default("happening") // happening, has_not_happened, end, day_off, cancelled, teacher_absent, postponed
-  cancellationReason           String?                       @map("cancellation_reason") @db.Text
+  status                       String                        @default("happening")
   createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   notes                        String?
+  cancellationReason           String?                       @map("cancellation_reason")
   class                        Class                         @relation(fields: [classId], references: [id], onDelete: Cascade)
   room                         Room?                         @relation(fields: [roomId], references: [id])
   teacher                      Teacher?                      @relation(fields: [teacherId], references: [id])
@@ -235,7 +231,7 @@ model Enrollment {
   studentId        String           @map("student_id") @db.Uuid
   classId          String           @map("class_id") @db.Uuid
   enrolledAt       DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
-  status           String           @default("not_been_updated") // not_been_updated, studying, stopped, graduated, withdrawn 
+  status           String           @default("not_been_updated")
   semester         String?
   completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
   finalGrade       String?          @map("final_grade")
@@ -254,7 +250,7 @@ model StudentClassRequest {
   studentId   String    @map("student_id") @db.Uuid
   classId     String    @map("class_id") @db.Uuid
   message     String?
-  status      String    @default("pending") // pending, accepted, rejected
+  status      String    @default("pending")
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   class       Class     @relation(fields: [classId], references: [id])
@@ -267,7 +263,7 @@ model StudentSessionAttendance {
   id                BigInt       @id @default(autoincrement())
   sessionId         String       @map("session_id") @db.Uuid
   studentId         String       @map("student_id") @db.Uuid
-  status            String       // present, adsent,...
+  status            String
   note              String?
   recordedBy        String       @map("recorded_by") @db.Uuid
   recordedAt        DateTime     @default(now()) @map("recorded_at") @db.Timestamptz(6)
@@ -358,16 +354,15 @@ model FeeRecord {
   amount            Decimal            @db.Decimal(12, 2)
   dueDate           DateTime           @map("due_date") @db.Date
   paidAmount        Decimal            @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  status            String             @default("pending") // pending, partially_paid, paid, overdue:
-  // đang chờ, đã thanh toán một phần, đã thanh toán, quá hạn
+  status            String             @default("pending")
   discount          Decimal?           @default(0) @db.Decimal(12, 2)
   notes             String?
   createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   totalAmount       Decimal?           @map("total_amount") @db.Decimal(12, 2)
+  feeRecordPayments FeeRecordPayment[]
   class             Class?             @relation(fields: [classId], references: [id], onDelete: Cascade)
   feeStructure      FeeStructure       @relation(fields: [feeStructureId], references: [id])
   student           Student            @relation(fields: [studentId], references: [id])
-  feeRecordPayments FeeRecordPayment[] // 1 Payment → N allocations
 
   @@index([classId], map: "idx_fee_records_class_id")
   @@map("fee_records")
@@ -380,8 +375,8 @@ model FeeRecordPayment {
   amount      Decimal    @db.Decimal(12, 2)
   createdAt   DateTime   @default(now())
   notes       String?
-  payment     Payment?   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   feeRecord   FeeRecord? @relation(fields: [feeRecordId], references: [id], onDelete: Cascade)
+  payment     Payment?   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@unique([paymentId, feeRecordId])
 }
@@ -396,9 +391,8 @@ model Payment {
   notes             String?
   transactionCode   String?            @unique @map("transaction_code")
   method            PaymentMethod?     @map("payment_method")
-  feeRecordPayments FeeRecordPayment[] // N allocations từ nhiều Payment
-
-  parent Parent? @relation(fields: [parentId], references: [id])
+  feeRecordPayments FeeRecordPayment[]
+  parent            Parent?            @relation(fields: [parentId], references: [id])
 
   @@map("payments")
 }
@@ -428,8 +422,8 @@ model Alert {
   message     String
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
   severity    String    @default("medium")
-  isRead      Boolean   @default(false) @map("is_read")
   title       String
+  isRead      Boolean   @default(false) @map("is_read")
 
   @@map("alerts")
 }
@@ -478,27 +472,26 @@ model ScheduleChange {
 }
 
 model SessionRequest {
-  id          String    @id @default(uuid()) @db.Uuid
-  requestType String    @map("request_type") // "makeup_session", "extra_session"
-  teacherId   String    @map("teacher_id") @db.Uuid
-  classId     String    @map("class_id") @db.Uuid
-  sessionDate DateTime  @map("session_date") @db.Date
-  startTime   String    @map("start_time")
-  endTime     String    @map("end_time")
-  roomId      String?   @map("room_id") @db.Uuid
-  reason      String
-  notes       String?
-  status      String    @default("pending") // pending, approved, rejected
-  createdBy   String    @map("created_by") @db.Uuid
-  approvedBy  String?   @map("approved_by") @db.Uuid
-  approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  teacher        Teacher @relation(fields: [teacherId], references: [id])
-  class          Class   @relation(fields: [classId], references: [id])
-  room           Room?   @relation(fields: [roomId], references: [id])
-  createdByUser  User    @relation("SessionRequestCreatedBy", fields: [createdBy], references: [id])
-  approvedByUser User?   @relation("SessionRequestApprovedBy", fields: [approvedBy], references: [id])
+  id             String    @id @default(uuid()) @db.Uuid
+  requestType    String    @map("request_type")
+  teacherId      String    @map("teacher_id") @db.Uuid
+  classId        String    @map("class_id") @db.Uuid
+  sessionDate    DateTime  @map("session_date") @db.Date
+  startTime      String    @map("start_time")
+  endTime        String    @map("end_time")
+  roomId         String?   @map("room_id") @db.Uuid
+  reason         String
+  notes          String?
+  status         String    @default("pending")
+  createdBy      String    @map("created_by") @db.Uuid
+  approvedBy     String?   @map("approved_by") @db.Uuid
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  approvedByUser User?     @relation("SessionRequestApprovedBy", fields: [approvedBy], references: [id])
+  class          Class     @relation(fields: [classId], references: [id])
+  createdByUser  User      @relation("SessionRequestCreatedBy", fields: [createdBy], references: [id])
+  room           Room?     @relation(fields: [roomId], references: [id])
+  teacher        Teacher   @relation(fields: [teacherId], references: [id])
 
   @@map("session_requests")
 }
@@ -746,7 +739,6 @@ model HolidayPeriod {
   @@map("holiday_periods")
 }
 
-// xây gựng hệ thống coding
 model HolidayPeriodSession {
   holidayPeriodId String        @map("holiday_period_id") @db.Uuid
   sessionId       String        @map("session_id") @db.Uuid
@@ -766,18 +758,18 @@ model TeacherFeedback {
   parentId    String                    @map("parent_id") @db.Uuid
   classId     String?                   @map("class_id") @db.Uuid
   studentId   String?                   @map("student_id") @db.Uuid
-  rating      Int                       // 1-5 stars
-  comment     String?                   @db.Text
-  categories  Json?                     // {teaching_quality, communication, punctuality, professionalism}
+  rating      Int
+  comment     String?
+  categories  Json?
   isAnonymous Boolean                   @default(false) @map("is_anonymous")
-  status      String                    @default("approved") // pending, approved, rejected, archived
+  status      String                    @default("approved")
   createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  teacher     Teacher                   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  parent      Parent                    @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  student     Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  class       Class?                    @relation(fields: [classId], references: [id], onDelete: SetNull)
   analysis    TeacherFeedbackAnalysis[]
+  class       Class?                    @relation(fields: [classId], references: [id])
+  parent      Parent                    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student     Student?                  @relation(fields: [studentId], references: [id])
+  teacher     Teacher                   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([teacherId], map: "idx_feedback_teacher")
   @@index([parentId], map: "idx_feedback_parent")
@@ -787,20 +779,20 @@ model TeacherFeedback {
 }
 
 model TeacherFeedbackAnalysis {
-  id                  String           @id @default(uuid()) @db.Uuid
-  feedbackId          String           @map("feedback_id") @db.Uuid
-  sentimentScore      Decimal          @map("sentiment_score") @db.Decimal(5, 2) // -1.0 to 1.0
-  sentimentLabel      String           @map("sentiment_label") // positive, neutral, negative, very_negative
-  toxicityScore       Decimal?         @map("toxicity_score") @db.Decimal(5, 2) // 0.0 to 1.0
-  keyPhrases          Json?            @map("key_phrases") // Array of important phrases
-  categorizedIssues   Json?            @map("categorized_issues") // {teaching: [], communication: [], behavior: []}
-  aiSummary           String?          @map("ai_summary") @db.Text
-  recommendedAction   String?          @map("recommended_action") // no_action, monitor, intervention_required, immediate_action
-  confidenceScore     Decimal?         @map("confidence_score") @db.Decimal(5, 2)
-  analyzedAt          DateTime         @default(now()) @map("analyzed_at") @db.Timestamptz(6)
-  aiModel             String           @default("gpt-4") @map("ai_model")
-  processingTimeMs    Int?             @map("processing_time_ms")
-  feedback            TeacherFeedback  @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  id                String          @id @default(uuid()) @db.Uuid
+  feedbackId        String          @map("feedback_id") @db.Uuid
+  sentimentScore    Decimal         @map("sentiment_score") @db.Decimal(5, 2)
+  sentimentLabel    String          @map("sentiment_label")
+  toxicityScore     Decimal?        @map("toxicity_score") @db.Decimal(5, 2)
+  keyPhrases        Json?           @map("key_phrases")
+  categorizedIssues Json?           @map("categorized_issues")
+  aiSummary         String?         @map("ai_summary")
+  recommendedAction String?         @map("recommended_action")
+  confidenceScore   Decimal?        @map("confidence_score") @db.Decimal(5, 2)
+  analyzedAt        DateTime        @default(now()) @map("analyzed_at") @db.Timestamptz(6)
+  aiModel           String          @default("gpt-4") @map("ai_model")
+  processingTimeMs  Int?            @map("processing_time_ms")
+  feedback          TeacherFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
   @@index([feedbackId], map: "idx_analysis_feedback")
   @@index([sentimentLabel], map: "idx_analysis_sentiment")
@@ -809,27 +801,27 @@ model TeacherFeedbackAnalysis {
 }
 
 model TeacherClassTransfer {
-  id                String    @id @default(uuid()) @db.Uuid
-  teacherId         String    @map("teacher_id") @db.Uuid
-  fromClassId       String?   @map("from_class_id") @db.Uuid
-  toClassId         String?   @map("to_class_id") @db.Uuid
-  replacementTeacherId String? @map("replacement_teacher_id") @db.Uuid
-  reason            String    // poor_feedback, performance_issues, request, other
-  reasonDetail      String?   @map("reason_detail") @db.Text
-  status            String    @default("pending") // pending, approved, completed, cancelled
-  requestedBy       String    @map("requested_by") @db.Uuid
-  approvedBy        String?   @map("approved_by") @db.Uuid
-  approvedAt        DateTime? @map("approved_at") @db.Timestamptz(6)
-  effectiveDate     DateTime? @map("effective_date") @db.Date
-  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
-  notes             String?   @db.Text
-  feedbackSummary   Json?     @map("feedback_summary") // Summary statistics that led to this decision
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  teacher           Teacher   @relation("TeacherClassTransferTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  fromClass         Class?    @relation("TeacherClassTransferFromClass", fields: [fromClassId], references: [id], onDelete: SetNull)
-  toClass           Class?    @relation("TeacherClassTransferToClass", fields: [toClassId], references: [id], onDelete: SetNull)
-  replacementTeacher Teacher? @relation("TeacherClassTransferReplacement", fields: [replacementTeacherId], references: [id], onDelete: SetNull)
+  id                   String    @id @default(uuid()) @db.Uuid
+  teacherId            String    @map("teacher_id") @db.Uuid
+  fromClassId          String?   @map("from_class_id") @db.Uuid
+  toClassId            String?   @map("to_class_id") @db.Uuid
+  replacementTeacherId String?   @map("replacement_teacher_id") @db.Uuid
+  reason               String
+  reasonDetail         String?   @map("reason_detail")
+  status               String    @default("pending")
+  requestedBy          String    @map("requested_by") @db.Uuid
+  approvedBy           String?   @map("approved_by") @db.Uuid
+  approvedAt           DateTime? @map("approved_at") @db.Timestamptz(6)
+  effectiveDate        DateTime? @map("effective_date") @db.Date
+  completedAt          DateTime? @map("completed_at") @db.Timestamptz(6)
+  notes                String?
+  feedbackSummary      Json?     @map("feedback_summary")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  fromClass            Class?    @relation("TeacherClassTransferFromClass", fields: [fromClassId], references: [id])
+  replacementTeacher   Teacher?  @relation("TeacherClassTransferReplacement", fields: [replacementTeacherId], references: [id])
+  teacher              Teacher   @relation("TeacherClassTransferTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  toClass              Class?    @relation("TeacherClassTransferToClass", fields: [toClassId], references: [id])
 
   @@index([teacherId], map: "idx_transfer_teacher")
   @@index([fromClassId], map: "idx_transfer_from_class")

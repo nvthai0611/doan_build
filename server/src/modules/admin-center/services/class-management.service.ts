@@ -770,7 +770,50 @@ export class ClassManagementService {
                         }
                     }
                 }
-            });
+            });[]
+
+            // AUTO-GEN SESSIONS: Nếu status chuyển từ ready → active, tự động gen sessions
+            const isStatusChangedToActive = existingClass.status === 'ready' && updateClassDto.status === 'active';
+            
+            if (isStatusChangedToActive) {
+                try {
+                    // Kiểm tra có actualStartDate và actualEndDate không
+                    const startDate = updatedClass.actualStartDate || updatedClass.expectedStartDate;
+                    const endDate = updatedClass.actualEndDate;
+
+                    if (startDate && endDate && updatedClass.recurringSchedule) {
+                        // Tự động gen sessions
+                        await this.generateSessions(id, {
+                            startDate: startDate.toISOString().split('T')[0],
+                            endDate: endDate.toISOString().split('T')[0]
+                        });
+
+                        return {
+                            success: true,
+                            message: 'Cập nhật lớp học thành công. Lịch học đã được tạo tự động.',
+                            data: updatedClass,
+                            sessionsGenerated: true
+                        };
+                    } else {
+                        // Thiếu thông tin để gen sessions
+                        return {
+                            success: true,
+                            message: 'Cập nhật lớp học thành công. Vui lòng cập nhật ngày bắt đầu, kết thúc và lịch học để tạo buổi học.',
+                            data: updatedClass,
+                            warning: 'Chưa thể tạo lịch học do thiếu thông tin ngày hoặc lịch học tuần'
+                        };
+                    }
+                } catch (error) {
+                    // Nếu gen sessions lỗi, vẫn return success nhưng có warning
+                    console.error('Error auto-generating sessions:', error);
+                    return {
+                        success: true,
+                        message: 'Cập nhật lớp học thành công nhưng có lỗi khi tạo lịch học tự động',
+                        data: updatedClass,
+                        warning: error.message || 'Không thể tạo lịch học tự động'
+                    };
+                }
+            }
 
             return {
                 success: true,
