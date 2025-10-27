@@ -13,6 +13,8 @@ import { EmailNotificationProcessor } from './consumer/email_notification.proces
 import { TeacherAccountProcessor } from './consumer/teacher_account.processor';
 import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.processor';
 import { EnrollmentEmailProcessor } from './consumer/enrollment-email.processor';
+import { PublicClassesController } from './controllers/public-classes.controller';
+import { PublicClassesService } from './services/public-classes.service';
   
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -56,13 +58,15 @@ const DEFAULT_BULL_JOB_OPTIONS = {
   controllers:[
     // Shared controllers can be added here
     StudentsSharedController,
-    GradesController
+    GradesController,
+    PublicClassesController
   ],
   providers: [
     // Shared services can be added here
     PrismaService,
     StudentSharedService,
     GradeService,
+    PublicClassesService,
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,

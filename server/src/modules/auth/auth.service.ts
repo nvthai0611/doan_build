@@ -125,9 +125,24 @@ export class AuthService {
     // Hash password
     const hashedPassword = await Hash.hash(registerDto.password);
 
+    // Tìm student role để tạo students
+    const studentRole = await this.prisma.role.findUnique({
+      where: { name: 'student' },
+    });
+
+    if (!studentRole) {
+      throw new NotFoundException('Không tìm thấy vai trò học sinh trong hệ thống');
+    }
+
+    // Tìm school mặc định (hoặc school đầu tiên trong hệ thống)
+    const defaultSchool = await this.prisma.school.findFirst();
+    if (!defaultSchool) {
+      throw new NotFoundException('Không tìm thấy trường học trong hệ thống');
+    }
+
     // Tạo user và parent record trong một transaction
     const result = await this.prisma.$transaction(async (prisma) => {
-      // Tạo user
+      // Tạo user (parent)
       const user = await prisma.user.create({
         data: {
           email: registerDto.email,
@@ -150,20 +165,75 @@ export class AuthService {
         },
       });
 
-      return { user, parent };
+      // Tạo children (students)
+      const createdChildren = [];
+      for (const child of registerDto.children) {
+        // Tạo username cho con (parent_username + child_index)
+        const childUsername = `${registerDto.username}_${createdChildren.length + 1}`;
+        
+        // Hash password mặc định cho student (123456)
+        const defaultStudentPassword = await Hash.hash('123456');
+
+        // Tạo user cho student
+        const childUser = await prisma.user.create({
+          data: {
+            email: `${childUsername}@student.qne.edu.vn`, // Auto-generate email
+            username: childUsername,
+            password: defaultStudentPassword,
+            fullName: child.fullName,
+            birthDate: new Date(child.dateOfBirth),
+            gender: child.gender,
+            role: 'student',
+            roleId: studentRole.id,
+            isActive: true,
+          },
+        });
+
+        // Tạo student record và liên kết với parent
+        const student = await prisma.student.create({
+          data: {
+            user: {
+              connect: { id: childUser.id }
+            },
+            parent: {
+              connect: { id: parent.id }
+            },
+            school: {
+              connect: { id: defaultSchool.id }
+            }
+          },
+        });
+
+        createdChildren.push({
+          user: childUser,
+          student,
+        });
+      }
+
+      return { user, parent, children: createdChildren };
     });
 
     return {
       success: true,
-      message: 'Đăng ký tài khoản thành công',
+      message: `Đăng ký tài khoản thành công! Đã tạo ${result.children.length} tài khoản cho con.`,
       data: {
-        id: result.user.id,
-        email: result.user.email,
-        username: result.user.username,
-        fullName: result.user.fullName,
-        phone: result.user.phone,
-        birthDate: result.user.birthDate,
-        gender: result.user.gender,
+        parent: {
+          id: result.user.id,
+          email: result.user.email,
+          username: result.user.username,
+          fullName: result.user.fullName,
+          phone: result.user.phone,
+          birthDate: result.user.birthDate,
+          gender: result.user.gender,
+        },
+        children: result.children.map(child => ({
+          id: child.user.id,
+          username: child.user.username,
+          email: child.user.email,
+          fullName: child.user.fullName,
+          birthDate: child.user.birthDate,
+          gender: child.user.gender,
+        })),
       },
     };
   }
