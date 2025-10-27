@@ -2,14 +2,16 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "../../../../components/Loading/LoadingButton"
 
 interface PaymentSummaryProps {
   selectedCount: number
   totalAmount: number
   onPayment: () => void
+  isLoading?: boolean
 }
 
-export function PaymentSummary({ selectedCount, totalAmount, onPayment }: PaymentSummaryProps) {
+export function PaymentSummary({ selectedCount, totalAmount, onPayment, isLoading }: PaymentSummaryProps) {
   return (
     <Card className="">
       <CardHeader>
@@ -26,14 +28,15 @@ export function PaymentSummary({ selectedCount, totalAmount, onPayment }: Paymen
           <p className="text-3xl font-bold text-primary">{totalAmount.toLocaleString("vi-VN")} đ</p>
         </div>
 
-        <Button
+        <LoadingButton
           onClick={onPayment}
           disabled={selectedCount === 0}
+          loading= {isLoading}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
-          size="lg"
+          // size="lg"
         >
           Chọn thanh toán
-        </Button>
+        </LoadingButton>
 
         <p className="text-xs text-muted-foreground text-center">Chọn ít nhất 1 khoản để thanh toán</p>
       </CardContent>

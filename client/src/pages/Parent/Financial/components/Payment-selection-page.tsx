@@ -75,12 +75,13 @@ export function PaymentSelectionPage() {
   const [copied, setCopied] = useState(false)
   const [remainingTime, setRemainingTime] = useState<number>(0)
   const [selectedStudent, setSelectedStudent] = useState<string>("all")
+  const [loading, setLoading] = useState<boolean>(false)
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: response, isLoading, isError } = useQuery({
+  const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ['feeRecords', 'pending'],
     queryFn: async () => {
       return await financialParentService.getAllFeeRecordsOfParent('pending')
@@ -151,53 +152,83 @@ export function PaymentSelectionPage() {
 
   // Subscribe payment updates khi QR modal mở
   useEffect(() => {
-    if (showQrModal && paymentData?.orderCode) {
-      paymentSocketService.subscribeToPayment(
-        paymentData.orderCode,
-        {
-          onSuccess: (data) => {
-            // ✅ Thanh toán thành công
-            toast.success('Thanh toán thành công! 🎉', {
-              description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
-              duration: 5000,
-            })
-            
-            // Invalidate queries để refresh data
-            queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
-            queryClient.invalidateQueries({ queryKey: ['payment-history'] })
-            
-            // Đóng modal
-            handleCloseModal()
-            
-            // Clear selected fees
-            setSelectedFees([])
-          },
-          onFailure: (data) => {
-            // ❌ Thanh toán thất bại
-            toast.error('Thanh toán thất bại', {
-              description: data.reason || 'Vui lòng thử lại',
-            })
-            
-            handleCloseModal()
-          },
-          onExpired: () => {
-            // ⏰ QR code hết hạn
-            toast.warning('Mã QR đã hết hạn', {
-              description: 'Vui lòng tạo mã mới',
-            })
-            
-            handleCloseModal()
-          }
-        }
-      )
-    }
+  if (showQrModal && paymentData?.orderCode) {
+    paymentSocketService.subscribeToPayment(
+      paymentData.orderCode,
+      {
+        onSuccess: async (data) => {
+          // ✅ Thanh toán thành công
+           toast.success('Thanh toán thành công! 🎉', {
+            description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
+            duration: 2000,
+          })
 
-    return () => {
-      if (paymentData?.orderCode) {
-        paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
+          handleCloseModal()
+
+          // ⏳ Đợi backend cập nhật (quan trọng!)
+          // await new Promise(resolve => setTimeout(resolve, 1500))
+
+          // // 🔄 Force refetch thay vì chỉ invalidate
+          // await Promise.all([
+          //   queryClient.refetchQueries({ 
+          //     queryKey: ['feeRecords'],
+          //     type: 'active'
+          //   }),
+          //   queryClient.refetchQueries({ 
+          //     queryKey: ['payment-history'],
+          //     type: 'active'
+          //   })
+          // ])
+
+          // // 📊 Lấy data mới từ cache SAU KHI refetch xong
+          // const freshList = queryClient.getQueryData<any[]>(['feeRecords', 'pending']) || []
+
+          // console.log('📋 Fresh data after refetch:', freshList) // Debug log
+
+          // const remainingIds = new Set(
+          //   freshList
+          //     .filter((fr: any) => {
+          //       const total = fr.totalAmount ?? (Number(fr.amount) - Number(fr.discount))
+          //       const remaining = total - Number(fr.paidAmount)
+          //       return remaining > 0
+          //     })
+          //     .map((fr: any) => fr.id)
+          // )
+
+          // // Chỉ bỏ chọn những hóa đơn đã trả xong
+          // setSelectedFees((prev) => prev.filter((id) => remainingIds.has(id)))
+
+            // Dismiss toast cũ
+  // ⏳ Đợi 2 giây để user đọc thông báo
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  // 🔄 Reload trang
+  window.location.reload()
+        },
+        
+        onFailure: (data) => {
+          toast.error('Thanh toán thất bại', {
+            description: data.reason || 'Vui lòng thử lại',
+          })
+          handleCloseModal()
+        },
+        
+        onExpired: () => {
+          toast.warning('Mã QR đã hết hạn', {
+            description: 'Vui lòng tạo mã mới',
+          })
+          handleCloseModal()
+        }
       }
+    )
+  }
+
+  return () => {
+    if (paymentData?.orderCode) {
+      paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
     }
-  }, [showQrModal, paymentData?.orderCode])
+  }
+}, [showQrModal, paymentData?.orderCode]) // Dependencies vẫn giữ nguyên
 
   const formatTime = (milliseconds: number): string => {
     const totalSeconds = Math.floor(milliseconds / 1000)
@@ -228,13 +259,13 @@ export function PaymentSelectionPage() {
         toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
         return
       }
-      
+      setLoading(true)
       const response: any = await financialParentService.createQrCodeForPayment(selectedFees)
       if (!response?.qrCodeUrl) {
         toast.error(response?.message || "Không thể tạo mã QR")
         return
       }
-
+      setLoading(false)
       setPaymentData(response)
       setShowQrModal(true)
       toast.success("Mã QR thanh toán đã được tạo thành công")
@@ -291,23 +322,23 @@ export function PaymentSelectionPage() {
     setRemainingTime(0)
   }
 
-  if (isLoading || isLoadingChildren) {
+  if (isLoading) {
     return <Loading />
   }
 
-  if (isError || !response || isErrorChildren) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center text-destructive">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  // if (isError  || isErrorChildren) {
+  //   return (
+  //     <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+  //       <Card className="max-w-md">
+  //         <CardContent className="pt-6">
+  //           <p className="text-center text-destructive">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
+  //         </CardContent>
+  //       </Card>
+  //     </div>
+  //   )
+  // }
 
-  const feeRecords = response as any[]
+  const feeRecords = response as any[] || []
   const childrenList = children as any[]
 
   const transformedFeeRecords = feeRecords.map((fee) => {
@@ -350,7 +381,6 @@ export function PaymentSelectionPage() {
   const totalAmount = selectedRecords.reduce((sum, fee) => 
     sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
   )
-  
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -424,7 +454,8 @@ export function PaymentSelectionPage() {
 
                   {/* Fee Records */}
                   <div className="space-y-4">
-                    {filteredFeeRecords.map((fee) => (
+                    {feeRecords.length > 0 ? (
+                      filteredFeeRecords.map((fee: any) => (
                       <FeeRecordItem
                         key={fee.id}
                         fee={fee}
@@ -433,7 +464,12 @@ export function PaymentSelectionPage() {
                         onSelect={() => handleSelectFee(fee.id)}
                         onExpand={() => setExpandedFee(expandedFee === fee.id ? null : fee.id)}
                       />
-                    ))}
+                    ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Không có hóa đơn nào
+                      </p>
+                    )}
                   </div>
                 </div>
 

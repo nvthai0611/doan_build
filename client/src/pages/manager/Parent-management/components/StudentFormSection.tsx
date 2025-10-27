@@ -206,7 +206,7 @@ export function StudentFormSection({
                     </div>
 
                     {/* Grade */}
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <Label htmlFor={`student-grade-${index}`}>
                             Khối lớp <span className="text-muted-foreground text-xs">(Tùy chọn)</span>
                         </Label>
@@ -225,7 +225,7 @@ export function StudentFormSection({
                                 <SelectItem value="9">Lớp 9</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
+                    </div> */}
 
                     {/* Optional Fields - Phone & Gender */}
                     <div className="grid grid-cols-2 gap-4">
