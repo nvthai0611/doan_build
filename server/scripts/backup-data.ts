@@ -10,13 +10,24 @@ async function backupData() {
   const backup = {
     timestamp: new Date().toISOString(),
     data: {
+      // Core data (cần restore trước)
+      roles: await prisma.role.findMany(),
+      permissions: await prisma.permission.findMany(),
+      rolePermissions: await prisma.rolePermission.findMany(),
+      schools: await prisma.school.findMany(),
+      subjects: await prisma.subject.findMany(),
+      grades: await prisma.grade.findMany(),
+      rooms: await prisma.room.findMany(),
+      
+      // User data
       users: await prisma.user.findMany(),
       teachers: await prisma.teacher.findMany(),
       students: await prisma.student.findMany(),
       parents: await prisma.parent.findMany(),
+      
+      // Class data
       classes: await prisma.class.findMany(),
       enrollments: await prisma.enrollment.findMany(),
-      // Add more tables as needed
     }
   };
 

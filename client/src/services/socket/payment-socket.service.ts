@@ -38,8 +38,8 @@ class PaymentSocketService {
   connect() {
     if (this.socket?.connected) return;
 
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
+    const apiURL = import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1';
+    const baseURL = new URL(apiURL).origin;
     this.socket = io(`${baseURL}/payment`, {
       transports: ['websocket', 'polling'],
       autoConnect: true,

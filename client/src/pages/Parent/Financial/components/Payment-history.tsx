@@ -12,21 +12,28 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import financialService from "../../../../services/parent/financial-management/financial-parent.service"
 
-interface PaymentHistoryItem {
-  id: string
-  date: string
-  amount: number
-  method: string
-  status: string
-  transactionCode?: string
-  reference?: string
-  notes?: string
+interface AllocationItem {
+  feeRecordPaymentId?: string
+  amount?: number
   feeRecordId?: string
   studentId?: string
   studentName?: string
   className?: string
   classCode?: string
   feeName?: string
+  notes?: string
+}
+
+interface PaymentHistoryItem {
+  id?: string
+  date?: string
+  amount?: number
+  method?: string
+  status?: string
+  transactionCode?: string | null
+  reference?: string | null
+  notes?: string | null
+  allocations?: AllocationItem[]
 }
 
 interface PaymentHistoryProps {
@@ -44,7 +51,7 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
     refetchOnWindowFocus: false
   })
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status) {
       case "completed":
         return <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -57,7 +64,7 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
     }
   }
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status?: string) => {
     switch (status) {
       case "completed":
         return "Đã thanh toán"
@@ -66,11 +73,11 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
       case "failed":
         return "Thất bại"
       default:
-        return status
+        return status || "Không xác định"
     }
   }
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusVariant = (status?: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "completed":
         return "default"
@@ -83,18 +90,19 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
     }
   }
 
-  const getMethodLabel = (method: string) => {
+  const getMethodLabel = (method?: string) => {
     switch (method) {
       case "bank_transfer":
         return "Chuyển khoản ngân hàng"
       case "cash":
         return "Tiền mặt"
       default:
-        return method
+        return method || "Khác"
     }
   }
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text?: string | null) => {
+    if (!text) return
     navigator.clipboard.writeText(text)
     toast.success("Đã sao chép vào clipboard")
   }
@@ -120,18 +128,14 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
     )
   }
 
-  const historyData = history as PaymentHistoryItem[]
+  const historyData = (history as PaymentHistoryItem[]) || []
 
-  // Filter payment history by selected student
+  // Filter theo học sinh dựa trên allocations
   const filteredHistory = selectedStudent === "all"
     ? historyData
-    : historyData.filter(item => {
-        // Find matching student by name
-        const matchingChild = children.find(child => 
-          child.user.fullName === item.studentName
-        )
-        return matchingChild?.id === selectedStudent
-      })
+    : historyData.filter(item =>
+        item?.allocations?.some(alloc => alloc?.studentId === selectedStudent)
+      )
 
   return (
     <>
@@ -146,9 +150,9 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả học sinh</SelectItem>
-                {children.map((child: any) => (
-                  <SelectItem key={child.id} value={child.id}>
-                    {child.user.fullName} ({child.studentCode})
+                {children?.map((child: any) => (
+                  <SelectItem key={child?.id} value={child?.id}>
+                    {child?.user?.fullName} ({child?.studentCode})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -162,34 +166,45 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
           <CardTitle className="text-base">Lịch sử thanh toán</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {filteredHistory.length > 0 ? (
-            filteredHistory.map((item: PaymentHistoryItem) => (
-              <div
-                key={item.id}
-                onClick={() => setSelectedPayment(item)}
-                className="flex items-start gap-3 pb-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-md transition-colors"
-              >
-                {getStatusIcon(item.status)}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="font-medium text-sm text-foreground">{item.date}</p>
-                    <p className="font-semibold text-primary">{item.amount.toLocaleString("vi-VN")} đ</p>
+          {filteredHistory?.length > 0 ? (
+            filteredHistory.map((item: PaymentHistoryItem) => {
+              const firstAlloc = item?.allocations?.[0]
+              const restCount = Math.max((item?.allocations?.length ?? 0) - 1, 0)
+              return (
+                <div
+                  key={item?.id}
+                  onClick={() => setSelectedPayment(item)}
+                  className="flex items-start gap-3 pb-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-md transition-colors"
+                >
+                  {getStatusIcon(item?.status)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="font-medium text-sm text-foreground">{item?.date}</p>
+                      <p className="font-semibold text-primary">
+                        {Number(item?.amount ?? 0).toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+
+                    {/* Hiển thị thông tin học sinh/lớp từ allocations (ưu tiên đối tượng đầu tiên) */}
+                    {(firstAlloc?.studentName || firstAlloc?.className) && (
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {firstAlloc?.studentName}
+                        {firstAlloc?.className && ` - ${firstAlloc?.className}`}
+                        {restCount > 0 && ` +${restCount} khoản khác`}
+                      </p>
+                    )}
+
+                    {/* Có thể hiển thị phương thức + trạng thái nếu cần */}
+                    {/* <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{getMethodLabel(item?.method)}</p>
+                      <Badge variant={getStatusVariant(item?.status)} className="text-xs">
+                        {getStatusLabel(item?.status)}
+                      </Badge>
+                    </div> */}
                   </div>
-                  {item.studentName && (
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {item.studentName}
-                      {item.className && ` - ${item.className}`}
-                    </p>
-                  )}
-                  {/* <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">{getMethodLabel(item.method)}</p>
-                    <Badge variant={getStatusVariant(item.status)} className="text-xs">
-                      {getStatusLabel(item.status)}
-                    </Badge>
-                  </div> */}
                 </div>
-              </div>
-            ))
+              )
+            })
           ) : (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground mb-2">
@@ -215,15 +230,15 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
             <div className="space-y-4">
               {/* Payment Status */}
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                {getStatusIcon(selectedPayment.status)}
+                {getStatusIcon(selectedPayment?.status)}
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{getStatusLabel(selectedPayment.status)}</p>
-                    <Badge variant={getStatusVariant(selectedPayment.status)} className="text-xs">
-                      {selectedPayment.status}
+                    <p className="text-sm font-medium">{getStatusLabel(selectedPayment?.status)}</p>
+                    <Badge variant={getStatusVariant(selectedPayment?.status)} className="text-xs">
+                      {selectedPayment?.status}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{selectedPayment.date}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{selectedPayment?.date}</p>
                 </div>
               </div>
 
@@ -231,59 +246,53 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
               <div className="border-t pt-4">
                 <p className="text-xs text-muted-foreground mb-1">Số tiền</p>
                 <p className="text-2xl font-bold text-primary">
-                  {selectedPayment.amount.toLocaleString("vi-VN")} đ
+                  {Number(selectedPayment?.amount ?? 0).toLocaleString("vi-VN")} đ
                 </p>
               </div>
 
-              {/* Student & Class Info */}
-              {(selectedPayment.studentName || selectedPayment.className) && (
-                <div className="border-t pt-4 space-y-2">
-                  {selectedPayment.studentName && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Học sinh</p>
-                      <p className="text-sm font-medium">{selectedPayment.studentName}</p>
-                    </div>
-                  )}
-                  {selectedPayment.className && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Lớp học</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{selectedPayment.className}</p>
-                        {selectedPayment.classCode && (
-                          <Badge variant="outline" className="text-xs">
-                            {selectedPayment.classCode}
-                          </Badge>
+              {/* Allocations chi tiết */}
+              {selectedPayment?.allocations && selectedPayment.allocations.length > 0 && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground mb-2">Phân bổ học phí</p>
+                  <div className="space-y-3">
+                    {selectedPayment.allocations.map((alloc) => (
+                      <div key={alloc?.feeRecordPaymentId} className="text-sm border-b pb-3 last:border-b-0">
+                        <p className="font-medium text-foreground">
+                          {alloc?.studentName} {alloc?.className ? `- ${alloc?.className}` : ""}
+                        </p>
+                        {alloc?.feeName && (
+                          <p className="text-xs text-muted-foreground">{alloc?.feeName}</p>
                         )}
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-muted-foreground">Số tiền:</span>
+                          <span className="font-semibold">
+                            {Number(alloc?.amount ?? 0).toLocaleString("vi-VN")} đ
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {selectedPayment.feeName && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Khoản phí</p>
-                      <p className="text-sm">{selectedPayment.feeName}</p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* Payment Method */}
               <div className="border-t pt-4">
                 <p className="text-xs text-muted-foreground mb-1">Phương thức thanh toán</p>
-                <p className="text-sm font-medium">{getMethodLabel(selectedPayment.method)}</p>
+                <p className="text-sm font-medium">{getMethodLabel(selectedPayment?.method)}</p>
               </div>
 
               {/* Transaction Code */}
-              {selectedPayment.transactionCode && (
+              {selectedPayment?.transactionCode && (
                 <div className="border-t pt-4">
                   <p className="text-xs text-muted-foreground mb-2">Mã giao dịch</p>
                   <div className="flex items-center gap-2 bg-muted p-2 rounded">
                     <code className="text-sm font-mono flex-1 break-all">
-                      {selectedPayment.transactionCode}
+                      {selectedPayment?.transactionCode}
                     </code>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => copyToClipboard(selectedPayment.transactionCode || "")}
+                      onClick={() => copyToClipboard(selectedPayment?.transactionCode)}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -292,37 +301,35 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
               )}
 
               {/* Reference */}
-              {selectedPayment.reference && (
+              {selectedPayment?.reference && (
                 <div className="border-t pt-4">
                   <p className="text-xs text-muted-foreground mb-1">Tham chiếu</p>
-                  <p className="text-sm">{selectedPayment.reference}</p>
+                  <p className="text-sm">{selectedPayment?.reference}</p>
                 </div>
               )}
 
               {/* Notes */}
-              {selectedPayment.notes && (
+              {selectedPayment?.notes && (
                 <div className="border-t pt-4">
                   <p className="text-xs text-muted-foreground mb-1">Ghi chú</p>
-                  <p className="text-sm text-foreground">{selectedPayment.notes}</p>
+                  <p className="text-sm text-foreground">{selectedPayment?.notes}</p>
                 </div>
               )}
 
-              {/* Fee Record Link */}
-              {selectedPayment.feeRecordId && (
+              {/* Fee Record Link (nếu cần dẫn tới chi tiết) */}
+              {/* {selectedPayment?.allocations && selectedPayment.allocations.length > 0 && (
                 <div className="border-t pt-4">
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => {
-                      setSelectedPayment(null)
-                    }}
+                    onClick={() => setSelectedPayment(null)}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Xem chi tiết học phí
                   </Button>
                 </div>
-              )}
+              )} */}
             </div>
           )}
         </DialogContent>

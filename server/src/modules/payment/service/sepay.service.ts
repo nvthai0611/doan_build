@@ -1,7 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { PrismaService } from 'src/db/prisma.service';
 import { FeeRecordPaymentInfo } from '../dto/create-payment-qr.dto';
 import { paymentSuccessEmailTemplate } from 'src/modules/shared/template-email/template-notification';
@@ -162,7 +162,7 @@ export class SepayService {
 
       // 5. Tạo nội dung chuyển khoản
       // Format: HP{timestamp}{random} STU001,STU002,STU003
-      const studentsCodeStr = studentCodes.join(',');
+      const studentsCodeStr = studentCodes.join(' ');
       const content = `${orderCode} ${studentsCodeStr}`;
 
       // 6. Tạo QR Code URL theo chuẩn VietQR
@@ -276,7 +276,10 @@ export class SepayService {
         this.logger.warn('Không tìm thấy mã học sinh');
         return { data: null, message: 'Không tìm thấy mã học sinh' };
       }
-      const studentCodes = studentCodesStr.split(',').map((s) => s.trim());
+      const studentCodes = studentCodesStr
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
 
       // Idempotency: kiểm tra Payment theo transactionCode (orderCode) hoặc reference (referenceCode)
       const existed = await this.prisma.payment.findFirst({
@@ -303,6 +306,7 @@ export class SepayService {
         include: { user: true },
       });
       if (students.length === 0) {
+        this.logger.warn('Không tìm thấy học sinh');
         return { data: null, message: 'Không tìm thấy học sinh' };
       }
       const studentIds = students.map((s) => s.id);
@@ -328,13 +332,14 @@ export class SepayService {
         return { data: null, message: 'Số tiền không đủ để phân bổ' };
       }
 
-      // Transaction: tạo 1 Payment + N FeeRecordPayment + cập nhật FeeRecord
-      const result = await this.prisma.$transaction(async (tx) => {
-        // Tìm phụ huynh theo danh sách học sinh
-        const parent = await tx.parent.findFirst({
+      const parent = await this.prisma.parent.findFirst({
           where: { students: { some: { id: { in: studentIds } } } },
           include: { user: true },
         });
+      // Transaction: tạo 1 Payment + N FeeRecordPayment + cập nhật FeeRecord
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Tìm phụ huynh theo danh sách học sinh
+        
 
         // Tạo 1 Payment duy nhất (tổng số tiền giao dịch)
         const payment = await tx.payment.create({
@@ -412,7 +417,7 @@ export class SepayService {
         }
 
         return { payment, allocations, students, feeRecords };
-      });
+      }, {timeout: 20000});
 
       // ✅ BẮN SOCKET SAU KHI TRANSACTION THÀNH CÔNG
       this.paymentGateway.notifyPaymentSuccess(orderCode, {
