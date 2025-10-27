@@ -12,11 +12,9 @@ export interface LeaveRequest {
   imageUrl?: string
   createdAt: string
   approvedAt?: string
-  teacher: {
-    user: {
+  teacherInfo: {
       fullName: string
       email: string
-    }
   }
   approvedByUser?: {
     fullName: string
@@ -123,7 +121,7 @@ class RequestsService {
     page?: number
     limit?: number
   }): Promise<RequestsResponse<LeaveRequest>> {
-    const response = await apiClient.get('/admin-center/leave-requests', { params })
+    const response = await apiClient.get('/admin-center/leave-requests',  params )
     return response as any
   }
 

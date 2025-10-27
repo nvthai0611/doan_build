@@ -77,6 +77,7 @@ export default function LeaveRequestManagement() {
       setLoading(true)
       const response = await requestsService.getLeaveRequests({
         status: statusFilter === 'all' ? undefined : statusFilter,
+        search: "",
         page: currentPage,
         limit: itemsPerPage
       })
@@ -141,7 +142,7 @@ export default function LeaveRequestManagement() {
   const handleViewDetails = async (id: string) => {
     try {
       const request = await requestsService.getLeaveRequestById(id)
-      setSelectedRequest(request.data)
+      setSelectedRequest(request.data as any)
       setIsDetailModalOpen(true)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -177,12 +178,12 @@ export default function LeaveRequestManagement() {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {(item.teacher?.user?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+              {(item.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{item.teacher?.user?.fullName || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">{item.teacher?.user?.email || 'No email'}</p>
+            <p className="font-medium text-sm">{item.teacherInfo?.fullName || 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground">{item.teacherInfo?.email || 'No email'}</p>
           </div>
         </div>
       )
