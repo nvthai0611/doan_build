@@ -46,7 +46,7 @@ export function PaymentHistory({ children }: PaymentHistoryProps) {
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['payment-history'],
-    queryFn: () => financialService.getPaymentHistory(),
+    queryFn: () => financialService.getPaymentByStatus('completed'),
     staleTime: 30000,
     refetchOnWindowFocus: false
   })

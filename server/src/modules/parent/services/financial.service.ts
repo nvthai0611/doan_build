@@ -95,7 +95,7 @@ export class FinancialService {
         }
     }
 
-    async getPaymentHistoryForParent(parentId: string) {
+    async getPaymentForParentByStatus(parentId: string, status: string) {
         try {
             if (!checkId(parentId)) {
                 throw new HttpException(
@@ -105,7 +105,7 @@ export class FinancialService {
             }
 
             const payments = await this.prisma.payment.findMany({
-                where: { parentId },
+                where: { parentId, status: status ? status : undefined },
                 include: {
                     feeRecordPayments: {
                         include: {
@@ -170,4 +170,163 @@ export class FinancialService {
             )
         }
     }
+
+
+    async getPaymentDetails(paymentId: string, parentId: string) {
+        try {
+            if (!checkId(paymentId) || !checkId(parentId)) {
+                throw new HttpException(
+                    { message: 'ID không hợp lệ' },
+                    HttpStatus.BAD_REQUEST
+                )
+            }
+            const payment = await this.prisma.payment.findFirst({
+                where: { id: paymentId, parentId },
+                include: {
+                    feeRecordPayments: {
+                        include: {
+                            feeRecord: {
+                                include: {
+                                    class: {
+                                        select: {
+                                            name: true,
+                                            classCode: true,
+                                        }
+                                    },
+                                    feeStructure: {
+                                        select: {
+                                            name: true,
+                                        }
+                                    },
+                                    student:{
+                                        include: {
+                                            user:{
+                                                select:{ fullName: true }
+                                            }
+                                        }
+                                    }
+
+                                }
+                            },
+                        }
+                    }
+                }
+            })
+            if (!payment) {
+                throw new HttpException(
+                    { message: 'Không tìm thấy payment' },
+                    HttpStatus.NOT_FOUND
+                )
+            }
+            return payment
+        }
+        catch (error) {
+
+        }
+    }
+
+    async createPaymentForFeeRecords(parentId: string, feeRecordIds: string[]) {
+        try {
+            if (!checkId(parentId)) {
+                throw new HttpException({ message: 'ID phụ huynh không hợp lệ' }, HttpStatus.BAD_REQUEST);
+            }
+            if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
+                throw new HttpException({ message: 'Vui lòng chọn ít nhất một hóa đơn' }, HttpStatus.BAD_REQUEST);
+            }
+
+            // Lấy các FeeRecord hợp lệ
+            const feeRecords = await this.prisma.feeRecord.findMany({
+                where: {
+                    id: { in: feeRecordIds },
+                    status: 'pending',
+                    student: { parentId }
+                },
+                include: { student: true }
+            });
+
+            if (feeRecords.length !== feeRecordIds.length) {
+                throw new HttpException({ message: 'Một số hóa đơn không hợp lệ' }, HttpStatus.BAD_REQUEST);
+            }
+
+            // Tính tổng tiền
+            const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+            const orderCode = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}` // Ví dụ sinh mã đơn hàng duy nhất
+            // Tạo Payment (status: pending)
+            const payment = await this.prisma.payment.create({
+      data: {
+        parentId,
+        amount: totalAmount,
+        status: 'pending',
+        transactionCode: orderCode,
+        method: 'bank_transfer',
+        feeRecordPayments: {
+          create: feeRecords.map(fr => ({
+            feeRecordId: fr.id
+          }))
+        }
+      },
+      include: { feeRecordPayments: true }
+    })
+    //Tạo payment xong thì set status của fee record thành 'processing'
+    for (const fr of feeRecords) {
+      await this.prisma.feeRecord.update({
+        where: { id: fr.id },
+        data: { status: 'processing' }
+      });
+    }
+
+            return { data: payment, message: 'Tạo payment thành công' };
+        } catch (error) {
+            throw new HttpException(
+                { message: 'Lỗi khi tạo payment', error: error.message },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    async updatePaymentFeeRecords(paymentId: string, feeRecordIds: string[], parentId: string) {
+  try {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { feeRecordPayments: true }
+    });
+    if (!payment || payment.status !== 'pending') {
+      throw new HttpException({ message: 'Không thể cập nhật payment này' }, HttpStatus.BAD_REQUEST);
+    }
+    // Kiểm tra feeRecordIds mới hợp lệ
+    if (!feeRecordIds || feeRecordIds.length === 0) {
+      throw new HttpException({ message: 'Phải có ít nhất 1 hóa đơn' }, HttpStatus.BAD_REQUEST);
+    }
+    // Xóa các FeeRecordPayment không còn trong feeRecordIds
+    await this.prisma.feeRecordPayment.deleteMany({
+      where: {
+        paymentId,
+        feeRecordId: { notIn: feeRecordIds }
+      }
+    });
+    // Thêm FeeRecordPayment mới nếu có FeeRecord mới
+    const existingIds = payment.feeRecordPayments.map(frp => frp.feeRecordId);
+    const toAdd = feeRecordIds.filter(id => !existingIds.includes(id));
+    for (const frId of toAdd) {
+      await this.prisma.feeRecordPayment.create({
+        data: { paymentId, feeRecordId: frId }
+      });
+    }
+    // Cập nhật lại tổng tiền
+    const feeRecords = await this.prisma.feeRecord.findMany({
+      where: { id: { in: feeRecordIds } }
+    });
+    const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+    await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { amount: totalAmount }
+    });
+    return { data: true, message: 'Cập nhật payment thành công' };
+  } catch (error) {
+    throw new HttpException(
+      { message: 'Lỗi khi cập nhật payment', error: error.message },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 }
