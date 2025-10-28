@@ -3,7 +3,7 @@ import { PrismaService } from 'src/db/prisma.service';
 
 @Injectable()
 export class ClassInformationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Lấy danh sách lớp học của con
@@ -38,9 +38,7 @@ export class ClassInformationService {
       where: {
         studentId: studentId,
         class: {
-          status: {
-            in: ['ready', 'active', 'completed'], // Only show these statuses to parents
-          },
+          status: 'active',
         },
       },
       include: {
@@ -115,16 +113,16 @@ export class ClassInformationService {
       // Get actual schedule from ClassSessions (not from recurringSchedule)
       // Group sessions by day of week and time
       const scheduleMap = new Map();
-      
+
       classData.sessions.forEach((session) => {
         const date = new Date(session.sessionDate);
         const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, ...
-        
+
         const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
         const dayOfWeek = dayNames[dayIndex];
-        
+
         const key = `${dayOfWeek}-${session.startTime}-${session.endTime}`;
-        
+
         if (!scheduleMap.has(key)) {
           scheduleMap.set(key, {
             dayOfWeek: dayOfWeek,
@@ -135,7 +133,7 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
-     
+
       return {
         id: classData.id,
         name: classData.name,
@@ -145,7 +143,7 @@ export class ClassInformationService {
         currentStudents: classData['currentStudents'] || 0,
         maxStudents: classData['maxStudents'] || 0,
         description: classData.description || '',
-        
+
         // Keep full objects for frontend
         teacher: classData.teacher ? {
           id: classData.teacher.id,
@@ -154,31 +152,31 @@ export class ClassInformationService {
             email: classData.teacher.user.email,
           }
         } : null,
-        
+
         room: classData.room ? {
           name: classData.room.name,
         } : null,
-        
+
         subject: classData.subject ? {
           name: classData.subject.name,
           code: classData.subject['code'],
         } : null,
-        
+
         grade: classData.grade ? {
           name: classData.grade.name,
           level: classData.grade.level,
         } : null,
-        
+
         schedule: schedule,
-        
+
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],
         endDate: classData.actualEndDate || classData['expectedEndDate'],
-        
+
         // Student info
         studentName: enrollment.student.user.fullName,
         enrolledAt: enrollment.enrolledAt,
-        
+
         // Stats
         totalSessions: totalSessions,
         completedSessions: completedSessions,
@@ -228,9 +226,7 @@ export class ClassInformationService {
           in: studentIds,
         },
         class: {
-          status: {
-            in: ['ready', 'active', 'completed'], // Only show these statuses to parents
-          },
+          status: 'active',
         },
       },
       include: {
@@ -305,16 +301,16 @@ export class ClassInformationService {
       // Get actual schedule from ClassSessions (not from recurringSchedule)
       // Group sessions by day of week and time
       const scheduleMap = new Map();
-      
+
       classData.sessions.forEach((session) => {
         const date = new Date(session.sessionDate);
         const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, ...
-        
+
         const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
         const dayOfWeek = dayNames[dayIndex];
-        
+
         const key = `${dayOfWeek}-${session.startTime}-${session.endTime}`;
-        
+
         if (!scheduleMap.has(key)) {
           scheduleMap.set(key, {
             dayOfWeek: dayOfWeek,
@@ -325,7 +321,7 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
-      
+
       return {
         id: classData.id,
         name: classData.name,
@@ -335,7 +331,7 @@ export class ClassInformationService {
         currentStudents: classData['currentStudents'] || 0,
         maxStudents: classData['maxStudents'] || 0,
         description: classData.description || '',
-        
+
         // Keep full objects for frontend
         teacher: classData.teacher ? {
           id: classData.teacher.id,
@@ -344,31 +340,31 @@ export class ClassInformationService {
             email: classData.teacher.user.email,
           }
         } : null,
-        
+
         room: classData.room ? {
           name: classData.room.name,
         } : null,
-        
+
         subject: classData.subject ? {
           name: classData.subject.name,
           code: classData.subject['code'],
         } : null,
-        
+
         grade: classData.grade ? {
           name: classData.grade.name,
           level: classData.grade.level,
         } : null,
-        
+
         schedule: schedule,
-        
+
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],
         endDate: classData.actualEndDate || classData['expectedEndDate'],
-        
+
         // Student info
         studentName: enrollment.student.user.fullName,
         enrolledAt: enrollment.enrolledAt,
-        
+
         // Stats
         totalSessions: totalSessions,
         completedSessions: completedSessions,

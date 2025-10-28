@@ -147,62 +147,93 @@ export class GradeService {
     }
 
     async listAssessmentTypes(userId: string, classId?: string) {
-        // Lấy teacherId từ userId
-        const teacher = await this.prisma.teacher.findFirst({
-            where: { userId: userId }
-        });
-        if (!teacher) {
-            return [] as string[];
-        }
-        const teacherId = teacher.id;
-
-        let where: any = {};
-        if (classId) {
-            // Lấy loại kiểm tra của lớp cụ thể
-            where.classId = classId;
-        } else {
-            // Lấy các class mà teacher đang dạy (qua quan hệ trực tiếp)
-            const classes = await this.prisma.class.findMany({
-                where: { 
-                    teacherId: teacherId
-                },
-                select: { id: true }
+        // Lấy loại kiểm tra từ SystemSetting với key 'exam_types'
+        try {
+            const setting = await this.prisma.systemSetting.findUnique({
+                where: { key: 'exam_types' }
             });
-            const classIds = classes.map(c => c.id);
-            if (classIds.length === 0) return [] as string[];
-            where.classId = { in: classIds };
+
+            if (setting && setting.value) {
+                const valueData = setting.value as any;
+                
+                // Lấy danh sách items từ value.items
+                if (valueData.items && Array.isArray(valueData.items)) {
+                    // Lọc chỉ lấy các loại kiểm tra active và extract tên
+                    const examTypes = valueData.items
+                        .filter((item: any) => item.isActive === true)
+                        .map((item: any) => item.name)
+                        .filter(Boolean);
+                    
+                    console.log('📚 Active exam types from system settings:', examTypes);
+                    return examTypes as string[];
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching exam types from system settings:', error);
         }
 
-        // Lấy distinct types từ bảng Assessment
-        const rows = await this.prisma.assessment.findMany({
-            where,
-            distinct: ['type'],
-            select: { type: true },
-            orderBy: { type: 'asc' }
-        });
-        
-        const types = rows.map(r => r.type).filter(Boolean);
-        
-        // Nếu không có loại kiểm tra nào, trả về danh sách mặc định
-        if (types.length === 0) {
-            return [
-                'Kiểm tra 15 phút',
-                'Kiểm tra 45 phút', 
-                'Kiểm tra 60 phút',
-                'Kiểm tra 90 phút'
-            ];
+        // Nếu không có trong system settings, trả về mảng rỗng
+        console.log('⚠️ No exam types configured in system settings');
+        return [];
+    }
+
+    async getExamTypesConfig(userId: string) {
+        // Lấy cấu hình đầy đủ của exam types từ SystemSetting
+        try {
+            const setting = await this.prisma.systemSetting.findUnique({
+                where: { key: 'exam_types' }
+            });
+
+            if (setting && setting.value) {
+                const valueData = setting.value as any;
+                
+                if (valueData.items && Array.isArray(valueData.items)) {
+                    // Trả về toàn bộ config của items (bao gồm name, maxScore, description, isActive)
+                    const activeItems = valueData.items.filter((item: any) => item.isActive === true);
+                    console.log('📚 Exam types config from system settings:', activeItems);
+                    return activeItems;
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching exam types config:', error);
         }
-        
-        return types;
+
+        return [];
     }
 
     async recordGrades(userId: string, payload: RecordGradesDto) {
         const { classId, assessmentName, assessmentType, maxScore, date, description, grades } = payload;
         await this.ensureTeacherCanAccessClass(userId, classId);
 
-        // Validate max score = 10
-        if (maxScore && maxScore !== 10) {
-            throw new HttpException('Max score phải là 10 điểm', HttpStatus.BAD_REQUEST);
+        // Lấy maxScore từ SystemSetting nếu không được cung cấp
+        let finalMaxScore = maxScore;
+        if (!finalMaxScore) {
+            try {
+                const setting = await this.prisma.systemSetting.findUnique({
+                    where: { key: 'exam_types' }
+                });
+
+                if (setting && setting.value) {
+                    const valueData = setting.value as any;
+                    if (valueData.items && Array.isArray(valueData.items)) {
+                        const examTypeItem = valueData.items.find((item: any) => 
+                            item.name === assessmentType && item.isActive === true
+                        );
+                        if (examTypeItem && examTypeItem.maxScore) {
+                            finalMaxScore = examTypeItem.maxScore;
+                            console.log(`📚 Using maxScore ${finalMaxScore} from system settings for exam type: ${assessmentType}`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error fetching maxScore from system settings:', error);
+            }
+        }
+
+        // Nếu vẫn không có maxScore, mặc định là 10
+        if (!finalMaxScore) {
+            finalMaxScore = 10;
+            console.log('⚠️ No maxScore found, using default: 10');
         }
 
         // Validate date not in the future (server-side guard)
@@ -221,10 +252,12 @@ export class GradeService {
             throw new HttpException('Không có học sinh nào để ghi điểm', HttpStatus.BAD_REQUEST);
         }
 
-        // Validate individual scores
-        const invalidScores = grades.filter(g => g.score !== undefined && g.score !== null && (g.score < 0 || g.score > 10));
+        // Validate individual scores dựa trên finalMaxScore
+        const invalidScores = grades.filter(g => 
+            g.score !== undefined && g.score !== null && (g.score < 0 || g.score > finalMaxScore)
+        );
         if (invalidScores.length > 0) {
-            throw new HttpException('Điểm số phải từ 0 đến 10', HttpStatus.BAD_REQUEST);
+            throw new HttpException(`Điểm số phải từ 0 đến ${finalMaxScore}`, HttpStatus.BAD_REQUEST);
         }
 
         // Kiểm tra tất cả học sinh có thuộc lớp này không
@@ -271,7 +304,7 @@ export class GradeService {
             classId,
             name: assessmentName,
             type: assessmentType,
-            maxScore: maxScore,
+            maxScore: finalMaxScore,
             date: new Date(date),
             description
         });
@@ -294,7 +327,7 @@ export class GradeService {
                         classId,
                         name: assessmentName,
                         type: assessmentType,
-                        maxScore: Number(maxScore), // Convert to number
+                        maxScore: Number(finalMaxScore), // Sử dụng finalMaxScore từ SystemSetting
                         date: new Date(date),
                         description
                     }
