@@ -39,7 +39,7 @@ export class ClassInformationService {
         studentId: studentId,
         class: {
           status: {
-            in: ['ready', 'active', 'completed'], // Only show these statuses to parents
+            in: ['active'], // Only show these statuses to parents
           },
         },
       },
@@ -229,7 +229,7 @@ export class ClassInformationService {
         },
         class: {
           status: {
-            in: ['ready', 'active', 'completed'], // Only show these statuses to parents
+            in: ['active'], // Only show these statuses to parents
           },
         },
       },
