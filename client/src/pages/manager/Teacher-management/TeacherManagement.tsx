@@ -314,6 +314,7 @@ export default function TeacherQnmsManagement() {
       align: 'center',
       render: (employee: Teacher) => (
         <Switch 
+          className="data-[state=checked]:bg-green-600"
           checked={employee.status} 
           onCheckedChange={() => handleEmployeeStatusToggle(employee.id)} 
           disabled={loading || toggleStatusMutation.isPending}

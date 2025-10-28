@@ -1,10 +1,11 @@
 // View types
 export type ViewType = "month" | "week" | "day" | "list"
 
-// Session status
-export type SessionStatus = "happening" | "end" | "has_not_happened" | "day_off" | "teacher_absent" | "postponed"
+// Session status - aligned with constants.ts
+// ClassSession.status: happening, has_not_happened, end, day_off
+export type SessionStatus = "happening" | "end" | "has_not_happened" | "day_off"
 
-// Student status
+// Student status - aligned with AttendanceStatus from constants.ts  
 export type StudentStatus = "present" | "absent" | "late"
 
 // Month names
@@ -43,14 +44,12 @@ export const SUBJECT_COLORS: { [key: string]: string } = {
   "Ngữ văn": "bg-pink-500 text-white",
 } as const
 
-// Status colors mapping
+// Status colors mapping - aligned with SESSION_STATUS_COLORS from constants.ts
 export const STATUS_COLORS: { [key: string]: string } = {
   "happening": "bg-green-100 text-green-800 border-green-200",
   "end": "bg-gray-100 text-gray-800 border-gray-200",
   "has_not_happened": "bg-blue-100 text-blue-800 border-blue-200",
   "day_off": "bg-orange-100 text-orange-800 border-orange-200",
-  "teacher_absent": "bg-yellow-100 text-yellow-800 border-yellow-200",
-  "postponed": "bg-purple-100 text-purple-800 border-purple-200",
 } as const
 
 // Student status text mapping

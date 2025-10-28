@@ -175,12 +175,12 @@ export const ACTIVE_TO_COMPLETED_CONDITIONS = {
 
 
 // ==================== SESSION STATUS ====================
+// ClassSession.status: happening, has_not_happened, end, day_off
 export enum SessionStatus {
-  HAPPENING = 'happening',    // Đang diễn ra
-  END = 'end',    // Đã hoàn thành
-  HAS_NOT_HAPPENED = 'has_not_happened',    // Chưa diễn ra
-  DAY_OFF = 'day_off',    // Nghỉ lễ
-
+  HAPPENING = 'happening',           // Đang diễn ra
+  END = 'end',                      // Đã hoàn thành
+  HAS_NOT_HAPPENED = 'has_not_happened', // Chưa diễn ra
+  DAY_OFF = 'day_off',              // Nghỉ lễ
 }
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
@@ -192,8 +192,8 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
   [SessionStatus.HAPPENING]: 'border-green-500 text-green-700 bg-green-50',
-  [SessionStatus.END]: 'border-red-500 text-red-700 bg-red-50',
-  [SessionStatus.HAS_NOT_HAPPENED]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [SessionStatus.END]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [SessionStatus.HAS_NOT_HAPPENED]: 'border-blue-500 text-blue-700 bg-blue-50',
   [SessionStatus.DAY_OFF]: 'border-orange-500 text-orange-700 bg-orange-50'
 }
 
@@ -303,19 +303,263 @@ export const ASSIGNMENT_STATUS_COLORS: Record<AssignmentStatus, string> = {
   [AssignmentStatus.OVERDUE]: 'border-red-500 text-red-700 bg-red-50'
 }
 
+// ==================== FEE RECORD STATUS ====================
+// FeeRecord.status: pending, paid, overdue, cancelled
+export enum FeeRecordStatus {
+  PENDING = 'pending',        // Chờ thanh toán
+  PAID = 'paid',             // Đã thanh toán
+  OVERDUE = 'overdue',       // Quá hạn
+  CANCELLED = 'cancelled'    // Đã hủy
+}
+
+export const FEE_RECORD_STATUS_LABELS: Record<FeeRecordStatus, string> = {
+  [FeeRecordStatus.PENDING]: 'Chờ thanh toán',
+  [FeeRecordStatus.PAID]: 'Đã thanh toán',
+  [FeeRecordStatus.OVERDUE]: 'Quá hạn',
+  [FeeRecordStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const FEE_RECORD_STATUS_COLORS: Record<FeeRecordStatus, string> = {
+  [FeeRecordStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [FeeRecordStatus.PAID]: 'border-green-500 text-green-700 bg-green-50',
+  [FeeRecordStatus.OVERDUE]: 'border-red-500 text-red-700 bg-red-50',
+  [FeeRecordStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== PAYMENT STATUS ====================
+// Payment.status: pending, processing, completed, failed, refunded, cancelled
+export enum PaymentStatus {
+  PENDING = 'pending',           // Chờ xử lý
+  PROCESSING = 'processing',     // Đang xử lý
+  COMPLETED = 'completed',       // Hoàn thành
+  FAILED = 'failed',            // Thất bại
+  REFUNDED = 'refunded',        // Đã hoàn tiền
+  CANCELLED = 'cancelled'       // Đã hủy
+}
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  [PaymentStatus.PENDING]: 'Chờ xử lý',
+  [PaymentStatus.PROCESSING]: 'Đang xử lý',
+  [PaymentStatus.COMPLETED]: 'Hoàn thành',
+  [PaymentStatus.FAILED]: 'Thất bại',
+  [PaymentStatus.REFUNDED]: 'Đã hoàn tiền',
+  [PaymentStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  [PaymentStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [PaymentStatus.PROCESSING]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [PaymentStatus.COMPLETED]: 'border-green-500 text-green-700 bg-green-50',
+  [PaymentStatus.FAILED]: 'border-red-500 text-red-700 bg-red-50',
+  [PaymentStatus.REFUNDED]: 'border-purple-500 text-purple-700 bg-purple-50',
+  [PaymentStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== LEAVE REQUEST STATUS ====================
+// LeaveRequest.status: pending, approved, rejected, expired
+export enum LeaveRequestStatus {
+  PENDING = 'pending',       // Chờ duyệt
+  APPROVED = 'approved',     // Đã duyệt
+  REJECTED = 'rejected',     // Từ chối
+  EXPIRED = 'expired'        // Hết hạn
+}
+
+export const LEAVE_REQUEST_STATUS_LABELS: Record<LeaveRequestStatus, string> = {
+  [LeaveRequestStatus.PENDING]: 'Chờ duyệt',
+  [LeaveRequestStatus.APPROVED]: 'Đã duyệt',
+  [LeaveRequestStatus.REJECTED]: 'Từ chối',
+  [LeaveRequestStatus.EXPIRED]: 'Hết hạn'
+}
+
+export const LEAVE_REQUEST_STATUS_COLORS: Record<LeaveRequestStatus, string> = {
+  [LeaveRequestStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [LeaveRequestStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
+  [LeaveRequestStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [LeaveRequestStatus.EXPIRED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== SCHEDULE CHANGE STATUS ====================
+// ScheduleChange.status: pending, approved, rejected, cancelled
+export enum ScheduleChangeStatus {
+  PENDING = 'pending',       // Chờ duyệt
+  APPROVED = 'approved',     // Đã duyệt
+  REJECTED = 'rejected',     // Từ chối
+  CANCELLED = 'cancelled'    // Đã hủy
+}
+
+export const SCHEDULE_CHANGE_STATUS_LABELS: Record<ScheduleChangeStatus, string> = {
+  [ScheduleChangeStatus.PENDING]: 'Chờ duyệt',
+  [ScheduleChangeStatus.APPROVED]: 'Đã duyệt',
+  [ScheduleChangeStatus.REJECTED]: 'Từ chối',
+  [ScheduleChangeStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const SCHEDULE_CHANGE_STATUS_COLORS: Record<ScheduleChangeStatus, string> = {
+  [ScheduleChangeStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [ScheduleChangeStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
+  [ScheduleChangeStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [ScheduleChangeStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== SESSION REQUEST STATUS ====================
+// SessionRequest.status: pending, approved, rejected, cancelled
+export enum SessionRequestStatus {
+  PENDING = 'pending',       // Chờ duyệt
+  APPROVED = 'approved',     // Đã duyệt
+  REJECTED = 'rejected',     // Từ chối
+  CANCELLED = 'cancelled'    // Đã hủy
+}
+
+export const SESSION_REQUEST_STATUS_LABELS: Record<SessionRequestStatus, string> = {
+  [SessionRequestStatus.PENDING]: 'Chờ duyệt',
+  [SessionRequestStatus.APPROVED]: 'Đã duyệt',
+  [SessionRequestStatus.REJECTED]: 'Từ chối',
+  [SessionRequestStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const SESSION_REQUEST_STATUS_COLORS: Record<SessionRequestStatus, string> = {
+  [SessionRequestStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [SessionRequestStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
+  [SessionRequestStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [SessionRequestStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== STUDENT CLASS REQUEST STATUS ====================
+// StudentClassRequest.status: pending, under_review, approved, rejected, cancelled, expired
+export enum StudentClassRequestStatus {
+  PENDING = 'pending',           // Chờ duyệt
+  UNDER_REVIEW = 'under_review', // Đang xem xét
+  APPROVED = 'approved',         // Đã duyệt
+  REJECTED = 'rejected',         // Từ chối
+  CANCELLED = 'cancelled',       // Đã hủy
+  EXPIRED = 'expired'           // Hết hạn
+}
+
+export const STUDENT_CLASS_REQUEST_STATUS_LABELS: Record<StudentClassRequestStatus, string> = {
+  [StudentClassRequestStatus.PENDING]: 'Chờ duyệt',
+  [StudentClassRequestStatus.UNDER_REVIEW]: 'Đang xem xét',
+  [StudentClassRequestStatus.APPROVED]: 'Đã duyệt',
+  [StudentClassRequestStatus.REJECTED]: 'Từ chối',
+  [StudentClassRequestStatus.CANCELLED]: 'Đã hủy',
+  [StudentClassRequestStatus.EXPIRED]: 'Hết hạn'
+}
+
+export const STUDENT_CLASS_REQUEST_STATUS_COLORS: Record<StudentClassRequestStatus, string> = {
+  [StudentClassRequestStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [StudentClassRequestStatus.UNDER_REVIEW]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [StudentClassRequestStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
+  [StudentClassRequestStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [StudentClassRequestStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [StudentClassRequestStatus.EXPIRED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
 // ==================== CONTRACT STATUS ====================
+// Contract.status: active, expired
 export enum ContractStatus {
   ACTIVE = 'active',          // Đang có hiệu lực
-  EXPIRED = 'expired',        // Đã hết hạn
-  TERMINATED = 'terminated',  // Đã chấm dứt
-  DRAFT = 'draft'            // Nháp
+  EXPIRED = 'expired'         // Đã hết hạn
 }
 
 export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   [ContractStatus.ACTIVE]: 'Đang có hiệu lực',
-  [ContractStatus.EXPIRED]: 'Đã hết hạn',
-  [ContractStatus.TERMINATED]: 'Đã chấm dứt',
-  [ContractStatus.DRAFT]: 'Nháp'
+  [ContractStatus.EXPIRED]: 'Đã hết hạn'
+}
+
+export const CONTRACT_STATUS_COLORS: Record<ContractStatus, string> = {
+  [ContractStatus.ACTIVE]: 'border-green-500 text-green-700 bg-green-50',
+  [ContractStatus.EXPIRED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== PAYROLL STATUS ====================
+// Payroll.status: draft, pending, approved, paid, rejected, cancelled
+export enum PayrollStatus {
+  DRAFT = 'draft',           // Bản nháp
+  PENDING = 'pending',       // Chờ duyệt
+  APPROVED = 'approved',     // Đã duyệt
+  PAID = 'paid',            // Đã trả
+  REJECTED = 'rejected',     // Từ chối
+  CANCELLED = 'cancelled'    // Đã hủy
+}
+
+export const PAYROLL_STATUS_LABELS: Record<PayrollStatus, string> = {
+  [PayrollStatus.DRAFT]: 'Bản nháp',
+  [PayrollStatus.PENDING]: 'Chờ duyệt',
+  [PayrollStatus.APPROVED]: 'Đã duyệt',
+  [PayrollStatus.PAID]: 'Đã trả',
+  [PayrollStatus.REJECTED]: 'Từ chối',
+  [PayrollStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const PAYROLL_STATUS_COLORS: Record<PayrollStatus, string> = {
+  [PayrollStatus.DRAFT]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [PayrollStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [PayrollStatus.APPROVED]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [PayrollStatus.PAID]: 'border-green-500 text-green-700 bg-green-50',
+  [PayrollStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [PayrollStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
+}
+
+// ==================== INCIDENT REPORT STATUS ====================
+// IncidentReport.status: PENDING, RESOLVED
+export enum IncidentReportStatus {
+  PENDING = 'PENDING',       // Chờ xử lý
+  RESOLVED = 'RESOLVED'      // Đã giải quyết
+}
+
+export const INCIDENT_REPORT_STATUS_LABELS: Record<IncidentReportStatus, string> = {
+  [IncidentReportStatus.PENDING]: 'Chờ xử lý',
+  [IncidentReportStatus.RESOLVED]: 'Đã giải quyết'
+}
+
+export const INCIDENT_REPORT_STATUS_COLORS: Record<IncidentReportStatus, string> = {
+  [IncidentReportStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [IncidentReportStatus.RESOLVED]: 'border-green-500 text-green-700 bg-green-50'
+}
+
+// ==================== TEACHER FEEDBACK STATUS ====================
+// TeacherFeedback.status: approved, hidden, flagged
+export enum TeacherFeedbackStatus {
+  APPROVED = 'approved',     // Đã duyệt
+  HIDDEN = 'hidden',        // Đã ẩn
+  FLAGGED = 'flagged'       // Đánh dấu
+}
+
+export const TEACHER_FEEDBACK_STATUS_LABELS: Record<TeacherFeedbackStatus, string> = {
+  [TeacherFeedbackStatus.APPROVED]: 'Đã duyệt',
+  [TeacherFeedbackStatus.HIDDEN]: 'Đã ẩn',
+  [TeacherFeedbackStatus.FLAGGED]: 'Đánh dấu'
+}
+
+export const TEACHER_FEEDBACK_STATUS_COLORS: Record<TeacherFeedbackStatus, string> = {
+  [TeacherFeedbackStatus.APPROVED]: 'border-green-500 text-green-700 bg-green-50',
+  [TeacherFeedbackStatus.HIDDEN]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [TeacherFeedbackStatus.FLAGGED]: 'border-orange-500 text-orange-700 bg-orange-50'
+}
+
+// ==================== TEACHER CLASS TRANSFER STATUS ====================
+// TeacherClassTransfer.status: pending, approved, rejected, completed, cancelled
+export enum TeacherClassTransferStatus {
+  PENDING = 'pending',       // Chờ duyệt
+  APPROVED = 'approved',     // Đã duyệt
+  REJECTED = 'rejected',     // Từ chối
+  COMPLETED = 'completed',   // Hoàn thành
+  CANCELLED = 'cancelled'    // Đã hủy
+}
+
+export const TEACHER_CLASS_TRANSFER_STATUS_LABELS: Record<TeacherClassTransferStatus, string> = {
+  [TeacherClassTransferStatus.PENDING]: 'Chờ duyệt',
+  [TeacherClassTransferStatus.APPROVED]: 'Đã duyệt',
+  [TeacherClassTransferStatus.REJECTED]: 'Từ chối',
+  [TeacherClassTransferStatus.COMPLETED]: 'Hoàn thành',
+  [TeacherClassTransferStatus.CANCELLED]: 'Đã hủy'
+}
+
+export const TEACHER_CLASS_TRANSFER_STATUS_COLORS: Record<TeacherClassTransferStatus, string> = {
+  [TeacherClassTransferStatus.PENDING]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [TeacherClassTransferStatus.APPROVED]: 'border-blue-500 text-blue-700 bg-blue-50',
+  [TeacherClassTransferStatus.REJECTED]: 'border-red-500 text-red-700 bg-red-50',
+  [TeacherClassTransferStatus.COMPLETED]: 'border-green-500 text-green-700 bg-green-50',
+  [TeacherClassTransferStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50'
 }
 
 // ==================== USER ROLES ====================
