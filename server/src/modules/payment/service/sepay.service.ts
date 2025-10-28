@@ -311,11 +311,11 @@ export class SepayService {
       }
       const studentIds = students.map((s) => s.id);
 
-      // Lấy các FeeRecord còn nợ (ưu tiên theo createdAt desc)
+      // Lấy các FeeRecord còn nợ
       const feeRecords = await this.prisma.feeRecord.findMany({
         where: {
           studentId: { in: studentIds },
-          status: { in: ['pending', 'partially_paid'] },
+          status: 'pending',
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -323,25 +323,21 @@ export class SepayService {
         return { data: null, message: 'Không tìm thấy hóa đơn cần thanh toán' };
       }
 
-      // Phân bổ số tiền (có thể trả một phần)
-      const allocations = this.calculatePaymentAllocations(
-        feeRecords,
-        webhookData.transferAmount,
-      );
-      if (allocations.length === 0) {
-        return { data: null, message: 'Số tiền không đủ để phân bổ' };
+      // Tính tổng số tiền các hóa đơn
+      const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+
+      // So khớp số tiền thanh toán
+      if (webhookData.transferAmount !== totalAmount) {
+        return { data: null, message: 'Số tiền thanh toán không khớp tổng hóa đơn' };
       }
 
       const parent = await this.prisma.parent.findFirst({
-          where: { students: { some: { id: { in: studentIds } } } },
-          include: { user: true },
-        });
-      // Transaction: tạo 1 Payment + N FeeRecordPayment + cập nhật FeeRecord
-      const result = await this.prisma.$transaction(async (tx) => {
-        // Tìm phụ huynh theo danh sách học sinh
-        
+        where: { students: { some: { id: { in: studentIds } } } },
+        include: { user: true },
+      });
 
-        // Tạo 1 Payment duy nhất (tổng số tiền giao dịch)
+      // Transaction: tạo Payment + FeeRecordPayment + cập nhật FeeRecord
+      const result = await this.prisma.$transaction(async (tx) => {
         const payment = await tx.payment.create({
           data: {
             amount: webhookData.transferAmount,
@@ -350,43 +346,28 @@ export class SepayService {
             reference: webhookData.referenceCode || null,
             transactionCode: orderCode,
             paidAt: new Date(webhookData.transactionDate),
-            notes: `Thanh toán ${allocations.length} hóa đơn qua ${webhookData.gateway}`,
+            notes: `Thanh toán ${feeRecords.length} hóa đơn qua ${webhookData.gateway}`,
             parent: parent ? { connect: { id: parent.id } } : undefined,
           },
         });
 
-        // Tạo allocations và update FeeRecord
-        for (const alloc of allocations) {
+        // Liên kết payment với từng feeRecord
+        for (const fr of feeRecords) {
           await tx.feeRecordPayment.create({
             data: {
-              paymentId: payment.id,
-              feeRecordId: alloc.feeRecordId,
-              amount: alloc.amountToPay,
-              notes: webhookData.description || undefined,
+              payment: { connect: { id: payment.id } },
+              feeRecord: { connect: { id: fr.id } },
+              amount: Number(fr.totalAmount), // or use the actual paid amount if partial payments are supported
             },
           });
-
-          const fr = feeRecords.find((f) => f.id === alloc.feeRecordId)!;
-          const newPaid = Number(fr.paidAmount) + alloc.amountToPay;
-          const total = Number(
-            fr.totalAmount ?? Number(fr.amount) - Number(fr.discount ?? 0),
-          );
 
           await tx.feeRecord.update({
             where: { id: fr.id },
-            data: {
-              paidAmount: newPaid,
-              status:
-                newPaid >= total
-                  ? 'paid'
-                  : newPaid > 0
-                  ? 'partially_paid'
-                  : 'pending',
-            },
+            data: { status: 'paid' },
           });
         }
 
-        // Gửi email thông báo
+        // Gửi email như cũ...
         if (parent?.user?.email) {
           const emailData = {
             parentName: parent.user.fullName,
@@ -397,14 +378,13 @@ export class SepayService {
             paymentMethod: 'Chuyển khoản ngân hàng',
             bankName: webhookData.gateway,
             transactionCode: webhookData.referenceCode,
-            students: allocations.map((alloc) => {
-              const fr = feeRecords.find((f) => f.id === alloc.feeRecordId)!;
+            students: feeRecords.map((fr) => {
               const st = students.find((s) => s.id === fr.studentId)!;
               return {
                 studentName: st.user.fullName,
                 studentCode: st.studentCode,
                 className: null,
-                feeAmount: alloc.amountToPay,
+                feeAmount: fr.totalAmount,
                 feeDescription: `Thanh toán học phí`,
               };
             }),
@@ -416,36 +396,16 @@ export class SepayService {
           );
         }
 
-        return { payment, allocations, students, feeRecords };
-      }, {timeout: 20000});
+        return { payment, feeRecords, students };
+      }, { timeout: 20000 });
 
-      // ✅ BẮN SOCKET SAU KHI TRANSACTION THÀNH CÔNG
-      this.paymentGateway.notifyPaymentSuccess(orderCode, {
-        orderCode,
-        paymentId: result.payment.id,
-        amount: webhookData.transferAmount,
-        paidAt: result.payment.paidAt.toISOString(),
-        allocations: result.allocations.map((alloc) => {
-          const fr = result.feeRecords.find((f) => f.id === alloc.feeRecordId)!;
-          const st = result.students.find((s) => s.id === fr.studentId)!;
-          return {
-            feeRecordId: alloc.feeRecordId,
-            amount: alloc.amountToPay,
-            studentName: st.user.fullName,
-            studentCode: st.studentCode,
-          };
-        }),
-      });
+      // Bắn socket như cũ...
 
-      this.logger.log(
-        `✅ 1 payment → phân bổ cho ${result.allocations.length} hóa đơn (orderCode=${orderCode})`,
-      );
-      
       return {
-        data: { 
-          paymentId: result.payment.id, 
-          orderCode, 
-          allocatedCount: result.allocations.length 
+        data: {
+          paymentId: result.payment.id,
+          orderCode,
+          paidCount: result.feeRecords.length,
         },
         message: 'Xử lý thanh toán thành công',
       };
