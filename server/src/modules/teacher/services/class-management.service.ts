@@ -116,7 +116,7 @@ export class ClassManagementService {
                     const activeStudentCount = await this.prisma.enrollment.count({
                         where: {
                             classId: classItem.id,
-                            status: 'active',
+                            status: 'studying',
                             completedAt: null,
                             student: {
                                 user: {
@@ -162,7 +162,7 @@ export class ClassManagementService {
                 room: classItem.room,
                 roomId: classItem.roomId,
                 
-                // Student count (chỉ học sinh active)
+                // Student count (chỉ học sinh studying)
                 studentCount: classItem.activeStudentCount,
                 
                 // Fee structure

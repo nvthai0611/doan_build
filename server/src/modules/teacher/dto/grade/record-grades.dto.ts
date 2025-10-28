@@ -32,10 +32,11 @@ export class RecordGradesDto {
     @IsString()
     assessmentType: string;
 
-    @ApiProperty({ description: 'Điểm tối đa của bài kiểm tra', example: 10 })
+    @ApiProperty({ description: 'Điểm tối đa của bài kiểm tra (optional, sẽ tự động lấy từ SystemSetting theo assessmentType)', example: 10, required: false })
+    @IsOptional()
     @IsNumber()
     @Min(0)
-    maxScore: number;
+    maxScore?: number;
 
     @ApiProperty({ description: 'Ngày kiểm tra (ISO date: YYYY-MM-DD)' })
     @IsDateString()

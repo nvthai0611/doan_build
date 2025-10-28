@@ -202,6 +202,14 @@ export class GradeController {
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 
+    @Get('exam-types-config')
+    @ApiOperation({ summary: 'Lấy cấu hình đầy đủ của exam types từ SystemSetting (bao gồm maxScore, description)' })
+    async getExamTypesConfig(@Req() request: any) {
+        const userId = request.user?.userId;
+        const data = await this.gradeService.getExamTypesConfig(userId);
+        return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+    }
+
     @Get('assessments/:assessmentId/grades')
     @ApiOperation({ summary: 'Lấy điểm theo assessment' })
     async getAssessmentGrades(@Req() request: any, @Param('assessmentId') assessmentId: string) {
@@ -216,32 +224,8 @@ export class GradeController {
         console.log('🎯 API /teacher/grades/record called with payload:', payload);
         console.log('🎯 Request user:', request.user);
         
-        // Validate max score = 10
-        if (payload.maxScore && payload.maxScore !== 10) {
-            console.log('❌ Invalid max score:', payload.maxScore);
-            return { 
-                success: false, 
-                status: HttpStatus.BAD_REQUEST, 
-                data: null, 
-                message: 'Max score phải là 10 điểm', 
-                meta: null 
-            };
-        }
-        
-        // Validate individual scores
-        if (payload.grades && payload.grades.length > 0) {
-            const invalidScores = payload.grades.filter(g => g.score !== undefined && g.score !== null && (g.score < 0 || g.score > 10));
-            if (invalidScores.length > 0) {
-                console.log('❌ Invalid individual scores:', invalidScores);
-                return { 
-                    success: false, 
-                    status: HttpStatus.BAD_REQUEST, 
-                    data: null, 
-                    message: 'Điểm số phải từ 0 đến 10', 
-                    meta: null 
-                };
-            }
-        }
+        // Không còn validate maxScore cố định = 10, vì maxScore giờ lấy từ SystemSetting
+        // Backend service sẽ tự động query SystemSetting để lấy maxScore theo assessmentType
         
         const userId = request.user?.userId;
         console.log('🎯 User ID:', userId);
