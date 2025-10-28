@@ -8,9 +8,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 interface SuccessResponse {
-  data: any;
-  message?: string;
-  meta?: Record<string, any>;
+  [key: string]: any; // Allow any fields from service
 }
 
 // Serialize values that JSON.stringify cannot handle (BigInt, Prisma Decimal, Date, etc.)
@@ -55,22 +53,27 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
     return next.handle().pipe(
       // map: biến đổi giá trị được emit (kết quả từ controller)
       map((result: any) => {
-        // Trường hợp 1: controller tự return dạng { data, message?, meta? }
+        const statusCode = context.switchToHttp().getResponse().statusCode;
+
+        // Trường hợp 1: controller tự return dạng object { data, message?, meta?, ... }
         if (result && typeof result === 'object' && 'data' in result) {
+          // Serialize tất cả các fields trong result
+          const serializedResult: any = {};
+          for (const key of Object.keys(result)) {
+            serializedResult[key] = serializeForJson(result[key]);
+          }
+          
           return {
             success: true,
-            // Lấy HTTP status code hiện tại (ví dụ POST mặc định là 201, GET là 200)
-            status: context.switchToHttp().getResponse().statusCode,
-            data: serializeForJson(result.data), // dữ liệu chính
-            meta: serializeForJson(result.meta || {}), // thông tin phụ (phân trang, tổng, v.v.)
-            message: result.message || '',
+            status: statusCode,
+            ...serializedResult, // Giữ lại TẤT CẢ fields từ service (data, message, meta, warning, sessionsGenerated, etc.)
           };
         }
 
         // Trường hợp 2: controller return "thô" (string/number/array/object không có field `data`)
         return {
           success: true,
-          status: context.switchToHttp().getResponse().statusCode,
+          status: statusCode,
           data: serializeForJson(result),
           meta: {},
           message: '',

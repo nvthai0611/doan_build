@@ -702,11 +702,11 @@ export default function ScheduleTab({
                       >
                         {session.status === "end"
                           ? "Hoàn thành"
-                          : session.status === "postponed"
-                            ? "Tạm Hoãn"
-                            : session.status === "day_off"
-                              ? "Nghỉ lễ"
-                              : "Đã lên lịch"}
+                          : session.status === "day_off"
+                            ? "Nghỉ học"
+                            : session.status === "happening"
+                              ? "Đang diễn ra"
+                              : "Chưa diễn ra"}
                       </Badge>
                     </div>
                   </div>

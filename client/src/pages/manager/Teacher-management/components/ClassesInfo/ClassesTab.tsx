@@ -11,12 +11,13 @@ import { useNavigate } from "react-router-dom"
 import { usePagination } from "../../../../../hooks/usePagination"
 import { CodeDisplay } from "../../../../../components/common/CodeDisplay"
 import { formatScheduleArray } from "../../../../../utils/format"
+import { ClassStatus } from "../../../../../lib/constants"
 
 interface ClassesInfoProps {
   teacherId: string
-  activeTab: "all" | "ready" | "active" | "cancelled" | "completed"
+  activeTab: "all" | "ready" | "active" | "cancelled" | "completed" | "suspended"
   search: string
-  setActiveTab: (tab: "all" | "ready" | "active" | "cancelled" | "completed") => void
+  setActiveTab: (tab: "all" | "ready" | "active" | "cancelled" | "completed" | "suspended") => void
   setSearch: (search: string) => void
 }
 
@@ -100,10 +101,11 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     // Filter by status tab (local filter as backup)
     if (activeTab !== 'all') {
         data = data.filter((item: any) => {
-        if (activeTab === 'active') return item.status === 'active'
-        if (activeTab === 'cancelled') return item.status === 'cancelled'
-        if (activeTab === 'completed') return item.status === 'completed'
-        if (activeTab === 'ready') return item.status === 'ready'
+        if (activeTab === 'active') return item.status === ClassStatus.ACTIVE
+        if (activeTab === 'cancelled') return item.status === ClassStatus.CANCELLED
+        if (activeTab === 'completed') return item.status === ClassStatus.COMPLETED
+        if (activeTab === 'ready') return item.status === ClassStatus.READY
+        if (activeTab === 'suspended') return item.status === ClassStatus.SUSPENDED
         return true
       })
     }
@@ -125,14 +127,15 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   // Tab counts based on filtered data
   const tabCounts = useMemo(() => {
     const all = filteredData.length
-    const ready = filteredData.filter((item: any) => item.status === 'ready').length
-    const active = filteredData.filter((item: any) => item.status === 'active').length
-    const cancelled = filteredData.filter((item: any) => item.status === 'cancelled').length
-    const completed = filteredData.filter((item: any) => item.status === 'completed').length
-    return { all, ready, active, cancelled, completed }
+    const ready = filteredData.filter((item: any) => item.status === ClassStatus.READY).length
+    const active = filteredData.filter((item: any) => item.status === ClassStatus.ACTIVE).length
+    const cancelled = filteredData.filter((item: any) => item.status === ClassStatus.CANCELLED).length
+    const completed = filteredData.filter((item: any) => item.status === ClassStatus.COMPLETED).length
+    const suspended = filteredData.filter((item: any) => item.status === ClassStatus.SUSPENDED).length
+    return { all, ready, active, cancelled, completed, suspended }
   }, [filteredData])
 
-  const handleTabChange = (tab: "all" | "ready" | "active" | "cancelled" | "completed") => {
+  const handleTabChange = (tab: "all" | "ready" | "active" | "cancelled" | "completed" | "suspended") => {
     setActiveTab(tab)
   }
 
@@ -241,6 +244,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     { key: "active" as const, label: "Đang dạy", count: tabCounts.active },
     { key: "cancelled" as const, label: "Đã hủy", count: tabCounts.cancelled },
     { key: "completed" as const, label: "Đã kết thúc", count: tabCounts.completed },
+    { key: "suspended" as const, label: "Tạm dừng", count: tabCounts.suspended },
   ]
 
   return (
