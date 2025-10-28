@@ -2246,6 +2246,7 @@ export class ClassManagementService {
     // Lấy dashboard data đầy đủ
     async getDashboard(classId: string) {
         try {
+            console.log(classId);
             // Validate class exists
             const classItem = await this.prisma.class.findUnique({
                 where: { id: classId },
@@ -2308,20 +2309,14 @@ export class ClassManagementService {
                 }
             });
 
-            // 4. Doanh thu từ học phí đã thanh toán
+            // 4. Doanh thu từ học phí đã thanh toán (chỉ tính cho lớp này)
             const revenue = await this.prisma.payment.aggregate({
                 where: {
                     status: 'completed',
                     feeRecordPayments: {
                         some: {
                             feeRecord: {
-                                student: {
-                                    enrollments: {
-                                        some: {
-                                            classId: classId
-                                        }
-                                    }
-                                }
+                                classId: classId  // Chỉ tính fee records của lớp này
                             }
                         }
                     }
