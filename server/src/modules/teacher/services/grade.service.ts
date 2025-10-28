@@ -147,53 +147,34 @@ export class GradeService {
     }
 
     async listAssessmentTypes(userId: string, classId?: string) {
-        // Lấy teacherId từ userId
-        const teacher = await this.prisma.teacher.findFirst({
-            where: { userId: userId }
-        });
-        if (!teacher) {
-            return [] as string[];
-        }
-        const teacherId = teacher.id;
-
-        let where: any = {};
-        if (classId) {
-            // Lấy loại kiểm tra của lớp cụ thể
-            where.classId = classId;
-        } else {
-            // Lấy các class mà teacher đang dạy (qua quan hệ trực tiếp)
-            const classes = await this.prisma.class.findMany({
-                where: { 
-                    teacherId: teacherId
-                },
-                select: { id: true }
+        // Lấy loại kiểm tra từ SystemSetting với key 'exam_types'
+        try {
+            const setting = await this.prisma.systemSetting.findUnique({
+                where: { key: 'exam_types' }
             });
-            const classIds = classes.map(c => c.id);
-            if (classIds.length === 0) return [] as string[];
-            where.classId = { in: classIds };
+
+            if (setting && setting.value) {
+                const valueData = setting.value as any;
+                
+                // Lấy danh sách items từ value.items
+                if (valueData.items && Array.isArray(valueData.items)) {
+                    // Lọc chỉ lấy các loại kiểm tra active và extract tên
+                    const examTypes = valueData.items
+                        .filter((item: any) => item.isActive === true)
+                        .map((item: any) => item.name)
+                        .filter(Boolean);
+                    
+                    console.log('📚 Active exam types from system settings:', examTypes);
+                    return examTypes as string[];
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching exam types from system settings:', error);
         }
 
-        // Lấy distinct types từ bảng Assessment
-        const rows = await this.prisma.assessment.findMany({
-            where,
-            distinct: ['type'],
-            select: { type: true },
-            orderBy: { type: 'asc' }
-        });
-        
-        const types = rows.map(r => r.type).filter(Boolean);
-        
-        // Nếu không có loại kiểm tra nào, trả về danh sách mặc định
-        if (types.length === 0) {
-            return [
-                'Kiểm tra 15 phút',
-                'Kiểm tra 45 phút', 
-                'Kiểm tra 60 phút',
-                'Kiểm tra 90 phút'
-            ];
-        }
-        
-        return types;
+        // Nếu không có trong system settings, trả về mảng rỗng
+        console.log('⚠️ No exam types configured in system settings');
+        return [];
     }
 
     async recordGrades(userId: string, payload: RecordGradesDto) {
