@@ -26,6 +26,8 @@ export default function GradeInputPage() {
   const [selectedAssignment, setSelectedAssignment] = useState("")
   const [selectedExamType, setSelectedExamType] = useState("")
   const [examTypes, setExamTypes] = useState<string[]>([])
+  const [examTypesConfig, setExamTypesConfig] = useState<any[]>([]) // Lưu config từ SystemSetting
+  const [currentMaxScore, setCurrentMaxScore] = useState<number>(10) // MaxScore của exam type hiện tại
   const [examDate, setExamDate] = useState("")
   const [examTitle, setExamTitle] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
@@ -36,21 +38,10 @@ export default function GradeInputPage() {
     const fetchClasses = async () => {
       try {
         setLoading(true)
-        console.log('🔍 Starting to fetch classes...')
 
         const response = await teacherClassService.getClasses()
-        console.log('📦 Classes response:', response)
-
-        // Debug: Kiểm tra cấu trúc data
-        console.log('🔍 Response type:', typeof response)
-        console.log('🔍 Response is array:', Array.isArray(response))
-        console.log('🔍 Response length:', (response as any)?.length)
-        if (response && (response as any).length > 0) {
-          console.log('🔍 First item structure:', (response as any)[0])
-        }
 
         const items = ((response as any) || []).map((c: any) => {
-          console.log('🔍 Mapping class item:', c)
           return {
             id: c.id,
             name: c.name,
@@ -58,11 +49,10 @@ export default function GradeInputPage() {
             studentCount: c.studentCount || 0
           }
         }) as TeacherClassItem[]
-        console.log('📋 Mapped classes:', items)
         setClasses(items)
       } catch (e: any) {
-        console.error('❌ Fetch classes error', e)
-        console.error('❌ Error details:', {
+        console.error('Fetch classes error', e)
+        console.error('Error details:', {
           status: e?.status,
           message: e?.message,
           response: e?.response
@@ -78,17 +68,14 @@ export default function GradeInputPage() {
   useEffect(() => {
     const run = async () => {
       if (!selectedClass) {
-        console.log('🎓 No class selected, clearing students')
         setStudents([])
         setSelectedAssignment("")
         return
       }
 
-      console.log('🎓 Selected class:', selectedClass)
 
       try {
         setLoading(true)
-        console.log('🎓 Calling API /teacher/common/class/${selectedClass}/students')
 
         // Gọi API mới sử dụng classId trực tiếp
         const response = await teacherCommonService.getListStudentOfClass(selectedClass)
@@ -104,25 +91,16 @@ export default function GradeInputPage() {
         }
 
         if (studentsArray && Array.isArray(studentsArray)) {
-          console.log('🎓 Found', studentsArray.length, 'students')
           // Sử dụng helper method từ service để transform data
           const studentsData = teacherCommonService.processStudentsData(studentsArray)
           setStudents(studentsData)
         } else {
-          console.log('⚠️ No students found')
           setStudents([])
         }
 
         setGrades({})
         setSavedGrades(new Set())
       } catch (e: any) {
-        console.error('❌ Fetch students error', e)
-        console.error('❌ Error details:', {
-          status: e?.status,
-          message: e?.message,
-          response: e?.response,
-          stack: e?.stack
-        })
         setStudents([])
       } finally {
         setLoading(false)
@@ -131,22 +109,38 @@ export default function GradeInputPage() {
     run()
   }, [selectedClass, classes])
 
-  // Khi chọn lớp: cũng lấy danh sách loại kiểm tra để hiển thị trong dropdown
+  // Khi chọn lớp: cũng lấy danh sách loại kiểm tra và config từ SystemSetting
   useEffect(() => {
     const run = async () => {
       if (!selectedClass) return
       try {
+        // Lấy danh sách tên exam types
         const types = await teacherPointService.getAssessmentTypes(selectedClass)
-        // Backend trả về trực tiếp array từ SystemSetting
         const apiTypes = types || []
-        // Sử dụng trực tiếp từ SystemSetting, không có fallback mặc định
         setExamTypes(apiTypes)
+
+        // Lấy config đầy đủ bao gồm maxScore
+        const config = await teacherPointService.getExamTypesConfig()
+        setExamTypesConfig(config || [])
       } catch (e) {
         setExamTypes([])
+        setExamTypesConfig([])
       }
     }
     run()
   }, [selectedClass])
+
+  // Cập nhật maxScore khi chọn exam type
+  useEffect(() => {
+    if (selectedExamType && examTypesConfig.length > 0) {
+      const config = examTypesConfig.find((item: any) => item.name === selectedExamType)
+      if (config && config.maxScore) {
+        setCurrentMaxScore(config.maxScore)
+      } else {
+        setCurrentMaxScore(10) // Default
+      }
+    }
+  }, [selectedExamType, examTypesConfig])
 
   const filteredStudents = useMemo(() => {
     return students.filter(
@@ -157,10 +151,24 @@ export default function GradeInputPage() {
   }, [students, searchTerm])
 
   const handleGradeChange = (studentId: string, field: "score" | "comment", value: string) => {
-    // Validate score input
+    // Validate score input - cho phép nhập số thập phân
     if (field === "score" && value !== "") {
+      // Cho phép các trường hợp đang nhập: "7", "7.", "7.5"
+      // Chỉ validate khi đã nhập xong một số hoàn chỉnh
+      if (value.endsWith('.')) {
+        // Đang nhập dấu chấm, cho phép
+        setGrades((prev) => ({
+          ...prev,
+          [studentId]: {
+            ...prev[studentId],
+            [field]: value,
+          },
+        }))
+        return
+      }
+      
       const numValue = Number.parseFloat(value)
-      if (isNaN(numValue) || numValue < 0 || numValue > 10) {
+      if (isNaN(numValue) || numValue < 0 || numValue > currentMaxScore) {
         // Don't update if invalid score
         return
       }
@@ -220,14 +228,12 @@ export default function GradeInputPage() {
     
     try {
       setLoading(true)
-      console.log('🎯 Saving individual grade for student:', studentId)
       
-      // Create payload for single student
+      // Create payload for single student (không truyền maxScore, để backend lấy từ SystemSetting)
       const payload = {
         classId: selectedClass,
         assessmentName: examTitle,
         assessmentType: selectedExamType,
-        maxScore: 10,
         date: examDate,
         grades: [{
           studentId: studentId,
@@ -235,16 +241,12 @@ export default function GradeInputPage() {
           feedback: grade.comment
         }]
       }
-      
-      console.log('🎯 Individual grade payload:', payload)
-      
+            
       // Call API to save grade
       await teacherPointService.recordGrades(payload)
       
-      console.log('✅ Individual grade saved successfully')
       setSavedGrades((prev) => new Set([...prev, studentId]))
     } catch (error) {
-      console.error('❌ Error saving individual grade:', error)
       alert('Có lỗi khi lưu điểm. Vui lòng thử lại.')
     } finally {
       setLoading(false)
@@ -274,11 +276,11 @@ export default function GradeInputPage() {
       const score = grades[sid]?.score
       if (!score) return false
       const numScore = Number.parseFloat(score)
-      return isNaN(numScore) || numScore < 0 || numScore > 10
+      return isNaN(numScore) || numScore < 0 || numScore > currentMaxScore
     })
     
     if (invalidScores.length > 0) {
-      alert('Một số điểm số không hợp lệ. Vui lòng kiểm tra lại (điểm từ 0-10)')
+      alert(`Một số điểm số không hợp lệ. Vui lòng kiểm tra lại (điểm từ 0-${currentMaxScore})`)
       return
     }
     
@@ -289,11 +291,11 @@ export default function GradeInputPage() {
     }))
     try {
       setLoading(true)
+      // Không truyền maxScore, để backend tự động lấy từ SystemSetting dựa trên assessmentType
       await teacherPointService.recordGrades({
         classId: selectedClass,
         assessmentName: examTitle || `${selectedExamType} - ${examDate}`,
         assessmentType: selectedExamType,
-        maxScore: 10, // Fixed max score = 10
         date: examDate,
         grades: payload,
       })
@@ -480,15 +482,15 @@ export default function GradeInputPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor={`score-${student.studentId}`}>Điểm số (0-10)</Label>
+                      <Label htmlFor={`score-${student.studentId}`}>Điểm số (0-{currentMaxScore})</Label>
                       <div className="flex gap-2">
                         <Input
                           id={`score-${student.studentId}`}
                           type="number"
                           min="0"
-                          max="10"
+                          max={currentMaxScore}
                           step="0.1"
-                          placeholder="Nhập điểm (0-10)"
+                          placeholder={`Nhập điểm (0-${currentMaxScore})`}
                           value={grade?.score || ""}
                           onChange={(e) => handleGradeChange(student.studentId, "score", e.target.value)}
                         />

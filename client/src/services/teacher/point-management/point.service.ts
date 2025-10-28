@@ -43,6 +43,14 @@ export const teacherPointService = {
   },
 
   /**
+   * Lấy cấu hình đầy đủ của exam types từ SystemSetting (bao gồm maxScore, description)
+   */
+  getExamTypesConfig: async (): Promise<any[]> => {
+    const response = await ApiService.get<any[]>("/teacher/grades/exam-types-config")
+    return response.data || []
+  },
+
+  /**
    * Lấy chi tiết điểm số của bài kiểm tra
    */
   getAssessmentGrades: async (assessmentId: string): Promise<AssessmentGradeView[]> => {
