@@ -15,12 +15,6 @@ interface PaymentSuccessData {
   paymentId: string;
   amount: number;
   paidAt: string;
-  allocations: Array<{
-    feeRecordId: string;
-    amount: number;
-    studentName: string;
-    studentCode: string;
-  }>;
 }
 
 @Injectable()

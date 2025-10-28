@@ -951,7 +951,6 @@ export class ParentManagementService {
                 method: payment.method || 'bank_transfer',
                 allocations: (payment.feeRecordPayments || []).map((frp) => ({
                     id: frp.id,
-                    amount: Number(frp.amount),
                     feeRecordId: frp.feeRecordId,
                     notes: frp.notes,
                     studentId: frp.feeRecord?.studentId,

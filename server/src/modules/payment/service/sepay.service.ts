@@ -355,9 +355,8 @@ export class SepayService {
         for (const fr of feeRecords) {
           await tx.feeRecordPayment.create({
             data: {
-              payment: { connect: { id: payment.id } },
-              feeRecord: { connect: { id: fr.id } },
-              amount: Number(fr.totalAmount), // or use the actual paid amount if partial payments are supported
+              paymentId: payment.id,
+              feeRecordId: fr.id,
             },
           });
 
@@ -400,6 +399,16 @@ export class SepayService {
       }, { timeout: 20000 });
 
       // Bắn socket như cũ...
+      // ✅ BẮN SOCKET SAU KHI TRANSACTION THÀNH CÔNG
+      console.log(orderCode);
+      
+      this.paymentGateway.notifyPaymentSuccess(orderCode, {
+        orderCode,
+        paymentId: result.payment.id,
+        amount: webhookData.transferAmount,
+        paidAt: result.payment.paidAt.toISOString(),
+      });
+
 
       return {
         data: {
@@ -468,7 +477,6 @@ export class SepayService {
         paidAt: payment.paidAt,
         allocations: payment.feeRecordPayments.map(pr => ({
           feeRecordId: pr.feeRecordId,
-          amount: pr.amount,
           studentName: pr.feeRecord.student.user.fullName,
           studentCode: pr.feeRecord.student.studentCode,
           className: pr.feeRecord.class?.name

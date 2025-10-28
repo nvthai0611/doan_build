@@ -151,12 +151,16 @@ export function PaymentSelectionPage() {
   }, [])
 
   // Subscribe payment updates khi QR modal mở
+  console.log(paymentData);
+  
   useEffect(() => {
   if (showQrModal && paymentData?.orderCode) {
     paymentSocketService.subscribeToPayment(
       paymentData.orderCode,
       {
         onSuccess: async (data) => {
+          console.log(data);
+          
           // ✅ Thanh toán thành công
            toast.success('Thanh toán thành công! 🎉', {
             description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
