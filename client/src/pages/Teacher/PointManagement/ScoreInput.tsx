@@ -137,23 +137,12 @@ export default function GradeInputPage() {
       if (!selectedClass) return
       try {
         const types = await teacherPointService.getAssessmentTypes(selectedClass)
-        console.log('Assessment types response:', types)
-        console.log('Assessment types data:', (types as any).data)
-
-        // Backend trả về trực tiếp array, không cần .data
+        // Backend trả về trực tiếp array từ SystemSetting
         const apiTypes = types || []
-        console.log('API types:', apiTypes)
-
-        // Nếu không có loại kiểm tra nào, thêm một số loại mặc định
-        const defaultTypes = ['Kiểm tra 15 phút', 'Kiểm tra 45 phút', 'Kiểm tra 60 phút', 'Bài tập 90 phút']
-        const finalTypes = apiTypes && apiTypes.length > 0 ? apiTypes : defaultTypes
-        console.log('Final types to set:', finalTypes)
-        setExamTypes(finalTypes)
+        // Sử dụng trực tiếp từ SystemSetting, không có fallback mặc định
+        setExamTypes(apiTypes)
       } catch (e) {
-        console.error('Fetch assessment types error', e)
-        // Nếu có lỗi, dùng loại mặc định
-        const defaultTypes = ['Kiểm tra 15 phút', 'Kiểm tra 45 phút', 'Kiểm tra 60 phút', 'Bài tập 90 phút']
-        setExamTypes(defaultTypes)
+        setExamTypes([])
       }
     }
     run()

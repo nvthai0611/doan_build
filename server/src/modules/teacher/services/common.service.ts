@@ -15,7 +15,7 @@ export class CommonService {
       const students = await this.prisma.enrollment.findMany({
         where: {
           classId: classId,
-          status: 'active', // Enrollment active
+          status: 'studying', // Only students currently studying
           student: {
             user: {
               isActive: true, // User active
@@ -103,7 +103,7 @@ export class CommonService {
       });
 
       console.log(
-        `📚 Found ${students.length} active students for class ${classId}`,
+        `📚 Found ${students.length} studying students for class ${classId}`,
       );
 
       return {
@@ -168,7 +168,7 @@ export class CommonService {
     try {
       const whereCondition: any = {
         studentId: studentId,
-        status: 'active', // Enrollment active
+        status: 'studying', // Only active studying enrollment
         student: {
           user: {
             isActive: true, // User active
@@ -328,7 +328,7 @@ export class CommonService {
         this.prisma.enrollment.count({
           where: {
             classId: classId,
-            status: 'active',
+            status: 'studying',
             student: {
               user: {
                 isActive: true,
@@ -351,7 +351,7 @@ export class CommonService {
               enrollments: {
                 some: {
                   classId: classId,
-                  status: 'active',
+                  status: 'studying',
                   class: {
                     status: 'active',
                     teacherId: teacherId,
@@ -374,7 +374,7 @@ export class CommonService {
               enrollments: {
                 some: {
                   classId: classId,
-                  status: 'active',
+                  status: 'studying',
                   class: {
                     status: 'active',
                     teacherId: teacherId,
