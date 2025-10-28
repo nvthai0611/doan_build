@@ -716,7 +716,7 @@ model IncidentReport {
 
 model SystemSetting {
   id          String   @id @default(uuid()) @db.Uuid
-  key         String   @unique
+  key         String   @unique //exam_types
   group       String
   value       Json
   description String?
