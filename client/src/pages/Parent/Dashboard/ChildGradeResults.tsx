@@ -40,17 +40,19 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
     new Set(allExamResults.map(r => JSON.stringify({ id: r.classId, name: r.className })))
   ).map(s => JSON.parse(s))
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "excellent":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-      case "good":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-      case "average":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+  // Phân loại theo yêu cầu: Tốt >= 8, Khá >= 6.5, Đạt >= 5, còn lại Chưa đạt
+  // Hỗ trợ cả bài có maxScore != 10 bằng cách quy đổi về thang 10
+  const getClassification = (score?: number | null, maxScore?: number | null) => {
+    if (score == null || maxScore == null || maxScore <= 0) {
+      return { label: "Chưa đạt", color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" }
     }
+
+    const normalized = maxScore === 10 ? score : Number(((score / maxScore) * 10).toFixed(2))
+
+    if (normalized >= 8) return { label: "Tốt", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" }
+    if (normalized >= 6.5) return { label: "Khá", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" }
+    if (normalized >= 5) return { label: "Đạt", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" }
+    return { label: "Chưa đạt", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" }
   }
 
   // Loading state
@@ -130,9 +132,12 @@ export function ChildExamResults({ child }: ChildExamResultsProps) {
                       <h3 className="font-semibold text-lg">{result.subject}</h3>
                       <p className="text-sm text-muted-foreground">{result.examName}</p>
                     </div>
-                    <Badge className={getStatusColor(result.status)}>
-                      {result.status === "excellent" ? "Xuất sắc" : result.status === "good" ? "Khá" : "Trung bình"}
-                    </Badge>
+                    {(() => {
+                      const clsf = getClassification(result.score ?? undefined, result.maxScore ?? undefined)
+                      return (
+                        <Badge className={clsf.color}>{clsf.label}</Badge>
+                      )
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
