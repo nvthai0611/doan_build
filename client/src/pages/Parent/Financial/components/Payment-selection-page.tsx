@@ -13,10 +13,12 @@ import { PaymentHistory } from "./Payment-history"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import financialParentService from "../../../../services/parent/financial-management/financial-parent.service"
 import Loading from "../../../../components/Loading/LoadingPage"
+import { PaymentProcessing } from "./Payment-processing"
 import { toast } from "sonner"
 import { X, Download, Copy, CheckCircle, Clock } from "lucide-react"
 import { parentChildService } from "../../../../services/parent/child-management/child.service"
 import { paymentSocketService } from "../../../../services/socket/payment-socket.service"
+import { PaymentCartSidebar } from "./payment-cart-sidebar"
 
 interface FeeRecordData {
   id: string
@@ -76,7 +78,7 @@ export function PaymentSelectionPage() {
   const [remainingTime, setRemainingTime] = useState<number>(0)
   const [selectedStudent, setSelectedStudent] = useState<string>("all")
   const [loading, setLoading] = useState<boolean>(false)
-  
+  const [currentPayment, setCurrentPayment] = useState<any | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const queryClient = useQueryClient()
@@ -264,18 +266,30 @@ export function PaymentSelectionPage() {
         return
       }
       setLoading(true)
-      const response: any = await financialParentService.createQrCodeForPayment(selectedFees)
-      if (!response?.qrCodeUrl) {
-        toast.error(response?.message || "Không thể tạo mã QR")
+      // 1. Tạo payment
+      const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
+      if (!paymentRes?.data?.id) {
+        toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
+        setLoading(false)
         return
       }
-      setLoading(false)
-      setPaymentData(response)
+      setCurrentPayment(paymentRes.data)
+
+      // 2. Tạo QR code cho payment vừa tạo
+      const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
+      if (!qrRes?.data?.qrCodeUrl) {
+        toast.error(qrRes?.message || "Không thể tạo mã QR")
+        setLoading(false)
+        return
+      }
+      setPaymentData(qrRes.data)
       setShowQrModal(true)
       toast.success("Mã QR thanh toán đã được tạo thành công")
     } catch (error) {
-      console.error("Error creating QR code:", error)
-      toast.error("Có lỗi xảy ra khi tạo mã QR")
+      console.error("Error creating payment/QR code:", error)
+      toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -324,6 +338,8 @@ export function PaymentSelectionPage() {
     setPaymentData(null)
     setCopied(false)
     setRemainingTime(0)
+    queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
+  queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
   }
 
   if (isLoading) {
@@ -397,9 +413,10 @@ export function PaymentSelectionPage() {
         </div>
 
         <Tabs defaultValue="fees" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="fees">Danh sách hoá đơn</TabsTrigger>
-            <TabsTrigger value="history">Lịch sử thanh toán</TabsTrigger>
+            <TabsTrigger value="processing">Đang xử lý</TabsTrigger>
+          <TabsTrigger value="history">Lịch sử thanh toán</TabsTrigger>
           </TabsList>
 
           {/* Fee List Tab */}
@@ -479,16 +496,16 @@ export function PaymentSelectionPage() {
 
                 {/* Sidebar */}
                 <div className="lg:flex-1 lg:self-start">
-                  <div className="lg:sticky lg:top-4 space-y-6">
+                  {/* <div className="lg:sticky lg:top-4 space-y-6">
                     {/* Payment Summary */}
-                    <PaymentSummary
+                    {/* <PaymentSummary
                       selectedCount={selectedFees.length}
                       totalAmount={totalAmount}
                       onPayment={handleSelectPayment}
-                    />
+                    /> */}
 
                     {/* Details Card */}
-                    <Card>
+                    {/* <Card>
                       <CardHeader>
                         <CardTitle className="text-base">Chi tiết thanh toán</CardTitle>
                       </CardHeader>
@@ -514,8 +531,15 @@ export function PaymentSelectionPage() {
                           </p>
                         )}
                       </CardContent>
-                    </Card>
-                  </div>
+                    </Card> */}
+                  {/* </div> */}
+    <PaymentCartSidebar
+                    selectedFees={selectedFees}
+                    feeRecords={filteredFeeRecords}
+                    currentPayment={currentPayment}
+                    setCurrentPayment={setCurrentPayment}
+                    setSelectedFees={setSelectedFees}
+                  />
                 </div>
               </div>
             )}
@@ -525,6 +549,10 @@ export function PaymentSelectionPage() {
           <TabsContent value="history" className="mt-0">
             <PaymentHistory children={childrenList} />
           </TabsContent>
+
+          <TabsContent value="processing" className="mt-0">
+  <PaymentProcessing />
+</TabsContent>
         </Tabs>
 
         {/* QR Code Modal - Giữ nguyên code cũ */}
