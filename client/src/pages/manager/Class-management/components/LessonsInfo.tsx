@@ -233,7 +233,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       render: (session: any, index: number) => (
         <div>
           <div className="font-medium text-blue-600 cursor-pointer hover:underline">
-            {`${session.notes}`}
+            {`${session.name || session.notes || session.topic }`}
                       </div>
                       <div className="text-sm text-gray-500">
             {(() => {
@@ -284,15 +284,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       align: 'center',
       render: (session: any) => (
         <span className="text-sm">{session.absentCount || 0}</span>
-      )
-    },
-    {
-      key: 'notAttended',
-      header: 'Chưa điểm danh',
-      width: '120px',
-      align: 'center',
-      render: (session: any) => (
-        <span className="text-sm">{session.notAttendedCount || 0}</span>
       )
     },
     // {
@@ -420,7 +411,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         </CardContent>
       </Card>
 
-        <Card>
+        {/* <Card>
           <CardContent className="p-4">
             <div className="flex flex-col items-center text-center">
               <div className="text-2xl font-bold text-blue-600 mb-1">
@@ -431,7 +422,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Header */}

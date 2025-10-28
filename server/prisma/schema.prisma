@@ -231,7 +231,7 @@ model Enrollment {
   studentId        String           @map("student_id") @db.Uuid
   classId          String           @map("class_id") @db.Uuid
   enrolledAt       DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
-  status           String           @default("not_been_updated")
+  status           String           @default("not_been_updated") // not_been_updated, studying, stopped, graduated, 
   semester         String?
   completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
   finalGrade       String?          @map("final_grade")

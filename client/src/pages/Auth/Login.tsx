@@ -40,7 +40,16 @@ export function LoginForm() {
         return
       }
       
-      // Role hợp lệ → redirect được xử lý bởi AuthProvider
+      // Role hợp lệ → Redirect đến trang quản trị tương ứng
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin')
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin')
+        navigate(redirectPath, { replace: true })
+      } else {
+        // Default redirect: Center Owner về /center-qn, Teacher về /teacher/profile
+        const defaultPath = result.user.role === 'center_owner' ? '/center-qn' : '/teacher/profile'
+        navigate(defaultPath, { replace: true })
+      }
     } catch (err: any) {
       setError(err.message || "Email hoặc mật khẩu không đúng")
     }

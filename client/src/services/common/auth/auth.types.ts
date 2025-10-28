@@ -13,6 +13,12 @@ export interface LoginResponse {
   expiresIn: number
 }
 
+export interface ChildData {
+  fullName: string
+  dateOfBirth: string
+  gender: string
+}
+
 export interface RegisterRequest {
   email: string
   password: string
@@ -22,6 +28,7 @@ export interface RegisterRequest {
   birthDate: string
   gender: string
   role?: UserRole
+  children: ChildData[]
 }
 
 export interface RegisterResponse {
