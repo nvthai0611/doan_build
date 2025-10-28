@@ -39,7 +39,17 @@ export function ParentStudentLogin() {
         return
       }
       
-      // Role hợp lệ → redirect được xử lý bởi AuthProvider
+      // Role hợp lệ → Check redirect from sessionStorage
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin')
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin')
+        navigate(redirectPath, { replace: true })
+      } else {
+        // Default redirect based on role
+        // Parent về homepage, Student vào trang quản trị
+        const defaultPath = result.user.role === 'parent' ? '/parent' : '/student'
+        navigate(defaultPath, { replace: true })
+      }
     } catch (err: any) {
       setError(err.message || "Email hoặc mật khẩu không đúng")
     }

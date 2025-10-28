@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { X, Calendar, User, Clock } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
 import { parentClassJoinService } from '../../../../../services/parent/class-join/class-join.service';
@@ -18,6 +19,7 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
   const { toast } = useToast();
   const [codeOrLink, setCodeOrLink] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [classInfo, setClassInfo] = useState<any>(null);
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -37,6 +39,7 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
     if (!open) {
       setCodeOrLink('');
       setPassword('');
+      setMessage('');
       setClassInfo(null);
       setSelectedStudentId('');
       setShowPasswordInput(false);
@@ -332,6 +335,22 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
                     </p>
                   </div>
                 )}
+
+                {/* Message/Nguyện vọng */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Nguyện vọng/Lời nhắn <span className="text-muted-foreground/70">(Tùy chọn)</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Ví dụ: Con tôi có nguyện vọng học lớp của thầy A..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full mt-2 min-h-[80px]"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gửi lời nhắn hoặc nguyện vọng đến trung tâm (nếu có)
+                  </p>
+                </div>
               </div>
 
               {/* Nút tham gia */}

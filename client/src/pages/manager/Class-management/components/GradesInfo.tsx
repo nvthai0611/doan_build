@@ -37,6 +37,8 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     staleTime: 30000,
     refetchOnWindowFocus: false
   })
+  console.log(dashboardResponse);
+  
 
   const dashboardData = (dashboardResponse as any)?.data || {
     teachers: 0,

@@ -40,7 +40,14 @@ export function AdminLogin() {
         return
       }
       
-      // Role hợp lệ → redirect được xử lý bởi AuthProvider
+      // Role hợp lệ → Redirect đến trang admin
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin')
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin')
+        navigate(redirectPath, { replace: true })
+      } else {
+        navigate('/admin', { replace: true })
+      }
     } catch (err: any) {
       setError(err.message || "Email hoặc mật khẩu không đúng")
     }

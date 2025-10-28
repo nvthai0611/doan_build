@@ -6,10 +6,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, CheckCircle, Calendar } from "lucide-react"
+import { Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, CheckCircle, Calendar, UserPlus, X, Baby, AlertCircle } from "lucide-react"
 import { authService } from "../../services/common/auth/auth.service"
+import { useToast } from "../../hooks/use-toast"
+
+interface Child {
+  id: string;
+  fullName: string;
+  dateOfBirth: string;
+  gender: string;
+}
 
 export function ParentRegister() {
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -20,6 +29,9 @@ export function ParentRegister() {
     birthDate: "",
     gender: "",
   })
+  const [children, setChildren] = useState<Child[]>([
+    { id: crypto.randomUUID(), fullName: "", dateOfBirth: "", gender: "" }
+  ])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -39,6 +51,22 @@ export function ParentRegister() {
       ...formData,
       gender: value,
     })
+  }
+
+  const addChild = () => {
+    setChildren([...children, { id: crypto.randomUUID(), fullName: "", dateOfBirth: "", gender: "" }])
+  }
+
+  const removeChild = (id: string) => {
+    if (children.length > 1) {
+      setChildren(children.filter(child => child.id !== id))
+    }
+  }
+
+  const updateChild = (id: string, field: keyof Omit<Child, 'id'>, value: string) => {
+    setChildren(children.map(child => 
+      child.id === id ? { ...child, [field]: value } : child
+    ))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +95,18 @@ export function ParentRegister() {
       return
     }
 
+    // Validate children
+    if (children.length === 0) {
+      setError("Vui lòng thêm ít nhất 1 con")
+      return
+    }
+
+    const invalidChild = children.find(child => !child.fullName || !child.dateOfBirth || !child.gender)
+    if (invalidChild) {
+      setError("Vui lòng điền đầy đủ thông tin cho tất cả các con")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -78,16 +118,42 @@ export function ParentRegister() {
         phone: formData.phone,
         birthDate: formData.birthDate,
         gender: formData.gender,
+        children: children.map(({ id, ...child }) => child), // Remove id before sending
       })
 
       setSuccess(true)
+      setError("")
+      
+      // Show success toast
+      toast({
+        title: "Đăng ký thành công!",
+        description: `Đã tạo tài khoản cho bạn và ${children.length} con. Đang chuyển đến trang đăng nhập...`,
+        variant: "default",
+      })
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate("/auth/login/family")
       }, 2000)
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Đăng ký thất bại. Vui lòng thử lại.")
+      console.error("Registration error:", err)
+      
+      const errorMessage = err.response?.message || err.message || "Đăng ký thất bại. Vui lòng thử lại."
+      const errorDetails = err.response?.error || ""
+      
+      setError(errorMessage)
+      
+      // Show error toast
+      toast({
+        title: "Đăng ký thất bại",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      
+      // Log chi tiết lỗi để debug
+      if (err.response?.data) {
+        console.error("Server error response:", err.response.data)
+      }
     } finally {
       setLoading(false)
     }
@@ -341,10 +407,120 @@ export function ParentRegister() {
               </div>
             </div>
 
+            {/* Divider */}
+            <div className="border-t border-gray-200 dark:border-slate-700 my-6"></div>
+
+            {/* Children Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Baby className="h-5 w-5 text-blue-600" />
+                  <Label className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    Thông tin con <span className="text-red-500">*</span>
+                  </Label>
+                </div>
+                <Button
+                  type="button"
+                  onClick={addChild}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-sm border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Thêm con
+                </Button>
+              </div>
+
+              {/* Children List */}
+              <div className="space-y-3">
+                {children.map((child, index) => (
+                  <div 
+                    key={child.id} 
+                    className="p-4 border-2 border-blue-100 dark:border-blue-900/30 rounded-xl bg-blue-50/30 dark:bg-blue-950/10 space-y-3"
+                  >
+                    {/* Child Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Con {index + 1}
+                      </h4>
+                      {children.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeChild(child.id)}
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Child Name */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-600 dark:text-gray-400">
+                        Họ và tên <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        placeholder="Ví dụ: Nguyễn Văn B"
+                        value={child.fullName}
+                        onChange={(e) => updateChild(child.id, 'fullName', e.target.value)}
+                        required
+                        className="h-10 bg-white dark:bg-slate-800"
+                      />
+                    </div>
+
+                    {/* Child Birth Date & Gender */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Ngày sinh <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          type="date"
+                          value={child.dateOfBirth}
+                          onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)}
+                          required
+                          className="h-10 bg-white dark:bg-slate-800"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-600 dark:text-gray-400">
+                          Giới tính <span className="text-red-500">*</span>
+                        </Label>
+                        <Select 
+                          value={child.gender} 
+                          onValueChange={(value) => updateChild(child.id, 'gender', value)}
+                          required
+                        >
+                          <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                            <SelectValue placeholder="Chọn" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MALE">Nam</SelectItem>
+                            <SelectItem value="FEMALE">Nữ</SelectItem>
+                            <SelectItem value="OTHER">Khác</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                * Vui lòng thêm ít nhất 1 con. Bạn có thể thêm nhiều con bằng cách nhấn "Thêm con".
+              </p>
+            </div>
+
             {/* Error Alert */}
             {error && (
-              <Alert variant="destructive" className="rounded-xl border-red-200 dark:border-red-800 animate-in slide-in-from-top-2">
-                <AlertDescription className="text-sm">{error}</AlertDescription>
+              <Alert variant="destructive" className="rounded-xl border-red-500 bg-red-50 dark:bg-red-950/30 animate-in slide-in-from-top-2">
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <AlertDescription className="text-sm font-medium text-red-800 dark:text-red-200">
+                  {error}
+                </AlertDescription>
               </Alert>
             )}
 

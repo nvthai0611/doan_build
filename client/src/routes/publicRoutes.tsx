@@ -1,6 +1,7 @@
 import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import Home from "../pages/Home/Home";
+import LandingPage from "../pages/Home/LandingPage";
 import { LoginForm } from "../pages/Auth/Login";
 import { PortalSelection } from "../pages/Auth/PortalSelection";
 import { ParentStudentLogin } from "../pages/Auth/ParentStudentLogin";
@@ -29,6 +30,7 @@ const RoleBasedRedirect = () => {
   
   console.log("RoleBasedRedirect: User role:", user.role);
   
+  // Chỉ parent về homepage, các role khác vào trang quản trị
   switch (user.role) {
     case 'center_owner':
       console.log("RoleBasedRedirect: Redirecting to /center-qn");
@@ -40,7 +42,7 @@ const RoleBasedRedirect = () => {
       console.log("RoleBasedRedirect: Redirecting to /student");
       return <Navigate to="/student" replace />;
     case 'parent':
-      console.log("RoleBasedRedirect: Redirecting to /parent");
+      console.log("RoleBasedRedirect: Parent redirecting to /parent");
       return <Navigate to="/parent" replace />;
     case 'admin':
       console.log("RoleBasedRedirect: Redirecting to /admin");
@@ -53,7 +55,10 @@ const RoleBasedRedirect = () => {
 
 export const publicRoutes = (
   <>
-    <Route path="/" element={<RoleBasedRedirect />} />
+    {/* Landing Page - Public */}
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/home" element={<LandingPage />} />
+    
     <Route element={<AuthLayout />}>
       <Route element={<GuestMiddleware />}>
         {/* Portal Selection - Landing page */}
