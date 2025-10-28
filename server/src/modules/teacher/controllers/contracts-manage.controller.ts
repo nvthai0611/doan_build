@@ -53,13 +53,21 @@ export class ContractsManageController {
       type: 'object',
       properties: {
         contractType: { type: 'string' },
+         expiryDate: { type: 'string', format: 'date' },
+         notes: { type: 'string' },
         file: { type: 'string', format: 'binary' },
       },
-      required: ['file'],
+       required: ['file', 'expiryDate'],
     },
   })
   @ApiOperation({ summary: 'Upload a contract file' })
-  async upload(@Req() req: any, @UploadedFile() file: Express.Multer.File, @Body('contractType') contractType: string) {
+   async upload(
+     @Req() req: any, 
+     @UploadedFile() file: Express.Multer.File, 
+     @Body('contractType') contractType: string,
+     @Body('expiryDate') expiryDate: string,
+     @Body('notes') notes: string,
+   ) {
     try {
       const userId = req.user?.userId;
       if (!userId) {
@@ -71,7 +79,7 @@ export class ContractsManageController {
         throw new HttpException('Teacher not found', HttpStatus.UNAUTHORIZED);
       }
 
-      const data = await this.service.createForTeacher(teacher.id, file, contractType);
+       const data = await this.service.createForTeacher(teacher.id, file, contractType, expiryDate, notes);
       return { success: true, data };
     } catch (error) {
       throw new HttpException(error.message || 'Error', error.status || HttpStatus.INTERNAL_SERVER_ERROR);

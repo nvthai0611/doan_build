@@ -3,7 +3,8 @@
 import { AlertDialogFooter } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Briefcase, Download, Trash2, Eye } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { FileText, Download, Trash2, Eye } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,20 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedContract, setSelectedContract] = useState<any>(null)
   const { toast } = useToast()
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Hoạt động</Badge>
+      case "expiring_soon":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Sắp hết hạn</Badge>
+        )
+      case "expired":
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Hết hạn</Badge>
+      default:
+        return <Badge variant="secondary">Không xác định</Badge>
+    }
+  }
 
   const handleDownload = async (contract: any) => {
     try {
@@ -95,7 +110,7 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
           <CardDescription>Chưa có hợp đồng nào được tải lên</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Briefcase className="w-12 h-12 text-muted-foreground mb-4" />
+          <FileText className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
           <p className="text-muted-foreground text-center">Bắt đầu bằng cách tải lên hợp đồng đầu tiên của bạn</p>
         </CardContent>
       </Card>
@@ -127,15 +142,16 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start gap-4 flex-1">
-                  <Briefcase className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
+                  <FileText className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-medium truncate">{contract.uploadedImageName || contract.fileName}</h3>
+                      {getStatusBadge(contract.status)}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1 space-y-1">
                       <p>Loại: {getTypeLabel(contract.contractType || contract.type)}</p>
                       <p>Tải lên: {formatDate(contract.uploadedAt || contract.uploadDate)}</p>
-                      {contract.expiryDate && <p>Hết hạn: {formatDate(contract.expiryDate)}</p>}
+                      <p>Hết hạn: {formatDate(contract.expiryDate)}</p>
                       {contract.notes && <p className="text-xs italic">Ghi chú: {contract.notes}</p>}
                     </div>
                   </div>

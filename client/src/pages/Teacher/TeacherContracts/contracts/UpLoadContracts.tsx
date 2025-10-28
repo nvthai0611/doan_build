@@ -30,6 +30,8 @@ interface ContractUploadDialogProps {
 export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: ContractUploadDialogProps) {
   const [fileName, setFileName] = useState("")
   const [contractType, setContractType] = useState("employment")
+  const [expiryDate, setExpiryDate] = useState("")
+  const [notes, setNotes] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,12 +44,21 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       return
     }
 
+    if (!expiryDate) {
+      alert("Vui lòng nhập ngày hết hạn")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       const formData = new FormData()
       formData.append('file', file as Blob)
       formData.append('contractType', contractType)
+      formData.append('expiryDate', expiryDate)
+      if (notes.trim()) {
+        formData.append('notes', notes.trim())
+      }
 
       const res: any = await contractsService.upload(formData)
       const created = res.data || res
@@ -62,9 +73,10 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
         uploadedImageUrl: created.uploadedImageUrl,
         contractType: created.contractType,
         type: created.contractType,
-        expiryDate: null,
+        expiryDate: created.expiryDate || expiryDate || null,
         fileSize: undefined,
-        notes: null,
+        notes: created.notes || notes || null,
+         status: created.status || 'active',
         url: created.uploadedImageUrl,
       }
 
@@ -73,6 +85,8 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       // Reset form
       setFileName("")
       setContractType("employment")
+      setExpiryDate("")
+      setNotes("")
       setFile(null)
       setPreviewUrl(null)
       
@@ -174,6 +188,31 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
                 <SelectItem value="other">Khác</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expiryDate">Ngày hết hạn <span className="text-red-500">*</span></Label>
+            <Input
+              id="expiryDate"
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              disabled={isSubmitting}
+              min={new Date().toISOString().split('T')[0]}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Ghi chú (tùy chọn)</Label>
+            <Textarea
+              id="notes"
+              placeholder="Thêm ghi chú về hợp đồng này..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={isSubmitting}
+              rows={3}
+            />
           </div>
 
               <DialogFooter>
