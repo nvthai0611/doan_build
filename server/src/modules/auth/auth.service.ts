@@ -167,11 +167,7 @@ export class AuthService {
       throw new NotFoundException('Không tìm thấy vai trò học sinh trong hệ thống');
     }
 
-    // Tìm school mặc định (hoặc school đầu tiên trong hệ thống)
-    const defaultSchool = await this.prisma.school.findFirst();
-    if (!defaultSchool) {
-      throw new NotFoundException('Không tìm thấy trường học trong hệ thống');
-    }
+    // No need to validate schools here - will handle in transaction
 
     // Tạo user và parent record trong một transaction
     const result = await this.prisma.$transaction(async (prisma) => {
@@ -222,6 +218,34 @@ export class AuthService {
           },
         });
 
+        // Handle school creation/finding (giống teacher-management.service.ts)
+        let schoolId = null;
+        if (child.schoolName) {
+          // Tìm school đã tồn tại
+          let school = await prisma.school.findFirst({
+            where: {
+              name: child.schoolName,
+              address: child.schoolAddress || undefined,
+            },
+          });
+
+          // Nếu không tìm thấy, tạo school mới
+          if (!school) {
+            school = await prisma.school.create({
+              data: {
+                name: child.schoolName,
+                address: child.schoolAddress || null,
+                phone: null,
+              },
+            });
+          }
+          schoolId = school.id;
+        }
+
+        if (!schoolId) {
+          throw new BadRequestException(`Thiếu thông tin trường học cho con ${child.fullName}`);
+        }
+
         // Tạo student record và liên kết với parent
         const student = await prisma.student.create({
           data: {
@@ -232,7 +256,7 @@ export class AuthService {
               connect: { id: parent.id }
             },
             school: {
-              connect: { id: defaultSchool.id }
+              connect: { id: schoolId }
             }
           },
         });

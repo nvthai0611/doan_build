@@ -34,7 +34,6 @@ model User {
   teacher                 Teacher?
   sessions                UserSession[]
   roleData                Role?                    @relation(fields: [roleId], references: [id])
-
   @@map("users")
 }
 
