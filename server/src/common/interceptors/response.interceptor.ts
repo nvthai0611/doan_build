@@ -21,7 +21,7 @@ function serializeForJson(value: any): any {
 
   // Dates -> ISO string
   if (value instanceof Date) return value.toISOString();
-
+  // Prisma Cache or similar object cache data
   // Prisma Decimal or similar objects that expose toNumber/toString
   // Convert to number (if possible), otherwise to string
   const hasToNumber = typeof (value as any).toNumber === 'function';
@@ -53,6 +53,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
     return next.handle().pipe(
       // map: biến đổi giá trị được emit (kết quả từ controller)
       map((result: any) => {
+        // Handle code validation for object data binding
         const statusCode = context.switchToHttp().getResponse().statusCode;
 
         // Trường hợp 1: controller tự return dạng object { data, message?, meta?, ... }
