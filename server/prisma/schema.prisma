@@ -651,7 +651,7 @@ model ContractUpload {
   startDate         DateTime?   @map("start_date")   // Ngày bắt đầu hợp đồng
   expiredAt         DateTime?   @map("expired_at")   // Ngày hết hạn
   note              String?     @map("note")
-  status            String?     @default("active") @map("status") // active, expiring, expired
+  status            String?     @default("active") @map("status") // active, expiring_soon, expired
 
   enrollment        Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent            Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
