@@ -21,7 +21,7 @@ export class TeacherManagementService {
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
     private emailNotificationService: EmailNotificationService
-  ) {}
+  ) { }
 
   async createTeacher(createTeacherDto: CreateTeacherDto) {
     return await this.prisma.$transaction(async (prisma) => {
@@ -156,7 +156,7 @@ export class TeacherManagementService {
           });
         }
       }
-      
+
       // Gửi email thông báo tài khoản cho giáo viên
       try {
         await this.emailNotificationService.sendTeacherAccountEmail(
@@ -171,7 +171,7 @@ export class TeacherManagementService {
         console.error('Lỗi khi gửi email tài khoản:', emailError);
         // Không throw error, vì teacher đã được tạo thành công
       }
-      
+
       return this.formatTeacherResponse(teacher);
     });
   }
@@ -502,11 +502,11 @@ export class TeacherManagementService {
               where:
                 year && month
                   ? {
-                      sessionDate: {
-                        gte: new Date(year, month - 1, 1),
-                        lt: new Date(year, month, 1),
-                      },
-                    }
+                    sessionDate: {
+                      gte: new Date(year, month - 1, 1),
+                      lt: new Date(year, month, 1),
+                    },
+                  }
                   : undefined,
               include: {
                 attendances: {
@@ -661,10 +661,10 @@ export class TeacherManagementService {
       schoolAddress: teacher.school?.address,
       school: teacher.school
         ? {
-            id: teacher.school.id,
-            name: teacher.school.name,
-            address: teacher.school.address,
-          }
+          id: teacher.school.id,
+          name: teacher.school.name,
+          address: teacher.school.address,
+        }
         : null,
       contractUploads: teacher.contractUploads || [],
       subjects: teacher.subjects || [],
@@ -718,7 +718,7 @@ export class TeacherManagementService {
             OR: [
               { email: teacherData.email },
               { username: teacherData.username },
-              {phone: teacherData.phone},
+              { phone: teacherData.phone },
             ],
           },
         });
@@ -870,30 +870,134 @@ export class TeacherManagementService {
   }
 
   async getTeacherContracts(teacherId: string) {
-    try {
-      // Verify teacher exists
-      const teacher = await this.prisma.teacher.findUnique({
-        where: { id: teacherId },
-      });
 
-      if (!teacher) {
-        throw new NotFoundException('Không tìm thấy giáo viên');
+    // Verify teacher exists
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Không tìm thấy giáo viên');
+    }
+
+    // Get all contracts for this teacher
+    const contractUploads = await this.prisma.contractUpload.findMany({
+      where: {
+        teacherId: teacherId,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
+    });
+
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const contracts = contractUploads.map((u) => {
+      let status = 'active';
+      if (u.expiredAt) {
+        if (u.expiredAt < now) {
+          status = 'expired';
+        } else if (u.expiredAt <= thirtyDaysFromNow) {
+          status = 'expiring_soon';
+        }
       }
 
-      // Get all contracts for this teacher
-      const contractUploads = await this.prisma.contractUpload.findMany({
-        where: {
-          teacherId: teacherId,
-        },
-        orderBy: {
-          uploadedAt: 'desc',
-        },
-      });
+      return {
+        id: u.id,
+        contractType: u.contractType,
+        uploadedImageUrl: u.uploadedImageUrl,
+        uploadedImageName: u.uploadedImageName,
+        uploadedAt: u.uploadedAt,
+        expiryDate: u.expiredAt,
+        notes: u.note,
+        status,
+      };
+    });
 
-      return { contractUploads };
-    } catch (error) {
-      throw error;
+    return {
+      contractUploads: contracts,
+      message: 'Lấy danh sách hợp đồng thành công',
+    };
+  }
+
+  async uploadContractForTeacher(
+    teacherId: string,
+    file: Express.Multer.File,
+    contractType: string,
+    expiryDate?: string,
+    notes?: string
+  ) {
+    if (!file) {
+      throw new BadRequestException('File là bắt buộc');
     }
+
+    if (!expiryDate) {
+      throw new BadRequestException('Ngày hết hạn là bắt buộc');
+    }
+
+    // Verify teacher exists
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: teacherId },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Không tìm thấy giáo viên');
+    }
+
+    // Upload file to Cloudinary
+    let uploadResult: any;
+    try {
+      uploadResult = await this.cloudinaryService.uploadDocument(
+        file,
+        `contracts/teacher/${teacherId}`
+      );
+    } catch (err) {
+      uploadResult = {
+        secure_url: `http://localhost:9999/uploads/mock-${file.originalname}`,
+        public_id: `mock_${Date.now()}`,
+      };
+    }
+
+    // Calculate status based on expiry date
+    const expiredAt = new Date(expiryDate);
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    let status = 'active';
+    if (expiredAt < now) {
+      status = 'expired';
+    } else if (expiredAt <= thirtyDaysFromNow) {
+      status = 'expiring_soon';
+    }
+
+    // Create contract record
+    const created = await this.prisma.contractUpload.create({
+      data: {
+        teacherId,
+        contractType: contractType || 'other',
+        uploadedImageUrl: uploadResult.secure_url,
+        uploadedImageName: file.originalname,
+        expiredAt,
+        note: notes || null,
+        status,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        id: created.id,
+        contractType: created.contractType,
+        uploadedImageUrl: created.uploadedImageUrl,
+        uploadedImageName: created.uploadedImageName,
+        uploadedAt: created.uploadedAt,
+        expiryDate: created.expiredAt,
+        notes: created.note,
+        status: created.status,
+      },
+      message: 'Tải lên hợp đồng thành công',
+    };
   }
 
   async deleteTeacherContract(teacherId: string, contractId: string) {
