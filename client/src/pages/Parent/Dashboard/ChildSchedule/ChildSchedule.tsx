@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Bell, Users, Calendar } from "lucide-react"
 import { parentChildService } from "../../../../services"
 import { useMutation, useQuery } from "@tanstack/react-query"
@@ -25,6 +26,34 @@ const formatDateToYYYYMMDD = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+  // Map session status keys to Vietnamese labels
+  const mapSessionStatus = (status?: string) => {
+    switch (status) {
+      case 'has_not_happened':
+        return 'Chưa diễn ra'
+      case 'happening':
+        return 'Đang diễn ra'
+      case 'end':
+        return 'Đã kết thúc'
+      case 'day_off':
+        return 'Ngày nghỉ'
+      default:
+        return status || 'Không xác định'
+    }
+  }
+
+  // Map attendance status to Vietnamese
+  const mapAttendanceStatus = (status?: string) => {
+    switch (status) {
+      case 'present':
+        return 'Có mặt'
+      case 'absent':
+        return 'Vắng'
+      default:
+        return status || 'Chưa điểm danh'
+    }
+  }
 
 interface ChildScheduleProps {
   childId?: string
@@ -248,8 +277,10 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
   }
 
   const calendarDays = generateCalendarDays()
-  const monthName = currentDate.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })
-  const weekDays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+  const month = currentDate.getMonth() + 1
+  const year = currentDate.getFullYear()
+  const monthName = `Tháng ${month} ${year}`
+  const weekDays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
   
   const selectedChild = children.find(child => child.id === selectedChildId)
 
@@ -263,6 +294,15 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
         }
         .year-picker-scroll::-webkit-scrollbar {
           display: none; /* Chrome, Safari, Opera */
+        }
+        
+        /* Blinking dot animation */
+        @keyframes blink-dot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .blink-dot {
+          animation: blink-dot 1.5s ease-in-out infinite;
         }
       `}</style>
       <div className="p-6 space-y-6">
@@ -390,6 +430,27 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
               <div className="grid grid-cols-7 gap-2">
                 {calendarDays.map((day, index) => {
                   const isSelected = selectedDate && day.date > 0 && selectedDate.getDate() === day.date && selectedDate.getMonth() === currentDate.getMonth() && selectedDate.getFullYear() === currentDate.getFullYear()
+                  
+                  // Xác định màu dấu chấm dựa trên trạng thái buổi học
+                  let dotColor = 'bg-blue-400' // Mặc định: xanh dương nhạt (chưa diễn ra)
+                  if (day.hasEvent && day.sessions && day.sessions.length > 0) {
+                    const firstSession = day.sessions[0]
+                    switch (firstSession.status) {
+                      case 'has_not_happened':
+                        dotColor = 'bg-blue-400' // Xanh dương nhạt
+                        break
+                      case 'happening':
+                        dotColor = 'bg-green-500' // Xanh lá
+                        break
+                      case 'end':
+                        dotColor = 'bg-red-400' // Đỏ nhạt
+                        break
+                      case 'day_off':
+                        dotColor = 'bg-orange-400' // Cam nhạt
+                        break
+                    }
+                  }
+                  
                   return (
                     <button
                       key={index}
@@ -408,13 +469,14 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                               ? "bg-transparent"
                               : "text-muted-foreground bg-muted/30"
                         }
+                        ${day.hasEvent && day.isCurrentMonth && !day.isToday ? "bg-blue-50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700 font-semibold" : ""}
                         ${day.isToday ? "bg-primary text-primary-foreground" : ""}
                         ${isSelected ? "ring-2 ring-offset-1 ring-primary" : ""}
                       `}
                     >
                       {day.date > 0 && <span className="leading-none">{day.date}</span>}
                       {day.hasEvent && day.isCurrentMonth && !day.isToday && (
-                        <div className="absolute bottom-1 w-1 h-1 bg-primary rounded-full"></div>
+                        <div className={`absolute bottom-1 w-1.5 h-1.5 ${dotColor} rounded-full blink-dot`}></div>
                       )}
                     </button>
                   )
@@ -492,7 +554,20 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                               <div><strong>Môn:</strong> {session.class?.subject?.name}</div>
                               <div><strong>Giáo viên:</strong> {session.class?.teacher?.fullName || session.class?.teacher?.user?.fullName}</div>
                               <div><strong>Phòng:</strong> {session.room?.name}</div>
-                              <div><strong>Trạng thái:</strong> {session.status}</div>
+                              <div className="flex items-center gap-2">
+                                <strong>Trạng thái:</strong>
+                                <Badge 
+                                  className={
+                                    session.status === 'has_not_happened' ? 'bg-blue-400 hover:bg-blue-500' :
+                                    session.status === 'happening' ? 'bg-green-500 hover:bg-green-600' :
+                                    session.status === 'end' ? 'bg-red-400 hover:bg-red-500' :
+                                    session.status === 'day_off' ? 'bg-orange-400 hover:bg-orange-500' :
+                                    'bg-gray-400 hover:bg-gray-500'
+                                  }
+                                >
+                                  {mapSessionStatus(session.status)}
+                                </Badge>
+                              </div>
                               <div className="pt-2 border-t">
                                 <strong>Điểm danh</strong>
                                 {attendanceLoading[session.id] ? (
@@ -501,7 +576,20 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                                   <div className="text-sm text-destructive">Không thể tải điểm danh</div>
                                 ) : attendanceBySession[session.id] ? (
                                   <div className="text-sm text-muted-foreground">
-                                    <div><strong>Trạng thái:</strong> {attendanceBySession[session.id].attendanceStatus || 'Chưa điểm danh'}</div>
+                                    <div className="flex items-center gap-2">
+                                      <strong>Trạng thái:</strong>
+                                      <Badge 
+                                        className={
+                                          attendanceBySession[session.id].attendanceStatus === 'present' 
+                                            ? 'bg-green-500 hover:bg-green-600' 
+                                            : attendanceBySession[session.id].attendanceStatus === 'absent'
+                                            ? 'bg-red-500 hover:bg-red-600'
+                                            : 'bg-gray-400 hover:bg-gray-500'
+                                        }
+                                      >
+                                        {mapAttendanceStatus(attendanceBySession[session.id].attendanceStatus)}
+                                      </Badge>
+                                    </div>
                                     {attendanceBySession[session.id].attendanceRecordedAt && (
                                       <div><strong>Ghi nhận lúc:</strong> {new Date(attendanceBySession[session.id].attendanceRecordedAt).toLocaleString('vi-VN')}</div>
                                     )}
