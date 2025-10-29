@@ -250,7 +250,9 @@ export class FinancialService {
 
             // Tính tổng tiền
             const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+            
             const orderCode = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}` // Ví dụ sinh mã đơn hàng duy nhất
+            const expirationDate = new Date(feeRecords[0].dueDate);
             // Tạo Payment (status: pending)
             const payment = await this.prisma.payment.create({
       data: {
@@ -258,6 +260,8 @@ export class FinancialService {
         amount: totalAmount,
         status: 'pending',
         transactionCode: orderCode,
+        createdAt: new Date(),
+        exprirationDate: expirationDate,
         method: 'bank_transfer',
         feeRecordPayments: {
           create: feeRecords.map(fr => ({
