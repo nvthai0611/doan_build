@@ -17,12 +17,12 @@ const getAllFeeRecordsOfParent = async (status: string) => {
 /**
  * Tạo mã QR thanh toán cho payment (chỉ cần truyền paymentId)
  */
-const createQrCodeForPayment = async (paymentId: string) => {
+const createQrCodeForPayment = async (feeRecordIds: string[]) => {
   try {
     const response = await apiClient.post('/payment/sepay/create-qr', {
-      paymentId
+      feeRecordIds: feeRecordIds
     })
-    return response.data
+    return response
   } catch (error) {
     console.error('Error creating QR code:', error)
     throw error

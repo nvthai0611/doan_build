@@ -146,6 +146,7 @@ export class FinancialService {
                 transactionCode: payment.transactionCode,
                 reference: payment.reference,
                 notes: payment.notes,
+                expirationDate: payment.expirationDate,
                 allocations: (payment.feeRecordPayments || []).map((frp: any) => ({
                     feeRecordPaymentId: frp.id,
                     amount: Number(frp.amount),
@@ -261,7 +262,7 @@ export class FinancialService {
         status: 'pending',
         transactionCode: orderCode,
         createdAt: new Date(),
-        exprirationDate: expirationDate,
+        expirationDate: expirationDate,
         method: 'bank_transfer',
         feeRecordPayments: {
           create: feeRecords.map(fr => ({

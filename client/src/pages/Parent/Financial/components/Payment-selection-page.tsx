@@ -153,7 +153,6 @@ export function PaymentSelectionPage() {
   }, [])
 
   // Subscribe payment updates khi QR modal mở
-  console.log(paymentData);
   
   useEffect(() => {
   if (showQrModal && paymentData?.orderCode) {
@@ -259,39 +258,39 @@ export function PaymentSelectionPage() {
     }
   }
 
-  const handleSelectPayment = async () => {
-    try {
-      if (selectedFees.length === 0) {
-        toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
-        return
-      }
-      setLoading(true)
-      // 1. Tạo payment
-      const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
-      if (!paymentRes?.data?.id) {
-        toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
-        setLoading(false)
-        return
-      }
-      setCurrentPayment(paymentRes.data)
+  // const handleSelectPayment = async () => {
+  //   try {
+  //     if (selectedFees.length === 0) {
+  //       toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
+  //       return
+  //     }
+  //     setLoading(true)
+  //     // 1. Tạo payment
+  //     const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
+  //     if (!paymentRes?.data?.id) {
+  //       toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
+  //       setLoading(false)
+  //       return
+  //     }
+  //     setCurrentPayment(paymentRes.data)
 
-      // 2. Tạo QR code cho payment vừa tạo
-      const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
-      if (!qrRes?.data?.qrCodeUrl) {
-        toast.error(qrRes?.message || "Không thể tạo mã QR")
-        setLoading(false)
-        return
-      }
-      setPaymentData(qrRes.data)
-      setShowQrModal(true)
-      toast.success("Mã QR thanh toán đã được tạo thành công")
-    } catch (error) {
-      console.error("Error creating payment/QR code:", error)
-      toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
-    } finally {
-      setLoading(false)
-    }
-  }
+  //     // 2. Tạo QR code cho payment vừa tạo
+  //     const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
+  //     if (!qrRes?.data?.qrCodeUrl) {
+  //       toast.error(qrRes?.message || "Không thể tạo mã QR")
+  //       setLoading(false)
+  //       return
+  //     }
+  //     setPaymentData(qrRes.data)
+  //     setShowQrModal(true)
+  //     toast.success("Mã QR thanh toán đã được tạo thành công")
+  //   } catch (error) {
+  //     console.error("Error creating payment/QR code:", error)
+  //     toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   const handleCopyContent = async () => {
     if (paymentData?.content) {
@@ -342,7 +341,7 @@ export function PaymentSelectionPage() {
   queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingChildren || isError || isErrorChildren) {
     return <Loading />
   }
 
@@ -361,31 +360,31 @@ export function PaymentSelectionPage() {
   const feeRecords = response as any[] || []
   const childrenList = children as any[]
 
-  const transformedFeeRecords = feeRecords.map((fee) => {
+  const transformedFeeRecords = feeRecords?.map((fee) => {
     const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
     const remainingAmount = calculatedTotal - Number(fee.paidAmount)
 
     return {
-      id: fee.id,
-      studentId: fee.studentId,
-      studentName: fee.student.user.fullName,
-      studentCode: fee.student.studentCode,
-      className: fee.class.name,
-      classCode: fee.class.classCode,
-      schoolName: fee.student.school.name || "QNEdu",
-      courseName: fee.class.name,
-      courseDetails: `${fee.class.feePeriod === 'per_session' ? 'Theo buổi học' : fee.class.feePeriod === 'monthly' ? 'Theo tháng' : fee.class.feePeriod === 'semester' ? 'Theo học kỳ' : 'Theo năm'}`,
-      pricePerSession: `${Number(fee.class.feeAmount).toLocaleString('vi-VN')} đ/${fee.class.feePeriod === 'per_session' ? 'buổi học' : fee.class.feePeriod}`,
-      dueDate: new Date(fee.dueDate).toLocaleDateString('vi-VN'),
-      status: fee.status,
-      feeStructureAmount: Number(fee.feeStructure.amount),
-      amount: Number(fee.amount),
-      paidAmount: Number(fee.paidAmount),
-      discount: Number(fee.discount),
+      id: fee?.id,
+      studentId: fee?.studentId,
+      studentName: fee?.student.user.fullName,
+      studentCode: fee?.student.studentCode,
+      className: fee?.class.name,
+      classCode: fee?.class.classCode,
+      schoolName: fee?.student.school.name || "QNEdu",
+      courseName: fee?.class.name,
+      courseDetails: `${fee?.class.feePeriod === 'per_session' ? 'Theo buổi học' : fee.class.feePeriod === 'monthly' ? 'Theo tháng' : fee.class.feePeriod === 'semester' ? 'Theo học kỳ' : 'Theo năm'}`,
+      pricePerSession: `${Number(fee?.class.feeAmount).toLocaleString('vi-VN')} đ/${fee.class.feePeriod === 'per_session' ? 'buổi học' : fee.class.feePeriod}`,
+      dueDate: new Date(fee?.dueDate).toLocaleDateString('vi-VN'),
+      status: fee?.status,
+      feeStructureAmount: Number(fee?.feeStructure.amount),
+      amount: Number(fee?.amount),
+      paidAmount: Number(fee?.paidAmount),
+      discount: Number(fee?.discount),
       totalAmount: calculatedTotal,
       remainingAmount: remainingAmount,
-      attendanceCount: fee.student.attendedSessionsCount, 
-      notes: fee.notes,
+      attendanceCount: fee?.student.attendedSessionsCount,
+      notes: fee?.notes,
     }
   })
 
@@ -539,6 +538,8 @@ export function PaymentSelectionPage() {
                     currentPayment={currentPayment}
                     setCurrentPayment={setCurrentPayment}
                     setSelectedFees={setSelectedFees}
+                    setPaymentData={setPaymentData}
+                    setShowQrModal={setShowQrModal}
                   />
                 </div>
               </div>
@@ -557,7 +558,7 @@ export function PaymentSelectionPage() {
 
         {/* QR Code Modal - Giữ nguyên code cũ */}
         <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[100vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 <span>Quét mã QR để thanh toán</span>

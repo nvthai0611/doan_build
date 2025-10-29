@@ -26,7 +26,7 @@ export interface SepayTransaction {
 }
 
 export interface CreatePaymentQRDto {
-  paymentId
+  feeRecordIds: string[]
 }
 
 /**
@@ -79,32 +79,73 @@ export class SepayService {
    * Tạo mã QR thanh toán cho nhiều hóa đơn (nhiều học sinh)
    * KHÔNG lưu vào Payment, chỉ trả về thông tin QR
    */
-async createPaymentQR(dto: { paymentId: string }) {
-  try {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: dto.paymentId },
+async createPaymentQR(userId: string, dto: CreatePaymentQRDto) {
+  const { feeRecordIds } = dto;
+  
+  // Validate input
+  if (!userId || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
+    throw new BadRequestException('Thiếu thông tin userId hoặc feeRecordIds');
+  }
+
+  const findParentByUserId = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: { parent: true }
+  });
+  if (!findParentByUserId || !findParentByUserId.parent) {
+    throw new BadRequestException('Không tìm thấy phụ huynh');
+  }
+  const parentId = findParentByUserId.parent.id;
+  // Transaction: tạo payment + cập nhật feeRecords
+  return await this.prisma.$transaction(async (tx) => {
+    // Lấy các FeeRecord hợp lệ
+    const feeRecords = await tx.feeRecord.findMany({
+      where: {
+        id: { in: feeRecordIds },
+        status: 'pending',
+        student: { parentId }
+      },
       include: {
-        feeRecordPayments: {
-          include: {
-            feeRecord: {
-              include: {
-                student: { include: { user: true } }
-              }
-            }
-          }
-        }
+        student: true
       }
     });
-    if (!payment) throw new BadRequestException('Không tìm thấy payment');
-    if (payment.status !== 'pending') throw new BadRequestException('Payment đã thanh toán hoặc không hợp lệ');
+    if (feeRecords.length !== feeRecordIds.length) {
+      throw new BadRequestException('Một số hóa đơn không hợp lệ');
+    }
+
+    // Tính tổng tiền
+    const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+    const orderCode = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const expirationDate = new Date(feeRecords[0].dueDate);
+
+    // Tạo Payment (status: pending)
+    const payment = await tx.payment.create({
+      data: {
+        parentId,
+        amount: totalAmount,
+        status: 'pending',
+        transactionCode: orderCode,
+        createdAt: new Date(),
+        expirationDate,
+        method: 'bank_transfer',
+        feeRecordPayments: {
+          create: feeRecords.map(fr => ({
+            feeRecordId: fr.id
+          }))
+        }
+      },
+      include: { feeRecordPayments: true }
+    });
+
+    // Cập nhật status feeRecord thành 'processing'
+    await tx.feeRecord.updateMany({
+      where: { id: { in: feeRecordIds } },
+      data: { status: 'processing' }
+    });
 
     // Lấy danh sách studentCode
-    const studentCodes = payment.feeRecordPayments.map(frp => frp.feeRecord.student.studentCode);
+    const studentCodes = feeRecords.map(fr => fr.student.studentCode);
     const studentsCodeStr = studentCodes.join(' ');
     const content = `${payment.transactionCode}`;
-
-    // Lấy số tiền từ payment.amount
-    const totalAmount = Number(payment.amount);
 
     // Sinh QR code
     const qrCodeUrl = this.generateVietQRContent({
@@ -117,6 +158,7 @@ async createPaymentQR(dto: { paymentId: string }) {
 
     return {
       data: {
+        paymentId: payment.id,
         orderCode: payment.transactionCode,
         qrCodeUrl,
         totalAmount,
@@ -132,10 +174,7 @@ async createPaymentQR(dto: { paymentId: string }) {
       },
       message: 'Tạo mã QR thanh toán thành công'
     };
-  } catch (error) {
-    this.logger.error('Failed to create payment QR', error);
-    throw error;
-  }
+  });
 }
 
   /**
@@ -324,7 +363,8 @@ async handleWebhook(webhookData: SepayWebhookDto) {
    * Trích xuất mã đơn hàng từ nội dung chuyển khoản
    */
   private extractOrderCode(content: string): string | null {
-    const match = content.match(/HP\d+/);
+    //PAY1761731230904487
+    const match = content.match(/PAY\d+/);
     return match ? match[0] : null;
   }
 
