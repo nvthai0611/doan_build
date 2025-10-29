@@ -34,7 +34,6 @@ model User {
   teacher                 Teacher?
   sessions                UserSession[]
   roleData                Role?                    @relation(fields: [roleId], references: [id])
-  alerts                  Alert[]                  @relation("AlertCreatedBy")
   @@map("users")
 }
 
@@ -428,8 +427,7 @@ model Alert {
   severity    String    @default("medium")
   title       String
   isRead      Boolean   @default(false) @map("is_read")
-  createdBy   String    @map("created_by") @db.Uuid
-  createdByUser User      @relation("AlertCreatedBy", fields: [createdBy], references: [id])
+
   @@map("alerts")
 }
 

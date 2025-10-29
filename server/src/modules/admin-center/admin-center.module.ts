@@ -33,6 +33,8 @@ import { HolidaysSettingController } from './controllers/holidays-setting.contro
 import { HolidaysSettingService } from './services/holidays-setting.service';
 import { FileManagementController } from './controllers/file-management.controller';
 import { FileManagementService } from './services/file-management.service';
+import { AlertController } from './controllers/alert.controller';
+import { AlertService } from './services/alert.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
@@ -65,6 +67,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     SettingsManagementController,
     HolidaysSettingController,
     FileManagementController,
+    AlertController,
   ],
   providers: [
     PrismaService,
@@ -83,9 +86,12 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     SettingsManagementService,
     HolidaysSettingService,
     FileManagementService,
+    AlertService,
     CloudinaryService,
     // SessionSchedulerService, // Cron jobs service
   ],
+  exports: [AlertService], // Export để dùng ở module khác
+
 })
 //check
 export class AdminCenterModule {
