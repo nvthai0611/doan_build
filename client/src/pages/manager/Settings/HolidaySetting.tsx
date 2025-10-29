@@ -30,6 +30,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Holiday = {
   id: string;
@@ -40,16 +42,22 @@ type Holiday = {
 };
 
 export function HolidaySetting() {
-  const [form, setForm] = useState<{ startDate: string; endDate: string; note?: string }>({ startDate: '', endDate: '', note: '' });
+  const [form, setForm] = useState<{ startDate: string; endDate: string; type: string; note?: string }>({ startDate: '', endDate: '', type: '', note: '' });
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
+  const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
 
   // Validation functions
   const validateForm = (formData: typeof form) => {
     const newErrors: { [key: string]: string } = {};
+
+    // Validate type
+    if (!formData.type) {
+      newErrors.type = 'Vui lòng chọn loại kỳ nghỉ';
+    }
 
     // Validate start date
     if (!formData.startDate) {
@@ -184,15 +192,16 @@ export function HolidaySetting() {
       const holiday = await settingsService.createHoliday(form);
       
       // Tự động áp dụng ngay sau khi tạo
-      await settingsService.applyHoliday((holiday as any).data.id);
+      await settingsService.applyHoliday((holiday as any).id);
       
       return holiday;
     },
     onSuccess: () => {
       toast.success('Đã tạo và áp dụng kỳ nghỉ thành công');
-      setForm({ startDate: '', endDate: '', note: '' });
+      setForm({ startDate: '', endDate: '', type: '', note: '' });
       setErrors({});
       setTouched({});
+      setIsCreateOpen(false);
       refetch();
     },
     onError: (error: any) => {
@@ -206,7 +215,7 @@ export function HolidaySetting() {
 
   const handleSubmit = () => {
     // Mark all fields as touched
-    setTouched({ startDate: true, endDate: true, note: true });
+    setTouched({ startDate: true, endDate: true, type: true, note: true });
     
     // Validate form
     const validationErrors = validateForm(form);
@@ -278,6 +287,16 @@ export function HolidaySetting() {
           <span className="font-medium">
             {new Date(item.endDate).toLocaleDateString('vi-VN')}
           </span>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Loại',
+      sortable: true,
+      render: (item: Holiday) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">Nghỉ tết</span>
         </div>
       ),
     },
@@ -385,133 +404,149 @@ export function HolidaySetting() {
               />
               Làm mới
             </Button>
+            <Button onClick={() => setIsCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Thêm kỳ nghỉ
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Form thêm kỳ nghỉ - Bên trái */}
-        <div className="xl:col-span-1 order-2 xl:order-1">
-          <Card className="shadow-sm border dark:border-gray-700 h-fit">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5 text-blue-600" />
-                Thêm Kỳ Nghỉ Mới
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-                    <Calendar className="w-4 h-4" />
-                    Ngày bắt đầu
-                  </label>
-                  <Input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) =>
-                      handleInputChange('startDate', e.target.value)
-                    }
-                    onBlur={() => handleInputBlur('startDate')}
-                    className={`w-full ${
-                      errors.startDate && touched.startDate
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                    }`}
-                  />
-                  {errors.startDate && touched.startDate && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.startDate}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-                    <Calendar className="w-4 h-4" />
-                    Ngày kết thúc
-                  </label>
-                  <Input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) =>
-                      handleInputChange('endDate', e.target.value)
-                    }
-                    onBlur={() => handleInputBlur('endDate')}
-                    className={`w-full ${
-                      errors.endDate && touched.endDate
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                    }`}
-                  />
-                  {errors.endDate && touched.endDate && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.endDate}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-                    <Settings className="w-4 h-4" />
-                    Mô tả
-                    {form.note && (
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {form.note.length}/500
-                      </span>
-                    )}
-                  </label>
-                  <textarea
-                    placeholder="Nhập Mô tả về kỳ nghỉ này..."
-                    value={form.note}
-                    onChange={(e) => handleInputChange('note', e.target.value)}
-                    onBlur={() => handleInputBlur('note')}
-                    className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.note && touched.note
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                    }`}
-                    rows={3}
-                  />
-                  {errors.note && touched.note && (
-                    <p className="mt-1 text-sm text-red-600">{errors.note}</p>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button
-                    disabled={creating || Object.keys(errors).length > 0}
-                    onClick={handleSubmit}
-                    className="flex-1"
-                  >
-                    {creating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Đang thêm...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Thêm
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setForm({ startDate: '', endDate: '', note: '' });
-                      setErrors({});
-                      setTouched({});
-                    }}
-                    className="flex-1"
-                  >
-                    Đặt lại
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Modal tạo kỳ nghỉ */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-600" />
+              Thêm Kỳ Nghỉ Mới
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+                <Settings className="w-4 h-4" />
+                Loại kỳ nghỉ
+              </label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => handleInputChange('type', v)}
+              >
+                <SelectTrigger className={`${errors.type && touched.type ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}>
+                  <SelectValue placeholder="Chọn loại kỳ nghỉ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PUBLIC">Nghỉ lễ</SelectItem>
+                  <SelectItem value="CENTER">Lịch trung tâm</SelectItem>
+                  <SelectItem value="EMERGENCY">Lịch khẩn cấp</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.type && touched.type && (
+                <p className="mt-1 text-sm text-red-600">{errors.type}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4" />
+                Ngày bắt đầu
+              </label>
+              <Input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => handleInputChange('startDate', e.target.value)}
+                onBlur={() => handleInputBlur('startDate')}
+                className={`w-full ${
+                  errors.startDate && touched.startDate
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                    : ''
+                }`}
+              />
+              {errors.startDate && touched.startDate && (
+                <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4" />
+                Ngày kết thúc
+              </label>
+              <Input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => handleInputChange('endDate', e.target.value)}
+                onBlur={() => handleInputBlur('endDate')}
+                className={`w-full ${
+                  errors.endDate && touched.endDate
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                    : ''
+                }`}
+              />
+              {errors.endDate && touched.endDate && (
+                <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+                <Settings className="w-4 h-4" />
+                Mô tả
+                {form.note && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {form.note.length}/500
+                  </span>
+                )}
+              </label>
+              <textarea
+                placeholder="Nhập Mô tả về kỳ nghỉ này..."
+                value={form.note}
+                onChange={(e) => handleInputChange('note', e.target.value)}
+                onBlur={() => handleInputBlur('note')}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  errors.note && touched.note
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                    : ''
+                }`}
+                rows={3}
+              />
+              {errors.note && touched.note && (
+                <p className="mt-1 text-sm text-red-600">{errors.note}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              disabled={creating || Object.keys(errors).length > 0}
+              onClick={handleSubmit}
+              className="flex-1"
+            >
+              {creating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang thêm...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setForm({ startDate: '', endDate: '', type: '', note: '' });
+                setErrors({});
+                setTouched({});
+              }}
+              className="flex-1"
+            >
+              Đặt lại
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Table danh sách - Bên phải */}
-        <div className="xl:col-span-2 order-1 xl:order-2">
+      <div className="grid grid-cols-1 gap-6">
+        {/* Table danh sách */}
+        <div className="order-1">
           <Card className="shadow-sm border dark:border-gray-700">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
