@@ -21,6 +21,7 @@ import { ClassJoinService } from './services/class-join.service';
 import { PrismaService } from 'src/db/prisma.service';
 import { ChildTeacherFeedbackController } from './controllers/child-teacher-feedback.controller';
 import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.service';
+import { AdminCenterModule } from '../admin-center/admin-center.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.s
         module: ParentModule,
       },
     ]),
+    AdminCenterModule, // Import để sử dụng AlertService
   ],
   controllers: [
     AcademicTrackingController,
