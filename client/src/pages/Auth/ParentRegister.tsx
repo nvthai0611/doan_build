@@ -1,72 +1,136 @@
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, CheckCircle, Calendar, UserPlus, X, Baby, AlertCircle } from "lucide-react"
+import { Combobox, ComboboxOption } from "@/components/ui/combobox"
+import { Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, CheckCircle, Calendar, UserPlus, X, Baby, AlertCircle, School as SchoolIcon, MapPin } from "lucide-react"
 import { authService } from "../../services/common/auth/auth.service"
+import { schoolService } from "../../services/common/school/school.service"
 import { useToast } from "../../hooks/use-toast"
-
-interface Child {
-  id: string;
-  fullName: string;
-  dateOfBirth: string;
-  gender: string;
-}
+import { toast as sonnerToast } from "sonner"
+import { useParentRegisterStore } from "../../stores/parentRegisterStore"
 
 export function ParentRegister() {
   const { toast } = useToast()
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    fullName: "",
-    phone: "",
-    birthDate: "",
-    gender: "",
-  })
-  const [children, setChildren] = useState<Child[]>([
-    { id: crypto.randomUUID(), fullName: "", dateOfBirth: "", gender: "" }
-  ])
+  const navigate = useNavigate()
+  
+  // Zustand store - persisted to localStorage
+  const {
+    formData,
+    children,
+    setFormData,
+    setChildren,
+    addChild: addChildToStore,
+    removeChild: removeChildFromStore,
+    updateChild: updateChildInStore,
+    resetForm,
+  } = useParentRegisterStore()
+  
+  // Local state (không persist)
+  const [localSchools, setLocalSchools] = useState<ComboboxOption[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const navigate = useNavigate()
+
+  // Fetch schools using TanStack Query
+  const { data: schoolsData, isLoading: loadingSchools, isError: schoolsError, error: schoolsErrorDetail } = useQuery({
+    queryKey: ['schools'],
+    queryFn: async () => {
+      try {
+        console.log('🏫 Fetching schools...')
+        const result = await schoolService.getAllSchools()
+        console.log('✅ Raw API Response:', result)
+        console.log('✅ Response.data:', result?.data)
+        console.log('✅ Is Array?:', Array.isArray(result?.data))
+        return result
+      } catch (error) {
+        console.error('❌ Error fetching schools:', error)
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 2,
+    refetchOnWindowFocus: true,
+  })
+
+  // Convert school data to ComboboxOption format
+  const convertToSchoolOption = (school: any): ComboboxOption => {
+    if (!school) return { value: '', label: '', description: '' }
+    return {
+      value: school.id || '',
+      label: school.name || '',
+      description: school.address || ''
+    }
+  }
+
+  // Update localSchools when API data is loaded
+  useEffect(() => {
+    if (schoolsData?.data && Array.isArray(schoolsData.data)) {
+      const convertedSchools = schoolsData.data
+        .filter((school: any) => school && school.id && school.name) // Filter out invalid schools
+        .map(convertToSchoolOption)
+      setLocalSchools(convertedSchools)
+      console.log('✅ Schools converted:', convertedSchools)
+    }
+  }, [schoolsData])
+
+  // Use localSchools to allow adding new schools
+  const schools = localSchools
+  // Show error in console if there's an issue
+  if (schoolsError && schoolsErrorDetail) {
+    console.error('❌ Schools Error Detail:', schoolsErrorDetail)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
-      ...formData,
       [e.target.name]: e.target.value,
     })
   }
 
   const handleGenderChange = (value: string) => {
     setFormData({
-      ...formData,
       gender: value,
     })
   }
 
   const addChild = () => {
-    setChildren([...children, { id: crypto.randomUUID(), fullName: "", dateOfBirth: "", gender: "" }])
+    addChildToStore()
   }
 
   const removeChild = (id: string) => {
     if (children.length > 1) {
-      setChildren(children.filter(child => child.id !== id))
+      removeChildFromStore(id)
     }
   }
 
-  const updateChild = (id: string, field: keyof Omit<Child, 'id'>, value: string) => {
-    setChildren(children.map(child => 
-      child.id === id ? { ...child, [field]: value } : child
-    ))
+  const updateChild = (id: string, field: keyof Omit<import('../../stores/parentRegisterStore').Child, 'id'>, value: string) => {
+    updateChildInStore(id, field, value)
+  }
+
+  // Handler to add new school
+  const handleAddSchool = (name: string, address?: string) => {
+    // Generate temporary ID for new school
+    const tempId = `temp_${crypto.randomUUID()}`
+    
+    const newSchool: ComboboxOption = {
+      value: tempId,
+      label: name,
+      description: address || ''
+    }
+
+    // Add to localSchools
+    setLocalSchools(prev => [...prev, newSchool])
+
+    sonnerToast.success(`Đã thêm trường học "${name}" vào danh sách`)
+    
+    return tempId
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,15 +207,27 @@ export function ParentRegister() {
       return
     }
 
-    const invalidChild = children.find(child => !child.fullName || !child.dateOfBirth || !child.gender)
+    const invalidChild = children.find(child => !child.fullName || !child.dateOfBirth || !child.gender || !child.schoolId)
     if (invalidChild) {
-      setError("Vui lòng điền đầy đủ thông tin cho tất cả các con")
+      setError("Vui lòng điền đầy đủ thông tin cho tất cả các con (bao gồm trường học)")
       return
     }
 
     setLoading(true)
 
     try {
+      // Map children data - convert schoolId to schoolName/schoolAddress
+      const childrenData = children.map(({ id, schoolId, ...child }) => {
+        // Find school by ID to get name and address
+        const school = schools.find(s => s.value === schoolId)
+        
+        return {
+          ...child,
+          schoolName: school?.label || '',
+          schoolAddress: school?.description || '',
+        }
+      })
+
       const result = await authService.register({
         username: formData.username,
         email: formData.email,
@@ -160,11 +236,14 @@ export function ParentRegister() {
         phone: formData.phone,
         birthDate: formData.birthDate,
         gender: formData.gender,
-        children: children.map(({ id, ...child }) => child), // Remove id before sending
+        children: childrenData,
       })
 
       setSuccess(true)
       setError("")
+      
+      // Clear persisted form data after successful registration
+      resetForm()
       
       // Show success toast
       toast({
@@ -560,14 +639,53 @@ export function ParentRegister() {
                         </Select>
                       </div>
                     </div>
+
+                    {/* School Combobox */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-600 dark:text-gray-400">
+                        Trường học <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Combobox
+                          options={schools}
+                          value={child.schoolId}
+                          onValueChange={(value) => updateChild(child.id, 'schoolId', value)}
+                          placeholder={loadingSchools ? "Đang tải danh sách trường..." : "Chọn hoặc thêm trường học"}
+                          searchPlaceholder="Tìm kiếm tên trường..."
+                          emptyText={schoolsError ? "Lỗi tải danh sách trường học" : "Không tìm thấy trường học phù hợp"}
+                          className="w-full h-10 bg-white dark:bg-slate-800"
+                          allowCustom={true}
+                          onAddCustom={(name, address) => {
+                            const newSchoolId = handleAddSchool(name, address)
+                            updateChild(child.id, 'schoolId', newSchoolId)
+                          }}
+                          customDialogTitle="Thêm trường học mới"
+                          customDialogDescription="Nhập tên và địa chỉ của trường học mới. Trường sẽ được thêm vào danh sách của bạn."
+                          disabled={loadingSchools}
+                        />
+                        {loadingSchools && (
+                          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin pointer-events-none" />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
 
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                * Vui lòng thêm ít nhất 1 con. Bạn có thể thêm nhiều con bằng cách nhấn "Thêm con".
+                * Vui lòng thêm ít nhất 1 con với đầy đủ thông tin (bao gồm trường học). Bạn có thể thêm nhiều con bằng cách nhấn "Thêm con".
               </p>
             </div>
+
+            {/* Schools Loading Error Alert */}
+            {schoolsError && (
+              <Alert variant="destructive" className="rounded-xl border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 animate-in slide-in-from-top-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <AlertDescription className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Không thể tải danh sách trường học. Vui lòng thử lại sau.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Error Alert */}
             {error && (

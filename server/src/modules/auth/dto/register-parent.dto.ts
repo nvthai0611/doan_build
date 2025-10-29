@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsDateString, IsEnum, IsArray, ValidateNested, ArrayMinSize, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsDateString, IsEnum, IsArray, ValidateNested, ArrayMinSize, Matches, MaxLength, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -23,6 +23,16 @@ export class ChildDto {
   @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
   @IsNotEmpty({ message: 'Giới tính con không được để trống' })
   gender: Gender;
+
+  @ApiProperty({ description: 'Tên trường học', example: 'Trường THCS ABC' })
+  @IsString()
+  @IsNotEmpty({ message: 'Tên trường học không được để trống' })
+  schoolName: string;
+
+  @ApiProperty({ description: 'Địa chỉ trường học', example: '123 Main St', required: false })
+  @IsString()
+  @IsOptional()
+  schoolAddress?: string;
 }
 
 export class RegisterParentDto {

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { publicClassesService, RecruitingClass } from '../../services/common/public-classes.service';
 import { useAuth } from '../../lib/auth';
+import { formatScheduleArray } from '../../utils/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,27 +63,6 @@ export const LandingPage = () => {
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.classCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-
-
-  const formatSchedule = (schedule: any) => {
-    if (!schedule || !Array.isArray(schedule.schedules)) return [];
-    
-    const dayNames: any = {
-      monday: 'T2',
-      tuesday: 'T3',
-      wednesday: 'T4',
-      thursday: 'T5',
-      friday: 'T6',
-      saturday: 'T7',
-      sunday: 'CN',
-    };
-    
-    return schedule.schedules.map((s: any) => ({
-      day: dayNames[s.dayOfWeek] || s.dayOfWeek,
-      time: `${s.startTime}-${s.endTime}`
-    }));
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -216,7 +196,6 @@ export const LandingPage = () => {
                   <ClassCard 
                     key={classItem.id} 
                     classItem={classItem} 
-                    formatSchedule={formatSchedule}
                     isAuthenticated={!!user}
                   />
                 ))}
@@ -275,15 +254,13 @@ export const LandingPage = () => {
 // Class Card Component
 const ClassCard = ({ 
   classItem, 
-  formatSchedule, 
   isAuthenticated 
 }: { 
   classItem: RecruitingClass; 
-  formatSchedule: (schedule: any) => any[]; 
   isAuthenticated: boolean;
 }) => {
   const navigate = useNavigate();
-  const schedules = formatSchedule(classItem.recurringSchedule);
+  const schedules = formatScheduleArray(classItem.recurringSchedule);
   const availableSlots = (classItem.maxStudents || 0) - classItem.currentStudents;
   const isFull = availableSlots <= 0;
 
