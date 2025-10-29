@@ -75,6 +75,48 @@ export function ParentRegister() {
     setSuccess(false)
 
     // Validation
+    // Username validation
+    if (formData.username.length < 3) {
+      setError("Tên đăng nhập phải có ít nhất 3 ký tự")
+      return
+    }
+
+    if (formData.username.length > 20) {
+      setError("Tên đăng nhập không được quá 20 ký tự")
+      return
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]+$/
+    if (!usernameRegex.test(formData.username)) {
+      setError("Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới")
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailRegex.test(formData.email)) {
+      setError("Định dạng email không hợp lệ")
+      return
+    }
+
+    // Phone validation
+    if (formData.phone.length < 10) {
+      setError("Số điện thoại phải có ít nhất 10 số")
+      return
+    }
+
+    const phoneRegex = /^[0-9]{10,11}$/
+    if (!phoneRegex.test(formData.phone)) {
+      setError("Số điện thoại phải có 10-11 chữ số và chỉ chứa số")
+      return
+    }
+
+    // Full name validation
+    if (formData.fullName.length < 2) {
+      setError("Họ và tên phải có ít nhất 2 ký tự")
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu xác nhận không khớp")
       return
@@ -247,6 +289,10 @@ export function ParentRegister() {
                     value={formData.phone}
                     onChange={handleChange}
                     required
+                    minLength={10}
+                    maxLength={11}
+                    pattern="[0-9]{10,11}"
+                    title="Số điện thoại phải có 10-11 chữ số"
                     className="pl-10 h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                   />
                 </div>
@@ -270,6 +316,8 @@ export function ParentRegister() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                  title="Định dạng email không hợp lệ"
                   className="pl-10 h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                 />
               </div>
@@ -292,6 +340,10 @@ export function ParentRegister() {
                   value={formData.username}
                   onChange={handleChange}
                   required
+                  minLength={3}
+                  maxLength={20}
+                  pattern="[a-zA-Z0-9_]+"
+                  title="Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới (3-20 ký tự)"
                   className="pl-10 h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                 />
               </div>
@@ -316,6 +368,9 @@ export function ParentRegister() {
                     value={formData.password}
                     onChange={handleChange}
                     required
+                    minLength={6}
+                    maxLength={32}
+                    title="Mật khẩu phải có 6-32 ký tự"
                     className="pl-10 pr-10 h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                   />
                   <button

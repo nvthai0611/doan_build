@@ -9,7 +9,8 @@ export type UserRole = "center_owner" | "teacher" | "admin" | "student" | "paren
 
 export interface User {
   id: string
-  email: string
+  username: string
+  email?: string
   avatar?: string
   fullName?: string
   role: UserRole
@@ -26,7 +27,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<{ user: User }>
+  login: (identifier: string, password: string) => Promise<{ user: User }>
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
   loading: boolean
@@ -130,12 +131,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     TokenStorage.clear()
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     setLoading(true)
     setError(null)
     
     try {
-      const response = await authService.login({ email, password })
+      const response = await authService.login({ identifier, password })
       
       Cookies.set("accessToken", response.accessToken)
       Cookies.set("refreshToken", response.refreshToken)
@@ -147,7 +148,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(response.user as User)
       return { user: response.user as User }
     } catch (error: any) {
-      const errorMessage = error.message || error.response?.data?.message || "Email hoặc mật khẩu không đúng"
+      const errorMessage = error.message || error.response?.data?.message || "Email/Tên đăng nhập hoặc mật khẩu không đúng"
       toast.error(errorMessage)
       setError(errorMessage)
       throw new Error(errorMessage)
