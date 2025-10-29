@@ -52,6 +52,7 @@ import 'react-quill/dist/quill.snow.css';
 import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
 import { SelectTeacherSheet } from './Sheet/SelectTeacherSheet';
 import { ShareClassSheet } from './Sheet/ShareClassSheet';
+import { ChangeStatusDialog } from './ChangeStatusDialog';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -68,6 +69,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isShareEnabled, setIsShareEnabled] = useState(false);
   const [sharePassword, setSharePassword] = useState('');
+  const [isChangeStatusDialogOpen, setIsChangeStatusDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [isAssignTeacherModalOpen, setIsAssignTeacherModalOpen] = useState(false);
@@ -709,9 +711,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   Trạng thái hoạt động
                 </label>
                 <div className="mt-1">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${CLASS_STATUS_BADGE_COLORS[classData.status as ClassStatus]}`}>
+                  <button
+                    onClick={() => setIsChangeStatusDialogOpen(true)}
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-opacity hover:opacity-80 cursor-pointer ${CLASS_STATUS_BADGE_COLORS[classData.status as ClassStatus]}`}
+                    title="Click để chuyển trạng thái"
+                  >
                     {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
-                  </span>
+                    <Edit className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
               {/* Logic hiển thị ngày dựa trên status */}
@@ -975,6 +982,16 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         classData={classData}
         onSubmit={handleScheduleUpdate}
         isLoading={isScheduleLoading}
+      />
+
+      {/* Change Status Dialog */}
+      <ChangeStatusDialog
+        open={isChangeStatusDialogOpen}
+        onOpenChange={setIsChangeStatusDialogOpen}
+        classData={classData}
+        onSuccess={() => {
+          // Data will be automatically refetched via query invalidation
+        }}
       />
     </div>
   );

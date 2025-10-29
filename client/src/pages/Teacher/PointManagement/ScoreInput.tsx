@@ -311,11 +311,18 @@ export default function GradeInputPage() {
 
   const getGradeClassification = (score: string) => {
     const numScore = Number.parseFloat(score)
-    if (numScore >= 9) return { label: "Giỏi", color: "bg-green-100 text-green-800" }
-    if (numScore >= 8) return { label: "Khá", color: "bg-blue-100 text-blue-800" }
-    if (numScore >= 6.5) return { label: "TB", color: "bg-yellow-100 text-yellow-800" }
-    if (numScore >= 5) return { label: "Yếu", color: "bg-orange-100 text-orange-800" }
-    return { label: "Kém", color: "bg-red-100 text-red-800" }
+    if (isNaN(numScore)) {
+      return { label: "Chưa đạt", color: "bg-red-100 text-red-800" }
+    }
+    
+    // Hỗ trợ cả bài có maxScore != 10 bằng cách quy đổi về thang 10
+    const normalized = currentMaxScore === 10 ? numScore : Number(((numScore / currentMaxScore) * 10).toFixed(2))
+    
+    // Xếp loại: Tốt >= 8, Khá >= 6.5, Đạt >= 5, còn lại Chưa đạt
+    if (normalized >= 8) return { label: "Tốt", color: "bg-green-100 text-green-800" }
+    if (normalized >= 6.5) return { label: "Khá", color: "bg-blue-100 text-blue-800" }
+    if (normalized >= 5) return { label: "Đạt", color: "bg-yellow-100 text-yellow-800" }
+    return { label: "Chưa đạt", color: "bg-red-100 text-red-800" }
   }
 
   return (

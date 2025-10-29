@@ -34,10 +34,33 @@ export class AuthService {
     });
   }
 
-  async validateUser(email: string, password: string) {
-    const user = await this.getUserByField('email', email);
+  async validateUser(identifier: string, password: string) {
+    // Tìm user theo email hoặc username
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier }
+        ]
+      },
+      include: {
+        teacher: true,
+        student: true,
+        parent: true,
+        roleData: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true
+              }
+            }
+          }
+        }
+      }
+    });
+
     if (!user) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException('Email/Tên đăng nhập hoặc mật khẩu không chính xác');
     }
 
     if (!user.isActive) {
@@ -46,14 +69,14 @@ export class AuthService {
 
     const isPasswordValid = await Hash.verify(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException('Email/Tên đăng nhập hoặc mật khẩu không chính xác');
     }
 
     return user;
   }
 
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
+  async login(identifier: string, password: string) {
+    const user = await this.validateUser(identifier, password);
     
     // Tạo access token
     const accessToken = JWT.createAccessToken({
@@ -79,6 +102,7 @@ export class AuthService {
       refreshToken,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         avatar: user.avatar,
         fullName: user.fullName,
@@ -111,6 +135,15 @@ export class AuthService {
 
     if (existingUsername) {
       throw new ConflictException('Tên đăng nhập đã được sử dụng');
+    }
+
+    // Kiểm tra phone đã tồn tại chưa
+    const existingPhone = await this.prisma.user.findFirst({
+      where: { phone: registerDto.phone },
+    });
+
+    if (existingPhone) {
+      throw new ConflictException('Số điện thoại đã được sử dụng');
     }
 
     // Tìm role parent

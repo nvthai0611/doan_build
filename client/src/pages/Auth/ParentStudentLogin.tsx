@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail, Lock, Eye, EyeOff, Users, ArrowLeft } from "lucide-react"
 
 export function ParentStudentLogin() {
-  const [email, setEmail] = useState("")
+  const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -22,7 +22,7 @@ export function ParentStudentLogin() {
 
     try {
       // Login và validate role TRƯỚC KHI lưu tokens
-      const result = await login(email, password)
+      const result = await login(identifier, password)
       
       // Validate role - chỉ cho phép Parent và Student
       const allowedRoles = ['parent', 'student']
@@ -51,7 +51,7 @@ export function ParentStudentLogin() {
         navigate(defaultPath, { replace: true })
       }
     } catch (err: any) {
-      setError(err.message || "Email hoặc mật khẩu không đúng")
+      setError(err.message || "Email/Tên đăng nhập hoặc mật khẩu không đúng")
     }
   }
 
@@ -95,21 +95,21 @@ export function ParentStudentLogin() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Input */}
+            {/* Email/Username Input */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email
+              <Label htmlFor="identifier" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email hoặc Tên đăng nhập
               </Label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 </div>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  placeholder="Email hoặc tên đăng nhập"
+                  value={identifier}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIdentifier(e.target.value)}
                   required
                   className="pl-10 h-12 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                 />
@@ -201,13 +201,13 @@ export function ParentStudentLogin() {
               Tài khoản demo
             </p>
             <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("parent@qne.edu.vn"); setPassword("123456") }}>
+              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("parent"); setPassword("123456") }}>
                 <span className="font-medium text-gray-700 dark:text-gray-300">👨‍👩‍👧 Phụ huynh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">parent@qne.edu.vn</span>
+                <span className="text-gray-500 dark:text-gray-400 text-[10px]">parent</span>
               </div>
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setEmail("student@qne.edu.vn"); setPassword("123456") }}>
+              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("student"); setPassword("123456") }}>
                 <span className="font-medium text-gray-700 dark:text-gray-300">👨‍🎓 Học sinh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">student@qne.edu.vn</span>
+                <span className="text-gray-500 dark:text-gray-400 text-[10px]">student</span>
               </div>
             </div>
           </div>

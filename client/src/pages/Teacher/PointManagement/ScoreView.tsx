@@ -115,11 +115,13 @@ export default function StudentGradesPage() {
   }
 
   const getGradeClassification = (score: number) => {
-    if (score >= 9) return { label: "Giỏi", variant: "default" as const }
-    if (score >= 8) return { label: "Khá", variant: "secondary" as const }
-    if (score >= 6.5) return { label: "TB", variant: "outline" as const }
-    if (score >= 5) return { label: "Yếu", variant: "destructive" as const }
-    return { label: "Kém", variant: "destructive" as const }
+    // Xếp loại: Tốt >= 8, Khá >= 6.5, Đạt >= 5, còn lại Chưa đạt
+    // Hỗ trợ cả bài có maxScore != 10 bằng cách quy đổi về thang 10 (nếu cần)
+    // Note: Backend đã tính average theo thang 10, nên không cần normalize ở đây
+    if (score >= 8) return { label: "Tốt", color: "bg-green-100 text-green-800", variant: "default" as const }
+    if (score >= 6.5) return { label: "Khá", color: "bg-blue-100 text-blue-800", variant: "secondary" as const }
+    if (score >= 5) return { label: "Đạt", color: "bg-yellow-100 text-yellow-800", variant: "outline" as const }
+    return { label: "Chưa đạt", color: "bg-red-100 text-red-800", variant: "destructive" as const }
   }
 
   const getTrendIcon = (trend: string, value?: number) => {
@@ -266,9 +268,12 @@ export default function StudentGradesPage() {
       key: 'classification',
       header: 'Xếp loại',
       align: 'left',
-      render: (item) => (
-        <Badge variant={getGradeClassification(item.average).variant}>{getGradeClassification(item.average).label}</Badge>
-      ),
+      render: (item) => {
+        const classification = getGradeClassification(item.average)
+        return (
+          <Badge className={classification.color}>{classification.label}</Badge>
+        )
+      },
     },
   ]
 
@@ -491,34 +496,28 @@ export default function StudentGradesPage() {
               <CardDescription>Thống kê xếp loại học sinh</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   {
-                    label: "Giỏi",
-                    range: "≥ 9.0",
-                    count: grades.filter((g: StudentGradeDetail) => g.average >= 9).length,
+                    label: "Tốt",
+                    range: "≥ 8.0",
+                    count: grades.filter((g: StudentGradeDetail) => g.average >= 8).length,
                     color: "bg-green-100 text-green-800",
                   },
                   {
                     label: "Khá",
-                    range: "8.0-8.9",
-                    count: grades.filter((g: StudentGradeDetail) => g.average >= 8 && g.average < 9).length,
+                    range: "6.5-7.9",
+                    count: grades.filter((g: StudentGradeDetail) => g.average >= 6.5 && g.average < 8).length,
                     color: "bg-blue-100 text-blue-800",
                   },
                   {
-                    label: "TB",
-                    range: "6.5-7.9",
-                    count: grades.filter((g: StudentGradeDetail) => g.average >= 6.5 && g.average < 8).length,
+                    label: "Đạt",
+                    range: "5.0-6.4",
+                    count: grades.filter((g: StudentGradeDetail) => g.average >= 5 && g.average < 6.5).length,
                     color: "bg-yellow-100 text-yellow-800",
                   },
                   {
-                    label: "Yếu",
-                    range: "5.0-6.4",
-                    count: grades.filter((g: StudentGradeDetail) => g.average >= 5 && g.average < 6.5).length,
-                    color: "bg-orange-100 text-orange-800",
-                  },
-                  {
-                    label: "Kém",
+                    label: "Chưa đạt",
                     range: "< 5.0",
                     count: grades.filter((g: StudentGradeDetail) => g.average < 5).length,
                     color: "bg-red-100 text-red-800",

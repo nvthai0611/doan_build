@@ -231,7 +231,7 @@ model Enrollment {
   studentId        String           @map("student_id") @db.Uuid
   classId          String           @map("class_id") @db.Uuid
   enrolledAt       DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
-  status           String           @default("not_been_updated") // not_been_updated, studying, stopped, graduated, 
+  status           String           @default("not_been_updated") // not_been_updated, studying, stopped, graduated, withdrawn   
   semester         String?
   completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
   finalGrade       String?          @map("final_grade")
@@ -540,7 +540,7 @@ model Contract {
   salary    Decimal?  @db.Decimal(12, 2)
   terms     Json?
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  status    String    @default("active") // active, expired
+  status    String    @default("active") // active, expiring, expired
   teacher   Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("contracts")
@@ -648,12 +648,19 @@ model ContractUpload {
   uploadedImageUrl  String      @map("uploaded_image_url")
   uploadedImageName String?     @map("uploaded_image_name")
   uploadedAt        DateTime    @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  startDate         DateTime?   @map("start_date")   // Ngày bắt đầu hợp đồng
+  expiredAt         DateTime?   @map("expired_at")   // Ngày hết hạn
+  note              String?     @map("note")
+  status            String?     @default("active") @map("status") // active, expiring, expired
+
   enrollment        Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent            Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
   teacher           Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("contract_uploads")
 }
+
 
 model AcademicYear {
   id        String   @id @default(cuid())

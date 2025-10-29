@@ -774,15 +774,24 @@ export class ClassManagementService {
 
             // AUTO-GEN SESSIONS: Nếu status chuyển từ ready → active, tự động gen sessions
             const isStatusChangedToActive = existingClass.status === 'ready' && updateClassDto.status === 'active';
-            
+                
             if (isStatusChangedToActive) {
                 try {
-                    // Kiểm tra có actualStartDate và actualEndDate không
+                    // Xác định ngày bắt đầu
                     const startDate = updatedClass.actualStartDate || updatedClass.expectedStartDate;
-                    const endDate = updatedClass.actualEndDate;
+                    let endDate = updatedClass.actualEndDate;
+
+                    // Nếu không có actualEndDate, tự động tính 9 tháng từ startDate
+                    if (startDate && !endDate) {
+                        endDate = new Date(startDate);
+                        endDate.setMonth(endDate.getMonth() + 9);
+                        console.log(`📅 Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`);
+                    }
 
                     if (startDate && endDate && updatedClass.recurringSchedule) {
                         // Tự động gen sessions
+                        console.log(`🚀 Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`);
+                        
                         await this.generateSessions(id, {
                             startDate: startDate.toISOString().split('T')[0],
                             endDate: endDate.toISOString().split('T')[0]
@@ -790,7 +799,7 @@ export class ClassManagementService {
 
                         return {
                             success: true,
-                            message: 'Cập nhật lớp học thành công. Lịch học đã được tạo tự động.',
+                            message: `Cập nhật lớp học thành công. Đã tạo lịch học từ ${startDate.toLocaleDateString('vi-VN')} đến ${endDate.toLocaleDateString('vi-VN')}.`,
                             data: updatedClass,
                             sessionsGenerated: true
                         };
@@ -798,9 +807,9 @@ export class ClassManagementService {
                         // Thiếu thông tin để gen sessions
                         return {
                             success: true,
-                            message: 'Cập nhật lớp học thành công. Vui lòng cập nhật ngày bắt đầu, kết thúc và lịch học để tạo buổi học.',
+                            message: 'Cập nhật lớp học thành công. Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.',
                             data: updatedClass,
-                            warning: 'Chưa thể tạo lịch học do thiếu thông tin ngày hoặc lịch học tuần'
+                            warning: 'Chưa thể tạo lịch học do thiếu thông tin ngày bắt đầu hoặc lịch học tuần'
                         };
                     }
                 } catch (error) {
@@ -949,34 +958,12 @@ export class ClassManagementService {
                 validationErrors.push('Lớp học chưa có lịch học định kỳ');
             }
 
-            // 2. Kiểm tra giáo viên
+            // 2. Kiểm tra giáo viên (bắt buộc)
             if (!classInfo.teacher) {
                 validationErrors.push('Lớp học chưa được gán giáo viên');
-            } else if (!classInfo.teacher.user.isActive) {
-                validationErrors.push('Giáo viên được gán không còn hoạt động');
             }
 
-            // 3. Kiểm tra số lượng học sinh đăng ký và được chấp nhận
-            const activeEnrollments = classInfo._count.enrollments;
-            if (activeEnrollments < 15) {
-                validationErrors.push(`Lớp học cần ít nhất 15 học sinh đăng ký và được chấp nhận (hiện tại: ${activeEnrollments} học sinh)`);
-            }
-
-            // 4. Kiểm tra học sinh đăng ký có đang hoạt động
-            const inactiveStudents = classInfo.enrollments.filter(
-                enrollment => !enrollment.student.user.isActive
-            );
-            if (inactiveStudents.length > 0) {
-                validationErrors.push(`${inactiveStudents.length} học sinh trong lớp không còn hoạt động`);
-            }
-
-            // 5. Kiểm tra trạng thái lớp học
-            if (classInfo.status === 'active') {
-                validationErrors.push(`Lớp học đang ở trạng thái '${classInfo.status}', cần chuyển sang trạng thái 'draft hoặc ready'`);
-            }
-            console.log(validationErrors);
-            
-            // Nếu có lỗi validation, throw exception
+            // Chỉ throw error nếu thiếu thông tin bắt buộc
             if (validationErrors.length > 0) {
                 throw new HttpException(
                     {
@@ -986,6 +973,16 @@ export class ClassManagementService {
                     },
                     HttpStatus.BAD_REQUEST
                 );
+            }
+
+            // Warnings (không block việc gen sessions)
+            const warnings = [];
+            const activeEnrollments = classInfo._count.enrollments;
+            if (activeEnrollments < 5) {
+                warnings.push(`⚠️ Lớp học chỉ có ${activeEnrollments} học sinh`);
+            }
+            if (warnings.length > 0) {
+                console.log('Warnings:', warnings);
             }
 
             // Xác định ngày bắt đầu và kết thúc
@@ -1180,7 +1177,7 @@ export class ClassManagementService {
                         teacher: classInfo.teacher?.user.fullName,
                         room: classInfo.room?.name,
                         subject: classInfo.subject?.name,
-                        activeEnrollments: activeEnrollments,
+                        activeEnrollments: classInfo._count.enrollments,
                         status: classInfo.status
                     }
                 },

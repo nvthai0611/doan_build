@@ -34,10 +34,9 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     queryKey: ['classDashboard', classId],
     queryFn: () => classService.getDashboard(classId),
     enabled: !!classId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 3000,
+    refetchOnWindowFocus: true
   })
-  console.log(dashboardResponse);
   
 
   const dashboardData = (dashboardResponse as any)?.data || {

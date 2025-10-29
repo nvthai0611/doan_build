@@ -2,7 +2,7 @@ import type { User, UserRole } from "../types/shared.types"
 
 // ===== Authentication Types =====
 export interface LoginRequest {
-  email: string
+  identifier: string // Email hoặc username
   password: string
 }
 

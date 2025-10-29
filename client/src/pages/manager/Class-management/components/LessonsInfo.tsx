@@ -216,7 +216,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     {
       key: 'stt',
       header: 'STT',
-      width: '80px',
+      width: '10px',
       align: 'center',
       render: (_: any, index: number) => ((pagination.currentPage - 1) * pagination.itemsPerPage + index + 1),
       sortable: true,
@@ -225,7 +225,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     {
       key: 'lesson',
       header: 'Buổi học',
-      width: '300px',
+      width: '80px',
       sortable: true,
       sortKey: 'topic',
       searchable: true,
@@ -251,8 +251,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     {
       key: 'status',
       header: 'Trạng thái',
-      width: '150px',
-      align: 'center',
+      width: '80px',
       render: (session: any) => getStatusBadge(session.status)
     },
     // {
@@ -268,7 +267,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     {
       key: 'attendance',
       header: 'Sĩ số',
-      width: '120px',
+      width: '80px',
       align: 'center',
       render: (session: any) => (
         <div className="flex items-center gap-1">
@@ -280,7 +279,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     {
       key: 'absent',
       header: 'Nghỉ học',
-      width: '100px',
+      width: '80px',
       align: 'center',
       render: (session: any) => (
         <span className="text-sm">{session.absentCount || 0}</span>
@@ -587,7 +586,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           hoverable={true}
           striped={false}
           enableSearch={false}
-          enableSort={true}
+          enableSort={false}
           enableCheckbox={true}
           selectedItems={selectedSessions}
           onSelectionChange={setSelectedSessions}
