@@ -8,6 +8,7 @@ export enum AlertType {
   INCIDENT_REPORT = 'incident_report',
   ENROLLMENT = 'enrollment',
   PAYMENT = 'payment',
+  STUDENT_CLASS_REQUEST = 'student_class_request',
   OTHER = 'other',
 }
 

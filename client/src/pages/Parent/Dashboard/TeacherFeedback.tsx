@@ -76,21 +76,6 @@ export function ChildTeacherFeedback({ child }: ChildTeacherFeedbackProps) {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="outline">Chờ xử lý</Badge>
-      case "approved":
-        return <Badge className="bg-green-100 text-green-800">Đã phê duyệt</Badge>
-      case "rejected":
-        return <Badge variant="destructive">Bị từ chối</Badge>
-      case "archived":
-        return <Badge variant="secondary">Đã lưu trữ</Badge>
-      default:
-        return null
-    }
-  }
-
   const selectedTeacherData = teachers.find((t) => t.id === selectedTeacher)
 
   const availableClasses = selectedTeacherData ? selectedTeacherData.classes : []
@@ -306,7 +291,6 @@ export function ChildTeacherFeedback({ child }: ChildTeacherFeedbackProps) {
                         <p className="text-xs text-muted-foreground">{feedback.className || ''}</p>
                       </div>
                     </div>
-                    {getStatusBadge(feedback.status)}
                   </div>
 
                   <div className="flex items-center gap-1">

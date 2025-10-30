@@ -108,6 +108,25 @@ export class TeacherManagementController {
     return this.teacherManagementService.getTeacherContracts(id);
   }
 
+  @Post(':id/contracts/upload')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadContractForTeacher(
+    @Param('id') teacherId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('contractType') contractType: string,
+    @Body('expiryDate') expiryDate: string,
+    @Body('notes') notes?: string
+  ) {
+    return this.teacherManagementService.uploadContractForTeacher(
+      teacherId,
+      file,
+      contractType,
+      expiryDate,
+      notes
+    );
+  }
+
   @Delete(':id/contracts/:contractId')
   @HttpCode(HttpStatus.OK)
   deleteTeacherContract(
