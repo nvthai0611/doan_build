@@ -151,7 +151,7 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
           />
         )
       case "contracts":
-        return <ContractsInfoTab teacherId={teacherId} />
+        return <ContractsInfoTab teacherId={teacherId} teacherName={teacher?.name} />
       case "timesheet":
         return (
           <TimesheetInfo

@@ -9,7 +9,7 @@ export class ContractsManageService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+  ) { }
 
   async listByTeacher(teacherId: string) {
     const uploads = await this.prisma.contractUpload.findMany({
@@ -17,8 +17,8 @@ export class ContractsManageService {
       orderBy: { uploadedAt: 'desc' },
     });
 
-  const now = new Date();
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     return uploads.map((u) => {
       let status = 'active';
@@ -63,8 +63,8 @@ export class ContractsManageService {
     }
 
     const expiredAt = new Date(expiryDate);
-  const now = new Date();
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     let status = 'active';
     if (expiredAt < now) {
