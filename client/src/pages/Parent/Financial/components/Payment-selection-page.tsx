@@ -152,6 +152,8 @@ export function PaymentSelectionPage() {
     }
   }, [])
 
+  
+
   // Subscribe payment updates khi QR modal mở
   
   useEffect(() => {
@@ -317,29 +319,37 @@ export function PaymentSelectionPage() {
     }
   }
 
-  const handleCloseModal = () => {
-    // Unsubscribe trước khi đóng
-    if (paymentData?.orderCode) {
-      paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
-    }
-
-    // Cleanup timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current)
-      countdownRef.current = null
-    }
-
-    setShowQrModal(false)
-    setPaymentData(null)
-    setCopied(false)
-    setRemainingTime(0)
-    queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
-  queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
+const handleCloseModal = () => {
+  // Unsubscribe trước khi đóng
+  if (paymentData?.orderCode) {
+    paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
   }
+
+  // Cleanup timers
+  if (timerRef.current) {
+    clearTimeout(timerRef.current)
+    timerRef.current = null
+  }
+  if (countdownRef.current) {
+    clearInterval(countdownRef.current)
+    countdownRef.current = null
+  }
+
+  // Đóng modal và reset state trước
+  setShowQrModal(false)
+  setPaymentData(null)
+  setCopied(false)
+  setRemainingTime(0)
+  setCurrentPayment(null)
+  
+// 1. Chỉ 'invalidate' (làm cũ) các query.
+  // Query nào đang active (đang xem) nó sẽ tự refetch.
+  // Query nào inactive (tab khác) sẽ refetch khi user bấm vào.
+  setSelectedFees([])
+  queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
+  queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
+  queryClient.invalidateQueries({ queryKey: ['payment-history'] }) // Nên thêm cả history
+}
 
   if (isLoading || isLoadingChildren || isError || isErrorChildren) {
     return <Loading />
@@ -393,13 +403,19 @@ export function PaymentSelectionPage() {
     ? transformedFeeRecords 
     : transformedFeeRecords.filter(fee => fee.studentId === selectedStudent)
 
-  const selectedRecords = filteredFeeRecords.filter((fee) => 
-    selectedFees.includes(fee.id)
-  )
-  
-  const totalAmount = selectedRecords.reduce((sum, fee) => 
-    sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
-  )
+
+//   useEffect(() => {
+//   // Giữ lại các feeId vẫn còn trong filteredFeeRecords
+//   setSelectedFees((prev) =>
+//     prev.filter((id) => filteredFeeRecords.some((fee) => fee.id === id))
+//   )
+// }, [filteredFeeRecords])
+  //   const selectedRecords = filteredFeeRecords.filter((fee) => 
+  //   selectedFees.includes(fee.id)
+  // )
+  // const totalAmount = selectedRecords.reduce((sum, fee) => 
+  //   sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
+  // )
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -557,7 +573,12 @@ export function PaymentSelectionPage() {
         </Tabs>
 
         {/* QR Code Modal - Giữ nguyên code cũ */}
-        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+        <Dialog open={showQrModal} onOpenChange={(open) => {
+    // Nếu 'open' là false (tức là dialog được lệnh đóng)
+    if (!open) {
+      handleCloseModal() // GỌI HÀM CLEANUP VÀ REFETCH Ở ĐÂY
+    }
+  }}>
           <DialogContent className="sm:max-w-md max-h-[100vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
