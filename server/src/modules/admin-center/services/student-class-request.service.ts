@@ -93,10 +93,10 @@ export class StudentClassRequestService {
         skip,
         take: limit,
       });
-
-      // Get pending count
+      console.log(where);
+      
       const pendingCount = await this.prisma.studentClassRequest.count({
-        where: { status: 'pending' },
+        where: { ...where, status: 'pending' },
       });
 
       return {
@@ -140,7 +140,7 @@ export class StudentClassRequestService {
           page,
           limit,
           totalPages: Math.ceil(total / limit),
-          pendingCount,
+          pendingCount: pendingCount,
         },
         message: 'Lấy danh sách yêu cầu thành công',
       };

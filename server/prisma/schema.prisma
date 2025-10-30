@@ -245,15 +245,16 @@ model Enrollment {
 }
 
 model StudentClassRequest {
-  id          String    @id @default(uuid()) @db.Uuid
-  studentId   String    @map("student_id") @db.Uuid
-  classId     String    @map("class_id") @db.Uuid
-  message     String?
-  status      String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
-  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  class       Class     @relation(fields: [classId], references: [id])
-  student     Student   @relation(fields: [studentId], references: [id])
+  id                  String    @id @default(uuid()) @db.Uuid
+  studentId           String    @map("student_id") @db.Uuid
+  classId             String    @map("class_id") @db.Uuid
+  message             String?
+  commitmentImageUrl  String?   @map("commitment_image_url") // URL của ảnh cam kết học tập
+  status              String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
+  processedAt         DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  class               Class     @relation(fields: [classId], references: [id])
+  student             Student   @relation(fields: [studentId], references: [id])
 
   @@map("student_class_requests")
 }
