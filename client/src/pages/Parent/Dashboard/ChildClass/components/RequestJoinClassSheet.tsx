@@ -5,12 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { X, Clock, Download, Upload, GraduationCap, User } from 'lucide-react';
+import { X, Clock, Download, Upload, GraduationCap, User, Calendar, AlertCircle } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
 import { parentClassJoinService } from '../../../../../services/parent/class-join/class-join.service';
 import { useQuery } from '@tanstack/react-query';
 import { parentStudentsService } from '../../../../../services/parent/students/students.service';
 import { RecruitingClass } from '../../../../../services/common/public-classes.service';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ClassStatus, CLASS_STATUS_LABELS } from '../../../../../lib/constants';
+import { CloudinaryUploadService } from '../../../../../services/common';
 
 interface RequestJoinClassSheetProps {
   open: boolean;
@@ -27,14 +30,13 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
-
+  
   // Fetch danh sách con
   const { data: studentsResponse, isLoading: isLoadingStudents } = useQuery({
     queryKey: ['parent', 'students'],
     queryFn: () => parentStudentsService.getChildren(),
     enabled: open,
   });
-
   const students = studentsResponse?.data || [];
   const hasNoChildren = !isLoadingStudents && students.length === 0;
 
@@ -101,14 +103,39 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
 
     setIsLoading(true);
     try {
-      // TODO: Upload contract file first (integrate with cloudinary or backend upload endpoint)
-      // For now, just send the request without file URL
+      // Upload contract file to Cloudinary first
+      let commitmentImageUrl: string | undefined;
       
+      if (contractFile) {
+        toast({
+          title: "Đang tải lên",
+          description: "Đang upload bản cam kết...",
+        });
+        
+        try {
+          commitmentImageUrl = await CloudinaryUploadService.uploadImage(
+            contractFile,
+            `commitment-${selectedStudentId}-${Date.now()}.${contractFile.name.split('.').pop()}`,
+            'contracts'
+          );
+        } catch (uploadError) {
+          toast({
+            title: "Lỗi upload",
+            description: "Không thể upload bản cam kết. Vui lòng thử lại.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Send request with commitment image URL
       await parentClassJoinService.requestJoinClass({
         classId: classData.id,
         studentId: selectedStudentId,
         password: password || undefined,
         message: message || `Phụ huynh đăng ký lớp học cho con`,
+        commitmentImageUrl,
       });
       
       toast({
@@ -118,8 +145,7 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       
       onOpenChange(false);
     } catch (error: any) {
-      console.error('Error requesting join class:', error);
-      const errorData = error.response?.data;
+      const errorData = error.response?.message;
       
       // Nếu lỗi do password, hiện input password
       if (errorData?.requirePassword) {
@@ -154,10 +180,28 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       sunday: 'Chủ Nhật',
     };
     
-    return schedule.map((s: any) => ({
-      day: dayNames[s.dayOfWeek] || s.dayOfWeek,
-      time: `${s.startTime} → ${s.endTime}`
-    }));
+    return schedule.map((s: any) => {
+      const dayKey = s.dayOfWeek?.toLowerCase() || s.day?.toLowerCase();
+      const dayName = dayNames[dayKey] || s.dayOfWeek || s.day || '?';
+      return {
+        day: dayName,
+        time: `${s.startTime} → ${s.endTime}`
+      };
+    });
+  };
+
+  // Kiểm tra xem có cần đến trung tâm làm test không
+  const requiresInPersonTest = () => {
+    // Chỉ áp dụng cho lớp đang hoạt động (active)
+    if (!classData || classData.status !== ClassStatus.ACTIVE) {
+      return false;
+    }
+
+    // Lấy số buổi đã hoàn thành từ database (backend đã đếm)
+    const completedSessions = classData.completedSessionsCount || 0;
+    
+    // Nếu đã qua 2 buổi trở lên thì yêu cầu đến trung tâm
+    return completedSessions >= 2;
   };
 
   if (!classData) {
@@ -165,6 +209,8 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   }
 
   const schedules = formatSchedule(classData.recurringSchedule?.schedules);
+  const needsInPersonTest = requiresInPersonTest();
+  const pastSessionsCount = classData.completedSessionsCount || 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
@@ -176,6 +222,27 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
+          {/* Thông báo yêu cầu test trực tiếp */}
+          {needsInPersonTest && (
+            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <AlertDescription className="text-sm text-amber-800 dark:text-amber-200 ml-2">
+                <p className="font-semibold mb-2">Lớp học đã diễn ra {pastSessionsCount} buổi</p>
+                <p className="mb-2">
+                  Để đảm bảo học sinh có thể theo kịp chương trình học, quý phụ huynh vui lòng đến trực tiếp trung tâm để:
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Trao đổi với giáo viên về tình trạng lớp học</li>
+                  <li>Đánh giá năng lực học sinh (nếu cần)</li>
+                  <li>Hoàn tất thủ tục đăng ký tham gia lớp</li>
+                </ul>
+                <p className="mt-3 font-medium">
+                  📞 Vui lòng liên hệ trung tâm để đặt lịch hẹn và làm test đầu vào
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Thông tin lớp học */}
           <div className="space-y-4 pb-4 border-b">
             {/* Tên lớp học */}
@@ -227,6 +294,69 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
               </div>
             )}
 
+            {/* Ngày học - Hiển thị theo trạng thái lớp */}
+            {classData.status === ClassStatus.READY ? (
+              // Lớp đang tuyển sinh → Hiển thị ngày bắt đầu dự kiến
+              classData.expectedStartDate && (
+                <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Ngày bắt đầu dự kiến</Label>
+                    <p className="text-sm font-medium">
+                      {new Date(classData.expectedStartDate).toLocaleDateString('vi-VN', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : (
+              // Lớp đang diễn ra → Hiển thị ngày bắt đầu và ngày kết thúc
+              (classData.actualStartDate || classData.actualEndDate) && (
+                <div className="space-y-2">
+                  {classData.actualStartDate && (
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Ngày bắt đầu</Label>
+                        <p className="text-sm font-medium">
+                          {new Date(classData.actualStartDate).toLocaleDateString('vi-VN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {classData.actualEndDate && (
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Ngày kết thúc</Label>
+                        <p className="text-sm font-medium">
+                          {new Date(classData.actualEndDate).toLocaleDateString('vi-VN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+
             {/* Số lượng học sinh */}
             <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
               <div className="flex items-center gap-2">
@@ -239,26 +369,27 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
             </div>
           </div>
 
-          {/* Form đăng ký */}
-          <div className="space-y-4">
-            {/* Chọn học sinh */}
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">
-                Chọn học sinh <span className="text-red-500">*</span>
-              </Label>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full mt-2 px-3 py-2 border rounded-md bg-background"
-              >
-                <option value="">-- Chọn con của bạn --</option>
-                {students.map((student: any) => (
-                  <option key={student.id} value={student.id}>
-                    {student.user.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Form đăng ký - Ẩn nếu cần đến trung tâm */}
+          {!needsInPersonTest && (
+            <div className="space-y-4">
+              {/* Chọn học sinh */}
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Chọn học sinh <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full mt-2 px-3 py-2 border rounded-md bg-background"
+                >
+                  <option value="">-- Chọn con của bạn --</option>
+                  {students.map((student: any) => (
+                    <option key={student.id} value={student.id}>
+                      {student.user.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
             {/* Password (nếu cần) */}
             {(classData.requirePassword || showPasswordInput) && (
@@ -384,16 +515,17 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
                 Tải mẫu cam kết, điền thông tin và upload bản scan/ảnh đã ký
               </p>
             </div>
-          </div>
 
-          {/* Nút gửi yêu cầu */}
-          <Button
-            onClick={handleRequestJoin}
-            disabled={isLoading || !selectedStudentId || !contractFile}
-            className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
-          >
-            {isLoading ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu tham gia'}
-          </Button>
+            {/* Nút gửi yêu cầu */}
+            <Button
+              onClick={handleRequestJoin}
+              disabled={isLoading || !selectedStudentId || !contractFile}
+              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
+            >
+              {isLoading ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu tham gia'}
+            </Button>
+          </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

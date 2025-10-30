@@ -33,6 +33,9 @@ export const ShareClassSheet = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [isRequestsSheetOpen, setIsRequestsSheetOpen] = useState(false);
 
+  console.log(pendingRequestsCount);
+  
+
   const shareLink = classData?.id 
     ? `http://localhost:5173/auth/login/family/${classData.id}`
     : ''; 

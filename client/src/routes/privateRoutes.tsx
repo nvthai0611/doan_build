@@ -2,6 +2,7 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
 import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
+import { CenterOwnerHomePage } from "../pages/manager/CenterOwnerHomePage";
 import TeacherProfilePage from "../pages/Teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/Teacher/Teacher-manage-class/Teacher-manage-class";
@@ -55,6 +56,8 @@ import FinancialPage from "../pages/Parent/Financial/Financial-Home";
 import {ChildrenClasses} from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
 import RecruitingClasses from "../pages/Parent/Dashboard/RecruitingClasses/RecruitingClasses";
 import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/TeacherFeedback";
+import StudentClassRequestsPage from "../pages/manager/StudentClassRequests/StudentClassRequestsPage";
+import { AlertsPage } from "../pages/manager/Alerts/AlertsPage";
 
 export const privateRoutes = (
   <>
@@ -69,7 +72,7 @@ export const privateRoutes = (
         path="/center-qn"
         element={<AuthMiddleware allowedRoles={['center_owner']} />}
       >
-        <Route index element={<CenterOwnerDashboard />} />
+        <Route index element={<CenterOwnerHomePage />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/:id" element={<ClassDetail />} />
@@ -92,7 +95,10 @@ export const privateRoutes = (
         <Route path="requests/leave-requests" element={<LeaveRequestManagement />} />
         <Route path="requests/session-requests" element={<SessionRequestManagement />} />
         <Route path="requests/change-schedule-requests" element={<ChangeScheduleRequestManagement />} />
+        <Route path="requests/student-class-requests" element={<StudentClassRequestsPage />} />
+        <Route path="student-class-requests" element={<StudentClassRequestsPage />} />
         <Route path="feedback" element={<FeedbackTeacher />} />
+        <Route path="alerts" element={<AlertsPage />} />
       </Route>
 
       {/* Giáo viên */}

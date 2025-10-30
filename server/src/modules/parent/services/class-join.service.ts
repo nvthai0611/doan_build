@@ -1,10 +1,14 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-class.dto';
+import { AlertService } from '../../admin-center/services/alert.service';
 
 @Injectable()
 export class ClassJoinService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alertService: AlertService,
+  ) {}
 
   /**
    * Lấy thông tin lớp học từ classCode hoặc link
@@ -335,6 +339,7 @@ export class ClassJoinService {
         studentId: dto.studentId,
         classId: dto.classId,
         message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
+        commitmentImageUrl: dto.commitmentImageUrl,
         status: 'pending',
       },
       include: {
@@ -360,6 +365,23 @@ export class ClassJoinService {
         },
       },
     });
+
+    // Tạo alert thông báo cho center owner/manager
+    try {
+      await this.alertService.createStudentClassRequestAlert({
+        id: request.id,
+        studentId: request.student.id,
+        studentName: request.student.user.fullName,
+        classId: request.class.id,
+        className: request.class.name,
+        subjectName: request.class.subject?.name || 'N/A',
+        teacherId: request.class.teacher?.id,
+        teacherName: request.class.teacher?.user?.fullName,
+      });
+    } catch (error) {
+      // Log error nhưng không block request
+      console.error('Failed to create alert for student class request:', error);
+    }
 
     return {
       success: true,

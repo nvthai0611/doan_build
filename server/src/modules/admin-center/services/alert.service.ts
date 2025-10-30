@@ -325,5 +325,27 @@ export class AlertService {
       },
     });
   }
+
+  /**
+   * Helper: Tạo alert khi có student class request mới
+   */
+  async createStudentClassRequestAlert(requestData: any) {
+    return this.createAlert({
+      alertType: AlertType.STUDENT_CLASS_REQUEST,
+      title: 'Yêu cầu tham gia lớp học mới',
+      message: `Phụ huynh đăng ký lớp ${requestData.className} (${requestData.subjectName}) cho học sinh ${requestData.studentName}`,
+      severity: AlertSeverity.MEDIUM,
+      payload: {
+        requestId: requestData.id,
+        studentId: requestData.studentId,
+        studentName: requestData.studentName,
+        classId: requestData.classId,
+        className: requestData.className,
+        subjectName: requestData.subjectName,
+        teacherId: requestData.teacherId,
+        teacherName: requestData.teacherName,
+      },
+    });
+  }
 }
 

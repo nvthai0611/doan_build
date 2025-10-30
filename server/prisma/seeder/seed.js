@@ -710,8 +710,7 @@ async function createPayments(parents, students) {
     await prisma.feeRecordPayment.create({
       data: {
         feeRecordId: feeRecord.id,
-        paymentId: payment.id,
-        amount: feeRecord.paidAmount
+        paymentId: payment.id
       }
     });
   }

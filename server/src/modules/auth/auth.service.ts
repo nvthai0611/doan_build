@@ -4,12 +4,14 @@ import Hash from 'src/utils/hasing.util';
 import JWT from 'src/utils/jwt.util';
 import { PermissionService } from './permission.service';
 import { RegisterParentDto } from './dto/register-parent.dto';
+import { AlertService } from '../admin-center/services/alert.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly permissionService: PermissionService
+    private readonly permissionService: PermissionService,
+    private readonly alertService: AlertService
   ) {}
 
   async getUserByField(field: string = 'id', value: string) {
@@ -105,6 +107,8 @@ export class AuthService {
         username: user.username,
         email: user.email,
         avatar: user.avatar,
+        gender: user.gender,
+        birthDate: user.birthDate,
         fullName: user.fullName,
         role: user.role,
         phone: user.phone,
@@ -269,6 +273,20 @@ export class AuthService {
 
       return { user, parent, children: createdChildren };
     });
+
+    // Tạo alert cho center owner
+    try {
+      await this.alertService.createParentRegistrationAlert({
+        id: result.parent.id,
+        fullName: result.user.fullName,
+        email: result.user.email,
+        phone: result.user.phone,
+        childrenCount: result.children.length,
+      });
+    } catch (error) {
+      // Log lỗi nhưng không throw để không ảnh hưởng đến registration
+      console.error('Failed to create parent registration alert:', error);
+    }
 
     return {
       success: true,

@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('bank_transfer', 'cash');
+
+-- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
 
 -- CreateTable
@@ -116,6 +119,7 @@ CREATE TABLE "classes" (
     "fee_period" TEXT,
     "fee_currency" TEXT DEFAULT 'VND',
     "fee_locked_at" TIMESTAMPTZ(6),
+    "password" TEXT,
 
     CONSTRAINT "classes_pkey" PRIMARY KEY ("id")
 );
@@ -130,9 +134,10 @@ CREATE TABLE "class_sessions" (
     "start_time" TEXT NOT NULL,
     "end_time" TEXT NOT NULL,
     "room_id" UUID,
-    "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "status" TEXT NOT NULL DEFAULT 'happening',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "notes" TEXT,
+    "cancellation_reason" TEXT,
 
     CONSTRAINT "class_sessions_pkey" PRIMARY KEY ("id")
 );
@@ -155,7 +160,7 @@ CREATE TABLE "enrollments" (
     "student_id" UUID NOT NULL,
     "class_id" UUID NOT NULL,
     "enrolled_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "status" TEXT NOT NULL DEFAULT 'active',
+    "status" TEXT NOT NULL DEFAULT 'not_been_updated',
     "semester" TEXT,
     "completed_at" TIMESTAMPTZ(6),
     "final_grade" TEXT,
@@ -187,6 +192,8 @@ CREATE TABLE "student_session_attendance" (
     "note" TEXT,
     "recorded_by" UUID NOT NULL,
     "recorded_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "is_sent" BOOLEAN NOT NULL DEFAULT false,
+    "sent_at" TIMESTAMPTZ(6),
 
     CONSTRAINT "student_session_attendance_pkey" PRIMARY KEY ("id")
 );
@@ -241,7 +248,7 @@ CREATE TABLE "fee_structures" (
     "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "amount" DECIMAL(12,2) NOT NULL,
-    "period" TEXT NOT NULL,
+    "period" TEXT NOT NULL DEFAULT 'per_session',
     "description" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -264,22 +271,37 @@ CREATE TABLE "fee_records" (
     "discount" DECIMAL(12,2) DEFAULT 0,
     "notes" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "total_amount" DECIMAL(12,2),
 
     CONSTRAINT "fee_records_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "fee_records_payment" (
+    "id" UUID NOT NULL,
+    "payment_id" UUID,
+    "fee_record_id" UUID,
+    "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+
+    CONSTRAINT "fee_records_payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "payments" (
     "id" UUID NOT NULL,
-    "fee_record_id" UUID NOT NULL,
-    "student_id" UUID NOT NULL,
     "parent_id" UUID,
     "amount" DECIMAL(12,2) NOT NULL,
-    "method" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'completed',
+    "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "expiration_date" TIMESTAMPTZ(6),
     "reference" TEXT,
-    "paid_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "paid_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
     "notes" TEXT,
+    "transaction_code" TEXT,
+    "payment_method" "PaymentMethod",
 
     CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
 );
@@ -311,6 +333,7 @@ CREATE TABLE "alerts" (
     "processed_at" TIMESTAMPTZ(6),
     "severity" TEXT NOT NULL DEFAULT 'medium',
     "title" TEXT NOT NULL,
+    "is_read" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "alerts_pkey" PRIMARY KEY ("id")
 );
@@ -351,6 +374,27 @@ CREATE TABLE "schedule_changes" (
     "processed_at" TIMESTAMPTZ(6),
 
     CONSTRAINT "schedule_changes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "session_requests" (
+    "id" UUID NOT NULL,
+    "request_type" TEXT NOT NULL,
+    "teacher_id" UUID NOT NULL,
+    "class_id" UUID NOT NULL,
+    "session_date" DATE NOT NULL,
+    "start_time" TEXT NOT NULL,
+    "end_time" TEXT NOT NULL,
+    "room_id" UUID,
+    "reason" TEXT NOT NULL,
+    "notes" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "created_by" UUID NOT NULL,
+    "approved_by" UUID,
+    "approved_at" TIMESTAMPTZ(6),
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "session_requests_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -502,6 +546,10 @@ CREATE TABLE "contract_uploads" (
     "uploaded_image_url" TEXT NOT NULL,
     "uploaded_image_name" TEXT,
     "uploaded_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "start_date" TIMESTAMP(3),
+    "expired_at" TIMESTAMP(3),
+    "note" TEXT,
+    "status" TEXT DEFAULT 'active',
 
     CONSTRAINT "contract_uploads_pkey" PRIMARY KEY ("id")
 );
@@ -566,6 +614,102 @@ CREATE TABLE "incident_reports" (
     CONSTRAINT "incident_reports_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "system_settings" (
+    "id" UUID NOT NULL,
+    "key" TEXT NOT NULL,
+    "group" TEXT NOT NULL,
+    "value" JSONB NOT NULL,
+    "description" TEXT,
+    "updated_by" UUID,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "system_settings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "holiday_periods" (
+    "id" UUID NOT NULL,
+    "start_date" DATE NOT NULL,
+    "end_date" DATE NOT NULL,
+    "note" TEXT,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "holiday_periods_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "holiday_period_sessions" (
+    "holiday_period_id" UUID NOT NULL,
+    "session_id" UUID NOT NULL,
+    "linked_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "holiday_period_sessions_pkey" PRIMARY KEY ("holiday_period_id","session_id")
+);
+
+-- CreateTable
+CREATE TABLE "teacher_feedbacks" (
+    "id" UUID NOT NULL,
+    "teacher_id" UUID NOT NULL,
+    "parent_id" UUID NOT NULL,
+    "class_id" UUID,
+    "student_id" UUID,
+    "rating" INTEGER NOT NULL,
+    "comment" TEXT,
+    "categories" JSONB,
+    "is_anonymous" BOOLEAN NOT NULL DEFAULT false,
+    "status" TEXT NOT NULL DEFAULT 'approved',
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "teacher_feedbacks_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "teacher_feedback_analyses" (
+    "id" UUID NOT NULL,
+    "feedback_id" UUID NOT NULL,
+    "sentiment_score" DECIMAL(5,2) NOT NULL,
+    "sentiment_label" TEXT NOT NULL,
+    "toxicity_score" DECIMAL(5,2),
+    "key_phrases" JSONB,
+    "categorized_issues" JSONB,
+    "ai_summary" TEXT,
+    "recommended_action" TEXT,
+    "confidence_score" DECIMAL(5,2),
+    "analyzed_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ai_model" TEXT NOT NULL DEFAULT 'gpt-4',
+    "processing_time_ms" INTEGER,
+
+    CONSTRAINT "teacher_feedback_analyses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "teacher_class_transfers" (
+    "id" UUID NOT NULL,
+    "teacher_id" UUID NOT NULL,
+    "from_class_id" UUID,
+    "to_class_id" UUID,
+    "replacement_teacher_id" UUID,
+    "reason" TEXT NOT NULL,
+    "reason_detail" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "requested_by" UUID NOT NULL,
+    "approved_by" UUID,
+    "approved_at" TIMESTAMPTZ(6),
+    "effective_date" DATE,
+    "completed_at" TIMESTAMPTZ(6),
+    "notes" TEXT,
+    "feedback_summary" JSONB,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "teacher_class_transfers_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -612,6 +756,12 @@ CREATE UNIQUE INDEX "uq_fee_by_grade_subject" ON "fee_structures"("grade_id", "s
 CREATE INDEX "idx_fee_records_class_id" ON "fee_records"("class_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "fee_records_payment_payment_id_fee_record_id_key" ON "fee_records_payment"("payment_id", "fee_record_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "payments_transaction_code_key" ON "payments"("transaction_code");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
 
 -- CreateIndex
@@ -622,6 +772,48 @@ CREATE UNIQUE INDEX "role_permissions_role_id_permission_id_key" ON "role_permis
 
 -- CreateIndex
 CREATE UNIQUE INDEX "academic_years_year_key" ON "academic_years"("year");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "system_settings_key_key" ON "system_settings"("key");
+
+-- CreateIndex
+CREATE INDEX "idx_hps_session" ON "holiday_period_sessions"("session_id");
+
+-- CreateIndex
+CREATE INDEX "idx_hps_holiday" ON "holiday_period_sessions"("holiday_period_id");
+
+-- CreateIndex
+CREATE INDEX "idx_feedback_teacher" ON "teacher_feedbacks"("teacher_id");
+
+-- CreateIndex
+CREATE INDEX "idx_feedback_parent" ON "teacher_feedbacks"("parent_id");
+
+-- CreateIndex
+CREATE INDEX "idx_feedback_class" ON "teacher_feedbacks"("class_id");
+
+-- CreateIndex
+CREATE INDEX "idx_feedback_created" ON "teacher_feedbacks"("created_at");
+
+-- CreateIndex
+CREATE INDEX "idx_analysis_feedback" ON "teacher_feedback_analyses"("feedback_id");
+
+-- CreateIndex
+CREATE INDEX "idx_analysis_sentiment" ON "teacher_feedback_analyses"("sentiment_label");
+
+-- CreateIndex
+CREATE INDEX "idx_analysis_action" ON "teacher_feedback_analyses"("recommended_action");
+
+-- CreateIndex
+CREATE INDEX "idx_transfer_teacher" ON "teacher_class_transfers"("teacher_id");
+
+-- CreateIndex
+CREATE INDEX "idx_transfer_from_class" ON "teacher_class_transfers"("from_class_id");
+
+-- CreateIndex
+CREATE INDEX "idx_transfer_status" ON "teacher_class_transfers"("status");
+
+-- CreateIndex
+CREATE INDEX "idx_transfer_effective_date" ON "teacher_class_transfers"("effective_date");
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -648,16 +840,16 @@ ALTER TABLE "students" ADD CONSTRAINT "students_user_id_fkey" FOREIGN KEY ("user
 ALTER TABLE "classes" ADD CONSTRAINT "classes_fee_structure_id_fkey" FOREIGN KEY ("fee_structure_id") REFERENCES "fee_structures"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "classes" ADD CONSTRAINT "classes_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "classes" ADD CONSTRAINT "classes_grade_id_fkey" FOREIGN KEY ("grade_id") REFERENCES "grades"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "classes" ADD CONSTRAINT "classes_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "classes" ADD CONSTRAINT "classes_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "classes" ADD CONSTRAINT "classes_subject_id_fkey" FOREIGN KEY ("subject_id") REFERENCES "subjects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "classes" ADD CONSTRAINT "classes_grade_id_fkey" FOREIGN KEY ("grade_id") REFERENCES "grades"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "classes" ADD CONSTRAINT "classes_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "class_sessions" ADD CONSTRAINT "class_sessions_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -681,7 +873,7 @@ ALTER TABLE "student_class_requests" ADD CONSTRAINT "student_class_requests_clas
 ALTER TABLE "student_class_requests" ADD CONSTRAINT "student_class_requests_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "student_session_attendance" ADD CONSTRAINT "student_session_attendance_recorded_by_fkey" FOREIGN KEY ("recorded_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "student_session_attendance" ADD CONSTRAINT "student_session_attendance_recorded_by_fkey" FOREIGN KEY ("recorded_by") REFERENCES "teachers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "student_session_attendance" ADD CONSTRAINT "student_session_attendance_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "class_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -714,22 +906,22 @@ ALTER TABLE "fee_structures" ADD CONSTRAINT "fee_structures_grade_id_fkey" FOREI
 ALTER TABLE "fee_structures" ADD CONSTRAINT "fee_structures_subject_id_fkey" FOREIGN KEY ("subject_id") REFERENCES "subjects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "fee_records" ADD CONSTRAINT "fee_records_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "fee_records" ADD CONSTRAINT "fee_records_fee_structure_id_fkey" FOREIGN KEY ("fee_structure_id") REFERENCES "fee_structures"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "fee_records" ADD CONSTRAINT "fee_records_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "fee_records" ADD CONSTRAINT "fee_records_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "fee_records_payment" ADD CONSTRAINT "fee_records_payment_fee_record_id_fkey" FOREIGN KEY ("fee_record_id") REFERENCES "fee_records"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_fee_record_id_fkey" FOREIGN KEY ("fee_record_id") REFERENCES "fee_records"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "fee_records_payment" ADD CONSTRAINT "fee_records_payment_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "payments" ADD CONSTRAINT "payments_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "parents"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -751,6 +943,21 @@ ALTER TABLE "schedule_changes" ADD CONSTRAINT "schedule_changes_class_id_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "schedule_changes" ADD CONSTRAINT "schedule_changes_new_room_id_fkey" FOREIGN KEY ("new_room_id") REFERENCES "rooms"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_requests" ADD CONSTRAINT "session_requests_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_requests" ADD CONSTRAINT "session_requests_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_requests" ADD CONSTRAINT "session_requests_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_requests" ADD CONSTRAINT "session_requests_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "session_requests" ADD CONSTRAINT "session_requests_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "student_reports" ADD CONSTRAINT "student_reports_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -789,10 +996,10 @@ ALTER TABLE "contract_uploads" ADD CONSTRAINT "contract_uploads_teacher_id_fkey"
 ALTER TABLE "leave_request_affected_sessions" ADD CONSTRAINT "leave_request_affected_sessions_leave_request_id_fkey" FOREIGN KEY ("leave_request_id") REFERENCES "leave_requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "leave_request_affected_sessions" ADD CONSTRAINT "leave_request_affected_sessions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "class_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "leave_request_affected_sessions" ADD CONSTRAINT "leave_request_affected_sessions_replacement_teacher_id_fkey" FOREIGN KEY ("replacement_teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "leave_request_affected_sessions" ADD CONSTRAINT "leave_request_affected_sessions_replacement_teacher_id_fkey" FOREIGN KEY ("replacement_teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "leave_request_affected_sessions" ADD CONSTRAINT "leave_request_affected_sessions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "class_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "class_fee_histories" ADD CONSTRAINT "class_fee_histories_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -802,3 +1009,36 @@ ALTER TABLE "incident_reports" ADD CONSTRAINT "incident_reports_class_id_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "incident_reports" ADD CONSTRAINT "incident_reports_reported_by_fkey" FOREIGN KEY ("reported_by") REFERENCES "teachers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "holiday_period_sessions" ADD CONSTRAINT "holiday_period_sessions_holiday_period_id_fkey" FOREIGN KEY ("holiday_period_id") REFERENCES "holiday_periods"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "holiday_period_sessions" ADD CONSTRAINT "holiday_period_sessions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "class_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_feedbacks" ADD CONSTRAINT "teacher_feedbacks_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_feedbacks" ADD CONSTRAINT "teacher_feedbacks_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "parents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_feedbacks" ADD CONSTRAINT "teacher_feedbacks_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_feedbacks" ADD CONSTRAINT "teacher_feedbacks_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_feedback_analyses" ADD CONSTRAINT "teacher_feedback_analyses_feedback_id_fkey" FOREIGN KEY ("feedback_id") REFERENCES "teacher_feedbacks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_class_transfers" ADD CONSTRAINT "teacher_class_transfers_from_class_id_fkey" FOREIGN KEY ("from_class_id") REFERENCES "classes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_class_transfers" ADD CONSTRAINT "teacher_class_transfers_replacement_teacher_id_fkey" FOREIGN KEY ("replacement_teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_class_transfers" ADD CONSTRAINT "teacher_class_transfers_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "teacher_class_transfers" ADD CONSTRAINT "teacher_class_transfers_to_class_id_fkey" FOREIGN KEY ("to_class_id") REFERENCES "classes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
