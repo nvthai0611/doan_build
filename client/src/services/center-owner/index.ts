@@ -67,3 +67,14 @@ export type {
   MaterialsResponse
 } from './file-management/file.types'
 
+// Student Class Requests
+export { default as studentClassRequestService } from './student-class-request.service'
+export type {
+  StudentClassRequest,
+  StudentClassRequestDetail,
+  GetRequestsParams,
+  GetRequestsResponse,
+  RequestDetailResponse,
+  ApproveRejectResponse
+} from './student-class-request.service'
+

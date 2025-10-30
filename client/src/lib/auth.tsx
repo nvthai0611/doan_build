@@ -14,6 +14,7 @@ export interface User {
   avatar?: string
   fullName?: string
   role: UserRole
+  gender?: string
   phone?: string
   isActive: boolean
   teacher?: any

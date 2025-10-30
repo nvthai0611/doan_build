@@ -70,6 +70,11 @@ export class PublicClassesService {
                   status: 'pending',
                 },
               },
+              sessions: {
+                where: {
+                  status: 'end',
+                },
+              },
             },
           },
         },
@@ -90,6 +95,7 @@ export class PublicClassesService {
       maxStudents: classItem.maxStudents,
       currentStudents: classItem._count.enrollments,
       pendingRequests: classItem._count.classRequests,
+      completedSessionsCount: classItem._count.sessions, // Số buổi đã hoàn thành
       subject: classItem.subject,
       grade: classItem.grade,
       teacher: classItem.teacher

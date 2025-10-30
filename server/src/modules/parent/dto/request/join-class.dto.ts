@@ -23,9 +23,15 @@ export class RequestJoinClassDto {
   @IsOptional()
   @IsString()
   password?: string;
+
   @ApiProperty({ description: 'Lời nhắn gửi (tùy chọn)', required: false })
   @IsOptional()
   @IsString()
   message?: string;
+
+  @ApiProperty({ description: 'URL ảnh cam kết học tập', required: false })
+  @IsOptional()
+  @IsString()
+  commitmentImageUrl?: string;
 }
 

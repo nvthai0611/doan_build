@@ -9,6 +9,7 @@ export interface RecruitingClass {
   maxStudents: number | null;
   currentStudents: number;
   pendingRequests: number;
+  completedSessionsCount: number; // Số buổi học đã hoàn thành
   subject: {
     id: string;
     name: string;
