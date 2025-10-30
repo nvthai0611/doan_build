@@ -34,6 +34,7 @@ model User {
   teacher                 Teacher?
   sessions                UserSession[]
   roleData                Role?                    @relation(fields: [roleId], references: [id])
+
   @@map("users")
 }
 
@@ -245,16 +246,16 @@ model Enrollment {
 }
 
 model StudentClassRequest {
-  id                  String    @id @default(uuid()) @db.Uuid
-  studentId           String    @map("student_id") @db.Uuid
-  classId             String    @map("class_id") @db.Uuid
-  message             String?
-  commitmentImageUrl  String?   @map("commitment_image_url") // URL của ảnh cam kết học tập
-  status              String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
-  processedAt         DateTime? @map("processed_at") @db.Timestamptz(6)
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  class               Class     @relation(fields: [classId], references: [id])
-  student             Student   @relation(fields: [studentId], references: [id])
+  id                 String    @id @default(uuid()) @db.Uuid
+  studentId          String    @map("student_id") @db.Uuid
+  classId            String    @map("class_id") @db.Uuid
+  message            String?
+  commitmentImageUrl String?   @map("commitment_image_url") // URL của ảnh cam kết học tập
+  status             String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
+  processedAt        DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  class              Class     @relation(fields: [classId], references: [id])
+  student            Student   @relation(fields: [studentId], references: [id])
 
   @@map("student_class_requests")
 }
@@ -425,7 +426,7 @@ model Alert {
   processed   Boolean   @default(false)
   message     String
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
-  severity    String    @default("medium")
+  severity    Int       @default(1) // 1: low, 2: medium, 3: high
   title       String
   isRead      Boolean   @default(false) @map("is_read")
 
@@ -640,27 +641,26 @@ model RolePermission {
 }
 
 model ContractUpload {
-  id                String      @id @default(uuid()) @db.Uuid
-  enrollmentId      BigInt?     @map("enrollment_id")
-  parentId          String?     @map("parent_id") @db.Uuid
-  teacherId         String?     @map("teacher_id") @db.Uuid
-  contractType      String      @map("contract_type")
-  uploadedImageUrl  String      @map("uploaded_image_url")
-  uploadedImageName String?     @map("uploaded_image_name")
-  uploadedAt        DateTime    @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  enrollmentId      BigInt?  @map("enrollment_id")
+  parentId          String?  @map("parent_id") @db.Uuid
+  teacherId         String?  @map("teacher_id") @db.Uuid
+  contractType      String   @map("contract_type")
+  uploadedImageUrl  String   @map("uploaded_image_url")
+  uploadedImageName String?  @map("uploaded_image_name")
+  uploadedAt        DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
 
-  startDate         DateTime?   @map("start_date")   // Ngày bắt đầu hợp đồng
-  expiredAt         DateTime?   @map("expired_at")   // Ngày hết hạn
-  note              String?     @map("note")
-  status            String?     @default("active") @map("status") // active, expiring_soon, expired
+  startDate DateTime? @map("start_date") // Ngày bắt đầu hợp đồng
+  expiredAt DateTime? @map("expired_at") // Ngày hết hạn
+  note      String?   @map("note")
+  status    String?   @default("active") @map("status") // active, expiring_soon, expired
 
-  enrollment        Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  parent            Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  teacher           Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent     Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacher    Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("contract_uploads")
 }
-
 
 model AcademicYear {
   id        String   @id @default(cuid())

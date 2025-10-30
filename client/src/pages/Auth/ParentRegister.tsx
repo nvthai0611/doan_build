@@ -44,11 +44,8 @@ export function ParentRegister() {
     queryKey: ['schools'],
     queryFn: async () => {
       try {
-        console.log('🏫 Fetching schools...')
         const result = await schoolService.getAllSchools()
-        console.log('✅ Raw API Response:', result)
-        console.log('✅ Response.data:', result?.data)
-        console.log('✅ Is Array?:', Array.isArray(result?.data))
+       
         return result
       } catch (error) {
         console.error('❌ Error fetching schools:', error)
@@ -77,7 +74,6 @@ export function ParentRegister() {
         .filter((school: any) => school && school.id && school.name) // Filter out invalid schools
         .map(convertToSchoolOption)
       setLocalSchools(convertedSchools)
-      console.log('✅ Schools converted:', convertedSchools)
     }
   }, [schoolsData])
 
@@ -294,7 +290,7 @@ export function ParentRegister() {
 
       {/* Back Button */}
       <button
-        onClick={() => navigate("/auth/login/family")}
+        onClick={() => navigate("/")}
         className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 text-gray-700 dark:text-gray-300 hover:bg-white/90 dark:hover:bg-slate-900/90 transition-all shadow-lg"
       >
         <ArrowLeft className="w-4 h-4" />

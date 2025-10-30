@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { AlertService } from './alert.service';
+import { AlertSeverity } from '../dto/alert.dto';
 
 @Injectable()
 export class StudentClassRequestService {
@@ -93,10 +94,9 @@ export class StudentClassRequestService {
         skip,
         take: limit,
       });
-      console.log(where);
-      
+
       const pendingCount = await this.prisma.studentClassRequest.count({
-        where: { ...where, status: 'pending' },
+        where: { ...where },
       });
 
       return {
@@ -109,6 +109,7 @@ export class StudentClassRequestService {
           status: req.status,
           createdAt: req.createdAt.toISOString(),
           processedAt: req.processedAt?.toISOString(),
+          commitmentImageUrl: req.commitmentImageUrl,
           student: {
             id: req.student.id,
             fullName: req.student.user.fullName,
@@ -164,6 +165,7 @@ export class StudentClassRequestService {
       // Get request details
       const request = await this.prisma.studentClassRequest.findUnique({
         where: { id: requestId },
+
         include: {
           student: {
             include: {
@@ -171,6 +173,11 @@ export class StudentClassRequestService {
                 select: {
                   fullName: true,
                   email: true,
+                },
+              },
+              parent: {
+                select: {
+                  id: true,
                 },
               },
             },
@@ -215,7 +222,10 @@ export class StudentClassRequestService {
         request.class._count.enrollments >= request.class.maxStudents
       ) {
         throw new HttpException(
-          { success: false, message: 'Lớp học đã đầy, không thể chấp nhận thêm học sinh' },
+          {
+            success: false,
+            message: 'Lớp học đã đầy, không thể chấp nhận thêm học sinh',
+          },
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -231,7 +241,10 @@ export class StudentClassRequestService {
 
       if (existingEnrollment) {
         throw new HttpException(
-          { success: false, message: 'Học sinh đã được ghi danh vào lớp này rồi' },
+          {
+            success: false,
+            message: 'Học sinh đã được ghi danh vào lớp này rồi',
+          },
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -246,6 +259,21 @@ export class StudentClassRequestService {
             processedAt: new Date(),
           },
         });
+        const relatedAlert = await tx.alert.findFirst({
+          where: {
+            payload: {
+              path: ['requestId'],
+              equals: requestId,
+            },
+            processed: false,
+          },
+        });
+        if (relatedAlert) {
+          await tx.alert.update({
+            where: { id: relatedAlert.id },
+            data: { processed: true },
+          });
+        }
 
         // Tạo enrollment
         const enrollment = await tx.enrollment.create({
@@ -256,8 +284,24 @@ export class StudentClassRequestService {
             enrolledAt: new Date(),
           },
         });
+        let contractUpload = null;
+        if (request.commitmentImageUrl) {
+          const fileName =
+            request.commitmentImageUrl.split('/').pop() || 'commitment_image';
 
-        return { updatedRequest, enrollment };
+          contractUpload = await tx.contractUpload.create({
+            data: {
+              enrollmentId: enrollment.id,
+              parentId: request.student.parent?.id || null,
+              contractType: 'student_commitment', // Loại hợp đồng: cam kết học tập
+              uploadedImageUrl: request.commitmentImageUrl,
+              uploadedImageName: fileName,
+              uploadedAt: new Date(),
+              status: 'active',
+            },
+          });
+        }
+        return { updatedRequest, enrollment, contractUpload };
       });
 
       // Tạo alert thông báo đã approve (optional)
@@ -266,7 +310,7 @@ export class StudentClassRequestService {
           alertType: 'enrollment' as any,
           title: 'Yêu cầu tham gia lớp đã được chấp nhận',
           message: `Học sinh ${request.student.user.fullName} đã được chấp nhận vào lớp ${request.class.name}`,
-          severity: 'low' as any,
+          severity: AlertSeverity.HIGH,
           payload: {
             requestId: request.id,
             enrollmentId: result.enrollment.id,
@@ -293,6 +337,14 @@ export class StudentClassRequestService {
             status: result.enrollment.status,
             enrolledAt: result.enrollment.enrolledAt.toISOString(),
           },
+          contractUpload: result.contractUpload
+            ? {
+                id: result.contractUpload.id,
+                contractType: result.contractUpload.contractType,
+                uploadedImageUrl: result.contractUpload.uploadedImageUrl,
+                uploadedAt: result.contractUpload.uploadedAt.toISOString(),
+              }
+            : null,
         },
         message: 'Đã chấp nhận yêu cầu và ghi danh học sinh vào lớp thành công',
       };
@@ -366,13 +418,29 @@ export class StudentClassRequestService {
         },
       });
 
+      const relatedAlert = await this.prisma.alert.findFirst({
+        where: {
+          payload: {
+            path: ['requestId'],
+            equals: requestId,
+          },
+          processed: false,
+        },
+      });
+      if (relatedAlert) {
+        await this.prisma.alert.update({
+          where: { id: relatedAlert.id },
+          data: { processed: true },
+        });
+      }
+
       // Tạo alert thông báo đã reject (optional)
       try {
         await this.alertService.createAlert({
           alertType: 'other' as any,
           title: 'Yêu cầu tham gia lớp đã bị từ chối',
           message: `Yêu cầu của học sinh ${request.student.user.fullName} vào lớp ${request.class.name} đã bị từ chối`,
-          severity: 'low' as any,
+          severity: AlertSeverity.MEDIUM,
           payload: {
             requestId: request.id,
             studentId: request.studentId,
@@ -486,6 +554,7 @@ export class StudentClassRequestService {
           status: request.status,
           createdAt: request.createdAt.toISOString(),
           processedAt: request.processedAt?.toISOString(),
+          commitmentImageUrl: request.commitmentImageUrl,
           student: {
             id: request.student.id,
             fullName: request.student.user.fullName,
@@ -533,4 +602,3 @@ export class StudentClassRequestService {
     }
   }
 }
-

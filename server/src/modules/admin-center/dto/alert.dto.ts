@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 
 export enum AlertType {
   PARENT_REGISTRATION = 'parent_registration',
@@ -13,10 +19,9 @@ export enum AlertType {
 }
 
 export enum AlertSeverity {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
+  LOW = 1,
+  MEDIUM = 2,
+  HIGH = 3,
 }
 
 export class CreateAlertDto {
@@ -35,7 +40,11 @@ export class CreateAlertDto {
   @IsNotEmpty({ message: 'Nội dung không được để trống' })
   message: string;
 
-  @ApiProperty({ enum: AlertSeverity, description: 'Mức độ nghiêm trọng', required: false })
+  @ApiProperty({
+    enum: AlertSeverity,
+    description: 'Mức độ nghiêm trọng',
+    required: false,
+  })
   @IsEnum(AlertSeverity)
   @IsOptional()
   severity?: AlertSeverity;
@@ -62,7 +71,11 @@ export class GetAlertsDto {
   @IsOptional()
   page?: number;
 
-  @ApiProperty({ description: 'Số lượng mỗi trang', required: false, default: 20 })
+  @ApiProperty({
+    description: 'Số lượng mỗi trang',
+    required: false,
+    default: 20,
+  })
   @IsOptional()
   limit?: number;
 
@@ -82,4 +95,3 @@ export class GetAlertsDto {
   @IsOptional()
   processed?: boolean;
 }
-
