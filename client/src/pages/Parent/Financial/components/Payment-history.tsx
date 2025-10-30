@@ -174,12 +174,12 @@ export function PaymentHistory() {
           {selectedPayment && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <span className="font-medium">{format(new Date(selectedPayment.date ?? ""), "dd/MM/yyyy", { locale: vi })}</span>
-                <Badge variant="default">{selectedPayment.status === "completed" ? "Đã thanh toán" : selectedPayment.status}</Badge>
+                <span className="font-medium">Ngày thanh toán: {format(new Date(selectedPayment.date ?? ""), "dd/MM/yyyy", { locale: vi })}</span>
+                <Badge variant="default" className="text-white bg-green-600">{selectedPayment.status === "completed" ? "Đã thanh toán" : selectedPayment.status}</Badge>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Số tiền</div>
-                <div className="text-2xl font-bold text-primary">
+                <div className="text-xs  text-muted-foreground mb-1">Số tiền</div>
+                <div className="text-2xl font-bold text-green-600">
                   {Number(selectedPayment.amount ?? 0).toLocaleString("vi-VN")} đ
                 </div>
               </div>
@@ -197,7 +197,7 @@ export function PaymentHistory() {
                         )}
                         <div className="flex justify-between items-center mt-1">
                           <span className="text-xs text-muted-foreground">Số tiền:</span>
-                          <span className="font-semibold">
+                          <span className="font-semibold text-green-600">
                             {Number(alloc?.amount ?? 0).toLocaleString("vi-VN")} đ
                           </span>
                         </div>

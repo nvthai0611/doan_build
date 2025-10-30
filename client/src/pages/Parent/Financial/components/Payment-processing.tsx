@@ -211,7 +211,7 @@ export const PaymentProcessing: React.FC = () => {
                   <div className="text-sm text-muted-foreground">
                     Ngày tạo: {new Date(payment.orderDate).toLocaleString("vi-VN")}
                   </div>
-                  <div className="text-sm text-yellow-600 font-semibold">Trạng thái: Đang chờ thanh toán</div>
+                  <div className={"text-sm font-semibold" + (payment.status == "pending" ? " text-orange-600" : payment.status === "partially_paid" ? " text-red-600" : " text-green-600")}>Trạng thái: {payment.status == "pending" ? "Chờ thanh toán" : payment.status === "partially_paid" ? "Thanh toán chưa đủ" : payment.status}</div>
                   <button
                     className="mt-2 text-blue-600 underline text-sm"
                     onClick={() => {
@@ -299,8 +299,8 @@ export const PaymentProcessing: React.FC = () => {
                           </span>
                           {frp.feeRecord?.feeStructure?.amount && (
                             <span className="ml-2 text-xs text-muted-foreground">
-                              (Đơn giá: {Number(frp.feeRecord?.feeStructure?.amount).toLocaleString("vi-VN")} đ/
-                              {frp.feeRecord?.feeStructure?.period === "monthly" ? "tháng" : "buổi"})
+                              (Đơn giá: {Number(frp.feeRecord?.feeStructure?.amount).toLocaleString("vi-VN")} đ/ buổi)
+                              {/* {frp.feeRecord?.feeStructure?.period === "monthly" ? "tháng" : "buổi"}) */}
                             </span>
                           )}
                         </div>
