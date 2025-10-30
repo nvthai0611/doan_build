@@ -177,6 +177,49 @@ async createPaymentQR(userId: string, dto: CreatePaymentQRDto) {
   });
 }
 
+async regeneratePaymentQR(paymentId: string) {
+  // Lấy payment
+  const payment = await this.prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      parent: true
+    }
+  });
+  if (!payment) {
+    throw new BadRequestException('Không tìm thấy payment');
+  }
+
+  // Sinh lại QR code mới
+  const qrCodeUrl = this.generateVietQRContent({
+    accountNumber: this.accountNumber,
+    bankCode: this.bankCode,
+    amount: Number(payment.amount),
+    content: payment.transactionCode,
+    bankAccountName: this.bankAccountName,
+  });
+
+  // (Tùy chọn) Cập nhật lại trường qrCodeUrl trong DB
+  // await this.prisma.payment.update({
+  //   where: { id: paymentId },
+  //   data: { qrCodeUrl }
+  // });
+
+  return {
+    data: {
+      paymentId: payment.id,
+      orderCode: payment.transactionCode,
+      qrCodeUrl,
+      totalAmount: payment.amount,
+      content: payment.transactionCode,
+      accountNumber: this.accountNumber,
+      bankCode: this.bankCode,
+      bankName: this.getBankName(this.bankCode),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    },
+    message: 'Tạo lại mã QR thành công'
+  };
+}
+
   /**
    * Lấy tên ngân hàng từ mã
    */

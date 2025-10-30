@@ -12,11 +12,15 @@ export class SepayController {
    * Tạo mã QR thanh toán cho hóa đơn
    * POST /payment/sepay/create-qr
    */
-@UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('sepay/create-qr')
   async createPaymentQR(@Req() req: any, @Body() dto: CreatePaymentQRDto) {
     const userId = req.user.userId
     return this.sepayService.createPaymentQR( userId,{ feeRecordIds: dto.feeRecordIds });
+  }
+  @Post('sepay/regenerate-qr')
+  async regeneratePaymentQR( @Body() body: any ) {
+    return this.sepayService.regeneratePaymentQR(body.paymentId);
   }
 
   /**

@@ -207,10 +207,10 @@ export function PaymentSelectionPage() {
 
             // Dismiss toast cũ
   // ⏳ Đợi 2 giây để user đọc thông báo
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  // await new Promise(resolve => setTimeout(resolve, 2000))
 
-  // 🔄 Reload trang
-  window.location.reload()
+  // // 🔄 Reload trang
+  // window.location.reload()
         },
         
         onFailure: (data) => {
@@ -367,8 +367,8 @@ const handleCloseModal = () => {
   //   )
   // }
 
-  const feeRecords = response as any[] || []
-  const childrenList = children as any[]
+  const feeRecords = (isError) ? [] : (response as any[] || [])
+  const childrenList = (isErrorChildren) ? [] : (children as any[])
 
   const transformedFeeRecords = feeRecords?.map((fee) => {
     const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
@@ -564,7 +564,7 @@ const handleCloseModal = () => {
             
           {/* Payment History Tab */}
           <TabsContent value="history" className="mt-0">
-            <PaymentHistory children={childrenList} />
+            <PaymentHistory  />
           </TabsContent>
 
           <TabsContent value="processing" className="mt-0">

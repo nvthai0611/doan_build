@@ -29,6 +29,18 @@ const createQrCodeForPayment = async (feeRecordIds: string[]) => {
   }
 }
 
+const generateQrCodeForPayment = async (paymentId: string) => {
+  try {
+    const response = await apiClient.post('/payment/sepay/regenerate-qr', {
+      paymentId: paymentId
+    })
+    return response as any
+  } catch (error) {
+    console.error('Error creating QR code:', error)
+    throw error
+  }
+}
+
 const getPaymentDetails = async (paymentId: string) => {
     try {
         const response = await apiClient.get(`/parent/financial/${paymentId}/detail`)
@@ -83,5 +95,6 @@ export default {
     getPaymentByStatus,
     createPaymentForFeeRecords,
     updatePaymentFeeRecords,
-    getPaymentDetails
+    getPaymentDetails,
+    generateQrCodeForPayment
 }
