@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { publicClassesService, RecruitingClass } from '../../../../services/common/public-classes.service';
-import { parentStudentsService } from '../../../../services/parent/students/students.service';
+import { formatScheduleArray } from '../../../../utils/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { JoinClassSheet } from '../ChildClass/components/JoinClassSheet';
 import { RequestJoinClassSheet } from '../ChildClass/components/RequestJoinClassSheet';
+import { ClassStatus, CLASS_STATUS_LABELS, CLASS_STATUS_BADGE_COLORS, COMMON_FILTER_VALUES, COMMON_PAGINATION } from '../../../../lib/constants';
 
 export const RecruitingClasses = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
-  const [selectedGrade, setSelectedGrade] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedSubject, setSelectedSubject] = useState<string>(COMMON_FILTER_VALUES.ALL);
+  const [selectedGrade, setSelectedGrade] = useState<string>(COMMON_FILTER_VALUES.ALL);
+  const [currentPage, setCurrentPage] = useState(COMMON_PAGINATION.DEFAULT_PAGE);
   const [isJoinSheetOpen, setIsJoinSheetOpen] = useState(false);
   const [selectedClassForJoin, setSelectedClassForJoin] = useState<RecruitingClass | null>(null);
   const [isPendingClassChecked, setIsPendingClassChecked] = useState(false);
@@ -36,8 +37,8 @@ export const RecruitingClasses = () => {
     queryFn: () => publicClassesService.getRecruitingClasses({
       page: currentPage,
       limit: 12,
-      subjectId: selectedSubject !== 'all' ? selectedSubject : undefined,
-      gradeId: selectedGrade !== 'all' ? selectedGrade : undefined,
+      subjectId: selectedSubject !== COMMON_FILTER_VALUES.ALL ? selectedSubject : undefined,
+      gradeId: selectedGrade !== COMMON_FILTER_VALUES.ALL ? selectedGrade : undefined,
     }),
   });
 
@@ -64,34 +65,12 @@ export const RecruitingClasses = () => {
     c.classCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatSchedule = (schedule: any) => {
-    if (!schedule || !Array.isArray(schedule.schedules)) return [];
-    
-    const dayNames: any = {
-      monday: 'T2',
-      tuesday: 'T3',
-      wednesday: 'T4',
-      thursday: 'T5',
-      friday: 'T6',
-      saturday: 'T7',
-      sunday: 'CN',
-    };
-    
-    return schedule.schedules.map((s: any) => ({
-      day: dayNames[s.dayOfWeek] || s.dayOfWeek,
-      time: `${s.startTime}-${s.endTime}`
-    }));
-  };
-
-  // Auto-open sheet if there's a pending class from login redirect
   useEffect(() => {
     if (!isPendingClassChecked && classes.length > 0) {
       const pendingClassId = sessionStorage.getItem('pendingClassJoin');
-      
       if (pendingClassId) {
         // Find the class in the current list
         const pendingClass = classes.find((c: RecruitingClass) => c.id === pendingClassId);
-        
         if (pendingClass) {
           // Auto-open the sheet with this class
           setSelectedClassForJoin(pendingClass);
@@ -148,7 +127,7 @@ export const RecruitingClasses = () => {
               <SelectValue placeholder="Môn học" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả môn học</SelectItem>
+              <SelectItem value={COMMON_FILTER_VALUES.ALL}>Tất cả môn học</SelectItem>
               {subjects.map((subject: any) => (
                 <SelectItem key={subject.id} value={subject.id}>
                   {subject.name}
@@ -163,7 +142,7 @@ export const RecruitingClasses = () => {
               <SelectValue placeholder="Khối lớp" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả khối</SelectItem>
+              <SelectItem value={COMMON_FILTER_VALUES.ALL}>Tất cả khối</SelectItem>
               {grades.map((grade: any) => (
                 <SelectItem key={grade.id} value={grade.id}>
                   {grade.name}
@@ -173,12 +152,12 @@ export const RecruitingClasses = () => {
           </Select>
 
           {/* Clear Filters */}
-          {(selectedSubject !== 'all' || selectedGrade !== 'all' || searchTerm) && (
+          {(selectedSubject !== COMMON_FILTER_VALUES.ALL || selectedGrade !== COMMON_FILTER_VALUES.ALL || searchTerm) && (
             <Button
               variant="outline"
               onClick={() => {
-                setSelectedSubject('all');
-                setSelectedGrade('all');
+                setSelectedSubject(COMMON_FILTER_VALUES.ALL);
+                setSelectedGrade(COMMON_FILTER_VALUES.ALL);
                 setSearchTerm('');
               }}
             >
@@ -217,18 +196,17 @@ export const RecruitingClasses = () => {
               <ClassCard 
                 key={classItem.id} 
                 classItem={classItem} 
-                formatSchedule={formatSchedule}
                 onJoinClick={() => handleJoinClassClick(classItem)}
               />
             ))}
           </div>
 
           {/* Pagination */}
-          {meta && meta.totalPages > 1 && (
+          {meta && meta.totalPages > COMMON_PAGINATION.DEFAULT_PAGE && (
             <div className="flex justify-center gap-2">
               <Button
                 variant="outline"
-                disabled={currentPage === 1}
+                disabled={currentPage === COMMON_PAGINATION.DEFAULT_PAGE}
                 onClick={() => setCurrentPage(p => p - 1)}
               >
                 Trang trước
@@ -269,14 +247,12 @@ export const RecruitingClasses = () => {
 // Class Card Component
 const ClassCard = ({ 
   classItem, 
-  formatSchedule,
   onJoinClick
 }: { 
   classItem: RecruitingClass; 
-  formatSchedule: (schedule: any) => any[];
   onJoinClick: () => void;
 }) => {
-  const schedules = formatSchedule(classItem.recurringSchedule);
+  const schedules = formatScheduleArray(classItem.recurringSchedule);
   const availableSlots = (classItem.maxStudents || 0) - classItem.currentStudents;
   const isFull = availableSlots <= 0;
 
@@ -285,8 +261,8 @@ const ClassCard = ({
       <CardHeader>
         <div className="flex items-start justify-between mb-2">
           <CardTitle className="text-lg line-clamp-2">{classItem.name}</CardTitle>
-          <Badge variant={classItem.status === 'ready' ? 'default' : 'secondary'} className="ml-2 shrink-0">
-            {classItem.status === 'ready' ? 'Sẵn sàng' : 'Đang học'}
+          <Badge className={`ml-2 shrink-0 border-0 ${CLASS_STATUS_BADGE_COLORS[classItem.status as ClassStatus] || CLASS_STATUS_BADGE_COLORS[ClassStatus.DRAFT]}`}>
+            {CLASS_STATUS_LABELS[classItem.status as ClassStatus] || classItem.status}
           </Badge>
         </div>
         {classItem.classCode && (
@@ -344,15 +320,13 @@ const ClassCard = ({
             </div>
           )}
 
-          {/* Start Date */}
-          {(classItem.actualStartDate || classItem.expectedStartDate) && (
+         {/* Expected Start Date */}
+         {classItem.expectedStartDate && (
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span>
-                Bắt đầu:{' '}
-                {new Date(
-                  classItem.actualStartDate || classItem.expectedStartDate || ''
-                ).toLocaleDateString('vi-VN')}
+                Dự kiến bắt đầu:{' '}
+                {new Date(classItem.expectedStartDate).toLocaleDateString('vi-VN')}
               </span>
             </div>
           )}
@@ -362,7 +336,7 @@ const ClassCard = ({
         <Button 
           onClick={onJoinClick}
           disabled={isFull}
-          className="w-full mt-4"
+          className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="mr-2 w-4 h-4" />
           {isFull ? 'Đã đầy' : 'Đăng ký học'}

@@ -44,6 +44,9 @@ export type {
 export { SchoolService, schoolService } from './school/school.service'
 export type { SchoolOption } from './school/school.types'
 
+// Cloudinary Services
+export { CloudinaryUploadService } from './cloudinary/cloudinary-upload.service'
+
 // Validation Utils
 export {
   isValidEmail,

@@ -12,7 +12,7 @@ export const parentClassJoinService = {
     }
   },
 
-  async requestJoinClass(data: { classId: string; studentId: string; password?: string; message?: string }) {
+  async requestJoinClass(data: { classId: string; studentId: string; password?: string; message?: string; commitmentImageUrl?: string }) {
     try {
       const response = await apiClient.post('/parent/class-join/request-join', data);
       return response;

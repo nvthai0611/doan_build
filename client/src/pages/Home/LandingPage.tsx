@@ -265,12 +265,13 @@ const ClassCard = ({
   const isFull = availableSlots <= 0;
 
   const handleJoinClick = () => {
+    // Lưu classId vào sessionStorage để tự động mở sheet
+    sessionStorage.setItem('pendingClassJoin', classItem.id);
     if (isAuthenticated) {
       // Đã login → Đến trang recruiting classes (parent có thể join)
       navigate('/parent/recruiting-classes');
     } else {
-      // Chưa login → Lưu classId vào sessionStorage và redirect login
-      sessionStorage.setItem('pendingClassJoin', classItem.id);
+      // Chưa login → Lưu redirect path và chuyển đến login
       sessionStorage.setItem('redirectAfterLogin', '/parent/recruiting-classes');
       navigate('/auth/login/family');
     }
@@ -282,7 +283,7 @@ const ClassCard = ({
         <div className="flex items-start justify-between mb-2">
           <CardTitle className="text-lg line-clamp-2">{classItem.name}</CardTitle>
           <Badge variant={classItem.status === 'ready' ? 'default' : 'secondary'} className="ml-2 shrink-0">
-            {classItem.status === 'ready' ? 'Sẵn sàng' : 'Đang học'}
+            {classItem.status === 'ready' ? 'Đang tuyển sinh' : 'Đang diễn ra'}
           </Badge>
         </div>
         {classItem.classCode && (
@@ -339,16 +340,13 @@ const ClassCard = ({
               </div>
             </div>
           )}
-
-          {/* Start Date */}
-          {(classItem.actualStartDate || classItem.expectedStartDate) && (
+          {/* Expected Start Date */}
+          {classItem.expectedStartDate && (
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span>
-                Bắt đầu:{' '}
-                {new Date(
-                  classItem.actualStartDate || classItem.expectedStartDate || ''
-                ).toLocaleDateString('vi-VN')}
+                Dự kiến bắt đầu:{' '}
+                {new Date(classItem.expectedStartDate).toLocaleDateString('vi-VN')}
               </span>
             </div>
           )}

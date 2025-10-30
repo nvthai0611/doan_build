@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,12 @@ import {
   Phone,
   MessageSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import studentClassRequestService from '../../../../../services/center-owner/student-class-request.service';
 
 interface ClassJoinRequestsSheetProps {
   open: boolean;
@@ -25,37 +28,85 @@ interface ClassJoinRequestsSheetProps {
   classData?: any;
 }
 
-// Mock data - sẽ thay bằng API call
-const mockRequests = [
-  {
-    id: '1',
-    student: {
-      name: 'Nguyễn Văn A',
-      avatar: '',
-      email: 'nguyenvana@example.com',
-      phone: '0123456789'
-    },
-    parent: {
-      name: 'Nguyễn Văn B',
-      email: 'parent@example.com'
-    },
-    message: 'Xin phép cho con tham gia lớp học này',
-    status: 'pending',
-    createdAt: '2024-01-15T10:30:00'
-  },
-  // Add more mock data as needed
-];
-
 export const ClassJoinRequestsSheet = ({
   open,
   onOpenChange,
   classData
 }: ClassJoinRequestsSheetProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Fetch requests khi sheet mở
+  const { data: requestsData, isLoading, refetch } = useQuery({
+    queryKey: ['class-join-requests', classData?.id, currentPage, searchQuery],
+    queryFn: () => studentClassRequestService.getAllRequests({
+      classId: classData?.id,
+      page: currentPage,
+      limit: itemsPerPage,
+    }),
+    enabled: open && !!classData?.id,
+    refetchInterval: 3000, // Refetch mỗi 3s khi sheet đang mở
+  });
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: (requestId: string) => studentClassRequestService.approveRequest(requestId),
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã phê duyệt yêu cầu tham gia lớp học",
+      });
+      refetch();
+      // Invalidate alerts để update badge count
+      queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['classJoinRequests'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error?.message || "Không thể phê duyệt yêu cầu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: (requestId: string) => studentClassRequestService.rejectRequest(requestId),
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã từ chối yêu cầu tham gia lớp học",
+      });
+      refetch();
+      // Invalidate alerts để update badge count
+      queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['classJoinRequests'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error?.message || "Không thể từ chối yêu cầu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset page khi đổi classId
+  useEffect(() => {
+    if (open) {
+      setCurrentPage(1);
+      setSearchQuery('');
+    }
+  }, [classData?.id, open]);
+
+  const requests = requestsData?.data || [];
+  const meta = requestsData?.meta || { total: 0, page: 1, limit: 10, totalPages: 1, pendingCount: 0 };
+  console.log(requestsData);
+  
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -94,19 +145,11 @@ export const ClassJoinRequestsSheet = ({
   };
 
   const handleApprove = (requestId: string) => {
-    // TODO: Call API to approve request
-    toast({
-      title: "Thành công",
-      description: "Đã phê duyệt yêu cầu tham gia lớp học",
-    });
+    approveMutation.mutate(requestId);
   };
 
   const handleReject = (requestId: string) => {
-    // TODO: Call API to reject request
-    toast({
-      title: "Thành công",
-      description: "Đã từ chối yêu cầu tham gia lớp học",
-    });
+    rejectMutation.mutate(requestId);
   };
 
   const formatDate = (dateString: string) => {
@@ -120,16 +163,16 @@ export const ClassJoinRequestsSheet = ({
     });
   };
 
-  const filteredRequests = mockRequests.filter(req => 
-    req.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.student.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Client-side filtering nếu có search query
+  const filteredRequests = searchQuery
+    ? requests.filter((req: any) => 
+        req.student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        req.student.email.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : requests;
 
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-  const paginatedRequests = filteredRequests.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = meta.totalPages;
+  const paginatedRequests = filteredRequests;
 
   return (  
     <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
@@ -162,21 +205,24 @@ export const ClassJoinRequestsSheet = ({
           </div>
 
           {/* Stats */}
-          <div className="flex gap-2">
-            <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
-              {filteredRequests.filter(r => r.status === 'pending').length} Chờ duyệt
-            </Badge>
-            <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700">
-              {filteredRequests.filter(r => r.status === 'approved').length} Đã duyệt
-            </Badge>
-            <Badge variant="outline" className="bg-red-50 border-red-200 text-red-700">
-              {filteredRequests.filter(r => r.status === 'rejected').length} Từ chối
-            </Badge>
-          </div>
+          {!isLoading && (
+            <div className="flex gap-2">
+              <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
+                {meta.total || 0} Chờ duyệt
+              </Badge>
+              <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-700">
+                {meta.total || 0} Tổng
+              </Badge>
+            </div>
+          )}
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
-          {paginatedRequests.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+            </div>
+          ) : paginatedRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <User className="h-8 w-8 text-gray-400" />
@@ -190,7 +236,7 @@ export const ClassJoinRequestsSheet = ({
             <>
               {/* Request List */}
               <div className="space-y-3">
-                {paginatedRequests.map((request) => (
+                {paginatedRequests.map((request: any) => (
                   <div
                     key={request.id}
                     className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
@@ -200,13 +246,13 @@ export const ClassJoinRequestsSheet = ({
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border-2 border-blue-200">
-                            <AvatarImage src={request.student.avatar} alt={request.student.name} />
+                            <AvatarImage src="" alt={request.student.fullName} />
                             <AvatarFallback className="bg-blue-100 text-blue-700">
-                              {getInitials(request.student.name)}
+                              {getInitials(request.student.fullName)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-semibold text-gray-900">{request.student.name}</div>
+                            <div className="font-semibold text-gray-900">{request.student.fullName}</div>
                             <div className="text-xs text-gray-600">Học sinh</div>
                           </div>
                         </div>
@@ -222,18 +268,25 @@ export const ClassJoinRequestsSheet = ({
                           <Mail className="w-4 h-4 text-gray-400" />
                           <span>{request.student.email}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <span>{request.student.phone}</span>
-                        </div>
+                        {request.student.phone && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span>{request.student.phone}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Parent Info */}
-                      <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-                        <div className="text-xs font-medium text-gray-500">Phụ huynh</div>
-                        <div className="text-sm font-medium">{request.parent.name}</div>
-                        <div className="text-xs text-gray-600">{request.parent.email}</div>
-                      </div>
+                      {request.parent && (
+                        <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                          <div className="text-xs font-medium text-gray-500">Phụ huynh</div>
+                          <div className="text-sm font-medium">{request.parent.fullName}</div>
+                          <div className="text-xs text-gray-600">{request.parent.email}</div>
+                          {request.parent.phone && (
+                            <div className="text-xs text-gray-600">{request.parent.phone}</div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Message */}
                       {request.message && (
@@ -261,8 +314,13 @@ export const ClassJoinRequestsSheet = ({
                             size="sm"
                             className="flex-1 bg-green-600 hover:bg-green-700"
                             onClick={() => handleApprove(request.id)}
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
                           >
-                            <Check className="w-4 h-4 mr-1" />
+                            {approveMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4 mr-1" />
+                            )}
                             Phê duyệt
                           </Button>
                           <Button
@@ -270,8 +328,13 @@ export const ClassJoinRequestsSheet = ({
                             variant="outline"
                             className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
                             onClick={() => handleReject(request.id)}
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
                           >
-                            <XCircle className="w-4 h-4 mr-1" />
+                            {rejectMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            ) : (
+                              <XCircle className="w-4 h-4 mr-1" />
+                            )}
                             Từ chối
                           </Button>
                         </div>
@@ -285,16 +348,16 @@ export const ClassJoinRequestsSheet = ({
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-2 py-3 border-t">
                   <div className="text-sm text-gray-600">
-                    {filteredRequests.length === 0 
+                    {meta.total === 0 
                       ? '0-0 trong 0' 
-                      : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredRequests.length)} trong ${filteredRequests.length}`
+                      : `${(meta.page - 1) * meta.limit + 1}-${Math.min(meta.page * meta.limit, meta.total)} trong ${meta.total}`
                     }
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={currentPage === 1}
+                      disabled={currentPage === 1 || isLoading}
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       className="h-8 w-8 p-0"
                     >
@@ -306,7 +369,7 @@ export const ClassJoinRequestsSheet = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={currentPage >= totalPages}
+                      disabled={currentPage >= totalPages || isLoading}
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       className="h-8 w-8 p-0"
                     >

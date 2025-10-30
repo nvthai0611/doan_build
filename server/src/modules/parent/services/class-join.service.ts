@@ -339,7 +339,7 @@ export class ClassJoinService {
         studentId: dto.studentId,
         classId: dto.classId,
         message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
-        // commitmentImageUrl không phải field của Prisma studentClassRequest
+        commitmentImageUrl: dto.commitmentImageUrl,
         status: 'pending',
       },
       include: {
