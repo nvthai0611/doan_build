@@ -1,6 +1,17 @@
-import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
-import { CreateAlertDto, UpdateAlertDto, GetAlertsDto, AlertType, AlertSeverity } from '../dto/alert.dto';
+import {
+  CreateAlertDto,
+  UpdateAlertDto,
+  GetAlertsDto,
+  AlertType,
+  AlertSeverity,
+} from '../dto/alert.dto';
 
 @Injectable()
 export class AlertService {
@@ -50,19 +61,19 @@ export class AlertService {
 
       // Build filter
       const where: any = {};
-      
+
       if (params.alertType) {
         where.alertType = params.alertType;
       }
-      
+
       if (params.severity) {
         where.severity = params.severity;
       }
-      
+
       if (params.isRead !== undefined) {
         where.isRead = params.isRead;
       }
-      
+
       if (params.processed !== undefined) {
         where.processed = params.processed;
       }
@@ -74,8 +85,10 @@ export class AlertService {
       const alerts = await this.prisma.alert.findMany({
         where,
         orderBy: [
-          { isRead: 'asc' }, // Unread first
-          { triggeredAt: 'desc' }, // Newest first
+          { processed: 'asc' }, // Ưu tiên: Chưa xử lý (processed: false) lên đầu
+          { isRead: 'asc' }, // 1. Ưu tiên: Chưa đọc (isRead: false) lên đầu
+          { triggeredAt: 'desc' }, // 2. Ưu tiên: Mới nhất lên đầu
+          { severity: 'asc' }, // 3. Ưu tiên: high, low, medium (theo bảng chữ cái)
         ],
         skip,
         take: limit,
@@ -150,11 +163,11 @@ export class AlertService {
 
       // Build update data
       const data: any = {};
-      
+
       if (updateAlertDto.isRead !== undefined) {
         data.isRead = updateAlertDto.isRead;
       }
-      
+
       if (updateAlertDto.processed !== undefined) {
         data.processed = updateAlertDto.processed;
         if (updateAlertDto.processed) {
@@ -176,7 +189,7 @@ export class AlertService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      
+
       throw new HttpException(
         {
           success: false,
@@ -239,7 +252,7 @@ export class AlertService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      
+
       throw new HttpException(
         {
           success: false,
@@ -259,7 +272,7 @@ export class AlertService {
       alertType: AlertType.PARENT_REGISTRATION,
       title: 'Phụ huynh mới đăng ký',
       message: `Phụ huynh ${parentData.fullName} (${parentData.email}) vừa đăng ký tài khoản với ${parentData.childrenCount} con.`,
-      severity: AlertSeverity.MEDIUM,
+      severity: AlertSeverity.HIGH,
       payload: {
         parentId: parentData.id,
         email: parentData.email,
@@ -316,7 +329,7 @@ export class AlertService {
       alertType: AlertType.INCIDENT_REPORT,
       title: 'Báo cáo sự cố mới',
       message: `Sự cố "${incidentData.incidentType}" được báo cáo bởi ${incidentData.reporterName}. Mức độ: ${incidentData.severity}`,
-      severity: incidentData.severity === 'high' ? AlertSeverity.CRITICAL : AlertSeverity.HIGH,
+      severity: AlertSeverity.HIGH,
       payload: {
         incidentReportId: incidentData.id,
         incidentType: incidentData.incidentType,
@@ -348,4 +361,3 @@ export class AlertService {
     });
   }
 }
-

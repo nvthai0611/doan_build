@@ -9,7 +9,9 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { ClassJoinService } from '../services/class-join.service';
 import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-class.dto';
@@ -54,7 +56,22 @@ export class ClassJoinController {
   @ApiResponse({ status: 201, description: 'Gửi yêu cầu thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học hoặc học sinh' })
   @ApiResponse({ status: 400, description: 'Lớp học đã đầy hoặc đã có yêu cầu pending' })
-  async requestJoinClass(@Req() req: any, @Body() dto: RequestJoinClassDto) {
+  @UseInterceptors(FileInterceptor('commitmentFile'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        classId: { type: 'string', format: 'uuid' },
+        studentId: { type: 'string', format: 'uuid' },
+        password: { type: 'string' },
+        message: { type: 'string' },
+        commitmentFile: { type: 'string', format: 'binary' },
+      },
+      required: ['classId', 'studentId', 'commitmentFile']
+    },
+  })
+  async requestJoinClass(@Req() req: any, @Body() dto: RequestJoinClassDto, @UploadedFile() file: Express.Multer.File) {
     try {
       const userId = req.user?.userId;
       if (!userId) {
@@ -63,8 +80,7 @@ export class ClassJoinController {
           HttpStatus.UNAUTHORIZED,
         );
       }
-
-      return await this.classJoinService.requestJoinClass(userId, dto);
+      return await this.classJoinService.requestJoinClass(userId, dto, file);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

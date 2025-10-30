@@ -3,16 +3,16 @@ import { useAuth } from '../../lib/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '../../assets/shadcn-ui/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { 
-  Bell, 
-  Briefcase, 
-  FileText, 
-  Clock, 
-  CheckCircle, 
+// Đã loại bỏ Tabs, TabsList, TabsTrigger, TabsContent khỏi import vì không dùng nữa
+import {
+  Bell,
+  Briefcase,
+  FileText,
+  Clock,
+  CheckCircle,
   Info,
   AlertTriangle,
-  XCircle
+  XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,7 +24,6 @@ export const CenterOwnerHomePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('due');
 
   // Get all alerts for stats calculation
   const { data: allAlertsData } = useQuery({
@@ -34,40 +33,23 @@ export const CenterOwnerHomePage = () => {
     refetchOnWindowFocus: true,
   });
 
-
-  // Calculate stats - All filtering done on frontend from single API
   const allAlerts = allAlertsData?.data || [];
   const totalTasks = allAlerts.length;
   const completedTasks = allAlerts.filter((a: any) => a.processed).length;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  
-  // Filter pending tasks (unprocessed alerts) - bất kể đã đọc hay chưa
+  const completionRate =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   const pendingTasks = allAlerts.filter((a: any) => !a.processed);
   const pendingCount = pendingTasks.length;
+
+  const notificationAlerts = allAlerts.slice(0, 100000); // Dùng cho cả 2 thẻ
   
-  // Get ALL alerts for notifications section (limit to 5 for homepage display)
-  const notificationAlerts = allAlerts.slice(0, 5);
   const unreadCount = allAlerts.filter((a: any) => !a.isRead).length;
 
-  // Calculate overdue and due tasks from pending tasks
-  const now = new Date();
-  const overdueTasks = pendingTasks.filter((task: any) => {
-    if (!task.dueDate) return false;
-    return new Date(task.dueDate) < now;
-  });
-  const dueTasks = pendingTasks.filter((task: any) => {
-    if (!task.dueDate) return true; // Tasks without due date are considered "due"
-    return new Date(task.dueDate) >= now;
-  });
-  
-  const overdueCount = overdueTasks.length;
-  const dueCount = dueTasks.length;
 
-  // Mutations for alerts
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => alertService.markAsRead(id),
     onSuccess: () => {
-      // Refetch all alerts to update filtered data
       queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
     },
   });
@@ -75,7 +57,6 @@ export const CenterOwnerHomePage = () => {
   const markAllAsReadMutation = useMutation({
     mutationFn: () => alertService.markAllAsRead(),
     onSuccess: () => {
-      // Refetch all alerts to update filtered data
       queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
       toast({
         title: 'Thành công',
@@ -103,32 +84,32 @@ export const CenterOwnerHomePage = () => {
   // Helper: Get alert icon and color based on severity
   const getAlertStyle = (severity: string, alertType: string) => {
     const styles: any = {
-      error: { 
-        icon: XCircle, 
-        color: 'text-red-500', 
-        bgColor: 'bg-red-50', 
-        badgeVariant: 'destructive' as const
+      error: {
+        icon: XCircle,
+        color: 'text-red-500',
+        bgColor: 'bg-red-50',
+        badgeVariant: 'destructive' as const,
       },
-      warning: { 
-        icon: AlertTriangle, 
-        color: 'text-orange-500', 
-        bgColor: 'bg-orange-50', 
-        badgeVariant: 'secondary' as const
+      warning: {
+        icon: AlertTriangle,
+        color: 'text-orange-500',
+        bgColor: 'bg-orange-50',
+        badgeVariant: 'secondary' as const,
       },
-      info: { 
-        icon: Info, 
-        color: 'text-blue-500', 
-        bgColor: 'bg-blue-50', 
-        badgeVariant: 'default' as const
+      info: {
+        icon: Info,
+        color: 'text-blue-500',
+        bgColor: 'bg-blue-50',
+        badgeVariant: 'default' as const,
       },
-      success: { 
-        icon: CheckCircle, 
-        color: 'text-green-500', 
-        bgColor: 'bg-green-50', 
-        badgeVariant: 'default' as const
+      success: {
+        icon: CheckCircle,
+        color: 'text-green-500',
+        bgColor: 'bg-green-50',
+        badgeVariant: 'default' as const,
       },
     };
-    
+
     return styles[severity] || styles.info;
   };
 
@@ -138,11 +119,11 @@ export const CenterOwnerHomePage = () => {
     console.log('Alert Type:', alert.alertType);
     console.log('Alert Payload:', alert.payload);
     console.log('Class ID:', alert.payload?.classId);
-    
+
     if (!alert.isRead) {
       await markAsReadMutation.mutateAsync(alert.id);
     }
-    
+
     // Navigate based on alert type
     if (alert.alertType === 'student_class_request') {
       // Navigate đến trang chi tiết lớp và mở ShareClassSheet
@@ -151,7 +132,9 @@ export const CenterOwnerHomePage = () => {
         console.log('Navigating to:', url);
         navigate(url);
       } else {
-        console.warn('⚠️ No classId found in payload. Cannot navigate to class detail.');
+        console.warn(
+          '⚠️ No classId found in payload. Cannot navigate to class detail.',
+        );
       }
     } else if (alert.alertType.includes('class')) {
       navigate('/center-qn/classes');
@@ -190,8 +173,8 @@ export const CenterOwnerHomePage = () => {
       bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100',
     },
     {
-      title: 'Số lượng công việc',
-      value: pendingCount.toString(),
+      title: 'Số lượng công việc (Chưa xử lý)', // Làm rõ tiêu đề
+      value: pendingCount.toString(), // Sử dụng pendingCount đã tính
       icon: FileText,
       color: 'text-green-600',
       bgGradient: 'bg-gradient-to-br from-green-50 to-green-100',
@@ -221,7 +204,7 @@ export const CenterOwnerHomePage = () => {
                 </h1>
               </div>
             </div>
-            
+
             {/* Thời gian dropdown */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>Thời gian</span>
@@ -238,14 +221,21 @@ export const CenterOwnerHomePage = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="shadow-sm hover:shadow-md transition-shadow">
+          <Card
+            key={index}
+            className="shadow-sm hover:shadow-md transition-shadow"
+          >
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${stat.bgGradient} ${stat.color}`}>
+                <div
+                  className={`p-3 rounded-xl ${stat.bgGradient} ${stat.color}`}
+                >
                   <stat.icon className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {stat.title}
+                  </p>
                   <p className="text-2xl font-bold">{stat.value}</p>
                 </div>
               </div>
@@ -256,11 +246,14 @@ export const CenterOwnerHomePage = () => {
 
       {/* Tasks Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Tasks with Tabs */}
+        
+        {/* === KHỐI ĐÃ THAY ĐỔI (THEO YÊU CẦU) === */}
+        {/* All Tasks (List tất cả, highlight cái chưa processed) */}
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Công việc chưa hoàn thành</h3>
+              {/* 1. Đổi tiêu đề */}
+              <h3 className="font-semibold">Công việc</h3>
               <Button
                 variant="link"
                 size="sm"
@@ -270,115 +263,70 @@ export const CenterOwnerHomePage = () => {
                 Xem tất cả
               </Button>
             </div>
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="due" className="flex-1">
-                  Đến hạn
-                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-muted">
-                    {dueCount}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="overdue" className="flex-1">
-                  Quá hạn
-                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-muted">
-                    {overdueCount}
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="due" className="mt-4">
-                {dueCount === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-sm">Không có dữ liệu</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {dueTasks.slice(0, 5).map((task: Alert) => {
-                      const style = getAlertStyle(task.severity, task.alertType);
-                      const Icon = style.icon;
-                      
-                      return (
-                        <div
-                          key={task.id}
-                          onClick={() => handleAlertClick(task)}
-                          className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                            task.isRead ? 'opacity-70' : ''
-                          }`}
-                        >
-                          <div className={`p-2 rounded-lg ${style.bgColor}`}>
-                            <Icon className={`w-4 h-4 ${style.color}`} />
+
+            <div className="mt-4">
+              {/* 2. Kiểm tra allAlerts thay vì pendingCount */}
+              {allAlerts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">Không có dữ liệu</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {/* 3. Lặp qua allAlerts thay vì pendingTasks */}
+                  {allAlerts.slice(0, 1000).map((task: Alert) => {
+                    const style = getAlertStyle(task.severity, task.alertType);
+                    const Icon = style.icon;
+
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => handleAlertClick(task)}
+                        // 4. Thay đổi logic highlight: nền xám nếu CHƯA PROCESSED
+                        className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
+                          !task.processed ? 'bg-gray-100 dark:bg-gray-800' : ''
+                        }`}
+                      >
+                        <div className={`p-2 rounded-lg ${style.bgColor}`}>
+                          <Icon className={`w-4 h-4 ${style.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h4 className="font-medium text-sm line-clamp-1">
+                              {task.title}
+                            </h4>
+                            <Badge
+                              variant={style.badgeVariant}
+                              className="text-xs shrink-0"
+                            >
+                              {task.alertType}
+                            </Badge>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <h4 className="font-medium text-sm line-clamp-1">{task.title}</h4>
-                              <Badge variant={style.badgeVariant} className="text-xs shrink-0">
-                                {task.alertType}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
-                              {task.message}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="w-3 h-3" />
-                              <span>{formatRelativeTime(task.triggeredAt)}</span>
-                            </div>
+                          {/* 5. Giữ lại span status (giờ đã hoạt động đúng) */}
+                          <span className={`flex items-center gap-1 text-xs font-medium ${
+                            task.processed ? 'text-green-600' : 'text-orange-600'
+                          }`}>
+                            {task.processed ? <CheckCircle className="w-3 h-3" /> : <Info className="w-3 h-3" />}
+                            {task.processed ? 'Đã xử lý' : 'Chưa xử lý'}
+                          </span>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
+                            {task.message}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatRelativeTime(task.triggeredAt)}</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="overdue" className="mt-4">
-                {overdueCount === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-sm">Không có dữ liệu</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {overdueTasks.slice(0, 5).map((task: Alert) => {
-                      const style = getAlertStyle(task.severity, task.alertType);
-                      const Icon = style.icon;
-                      
-                      return (
-                        <div
-                          key={task.id}
-                          onClick={() => handleAlertClick(task)}
-                          className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                            task.isRead ? 'opacity-70' : ''
-                          }`}
-                        >
-                          <div className={`p-2 rounded-lg ${style.bgColor}`}>
-                            <Icon className={`w-4 h-4 ${style.color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <h4 className="font-medium text-sm line-clamp-1">{task.title}</h4>
-                              <Badge variant={style.badgeVariant} className="text-xs shrink-0">
-                                {task.alertType}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
-                              {task.message}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="w-3 h-3" />
-                              <span>{formatRelativeTime(task.triggeredAt)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Notifications - Show ALL alerts */}
+
+        {/* Notifications - (Đã khôi phục logic unreadCount) */}
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -410,7 +358,7 @@ export const CenterOwnerHomePage = () => {
                 </Button>
               </div>
             </div>
-            
+
             {notificationAlerts.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -421,8 +369,8 @@ export const CenterOwnerHomePage = () => {
                 {notificationAlerts.map((alert: Alert) => {
                   const style = getAlertStyle(alert.severity, alert.alertType);
                   const Icon = style.icon;
-                  const isUnread = !alert.isRead; // Chưa đọc = true
-                  
+                  const isUnread = !alert.isRead; // Logic này vẫn đúng
+
                   return (
                     <div
                       key={alert.id}
@@ -439,22 +387,26 @@ export const CenterOwnerHomePage = () => {
                           <h4 className="font-medium text-sm line-clamp-1">
                             {alert.title}
                           </h4>
-                          <Badge 
-                            variant={style.badgeVariant} 
+                          <Badge
+                            variant={style.badgeVariant}
                             className="text-xs shrink-0"
                           >
                             {alert.alertType}
                           </Badge>
                         </div>
+                        
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
                           {alert.message}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
                           <span>{formatRelativeTime(alert.triggeredAt)}</span>
-                          {isUnread && <span className="ml-1 font-bold">•</span>}
+                          {isUnread && (
+                            <span className="ml-1 font-bold">•</span>
+                          )}
                         </div>
                       </div>
+                      
                     </div>
                   );
                 })}
@@ -464,7 +416,7 @@ export const CenterOwnerHomePage = () => {
         </Card>
       </div>
 
-      {/* Schedule Today - Full width */}
+      {/* Schedule Today - Full width (Khối này giữ nguyên) */}
       <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -486,4 +438,3 @@ export const CenterOwnerHomePage = () => {
     </div>
   );
 };
-

@@ -22,6 +22,7 @@ import { PrismaService } from 'src/db/prisma.service';
 import { ChildTeacherFeedbackController } from './controllers/child-teacher-feedback.controller';
 import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.service';
 import { AdminCenterModule } from '../admin-center/admin-center.module';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AdminCenterModule } from '../admin-center/admin-center.module';
     StudentLeaveRequestService,
     ClassJoinService,
     ChildTeacherFeedbackService,
+    CloudinaryService,
   ],
 })
 export class ParentModule {
