@@ -1,4 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import { PrismaService } from '../../../db/prisma.service';
 import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-class.dto';
 import { AlertService } from '../../admin-center/services/alert.service';
@@ -8,6 +9,7 @@ export class ClassJoinService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alertService: AlertService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   /**
@@ -205,7 +207,7 @@ export class ClassJoinService {
   /**
    * Gửi yêu cầu tham gia lớp học
    */
-  async requestJoinClass(userId: string, dto: RequestJoinClassDto) {
+  async requestJoinClass(userId: string, dto: RequestJoinClassDto, file?: Express.Multer.File) {
     // Tìm parent
     const parent = await this.prisma.parent.findUnique({
       where: { userId },
@@ -301,6 +303,26 @@ export class ClassJoinService {
       );
     }
 
+    // Bắt buộc phải có ảnh cam kết (file upload)
+    if (!file) {
+      throw new HttpException(
+        { success: false, message: 'Vui lòng upload ảnh/bản scan cam kết học tập' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Upload file lên Cloudinary
+    let commitmentImageUrl: string | undefined;
+    try {
+      const result = await this.cloudinaryService.uploadImage(file, 'contracts');
+      commitmentImageUrl = result?.secure_url;
+    } catch (e) {
+      throw new HttpException(
+        { success: false, message: 'Không thể upload ảnh cam kết. Vui lòng thử lại' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // Kiểm tra học sinh đã enrolled vào lớp này chưa
     const existingEnrollment = await this.prisma.enrollment.findFirst({
       where: {
@@ -333,13 +355,15 @@ export class ClassJoinService {
       );
     }
 
+    console.log(commitmentImageUrl);
+    
     // Tạo request
     const request = await this.prisma.studentClassRequest.create({
       data: {
         studentId: dto.studentId,
         classId: dto.classId,
         message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
-        commitmentImageUrl: dto.commitmentImageUrl,
+        commitmentImageUrl,
         status: 'pending',
       },
       include: {

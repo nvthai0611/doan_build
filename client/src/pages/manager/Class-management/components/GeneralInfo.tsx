@@ -123,17 +123,16 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
   // Fetch pending requests count
   const { data: requestsData } = useQuery({
-    queryKey: ['classJoinRequests', classData.id],
+    queryKey: ['class-join-requests', classData.id],
     queryFn: () => studentClassRequestService.getAllRequests({
       classId: classData.id,
       status: 'pending',
       limit: 1000,
     }),
     enabled: !!classData.id,
-    refetchInterval: 1000, 
+    staleTime: 30000,
     refetchOnWindowFocus: true
   });
-  console.log("requestsData", requestsData);
   
   // Update pending requests count
   useEffect(() => {
