@@ -47,6 +47,7 @@ import {
 import { formatDateForInput, formatSchedule, convertDateToISO } from '../../../../utils/format';
 import { getStatusBadge } from '../const/statusBadge';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
@@ -58,12 +59,14 @@ import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../../utils/clientAxios';
 import { ClassStatus, CLASS_STATUS_LABELS, CLASS_STATUS_COLORS, CLASS_STATUS_BADGE_COLORS } from '../../../../lib/constants';
+import studentClassRequestService from '../../../../services/center-owner/student-class-request.service';
 
 interface GeneralInfoProps {
   classData: any;
 }
 
 export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -121,15 +124,17 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   // Fetch pending requests count
   const { data: requestsData } = useQuery({
     queryKey: ['classJoinRequests', classData.id],
-    queryFn: async () => {
-      const response = await apiClient.get(`/admin-center/classes/${classData.id}/join-requests`, { status: 'pending' });
-      return { data: response?.data, meta: { total: response?.data || 1 } }; 
-    },
+    queryFn: () => studentClassRequestService.getAllRequests({
+      classId: classData.id,
+      status: 'pending',
+      limit: 1000,
+    }),
     enabled: !!classData.id,
     refetchInterval: 1000, 
     refetchOnWindowFocus: true
   });
-
+  console.log("requestsData", requestsData);
+  
   // Update pending requests count
   useEffect(() => {
     if (requestsData) {
@@ -137,6 +142,17 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       setPendingRequestsCount(count);
     }
   }, [requestsData]);
+
+  // Auto-open ShareClassSheet từ query params (khi click từ notifications)
+  useEffect(() => {
+    const openShare = searchParams.get('openShare');
+    if (openShare === 'true') {
+      setIsShareModalOpen(true);
+      // Remove query param sau khi đã xử lý
+      searchParams.delete('openShare');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
 
   const subjects = (subjectsData as any)?.data || [];

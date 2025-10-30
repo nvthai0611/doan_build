@@ -34,7 +34,8 @@ import {
     AlertTriangle,
     FileText,
     Briefcase,
-    CircleDollarSign
+    CircleDollarSign,
+    ChartArea
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -45,9 +46,19 @@ interface SidebarProps {
 
 const centerOwnerMenuItems = [
   {
-    title: 'Tổng quan',
+    title: 'Trang chủ',
     icon: Home,
     href: '/center-qn',
+  },
+  {
+    title: 'Báo cáo',
+    icon: ChartArea,
+    href: '/center-qn/reports',
+    children: [
+      { title: 'Báo cáo tổng quan', href: '/center-qn/reports/dashboard' },
+      { title: 'Báo cáo học phí', href: '/center-qn/reports/tuition' },
+      { title: 'Báo cáo kết quả', href: '/center-qn/reports/results' },
+    ]
   },
   {
     title: 'Lịch dạy',
@@ -292,12 +303,12 @@ const parentMenuItems = [
     {
         title: "Tổng quan",
         icon: Home,
-        href: "/parent/profile",
+        href: "/parent/dashboad",
     },
     {
         title: "Đăng ký khoá học",
         icon: Target,
-        href: "/parent/courses",
+        href: "/parent/recruiting-classes",
     },
     {
         title: "Lớp học",
