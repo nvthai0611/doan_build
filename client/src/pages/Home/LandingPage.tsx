@@ -167,6 +167,8 @@ export const LandingPage = () => {
         subjectId: selectedSubject !== "all" ? selectedSubject : undefined,
         gradeId: selectedGrade !== "all" ? selectedGrade : undefined,
       }),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 
   // Fetch subjects for filter
@@ -200,102 +202,8 @@ export const LandingPage = () => {
 
       {/* Hero Banner */}
       <HeroBanner />
-
-      <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
-        <div className="max-w-7xl mx-auto">
-          <div className="section-header">
-            <div className="section-badge">
-              <Star className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Top Học Sinh Giỏi</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Những Học Sinh Xuất Sắc</h2>
-            <p className="text-muted-foreground text-lg">
-              Vinh danh những học sinh đạt thành tích cao nhất tại trung tâm
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {topStudents.map((student) => (
-              <div key={student.id} className="top-student-card">
-                <div className="rank-badge">#{student.rank}</div>
-                <div className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-2xl">
-                      👤
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{student.name}</h3>
-                      <p className="text-sm text-muted-foreground">{student.grade}</p>
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">{student.subject}</span>
-                      <span className="text-lg font-bold gradient-text">{student.score}/10</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-orange-500 to-pink-500 h-2 rounded-full"
-                        style={{ width: `${(student.score / 10) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {student.achievements.map((achievement, idx) => (
-                      <span key={idx} className="achievement-badge">
-                        {achievement}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="section-header">
-            <div className="section-badge">
-              <Users className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Đội Ngũ Giáo Viên</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Giáo Viên Giàu Kinh Nghiệm</h2>
-            <p className="text-muted-foreground text-lg">Đội ngũ giáo viên tài năng, tận tâm với học sinh</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((teacher) => (
-              <div key={teacher.id} className="teacher-card">
-                <div className="teacher-avatar">{teacher.avatar}</div>
-                <div className="p-4">
-                  <h3 className="font-bold text-lg mb-1">{teacher.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{teacher.subject}</p>
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Kinh nghiệm:</span>
-                      <span className="font-semibold">{teacher.experience} năm</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Học sinh:</span>
-                      <span className="font-semibold">{teacher.students}+</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Đánh giá:</span>
-                      <span className="font-semibold text-orange-500">⭐ {teacher.rating}</span>
-                    </div>
-                  </div>
-                  <Button className="w-full btn-gradient text-sm">Xem chi tiết</Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Classes Section */}
-      <section id="classes" className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
+    {/* Classes Section */}
+    <section id="classes" className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="text-center mb-12">
@@ -420,6 +328,100 @@ export const LandingPage = () => {
           )}
         </div>
       </section>
+      <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
+        <div className="max-w-7xl mx-auto">
+          <div className="section-header">
+            <div className="section-badge">
+              <Star className="w-4 h-4 gradient-text" />
+              <span className="text-sm font-medium gradient-text">Top Học Sinh Giỏi</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Những Học Sinh Xuất Sắc</h2>
+            <p className="text-muted-foreground text-lg">
+              Vinh danh những học sinh đạt thành tích cao nhất tại trung tâm
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {topStudents.map((student) => (
+              <div key={student.id} className="top-student-card">
+                <div className="rank-badge">#{student.rank}</div>
+                <div className="p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-2xl">
+                      👤
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{student.name}</h3>
+                      <p className="text-sm text-muted-foreground">{student.grade}</p>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">{student.subject}</span>
+                      <span className="text-lg font-bold gradient-text">{student.score}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-orange-500 to-pink-500 h-2 rounded-full"
+                        style={{ width: `${(student.score / 10) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {student.achievements.map((achievement, idx) => (
+                      <span key={idx} className="achievement-badge">
+                        {achievement}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="section-header">
+            <div className="section-badge">
+              <Users className="w-4 h-4 gradient-text" />
+              <span className="text-sm font-medium gradient-text">Đội Ngũ Giáo Viên</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Giáo Viên Giàu Kinh Nghiệm</h2>
+            <p className="text-muted-foreground text-lg">Đội ngũ giáo viên tài năng, tận tâm với học sinh</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {teachers.map((teacher) => (
+              <div key={teacher.id} className="teacher-card">
+                <div className="teacher-avatar">{teacher.avatar}</div>
+                <div className="p-4">
+                  <h3 className="font-bold text-lg mb-1">{teacher.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">{teacher.subject}</p>
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Kinh nghiệm:</span>
+                      <span className="font-semibold">{teacher.experience} năm</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Học sinh:</span>
+                      <span className="font-semibold">{teacher.students}+</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Đánh giá:</span>
+                      <span className="font-semibold text-orange-500">⭐ {teacher.rating}</span>
+                    </div>
+                  </div>
+                  <Button className="w-full btn-gradient text-sm">Xem chi tiết</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+  
 
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
