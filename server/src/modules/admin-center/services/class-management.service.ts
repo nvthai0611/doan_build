@@ -6,9 +6,8 @@ import { QueryClassDto } from '../dto/class/query-class.dto';
 import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 import { generateQNCode } from '../../../utils/function.util';
-import { DEFAULT_STATUS, ClassStatus } from '../../../common/constants';
+import { DEFAULT_STATUS, ClassStatus, EnrollmentStatus } from '../../../common/constants';
 import { DataTransformer } from '../../../../core/transformer';
-import { log } from 'console';
 
 @Injectable()
 export class ClassManagementService {
@@ -918,6 +917,123 @@ export class ClassManagementService {
     }
   }
 
+  // Cập nhật trạng thái lớp học (API riêng)
+  async updateStatus(id: string, status: ClassStatus) {
+    try {
+      // Validate UUID
+      if (!this.isValidUUID(id)) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'ID lớp học không hợp lệ',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check class exists
+      const existingClass = await this.prisma.class.findUnique({
+        where: { id },
+        include: {
+          enrollments: {
+            where: {
+              status: {
+                in: ['studying', 'not_been_updated'],
+              },
+            },
+          },
+        },
+      });
+
+      if (!existingClass) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy lớp học',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Kiểm tra transition hợp lệ
+      const allowedTransitions = [
+        'draft' as ClassStatus,
+        'ready' as ClassStatus,
+        'active' as ClassStatus,
+        'completed' as ClassStatus,
+        'suspended' as ClassStatus,
+        'cancelled' as ClassStatus,
+      ];
+
+      // Thực hiện update trong transaction
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Update class status
+        const updatedClass = await tx.class.update({
+          where: { id },
+          data: { status },
+        });
+
+        // Nếu chuyển từ active sang completed, update enrollments
+        let updatedEnrollmentsCount = 0;
+        if (existingClass.status === 'active' && status === 'completed') {
+          // Update tất cả enrollments có status là studying hoặc not_been_updated
+          // nhưng không update những ai đã withdrawn hoặc stopped
+          const updateResult = await tx.enrollment.updateMany({
+            where: {
+              classId: id,
+              status: {
+                in: ['studying', 'not_been_updated'],
+              },
+            },
+            data: {
+              status: EnrollmentStatus.GRADUATED,
+              completedAt: new Date(),
+            },
+          });
+          updatedEnrollmentsCount = updateResult.count;
+        }
+
+        return {
+          class: updatedClass,
+          updatedEnrollmentsCount,
+        };
+      });
+
+      // Chuẩn bị message
+      const statusLabel = {
+        draft: 'Lớp nháp',
+        ready: 'Sẵn sàng',
+        active: 'Đang hoạt động',
+        completed: 'Đã hoàn thành',
+        suspended: 'Tạm dừng',
+        cancelled: 'Đã hủy',
+      }[status] || status;
+
+      let message = `Đã chuyển trạng thái lớp sang "${statusLabel}"`;
+      if (existingClass.status === 'active' && status === 'completed') {
+        message += `. Đã cập nhật trạng thái ${result.updatedEnrollmentsCount} học sinh sang "Đã tốt nghiệp"`;
+      }
+
+      return {
+        success: true,
+        message,
+        data: result.class,
+        updatedEnrollmentsCount: result.updatedEnrollmentsCount,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi cập nhật trạng thái lớp học',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // Tạo tự động buổi học cho lớp
   async generateSessions(classId: string, body: any) {
     try {
@@ -1627,7 +1743,7 @@ export class ClassManagementService {
         throw new HttpException(
           {
             success: false,
-            message: 'Lớp đã có buổi học, không thể cập nhật lịch học',
+            message: 'Lớp đã có buổi học, không thể cập nhật lịch học. Để thay đổi lịch học vui lòng xóa toàn bộ lịch học.',
           },
           HttpStatus.BAD_REQUEST,
         );

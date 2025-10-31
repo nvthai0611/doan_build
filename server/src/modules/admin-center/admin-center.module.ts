@@ -37,6 +37,8 @@ import { AlertController } from './controllers/alert.controller';
 import { AlertService } from './services/alert.service';
 import { StudentClassRequestController } from './controllers/student-class-request.controller';
 import { StudentClassRequestService } from './services/student-class-request.service';
+import { TeacherFeedbackController } from './controllers/teacher-feedback.controller';
+import { TeacherFeedbackService } from './services/teacher-feedback.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
@@ -71,6 +73,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     FileManagementController,
     AlertController,
     StudentClassRequestController,
+    TeacherFeedbackController,
   ],
   providers: [
     PrismaService,
@@ -91,6 +94,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     FileManagementService,
     AlertService,
     StudentClassRequestService,
+    TeacherFeedbackService,
     CloudinaryService,
     // SessionSchedulerService, // Cron jobs service
   ],
