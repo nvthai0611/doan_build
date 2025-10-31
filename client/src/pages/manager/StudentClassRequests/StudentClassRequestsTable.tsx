@@ -224,11 +224,11 @@ export const StudentClassRequestsTable: React.FC<StudentClassRequestsTableProps>
                 Quản lý yêu cầu tham gia lớp học từ phụ huynh
               </CardDescription>
             </div>
-            {meta && meta.pendingCount > 0 && (
+            {/* {meta && meta.pendingCount > 0 && (
               <Badge variant="default" className="text-lg px-3 py-1">
                 {meta.pendingCount} chờ duyệt
               </Badge>
-            )}
+            )} */}
           </div>
         </CardHeader>
         <CardContent>
