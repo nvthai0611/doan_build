@@ -1627,7 +1627,7 @@ export class ClassManagementService {
         throw new HttpException(
           {
             success: false,
-            message: 'Lớp đã có buổi học, không thể cập nhật lịch học',
+            message: 'Lớp đã có buổi học, không thể cập nhật lịch học. Để thay đổi lịch học vui lòng xóa toàn bộ lịch học.',
           },
           HttpStatus.BAD_REQUEST,
         );
