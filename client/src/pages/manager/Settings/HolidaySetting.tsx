@@ -425,7 +425,7 @@ export function HolidaySetting() {
             <div>
               <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                 <Settings className="w-4 h-4" />
-                Loại kỳ nghỉ
+                Loại kỳ nghỉ <span className="text-red-600">*</span>
               </label>
               <Select
                 value={form.type}
@@ -448,6 +448,7 @@ export function HolidaySetting() {
               <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                 <Calendar className="w-4 h-4" />
                 Ngày bắt đầu
+                <span className="text-red-600">*</span>
               </label>
               <Input
                 type="date"
@@ -468,6 +469,7 @@ export function HolidaySetting() {
               <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                 <Calendar className="w-4 h-4" />
                 Ngày kết thúc
+                <span className="text-red-600">*</span>
               </label>
               <Input
                 type="date"
@@ -493,6 +495,7 @@ export function HolidaySetting() {
                     {form.note.length}/500
                   </span>
                 )}
+                <span className="text-red-600">*</span>
               </label>
               <textarea
                 placeholder="Nhập Mô tả về kỳ nghỉ này..."
