@@ -82,4 +82,16 @@ export class StudentManagementController {
     const userId = req.user?.userId;
     return await this.service.getChildAttendanceForParent(userId, childId, { classId, startDate, endDate });
   }
+
+  @Get('children/:childId/class-ranking/:classId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Xếp hạng của học sinh trong một lớp cụ thể' })
+  async getClassRanking(
+    @Req() req: any,
+    @Param('childId') childId: string,
+    @Param('classId') classId: string,
+  ) {
+    const userId = req.user?.userId;
+    return await this.service.getClassRankingForParent(userId, childId, classId);
+  }
 }
