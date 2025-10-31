@@ -15,6 +15,8 @@ import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.pro
 import { EnrollmentEmailProcessor } from './consumer/enrollment-email.processor';
 import { PublicClassesController } from './controllers/public-classes.controller';
 import { PublicClassesService } from './services/public-classes.service';
+import { PublicShowcasesController } from './controllers/public-showcases.controller';
+import { PublicShowcasesService } from './services/public-showcases.service';
   
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -59,7 +61,8 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     // Shared controllers can be added here
     StudentsSharedController,
     GradesController,
-    PublicClassesController
+    PublicClassesController,
+    PublicShowcasesController
   ],
   providers: [
     // Shared services can be added here
@@ -67,6 +70,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     StudentSharedService,
     GradeService,
     PublicClassesService,
+    PublicShowcasesService,
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,
