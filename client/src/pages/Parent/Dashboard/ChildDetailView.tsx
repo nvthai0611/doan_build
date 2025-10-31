@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, ArrowLeft } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { parentChildService } from "../../../services"
@@ -19,12 +19,39 @@ interface ChildDetailViewProps {
 
 export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const [activeTab, setActiveTab] = useState("info")
-  const { data: child } = useQuery({
+
+  // Fetch child basic info
+  const { data: child, isLoading: childLoading } = useQuery({
     queryKey: ["parent-child", childId],
     queryFn: () => parentChildService.getChildById(childId),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   })
+
+  // Fetch grades for all classes
+  const { data: grades, isLoading: gradesLoading } = useQuery({
+    queryKey: ["parent-child-grades", childId],
+    queryFn: () => parentChildService.getChildGrades(childId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    enabled: !!childId,
+  })
+
+  // Fetch attendance for all classes
+  const { data: attendances, isLoading: attendancesLoading } = useQuery({
+    queryKey: ["parent-child-attendance", childId],
+    queryFn: () => parentChildService.getChildAttendance(childId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    enabled: !!childId,
+  })
+
+  // Combine child data with grades and attendances
+  const childWithFullData = child ? {
+    ...child,
+    grades: grades || child.grades || [],
+    attendances: attendances || child.attendances || [],
+  } : null
 
   // Metrics: average grade, class rank, attendance rate (only active classes)
   const { data: metrics } = useQuery({
@@ -38,22 +65,44 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
     refetchOnWindowFocus: false,
   })
 
+  const isLoading = childLoading || gradesLoading || attendancesLoading
+
   return (
     <div className="p-6 space-y-6">
       {/* Header with Back Button */}
       <div>
-        <Button variant="ghost" onClick={onBack} className="mb-4">
-          ← Quay lại
+        <Button
+          size="sm"
+          onClick={onBack}
+          className="mb-4 bg-foreground text-background hover:bg-foreground/90 px-4 text-xs font-medium"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+          Quay lại
         </Button>
-        <h1 className="text-3xl font-bold text-balance">Chi tiết học sinh {child?.user?.fullName}</h1>
+        <h1 className="text-3xl font-bold text-balance">Chi tiết học sinh {childWithFullData?.user?.fullName}</h1>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
           <span>Dashboard</span>
           <ChevronRight className="w-4 h-4" />
-          <span>Danh sách con em</span>
+          <button
+            onClick={onBack}
+            className="hover:text-foreground hover:underline transition-colors cursor-pointer"
+          >
+            Danh sách con em
+          </button>
           <ChevronRight className="w-4 h-4" />
           <span>Thông tin học sinh</span>
         </div>
       </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-6 border-b">

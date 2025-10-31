@@ -31,18 +31,17 @@ export class GradeService {
             }
         });
         
-        console.log(`🔍 Teacher ${teacherId} access to class ${classId}:`, classExists ? 'Authorized' : 'Not authorized');
+        console.log(`Teacher ${teacherId} access to class ${classId}:`, classExists ? 'Authorized' : 'Not authorized');
         
         if (!classExists) {
-            console.log(`⛔ Teacher ${teacherId} is NOT assigned to class ${classId}`);
+            console.log(`Teacher ${teacherId} is NOT assigned to class ${classId}`);
             throw new HttpException('Bạn không có quyền thao tác lớp học này', HttpStatus.FORBIDDEN);
         } else {
-            console.log(`✅ Teacher ${teacherId} is assigned to class ${classId}`);
+            console.log(`Teacher ${teacherId} is assigned to class ${classId}`);
         }
     }
 
     async getStudentsOfClass(userId: string, classId: string) {
-        console.log(`🎓 Getting students for class ${classId} by user ${userId}`);
         
         await this.ensureTeacherCanAccessClass(userId, classId);
 
@@ -64,10 +63,7 @@ export class GradeService {
             orderBy: { id: 'asc' }
         });
 
-    console.log(`🎓 Tìm thấy ${enrollments.length} học sinh đang theo học trong lớp ${classId}`);
-
         if (enrollments.length === 0) {
-            console.log('⚠️ Không có học sinh đang theo học (studying)');
             return [];
         }
 
@@ -86,8 +82,6 @@ export class GradeService {
                 }
             }
         });
-
-        console.log(`🎓 Tìm thấy ${grades.length} điểm của học sinh trong lớp`);
 
         // Tính điểm trung bình cho từng học sinh
         const aggregate: Record<string, { sum: number; count: number }> = {};
@@ -113,7 +107,6 @@ export class GradeService {
             };
         });
 
-        console.log(`🎓 Trả về ${result.length} học sinh cho lớp ${classId}`);
         return result;
     }
 
@@ -162,18 +155,14 @@ export class GradeService {
                     const examTypes = valueData.items
                         .filter((item: any) => item.isActive === true)
                         .map((item: any) => item.name)
-                        .filter(Boolean);
-                    
-                    console.log('📚 Active exam types from system settings:', examTypes);
+                        .filter(Boolean);                    
                     return examTypes as string[];
                 }
             }
         } catch (error) {
-            console.error('❌ Error fetching exam types from system settings:', error);
+            console.error(' Error fetching exam types from system settings:', error);
         }
 
-        // Nếu không có trong system settings, trả về mảng rỗng
-        console.log('⚠️ No exam types configured in system settings');
         return [];
     }
 
@@ -190,12 +179,11 @@ export class GradeService {
                 if (valueData.items && Array.isArray(valueData.items)) {
                     // Trả về toàn bộ config của items (bao gồm name, maxScore, description, isActive)
                     const activeItems = valueData.items.filter((item: any) => item.isActive === true);
-                    console.log('📚 Exam types config from system settings:', activeItems);
                     return activeItems;
                 }
             }
         } catch (error) {
-            console.error('❌ Error fetching exam types config:', error);
+            console.error('Error fetching exam types config:', error);
         }
 
         return [];
@@ -221,19 +209,17 @@ export class GradeService {
                         );
                         if (examTypeItem && examTypeItem.maxScore) {
                             finalMaxScore = examTypeItem.maxScore;
-                            console.log(`📚 Using maxScore ${finalMaxScore} from system settings for exam type: ${assessmentType}`);
                         }
                     }
                 }
             } catch (error) {
-                console.error('❌ Error fetching maxScore from system settings:', error);
+                console.error('Error fetching maxScore from system settings:', error);
             }
         }
 
         // Nếu vẫn không có maxScore, mặc định là 10
         if (!finalMaxScore) {
             finalMaxScore = 10;
-            console.log('⚠️ No maxScore found, using default: 10');
         }
 
         // Validate date not in the future (server-side guard)
@@ -262,7 +248,6 @@ export class GradeService {
 
         // Kiểm tra tất cả học sinh có thuộc lớp này không
         const studentIds = grades.map(g => g.studentId);
-        console.log(`🔍 Checking students for class ${classId}:`, studentIds);
         
         const enrollments = await this.prisma.enrollment.findMany({
             where: {
@@ -272,9 +257,7 @@ export class GradeService {
             },
             select: { studentId: true, status: true }
         });
-        
-        console.log(`🔍 Found enrollments:`, enrollments);
-        
+                
         // Kiểm tra tất cả enrollments của class này (không filter theo studentIds)
         const allEnrollments = await this.prisma.enrollment.findMany({
             where: {
@@ -283,14 +266,9 @@ export class GradeService {
             },
             select: { studentId: true, status: true }
         });
-        
-        console.log(`🔍 All active enrollments for class ${classId}:`, allEnrollments);
-        
+                
         const validStudentIds = enrollments.map(e => e.studentId);
-        const invalidStudents = studentIds.filter(id => !validStudentIds.includes(id));
-        
-        console.log(`🔍 Valid student IDs:`, validStudentIds);
-        console.log(`🔍 Invalid student IDs:`, invalidStudents);
+        const invalidStudents = studentIds.filter(id => !validStudentIds.includes(id));        
         
         if (invalidStudents.length > 0) {
             throw new HttpException(
@@ -298,16 +276,6 @@ export class GradeService {
                 HttpStatus.BAD_REQUEST
             );
         }
-
-        // Tạo assessment mới
-        console.log('🎯 Creating assessment with data:', {
-            classId,
-            name: assessmentName,
-            type: assessmentType,
-            maxScore: finalMaxScore,
-            date: new Date(date),
-            description
-        });
         
         let assessment;
         try {
@@ -332,31 +300,17 @@ export class GradeService {
                         description
                     }
                 });
-                console.log('✅ Assessment created successfully:', assessment.id);
+                console.log('Assessment created successfully:', assessment.id);
             } else {
-                console.log('ℹ️ Reusing existing assessment:', assessment.id);
+                console.log('Reusing existing assessment:', assessment.id);
             }
         } catch (error) {
-            console.error('❌ Error creating assessment:', error);
             throw new HttpException(`Lỗi tạo assessment: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        // Ghi điểm cho từng học sinh (upsert theo unique [assessmentId, studentId])
-        console.log('🎯 Processing grades:', grades);
-        console.log('🎯 Assessment ID:', assessment.id);
-        console.log('🎯 User ID:', userId);
         
         const gradeRecords = [];
         for(const g of grades){
             if (g.score !== undefined && g.score !== null) {
-                console.log(`🎯 Creating grade for student ${g.studentId} with score ${g.score}`);
-                console.log(`🎯 Grade data:`, {
-                    assessmentId: assessment.id,
-                    studentId: g.studentId,
-                    score: Number(g.score),
-                    feedback: g.feedback,
-                    gradedBy: userId
-                });
                 
                 try {
                     const gradeRecord = await this.prisma.studentAssessmentGrade.upsert({
@@ -380,19 +334,12 @@ export class GradeService {
                             gradedBy: userId
                         }
                     });
-                    console.log(`✅ Grade created/updated for student ${g.studentId}:`, gradeRecord.id);
                     gradeRecords.push(gradeRecord);
                 } catch (error) {
-                    console.error(`❌ Error creating grade for student ${g.studentId}:`, error);
-                    console.error(`❌ Error details:`, {
-                        code: error.code,
-                        message: error.message,
-                        meta: error.meta
-                    });
                     throw new HttpException(`Lỗi ghi điểm cho học sinh ${g.studentId}: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
                 }
             } else {
-                console.log(`⚠️ Skipping student ${g.studentId} - no score provided`);
+                console.log(`Skipping student ${g.studentId} - no score provided`);
             }
         }
 
@@ -477,10 +424,8 @@ export class GradeService {
     }
 
     async getTeacherIdFromUserId(userId: string): Promise<string | null> {
-        console.log('🔍 Getting teacherId from userId:', userId);
         
         if (!checkId(userId)) {
-            console.log('❌ Invalid userId');
             return null;
         }
 
@@ -488,15 +433,12 @@ export class GradeService {
             where: { userId: userId }
         });
 
-        console.log('👨‍🏫 Teacher found:', teacher ? teacher.id : 'null');
         return teacher ? teacher.id : null;
     }
 
     async getGradeViewData(teacherId: string, filters: any) {
-        console.log('📚 getGradeViewData called with teacherId:', teacherId);
         
         if (!teacherId || !checkId(teacherId)) {
-            console.log('❌ Invalid teacherId:', teacherId);
             return {
                 students: [],
                 subjectStats: [],
@@ -528,13 +470,9 @@ export class GradeService {
             }
         });
 
-        const classIds = classes.map(c => c.id);
-        
-        console.log('📚 Found classes:', classes.length);
-        console.log('📚 Class IDs:', classIds);
+        const classIds = classes.map(c => c.id);        
         
         if (classIds.length === 0) {
-            console.log('⚠️ No classes found for teacher');
             return {
                 students: [],
                 subjectStats: [],
@@ -565,12 +503,9 @@ export class GradeService {
             },
             orderBy: { date: 'desc' }
         });
-
-        console.log('📚 Found assessments:', assessments.length);
         
         // Nếu không có assessments, thử lấy danh sách học sinh từ enrollments
         if (assessments.length === 0) {
-            console.log('⚠️ No assessments found, trying to get students from enrollments');
             
             // Lấy tất cả học sinh từ các lớp
             const allStudents = new Set();
@@ -597,8 +532,7 @@ export class GradeService {
             });
             
             const students = Array.from(allStudents).map(s => JSON.parse(s as string));
-            console.log('📚 Found students from enrollments:', students.length);
-            
+           
             return {
                 students,
                 subjectStats: await this.getSubjectStats(teacherId),
@@ -698,12 +632,6 @@ export class GradeService {
             ? Math.round((filteredStudents.filter(s => s.average >= 5).length / totalStudents) * 100)
             : 0;
 
-        console.log('✅ Returning grade view data:');
-        console.log('   - Total students:', totalStudents);
-        console.log('   - Overall average:', overallAverage);
-        console.log('   - Pass rate:', passRate);
-        console.log('   - Subject stats:', subjectStats.length);
-
         return {
             students: filteredStudents,
             subjectStats,
@@ -718,13 +646,7 @@ export class GradeService {
         return gradeViewData.students;
     }
 
-    async getSubjectStats(teacherId: string) {
-        console.log('📊 getSubjectStats called with teacherId:', teacherId);
-        
-        if (!teacherId || !checkId(teacherId)) {
-            console.log('❌ Invalid teacherId');
-            return [];
-        }
+    async getSubjectStats(teacherId: string) {        
 
         // Lấy tất cả lớp học active mà giáo viên đang dạy và include chỉ enrollments có trạng thái 'studying'
         const classes = await this.prisma.class.findMany({
@@ -830,7 +752,6 @@ export class GradeService {
     }
 
     async updateStudentGrade(teacherId: string, payload: { studentId: string; assessmentId: string; score: number }) {
-        console.log('💾 updateStudentGrade called:', { teacherId, payload });
         
         const { studentId, assessmentId, score } = payload;
         

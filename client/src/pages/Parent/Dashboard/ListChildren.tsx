@@ -21,6 +21,51 @@ type ChildRow = {
   gender?: string
   phone?: string
   email?: string
+  status: 'not_been_updated' | 'studying' | 'stopped' | 'graduated' | 'withdrawn'
+  enrollmentCount: number
+  averageScore?: number
+}
+
+// Helper function để hiển thị trạng thái
+const getStatusDisplay = (status: ChildRow['status']) => {
+  switch (status) {
+    case 'not_been_updated':
+      return {
+        text: 'Chưa cập nhật',
+        color: 'bg-gray-400',
+        textColor: 'text-gray-600',
+      }
+    case 'studying':
+      return {
+        text: 'Đang học',
+        color: 'bg-green-500',
+        textColor: 'text-green-700',
+      }
+    case 'stopped':
+      return {
+        text: 'Đã dừng học',
+        color: 'bg-orange-500',
+        textColor: 'text-orange-700',
+      }
+    case 'graduated':
+      return {
+        text: 'Đã tốt nghiệp',
+        color: 'bg-blue-500',
+        textColor: 'text-blue-700',
+      }
+    case 'withdrawn':
+      return {
+        text: 'Đã rút',
+        color: 'bg-red-500',
+        textColor: 'text-red-700',
+      }
+    default:
+      return {
+        text: 'Không xác định',
+        color: 'bg-gray-500',
+        textColor: 'text-gray-700',
+      }
+  }
 }
 
 export function ParentDashboard() {
@@ -36,21 +81,48 @@ export function ParentDashboard() {
 
   const rows: ChildRow[] = useMemo(() => {
     const list = Array.isArray(data) ? data : []
-    return list.map((s: any) => ({
-      id: s.id,
-      name: s.user?.fullName ?? s.user?.username ?? "",
-      avatar: s.user?.avatar,
-      // Chỉ hiển thị các enrollment active và lớp active (API đã lọc)
-      classNames: (s.enrollments ?? [])
-        .map((e: any) => e.class?.name)
-        .filter(Boolean)
-        .join(", ") || "—",
-      studentCode: s.studentCode,
-      dateOfBirth: s.dateOfBirth?.slice(0, 10),
-      gender: s.gender,
-      phone: s.user?.phone,
-      email: s.user?.email,
-    }))
+    return list.map((s: any) => {
+      const enrollments = s.enrollments ?? []
+      const activeEnrollments = enrollments.filter((e: any) => e.status === 'studying')
+      
+      // Xác định trạng thái học sinh dựa trên enrollments (ưu tiên: studying > graduated > stopped > withdrawn > not_been_updated)
+      let status: ChildRow['status'] = 'not_been_updated'
+      if (activeEnrollments.length > 0) {
+        status = 'studying'
+      } else if (enrollments.some((e: any) => e.status === 'graduated')) {
+        status = 'graduated'
+      } else if (enrollments.some((e: any) => e.status === 'stopped')) {
+        status = 'stopped'
+      } else if (enrollments.some((e: any) => e.status === 'withdrawn')) {
+        status = 'withdrawn'
+      }
+      
+      // Tính điểm trung bình từ tất cả grades
+      const grades = s.grades ?? []
+      const validGrades = grades.filter((g: any) => g.score !== null && typeof g.score === 'number')
+      const averageScore = validGrades.length > 0
+        ? Number((validGrades.reduce((sum: number, g: any) => sum + g.score, 0) / validGrades.length).toFixed(1))
+        : undefined
+      
+      return {
+        id: s.id,
+        name: s.user?.fullName ?? s.user?.username ?? "",
+        avatar: s.user?.avatar,
+        // Chỉ hiển thị các enrollment active và lớp active (API đã lọc)
+        classNames: activeEnrollments
+          .map((e: any) => e.class?.name)
+          .filter(Boolean)
+          .join(", ") || "—",
+        studentCode: s.studentCode,
+        dateOfBirth: s.dateOfBirth?.slice(0, 10),
+        gender: s.gender,
+        phone: s.user?.phone,
+        email: s.user?.email,
+        status: status,
+        enrollmentCount: activeEnrollments.length,
+        averageScore: averageScore,
+      }
+    })
   }, [data])
 
   const child = rows.find((c) => c.id === selectedChild)
@@ -60,6 +132,49 @@ export function ParentDashboard() {
   }
 
   const filteredChildren = rows
+
+  // Subcomponent: Tính và hiển thị điểm TB theo lớp cho từng học sinh
+  const AverageScoreCell = ({ childId }: { childId: string }) => {
+    const { data: grades, isLoading } = useQuery({
+      queryKey: ["parent-child-grades-summary", childId],
+      queryFn: () => parentChildService.getChildGrades(childId),
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      enabled: !!childId,
+    })
+
+    if (isLoading) {
+      return <span className="text-xs text-muted-foreground">—</span>
+    }
+
+    const list = Array.isArray(grades) ? grades : []
+    // Nhóm điểm theo lớp (classId hoặc className hoặc assessment.class.name)
+    const byClass = new Map<string, number[]>()
+    for (const g of list as any[]) {
+      const score = g?.score
+      if (typeof score !== 'number') continue
+      const key = g?.classId || g?.className || g?.assessment?.class?.name || 'unknown'
+      if (!byClass.has(key)) byClass.set(key, [])
+      byClass.get(key)!.push(score)
+    }
+
+    // Tính điểm TB mỗi lớp, rồi lấy TB của các lớp
+    const classAverages: number[] = []
+    byClass.forEach((scores) => {
+      if (scores.length === 0) return
+      const avg = scores.reduce((s, v) => s + v, 0) / scores.length
+      classAverages.push(avg)
+    })
+
+    if (classAverages.length === 0) {
+      return <span className="text-xs text-muted-foreground">—</span>
+    }
+
+    const overall = Number((classAverages.reduce((s, v) => s + v, 0) / classAverages.length).toFixed(1))
+    const color = overall >= 8 ? 'text-green-600' : overall >= 6.5 ? 'text-blue-600' : overall >= 5 ? 'text-orange-600' : 'text-red-600'
+
+    return <span className={`text-sm font-semibold ${color}`}>{overall.toFixed(1)}</span>
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -156,14 +271,18 @@ export function ParentDashboard() {
                       <Badge variant="outline">{child.classNames}</Badge>
                     </td>
                     <td className="p-4">
-                      <div className="text-center text-xs text-muted-foreground">—</div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span className="text-sm">Đang học</span>
+                      <div className="text-center">
+                        <AverageScoreCell childId={child.id} />
                       </div>
                     </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${getStatusDisplay(child.status).color}`}></div>
+                      <span className={`text-sm font-medium ${getStatusDisplay(child.status).textColor}`}>
+                        {getStatusDisplay(child.status).text}
+                      </span>
+                    </div>
+                  </td>
                     <td className="p-4">
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="w-4 h-4" />
