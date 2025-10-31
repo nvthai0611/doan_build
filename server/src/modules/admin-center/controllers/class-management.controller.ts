@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ClassManagementService } from '../services/class-management.service';
 import { CreateClassDto } from '../dto/class/create-class.dto';
 import { UpdateClassDto } from '../dto/class/update-class.dto';
+import { UpdateClassStatusDto } from '../dto/class/update-class-status.dto';
 import { QueryClassDto } from '../dto/class/query-class.dto';
 
 @ApiTags('Admin Center - Class Management')
@@ -42,6 +43,15 @@ export class ClassManagementController {
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
     async update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
         return this.classManagementService.update(id, updateClassDto);
+    }
+
+    @Patch(':id/status')
+    @ApiOperation({ summary: 'Cập nhật trạng thái lớp học' })
+    @ApiResponse({ status: 200, description: 'Cập nhật trạng thái thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+    async updateStatus(@Param('id') id: string, @Body() updateClassStatusDto: UpdateClassStatusDto) {
+        return this.classManagementService.updateStatus(id, updateClassStatusDto.status);
     }
 
     @Patch(':id/schedules')

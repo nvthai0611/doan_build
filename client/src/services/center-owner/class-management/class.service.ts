@@ -35,6 +35,12 @@ export const classService = {
         return response;
     },
 
+    // Update class status (API riêng)
+    updateClassStatus: async (id: string, status: string) => {
+        const response = await apiClient.patch(`${BASE_URL}/${id}/status`, { status });
+        return response;
+    },
+
   // Lấy chi tiết lớp học
   getClassDetail: async (id: string) => {
     const response = await apiClient.get(`${BASE_URL}/${id}`);
