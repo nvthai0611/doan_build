@@ -33,6 +33,7 @@ model User {
   student                 Student?
   teacher                 Teacher?
   sessions                UserSession[]
+  blogs                   Blog[]                   @relation("BlogAuthor")
   roleData                Role?                    @relation(fields: [roleId], references: [id])
 
   @@map("users")
@@ -387,6 +388,7 @@ model Payment {
   id                String             @id @default(uuid()) @db.Uuid
   parentId          String?            @map("parent_id") @db.Uuid
   amount            Decimal            @db.Decimal(12, 2)
+  paidAmount        Decimal?           @default(0) @db.Decimal(12, 2)
   status            String             @default("completed") // pending, processing, partially_paid, completed, failed, refunded, cancelled
   createdAt         DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime?          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -850,4 +852,67 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+// ============================================
+// Landing Page Content Models
+// Chỉ center_owner mới có quyền quản lý
+// ============================================
+
+// --- Showcase (Vinh danh học sinh xuất sắc) ---
+model Showcase {
+  id           String    @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  studentImage String    @map("student_image") // Ảnh học sinh
+  achievement  String // Thành tích cụ thể
+  featured     Boolean   @default(false)
+  order        Int       @default(0)
+  publishedAt  DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([featured], map: "idx_showcase_featured")
+  @@index([order], map: "idx_showcase_order")
+  @@map("showcases")
+}
+
+// --- Blog (Bài viết của center owner) ---
+model BlogCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  blogs       Blog[]
+
+  @@map("blog_categories")
+}
+
+model Blog {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String        @unique
+  excerpt     String?
+  content     String
+  categoryId  String?       @map("category_id") @db.Uuid
+  authorId    String        @map("author_id") @db.Uuid
+  thumbnail   String?
+  status      String        @default("draft") // draft, published, archived
+  isFeatured  Boolean       @default(false) @map("is_featured")
+  viewCount   Int           @default(0) @map("view_count")
+  publishedAt DateTime?     @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  category    BlogCategory? @relation(fields: [categoryId], references: [id])
+  author      User          @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId], map: "idx_blog_author")
+  @@index([categoryId], map: "idx_blog_category")
+  @@index([status], map: "idx_blog_status")
+  @@index([publishedAt], map: "idx_blog_published")
+  @@index([isFeatured], map: "idx_blog_featured")
+  @@map("blogs")
 }

@@ -30,9 +30,9 @@ export const Header = () => {
             <a href="#blog" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Blog
             </a>
-            <a href="#contribute" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            {/* <a href="#contribute" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Đóng Góp
-            </a>
+            </a> */}
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
