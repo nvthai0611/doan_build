@@ -22,10 +22,10 @@ import {
   CLASS_STATUS_LABELS, 
   CLASS_STATUS_BADGE_COLORS,
   CLASS_STATUS_TRANSITIONS 
-} from '../../../../lib/constants';
+} from '../../../../../lib/constants';
 import { AlertTriangle, CheckCircle, Info, ArrowRight } from 'lucide-react';
-import { classService } from '../../../../services/center-owner/class-management/class.service';
-import { useToast } from '../../../../hooks/use-toast';
+import { classService } from '../../../../../services/center-owner/class-management/class.service';
+import { useToast } from '../../../../../hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ChangeStatusDialogProps {
@@ -119,12 +119,8 @@ export const ChangeStatusDialog = ({
   const performUpdate = async () => {
     setIsLoading(true);
     try {
-      // Call API to update status
-      const response = await classService.updateClass(classData.id, {
-        status: selectedStatus,
-      }) as any;
+      const response = await classService.updateClassStatus(classData.id, selectedStatus as string) as any;
 
-      // Hiển thị message từ backend
       // Sau khi qua ResponseInterceptor, cấu trúc là: { success, status, data, message, warning, ... }
       const statusLabel = selectedStatus ? CLASS_STATUS_LABELS[selectedStatus as ClassStatus] : 'mới';
       const message = response?.message || `Đã chuyển trạng thái lớp sang "${statusLabel}"`;

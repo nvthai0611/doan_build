@@ -79,7 +79,7 @@ export class PublicClassesService {
           },
         },
         orderBy: [
-          { status: 'asc' }, // ready trước, active sau
+          { status: 'desc' }, // ready trước, active sau
           { createdAt: 'desc' },
         ],
       }),
