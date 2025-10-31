@@ -58,7 +58,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
       key: "feeStructure",
       header: "Khoản phí",
       render: (fee) => fee.feeStructure?.name || "",
-      sortable: true,
       width: "180px"
     },
     {
@@ -75,7 +74,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
           {fee.amount.toLocaleString('vi-VN')}đ
         </span>
       ),
-      sortable: true,
       align: "right",
       width: "120px"
     },
@@ -106,7 +104,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
       key: "dueDate",
       header: "Hạn đóng",
       render: (fee) => new Date(fee.dueDate).toLocaleDateString('vi-VN'),
-      sortable: true,
       width: "120px"
     },
     {
