@@ -28,7 +28,7 @@ import { Header } from "./components/header"
 import { Footer } from "./components/footer"
 import { HeroBanner } from "./components/hero-banner"
 import { BlogSection } from "./components/blog-section"
-import { ContributeSection } from "./components/contribute-section"
+// import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
 const topStudents = [
@@ -448,7 +448,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
         <div className="max-w-7xl mx-auto">
           <div className="section-header">
             <div className="section-badge">
@@ -479,13 +479,13 @@ export const LandingPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Blog Section */}
       <BlogSection />
 
       {/* Contribute Section */}
-      <ContributeSection />
+      {/* <ContributeSection /> */}
 
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
