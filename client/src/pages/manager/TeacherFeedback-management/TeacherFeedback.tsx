@@ -1,15 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import React, { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Star, CheckCircle, Clock, XCircle, Eye, MessageSquare } from "lucide-react"
+import { Search, Star, MessageSquare, ChevronDown, ChevronUp } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FeedbackDetailDialog } from "./components/DialogDetail"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useQuery } from "@tanstack/react-query"
+import { teacherFeedbackService } from "../../../services/center-owner/teacher-feedback/teacherfeedback.service"
+import type { TeacherFeedbackItem } from "../../../services/center-owner/teacher-feedback/teacherfeedback.types"
+import { DataTable, type Column } from "../../../components/common/Table/DataTable"
 
 interface TeacherFeedback {
   id: string
@@ -33,116 +36,6 @@ interface TeacherFeedback {
   createdAt: string
 }
 
-const mockFeedback: TeacherFeedback[] = [
-  {
-    id: "1",
-    teacherId: "t1",
-    teacherName: "Thầy Nguyễn Văn A",
-    parentName: "Nguyễn Thị Hương",
-    parentEmail: "huong@email.com",
-    studentName: "Nguyễn Minh Anh",
-    className: "Lớp 10A",
-    rating: 5,
-    categories: {
-      teaching_quality: 5,
-      communication: 5,
-      punctuality: 4,
-      professionalism: 5,
-    },
-    comment: "Giáo viên rất tận tâm, con em tiến bộ rất nhiều trong học tập. Cách giảng dạy rất dễ hiểu.",
-    isAnonymous: false,
-    status: "approved",
-    createdAt: "2025-10-20",
-  },
-  {
-    id: "2",
-    teacherId: "t2",
-    teacherName: "Cô Trần Thị B",
-    parentName: "Trần Văn Hùng",
-    parentEmail: "hung@email.com",
-    studentName: "Trần Minh Huy",
-    className: "Lớp 9B",
-    rating: 3,
-    categories: {
-      teaching_quality: 3,
-      communication: 2,
-      punctuality: 4,
-      professionalism: 3,
-    },
-    comment: "Giáo viên cần cải thiện kỹ năng giao tiếp với phụ huynh. Mong nhận được phản hồi thường xuyên hơn.",
-    isAnonymous: false,
-    status: "pending",
-    createdAt: "2025-10-22",
-  },
-  {
-    id: "3",
-    teacherId: "t1",
-    teacherName: "Thầy Nguyễn Văn A",
-    parentName: "Lê Thị Lan",
-    parentEmail: "lan@email.com",
-    studentName: "Lê Quốc Anh",
-    className: "Lớp 10A",
-    rating: 4,
-    categories: {
-      teaching_quality: 4,
-      communication: 4,
-      punctuality: 5,
-      professionalism: 4,
-    },
-    comment: "Thầy giáo rất chuyên nghiệp và luôn đúng giờ. Con em rất thích học với thầy.",
-    isAnonymous: true,
-    status: "approved",
-    createdAt: "2025-10-21",
-  },
-  {
-    id: "4",
-    teacherId: "t3",
-    teacherName: "Cô Phạm Thị C",
-    parentName: "Phạm Minh Tuấn",
-    parentEmail: "tuan@email.com",
-    studentName: "Phạm Gia Bảo",
-    className: "Lớp 8C",
-    rating: 2,
-    categories: {
-      teaching_quality: 2,
-      communication: 3,
-      punctuality: 2,
-      professionalism: 2,
-    },
-    comment: "Cô giáo thường xuyên đến muộn và không chuẩn bị bài tốt. Cần cải thiện.",
-    isAnonymous: false,
-    status: "pending",
-    createdAt: "2025-10-23",
-  },
-  {
-    id: "5",
-    teacherId: "t2",
-    teacherName: "Cô Trần Thị B",
-    parentName: "Vũ Thị Hồng",
-    parentEmail: "hong@email.com",
-    studentName: "Vũ Minh Khôi",
-    className: "Lớp 9B",
-    rating: 5,
-    categories: {
-      teaching_quality: 5,
-      communication: 5,
-      punctuality: 5,
-      professionalism: 5,
-    },
-    comment: "Cảm ơn cô giáo đã giúp con em chuẩn bị tốt cho kỳ thi. Cô rất tâm huyết.",
-    isAnonymous: false,
-    status: "approved",
-    createdAt: "2025-10-19",
-  },
-]
-
-const statusConfig = {
-  pending: { label: "Chờ duyệt", color: "bg-blue-100 text-blue-800", icon: Clock },
-  approved: { label: "Đã duyệt", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  rejected: { label: "Từ chối", color: "bg-red-100 text-red-800", icon: XCircle },
-  archived: { label: "Lưu trữ", color: "bg-gray-100 text-gray-800", icon: Clock },
-}
-
 const categoryLabels = {
   teaching_quality: "Chất lượng giảng dạy",
   communication: "Giao tiếp",
@@ -150,47 +43,244 @@ const categoryLabels = {
   professionalism: "Chuyên nghiệp",
 }
 
+// Small star rating renderer
+const StarRating = ({ value }: { value: number }) => (
+  <div className="flex gap-1" aria-label={`Đánh giá ${value} trên 5`}>
+    {[...Array(5)].map((_, i) => (
+      <Star key={i} className={`h-4 w-4 ${i < value ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+    ))}
+  </div>
+)
+
+type TeacherClassRow = {
+  key: string
+  teacherId: string
+  teacherName: string
+  teacherAvatar?: string
+  className: string
+  avgRating: number
+  feedbacks: TeacherFeedback[]
+  positiveFeedbacks: number
+  negativeFeedbacks: number
+}
+
+type TeacherRow = {
+  key: string
+  teacherId: string
+  teacherName: string
+  teacherAvatar?: string
+  classes: Array<{
+    className: string
+    avgRating: number
+    feedbackCount: number
+  }>
+  totalFeedbacks: number
+  overallAvgRating: number
+  positiveFeedbacks: number
+  negativeFeedbacks: number
+  allFeedbacks: TeacherFeedback[]
+}
+
 export function FeedbackTeacher() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterRating, setFilterRating] = useState<string>("all")
-  const [filterTeacher, setFilterTeacher] = useState<string>("all")
-  const [filterClass, setFilterClass] = useState<string>("all")
-  const [selectedFeedback, setSelectedFeedback] = useState<TeacherFeedback | null>(null)
+  const [dialogRowKey, setDialogRowKey] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [openFeedbackIds, setOpenFeedbackIds] = useState<Record<string, boolean>>({})
+  const [dateFrom, setDateFrom] = useState<string>("")
+  const [dateTo, setDateTo] = useState<string>("")
 
-  const uniqueTeachers = Array.from(new Set(mockFeedback.map((f) => f.teacherName))).sort()
-  const uniqueClasses = Array.from(new Set(mockFeedback.map((f) => f.className))).sort()
-
-  const filteredFeedback = mockFeedback.filter((item) => {
-    const matchesSearch =
-      item.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.parentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.comment.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesRating = filterRating === "all" || item.rating === Number.parseInt(filterRating)
-    const matchesTeacher = filterTeacher === "all" || item.teacherName === filterTeacher
-    const matchesClass = filterClass === "all" || item.className === filterClass
-
-    return matchesSearch && matchesRating && matchesTeacher && matchesClass
+  // Build aggregated rows: group by teacher (not teacher+class)
+  const { data: feedbackResp } = useQuery({
+    queryKey: ['teacher-feedback', dateFrom, dateTo],
+    queryFn: () => teacherFeedbackService.list({ dateFrom, dateTo }),
+    refetchOnWindowFocus: false,
   })
 
-  const stats = {
-    total: mockFeedback.length,
-    avgRating: (mockFeedback.reduce((sum, f) => sum + f.rating, 0) / mockFeedback.length).toFixed(1),
-  }
+  const teacherRows = useMemo<TeacherRow[]>(() => {
+    // Filter source by date range first (server already filters by date)
+    let source: TeacherFeedbackItem[] = [...((feedbackResp as TeacherFeedbackItem[] | undefined) || [])]
+    if (dateFrom) {
+      const fromTs = new Date(dateFrom).setHours(0, 0, 0, 0)
+      source = source.filter(f => new Date(f.createdAt).getTime() >= fromTs)
+    }
+    if (dateTo) {
+      const toTs = new Date(dateTo).setHours(23, 59, 59, 999)
+      source = source.filter(f => new Date(f.createdAt).getTime() <= toTs)
+    }
+    const map = new Map<string, TeacherRow>()
 
-  const handleOpenDetail = (feedback: TeacherFeedback) => {
-    setSelectedFeedback(feedback)
-    setDialogOpen(true)
-  }
+    for (const f of source as any[]) {
+      const teacherId = f.teacherId
+
+      if (!map.has(teacherId)) {
+        map.set(teacherId, {
+          key: teacherId,
+          teacherId: f.teacherId,
+          teacherName: f.teacherName,
+          teacherAvatar: f.teacherAvatar,
+          classes: [],
+          totalFeedbacks: 0,
+          overallAvgRating: 0,
+          positiveFeedbacks: 0,
+          negativeFeedbacks: 0,
+          allFeedbacks: [],
+        })
+      }
+
+      const teacher = map.get(teacherId)!
+      teacher.totalFeedbacks += 1
+      teacher.allFeedbacks.push(f)
+
+      // Count positive/negative
+      if (f.rating >= 4) {
+        teacher.positiveFeedbacks += 1
+      } else {
+        teacher.negativeFeedbacks += 1
+      }
+
+      // Add or update class info
+      let classInfo = teacher.classes.find(c => c.className === f.className)
+      if (!classInfo) {
+        classInfo = {
+          className: f.className,
+          avgRating: 0,
+          feedbackCount: 0,
+        }
+        teacher.classes.push(classInfo)
+      }
+      classInfo.feedbackCount += 1
+    }
+
+    // Calculate averages
+    const teachers = Array.from(map.values())
+    teachers.forEach(t => {
+      // Overall average
+      const totalRating = t.allFeedbacks.reduce((sum, f) => sum + f.rating, 0)
+      t.overallAvgRating = +(totalRating / t.totalFeedbacks).toFixed(1)
+
+      // Per-class averages
+      t.classes.forEach(c => {
+        const classFeedbacks = t.allFeedbacks.filter(f => f.className === c.className)
+        const classTotal = classFeedbacks.reduce((sum, f) => sum + f.rating, 0)
+        c.avgRating = +(classTotal / classFeedbacks.length).toFixed(1)
+      })
+
+      // Sort classes by name
+      t.classes.sort((a, b) => a.className.localeCompare(b.className))
+    })
+
+    // Filter by search
+    return teachers.filter((t) =>
+      t.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.classes.some(c => c.className.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  }, [searchTerm, dateFrom, dateTo, feedbackResp])
+
+  const stats = useMemo(() => {
+    const source: TeacherFeedbackItem[] = [...((feedbackResp as TeacherFeedbackItem[] | undefined) || [])]
+    const total = source.length
+    const avg = total === 0 ? 0 : source.reduce((sum, f) => sum + (f as any).rating, 0) / total
+    return {
+      total,
+      avgRating: avg.toFixed(1),
+    }
+  }, [feedbackResp])
+
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  const startIndex = (page - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedTeachers = teacherRows.slice(startIndex, endIndex)
+
+  const columns: Column<TeacherRow>[] = [
+    {
+      key: 'teacherName',
+      header: 'Giáo Viên',
+      render: (t) => (
+        <div className="flex items-center gap-2.5">
+          <Avatar className="h-9 w-9 ring-2 ring-primary/10">
+            <AvatarImage src={t.teacherAvatar || '/placeholder.svg'} />
+            <AvatarFallback className="text-xs font-semibold">{t.teacherName.split(' ').slice(-1)[0].substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <p className="font-semibold text-sm text-foreground">{t.teacherName}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'classes',
+      header: 'Các Lớp Phụ Trách',
+      render: (t) => (
+        <div className="flex flex-col gap-2">
+          {t.classes.map((cls) => (
+            <div key={cls.className} className="grid grid-cols-[84px_max-content_min-content] items-center gap-1.5 w-full">
+              <span className="text-xs font-semibold text-foreground">{cls.className}</span>
+              <div className="inline-flex items-center justify-center gap-1 bg-yellow-50 dark:bg-yellow-950 px-2 py-0.5 rounded-full w-[56px]">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="text-xs font-semibold tabular-nums text-yellow-700 dark:text-yellow-400">{cls.avgRating}</span>
+              </div>
+              <Badge variant="secondary" className="whitespace-nowrap text-[11px] px-2 py-0 h-5 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-0">
+                {cls.feedbackCount} Fb
+              </Badge>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'overallAvgRating',
+      header: 'Đánh Giá TB',
+      render: (t) => (
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <StarRating value={Math.round(t.overallAvgRating)} />
+          </div>
+          <span className="text-[10px] text-muted-foreground font-medium">
+            {t.overallAvgRating}/5 • {t.totalFeedbacks} đánh giá
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'positiveFeedbacks',
+      header: 'Thống Kê Phản Hồi',
+      render: (t) => (
+        <div className="flex items-center gap-1.5">
+          <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 text-xs px-2 py-0.5 h-5 border-0">
+            👍 {t.positiveFeedbacks}
+          </Badge>
+          <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 text-xs px-2 py-0.5 h-5 border-0">
+            👎 {t.negativeFeedbacks}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Hành Động',
+      align: 'center',
+      render: (t) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { setDialogRowKey(t.key); setDialogOpen(true); }}
+          className="h-7 px-2.5 text-xs font-medium hover:bg-primary/10"
+        >
+          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+          Xem chi tiết
+        </Button>
+      ),
+    },
+  ]
+
+  const dialogRow = useMemo(() => teacherRows.find(r => r.key === dialogRowKey) || null, [dialogRowKey, teacherRows])
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-balance">Quản lý Feedback Giáo Viên</h1>
-        <p className="text-muted-foreground mt-1">Theo dõi và xử lý các đánh giá từ phụ huynh về giáo viên</p>
+        <p className="text-muted-foreground mt-1">Danh sách giáo viên và các lớp phụ trách, kèm đánh giá. Chọn giáo viên để xem feedback phụ huynh và bấm vào từng feedback để xem chi tiết.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -217,154 +307,277 @@ export function FeedbackTeacher() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <Card>
         <CardHeader>
           <CardTitle>Bộ lọc</CardTitle>
+          <CardDescription>Tìm theo tên giáo viên hoặc lớp • Lọc theo ngày</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm kiếm giáo viên, phụ huynh, học sinh..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl items-end">
+            <div className="flex flex-col gap-1 relative">
+              <label className="text-xs text-muted-foreground">Tìm kiếm</label>
+              <Search className="absolute left-3 bottom-3 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Tìm giáo viên hoặc lớp..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-
-            <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-              <SelectTrigger>
-                <SelectValue placeholder="Lọc theo giáo viên" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả giáo viên</SelectItem>
-                {uniqueTeachers.map((teacher) => (
-                  <SelectItem key={teacher} value={teacher}>
-                    {teacher}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterClass} onValueChange={setFilterClass}>
-              <SelectTrigger>
-                <SelectValue placeholder="Lọc theo lớp" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả lớp</SelectItem>
-                {uniqueClasses.map((className) => (
-                  <SelectItem key={className} value={className}>
-                    {className}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterRating} onValueChange={setFilterRating}>
-              <SelectTrigger>
-                <SelectValue placeholder="Lọc theo đánh giá" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả đánh giá</SelectItem>
-                <SelectItem value="5">5 sao</SelectItem>
-                <SelectItem value="4">4 sao</SelectItem>
-                <SelectItem value="3">3 sao</SelectItem>
-                <SelectItem value="2">2 sao</SelectItem>
-                <SelectItem value="1">1 sao</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="text-sm text-muted-foreground pt-2">
-              Hiển thị {filteredFeedback.length} / {mockFeedback.length} đánh giá
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Từ ngày</label>
+              <input type="date" className="h-9 rounded-md border bg-background px-3 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Đến ngày</label>
+              <input type="date" className="h-9 rounded-md border bg-background px-3 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Feedback Table */}
+      {/* Feedback Table using common DataTable */}
       <Card>
         <CardHeader>
           <CardTitle>Danh sách Feedback</CardTitle>
-          <CardDescription>Quản lý và duyệt các đánh giá từ phụ huynh</CardDescription>
+          <CardDescription>Bảng Giáo viên • Lớp • Đánh giá • Hành động</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Giáo Viên</TableHead>
-                  <TableHead>Phụ Huynh / Học Sinh</TableHead>
-                  <TableHead>Lớp</TableHead>
-                  <TableHead>Đánh Giá</TableHead>
-                  <TableHead>Trạng Thái</TableHead>
-                  <TableHead>Ngày</TableHead>
-                  <TableHead>Hành Động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredFeedback.map((feedback) => {
-                  const StatusIcon = statusConfig[feedback.status].icon
-                  return (
-                    <TableRow key={feedback.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={feedback.teacherAvatar || "/placeholder.svg"} />
-                            <AvatarFallback>
-                              {feedback.teacherName.split(" ").slice(-1)[0].substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">{feedback.teacherName}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p className="font-medium">{feedback.studentName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {feedback.isAnonymous ? "Ẩn danh" : feedback.parentName}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">{feedback.className}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${i < feedback.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
-                            />
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className="h-4 w-4" />
-                          <Badge className={statusConfig[feedback.status].color}>
-                            {statusConfig[feedback.status].label}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{feedback.createdAt}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDetail(feedback)}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          Hành Động
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={paginatedTeachers}
+            pagination={{
+              currentPage: page,
+              totalPages: Math.ceil(teacherRows.length / pageSize) || 1,
+              totalItems: teacherRows.length,
+              itemsPerPage: pageSize,
+              onPageChange: setPage,
+              onItemsPerPageChange: (n) => { setPageSize(n); setPage(1) },
+            }}
+            loading={false}
+            error={null}
+            emptyMessage="Chưa có feedback nào"
+            enableSearch={false}
+          />
         </CardContent>
       </Card>
 
-      <FeedbackDetailDialog feedback={selectedFeedback} open={dialogOpen} onOpenChange={setDialogOpen} />
+      {/* Feedback list dialog */}
+      <FeedbackListDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        row={dialogRow}
+        openFeedbackIds={openFeedbackIds}
+        setOpenFeedbackIds={setOpenFeedbackIds}
+      />
     </div>
+  )
+}
+
+// Dialog listing feedbacks for a teacher; each item expandable
+function FeedbackListDialog({
+  open,
+  onOpenChange,
+  row,
+  openFeedbackIds,
+  setOpenFeedbackIds,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  row: TeacherRow | null
+  openFeedbackIds: Record<string, boolean>
+  setOpenFeedbackIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+}) {
+  const [filterClass, setFilterClass] = React.useState<string>("")
+  const [minRating, setMinRating] = React.useState<number>(0)
+  const [onlyAnonymous, setOnlyAnonymous] = React.useState<boolean>(false)
+  const [sortNewestFirst, setSortNewestFirst] = React.useState<boolean>(true)
+
+
+  const filteredFeedbacks = React.useMemo(() => {
+    if (!row) return [] as TeacherFeedback[]
+    let list = [...row.allFeedbacks]
+    if (filterClass) {
+      list = list.filter((f) => f.className === filterClass)
+    }
+    if (minRating > 0) {
+      list = list.filter((f) => f.rating === minRating)
+    }
+    if (onlyAnonymous) {
+      list = list.filter((f) => f.isAnonymous)
+    }
+
+    list.sort((a, b) => {
+      const da = new Date(a.createdAt).getTime()
+      const db = new Date(b.createdAt).getTime()
+      return sortNewestFirst ? db - da : da - db
+    })
+    return list
+  }, [row, filterClass, minRating, onlyAnonymous, sortNewestFirst])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {row ? (
+              <span>
+                Feedback • {row.teacherName}
+              </span>
+            ) : (
+              'Feedback'
+            )}
+          </DialogTitle>
+          {row && (
+            <DialogDescription>
+              {row.totalFeedbacks} đánh giá • Trung bình {row.overallAvgRating}/5 • {row.classes.length} lớp
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        {!row ? (
+          <div className="text-sm text-muted-foreground">Chưa có dữ liệu.</div>
+        ) : row.allFeedbacks.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Chưa có feedback cho giáo viên này.</div>
+        ) : (
+          <div className="space-y-3">
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-3 border rounded-md">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Lọc theo lớp</label>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                >
+                  <option value="">Tất cả</option>
+                  {row.classes.map((c) => (
+                    <option key={c.className} value={c.className}>{c.className}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Số sao</label>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={minRating}
+                  onChange={(e) => setMinRating(Number(e.target.value))}
+                >
+                  <option value={0}>Tất cả</option>
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Sắp xếp</label>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={sortNewestFirst ? 'new' : 'old'}
+                  onChange={(e) => setSortNewestFirst(e.target.value === 'new')}
+                >
+                  <option value="new">Mới nhất</option>
+                  <option value="old">Cũ nhất</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 mt-6">
+                <input
+                  id="onlyAnonymous"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={onlyAnonymous}
+                  onChange={(e) => setOnlyAnonymous(e.target.checked)}
+                />
+                <label htmlFor="onlyAnonymous" className="text-sm select-none">Chỉ ẩn danh</label>
+              </div>
+            </div>
+
+            {filteredFeedbacks.map((f) => {
+              const openItem = !!openFeedbackIds[f.id]
+              const toggle = () => setOpenFeedbackIds((s) => ({ ...s, [f.id]: !openItem }))
+              return (
+                <div key={f.id} className="border rounded-md">
+                  <button onClick={toggle} className="w-full flex items-center justify-between p-3 hover:bg-accent/50 transition-colors text-left">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {f.isAnonymous ? 'Ẩn danh' : f.parentName} <span className="text-muted-foreground">• {f.isAnonymous ? 'Học sinh ẩn danh' : f.studentName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">{f.className}</Badge>
+                        <span className="text-xs text-muted-foreground">Ngày: {f.createdAt}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StarRating value={f.rating} />
+                      {openItem ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </button>
+                  {openItem && (
+                    <div className="px-4 pb-4 pt-2 space-y-4">
+                      {/* Basic Info */}
+                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                        <div>
+                          <p className="font-medium">Giáo Viên</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={row.teacherAvatar || '/placeholder.svg'} />
+                              <AvatarFallback>{row.teacherName.split(' ').slice(-1)[0].substring(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <p className="font-semibold text-foreground">{row.teacherName}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-medium">Học Sinh</p>
+                          <p className="font-semibold text-foreground mt-2">{f.isAnonymous ? 'Ẩn danh' : f.studentName}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Phụ Huynh</p>
+                          <p className="font-semibold text-foreground mt-2">{f.isAnonymous ? 'Ẩn danh' : f.parentName}</p>
+                          {!f.isAnonymous && <p className="text-xs">{f.parentEmail}</p>}
+                        </div>
+                        <div>
+                          <p className="font-medium">Lớp</p>
+                          <p className="font-semibold text-foreground mt-2">{f.className}</p>
+                        </div>
+                      </div>
+
+                      {/* Overall Rating */}
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Đánh Giá Chung</p>
+                        <StarRating value={f.rating} />
+                      </div>
+
+                      {/* Category Breakdown */}
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-3">Đánh Giá Chi Tiết</p>
+                        <div className="space-y-3">
+                          {Object.entries(f.categories).map(([key, value]) => (
+                            <div key={key}>
+                              <div className="flex justify-between items-center mb-1">
+                                <p className="text-sm font-medium">
+                                  {categoryLabels[key as keyof typeof categoryLabels]}
+                                </p>
+                                <span className="text-sm font-semibold">{value}/5</span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${(value / 5) * 100}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Comment */}
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Nhận Xét</p>
+                        <p className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">{f.comment}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
