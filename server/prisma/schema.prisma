@@ -151,7 +151,7 @@ model Class {
   description       String?
   feeStructureId    String?                @map("fee_structure_id") @db.Uuid
   gradeId           String?                @map("grade_id") @db.Uuid
-  maxStudents       Int?                   @map("max_students")
+  maxStudents       Int?                   @default(30) @map("max_students")
   name              String
   status            String                 @default("draft") // draft, ready, active, completed, suspended, cancelled
   subjectId         String                 @map("subject_id") @db.Uuid
