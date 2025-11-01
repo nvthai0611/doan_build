@@ -18,7 +18,8 @@ export interface Student {
 }
 
 export interface TeachingSession {
-  id: number
+  id: number | string // Session ID (có thể là string UUID từ API)
+  classId?: string // ID của lớp học (để navigate đến trang lớp)
   date: Date
   title: string
   time: string

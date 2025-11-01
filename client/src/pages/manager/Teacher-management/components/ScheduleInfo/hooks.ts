@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { centerOwnerTeacherService } from "../../../../../services/center-owner/teacher-management/teacher.service"
 import { TeachingSession, UseTeachingSessionsReturn } from "./types"
-import { getMockSessions } from "./utils"
 
 // Hook để gọi API lịch dạy
 export const useTeachingSessions = (teacherId: string, year: number, month: number): UseTeachingSessionsReturn => {
@@ -21,7 +20,8 @@ export const useTeachingSessions = (teacherId: string, year: number, month: numb
         
         if (response.data && (response.data as any).sessions) {
           const formattedSessions: TeachingSession[] = (response.data as any).sessions.map((session: any) => ({
-            id: parseInt(session.id.replace(/-/g, '').substring(0, 8), 16),
+            id: session.id, // Giữ nguyên ID từ API (UUID string)
+            classId: session.classId, // Lấy classId từ API
             date: new Date(session.date),
             title: session.title,
             time: session.time,
@@ -39,14 +39,13 @@ export const useTeachingSessions = (teacherId: string, year: number, month: numb
           }))
           setSessions(formattedSessions)
         } else {
-          // Fallback to mock data nếu API không trả về dữ liệu
-          setSessions(getMockSessions(year, month))
+          // Không có dữ liệu
+          setSessions([])
         }
       } catch (err) {
         console.error('Error fetching schedule:', err)
-        // Fallback to mock data khi có lỗi
-        setSessions(getMockSessions(year, month))
-        setError('Không thể tải dữ liệu từ server, hiển thị dữ liệu mẫu')
+        setSessions([])
+        setError('Không thể tải dữ liệu từ server')
       } finally {
         setLoading(false)
       }

@@ -54,6 +54,7 @@ import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
 import { SelectTeacherSheet } from './Sheet/SelectTeacherSheet';
 import { ShareClassSheet } from './Sheet/ShareClassSheet';
 import { ChangeStatusDialog } from './Dialog/ChangeStatusDialog';
+import { TransferTeacherSheet } from './Sheet/TransferTeacherSheet';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useToast } from '../../../../hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -77,6 +78,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [isAssignTeacherModalOpen, setIsAssignTeacherModalOpen] = useState(false);
   const [isAssignTeacherLoading, setIsAssignTeacherLoading] = useState(false);
+  const [isTransferTeacherSheetOpen, setIsTransferTeacherSheetOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const { toast } = useToast();
@@ -899,20 +901,32 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
             </CardTitle>
             <div className="flex items-center gap-2">
               {classData.teacher ? (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRemoveTeacher}
-                  disabled={isAssignTeacherLoading || !canEditGeneralInfo}
-                  title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
-                >
-                  {isAssignTeacherLoading ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                  Gỡ giáo viên
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsTransferTeacherSheetOpen(true)}
+                    disabled={isAssignTeacherLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED}
+                    title={classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED ? 'Không thể chuyển giáo viên cho lớp đã hủy hoặc hoàn thành' : 'Chuyển giáo viên'}
+                  >
+                    <Users className="h-4 w-4" />
+                    Chuyển giáo viên
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRemoveTeacher}
+                    disabled={isAssignTeacherLoading || !canEditGeneralInfo}
+                    title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
+                  >
+                    {isAssignTeacherLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                    Gỡ giáo viên
+                  </Button>
+                </>
               ) : (
                 <Button 
                   variant="outline" 
@@ -1013,6 +1027,13 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         onSuccess={() => {
           // Data will be automatically refetched via query invalidation
         }}
+      />
+
+      {/* Transfer Teacher Sheet */}
+      <TransferTeacherSheet
+        open={isTransferTeacherSheetOpen}
+        onOpenChange={setIsTransferTeacherSheetOpen}
+        classData={classData}
       />
     </div>
   );

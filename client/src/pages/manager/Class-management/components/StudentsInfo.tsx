@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Filter,
   RefreshCw,
+  Ban,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -487,9 +489,12 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem>Xem hồ sơ</DropdownMenuItem>
-            <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
-            <DropdownMenuItem>Điểm danh</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
+              <Ban className="h-4 w-4 mr-2" />
+              Ngưng học
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600">
+              <Trash2 className="h-4 w-4 mr-2" />
               Xóa khỏi lớp
             </DropdownMenuItem>
           </DropdownMenuContent>

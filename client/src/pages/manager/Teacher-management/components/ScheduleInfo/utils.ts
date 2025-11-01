@@ -41,6 +41,119 @@ export const getStudentStatusText = (status: string): string => {
   return STUDENT_STATUS_TEXT[status] || "Chưa xác định"
 }
 
+/**
+ * Tính toán text hiển thị cho session status
+ * 
+ * Logic:
+ * 1. Nếu status === "end" -> "Đã kết thúc"
+ * 2. Nếu status !== "end":
+ *    - Kiểm tra session.date có phải là hôm nay không
+ *    - Parse time để lấy endTime (ví dụ: "07:00-08:30" -> "08:30")
+ *    - Tạo Date object với session.date + endTime
+ *    - So sánh với thời gian hiện tại
+ *    - Nếu endTime đã qua -> Tính số giờ đã trôi qua và hiển thị "Đã kết thúc X giờ trước"
+ *    - Nếu chưa qua -> Hiển thị status text thông thường
+ * 
+ * @param session - Session object cần tính toán
+ * @returns {string} Text hiển thị cho status
+ */
+export const getSessionStatusText = (session: TeachingSession): string => {
+  // Nếu status là "end", hiển thị "Đã kết thúc"
+  if (session.status === "end") {
+    return "Đã kết thúc"
+  }
+  
+  // Debug log (có thể xóa sau)
+  // console.log('Session status:', session.status, 'Date:', session.date, 'Time:', session.time)
+
+  // Nếu status là "day_off", hiển thị "Nghỉ học"
+  if (session.status === "day_off") {
+    return "Nghỉ học"
+  }
+
+  // Kiểm tra xem session có phải là hôm nay không
+  const now = new Date()
+  const sessionDate = new Date(session.date)
+  
+  // Reset time về 00:00:00 để so sánh chỉ ngày
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const sessionDateStart = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate())
+  
+  // So sánh ngày
+  const isToday = todayStart.getTime() === sessionDateStart.getTime()
+
+  // Nếu không phải hôm nay, trả về status text thông thường
+  if (!isToday) {
+    if (session.status === "happening") {
+      return "Đang diễn ra"
+    }
+    return "Chưa diễn ra"
+  }
+
+  // Nếu là hôm nay, kiểm tra xem thời gian kết thúc đã qua chưa
+  // Parse time string "07:00-08:30" để lấy endTime "08:30"
+  const timeParts = session.time.split("-")
+  if (timeParts.length !== 2) {
+    // Nếu format không đúng, trả về status text thông thường
+    if (session.status === "happening") {
+      return "Đang diễn ra"
+    }
+    return "Chưa diễn ra"
+  }
+
+  const endTimeStr = timeParts[1].trim() // "08:30"
+  const timeParts2 = endTimeStr.split(":")
+  if (timeParts2.length !== 2) {
+    // Nếu format không đúng
+    if (session.status === "happening") {
+      return "Đang diễn ra"
+    }
+    return "Chưa diễn ra"
+  }
+
+  const endHour = parseInt(timeParts2[0], 10)
+  const endMinute = parseInt(timeParts2[1], 10)
+
+  // Kiểm tra NaN
+  if (isNaN(endHour) || isNaN(endMinute)) {
+    if (session.status === "happening") {
+      return "Đang diễn ra"
+    }
+    return "Chưa diễn ra"
+  }
+
+  // Tạo Date object với ngày session và thời gian kết thúc
+  const endDateTime = new Date(sessionDate)
+  endDateTime.setHours(endHour, endMinute, 0, 0)
+
+  // So sánh với thời gian hiện tại
+  // Nếu thời gian kết thúc đã qua
+  if (endDateTime < now) {
+    // Tính số giờ đã trôi qua
+    const hoursPassed = Math.floor((now.getTime() - endDateTime.getTime()) / (1000 * 60 * 60))
+    
+    // Hiển thị "Đã kết thúc X giờ trước"
+    if (hoursPassed === 0) {
+      // Nếu chưa đến 1 giờ, tính phút
+      const minutesPassed = Math.floor((now.getTime() - endDateTime.getTime()) / (1000 * 60))
+      if (minutesPassed === 0) {
+        return "Đã kết thúc vừa xong"
+      }
+      return `Đã kết thúc ${minutesPassed} phút trước`
+    } else if (hoursPassed === 1) {
+      return "Đã kết thúc 1 giờ trước"
+    } else {
+      return `Đã kết thúc ${hoursPassed} giờ trước`
+    }
+  }
+
+  // Nếu thời gian kết thúc chưa qua, trả về status text thông thường
+  if (session.status === "happening") {
+    return "Đang diễn ra"
+  }
+  return "Chưa diễn ra"
+}
+
 // Week utility functions
 export const getWeekDates = (year: number, month: number, weekStart: number = 0): Date[] => {
   const firstDayOfMonth = new Date(year, month, 1)
@@ -213,181 +326,4 @@ export const goToToday = (
   setCurrentDate(today)
 }
 
-// Mock data generator
-export const getMockSessions = (year: number, month: number): TeachingSession[] => {
-  const sessions: TeachingSession[] = [
-    // Tháng 9/2025 (month = 8)
-    {
-      id: 1,
-      date: new Date(2025, 8, 2),
-      title: "Buổi 1",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10A",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "1", name: "Nguyễn Văn A", status: "present" },
-        { id: "2", name: "Trần Thị B", status: "absent" },
-        { id: "3", name: "Lê Văn C", status: "present" },
-      ],
-      attendanceWarnings: [
-        "*Có 2 học viên chưa điểm danh*",
-        "*Có 2 học viên chưa được chấm điểm tiểu chí buổi học*",
-        "*Có 1 giáo viên chưa điểm danh*",
-      ],
-      description: "Phương học: Chưa cập nhật",
-      materials: ["Sách giáo khoa Toán 10", "Bài tập thực hành"],
-    },
-    {
-      id: 2,
-      date: new Date(2025, 8, 2),
-      title: "Buổi 2",
-      time: "14:00-16:00",
-      subject: "Vật lý",
-      class: "11B",
-      room: "P102",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "4", name: "Phạm Văn D", status: "present" },
-        { id: "5", name: "Hoàng Thị E", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Thí nghiệm vật lý",
-    },
-    {
-      id: 3,
-      date: new Date(2025, 8, 3),
-      title: "Buổi 3",
-      time: "10:00-12:00",
-      subject: "Hóa học",
-      class: "12A",
-      room: "P103",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "6", name: "Vũ Văn F", status: "late" },
-        { id: "7", name: "Đỗ Thị G", status: "present" },
-        { id: "8", name: "Bùi Văn H", status: "absent" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên đi muộn*", "*Có 1 học viên vắng mặt*"],
-      description: "Phương học: Thí nghiệm hóa học",
-    },
-    {
-      id: 4,
-      date: new Date(2025, 8, 4),
-      title: "Buổi 2",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10B",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "9", name: "Cao Văn I", status: "present" },
-        { id: "10", name: "Lý Thị K", status: "present" },
-      ],
-      attendanceWarnings: ["*Có 1 giáo viên chưa điểm danh*"],
-      description: "Phương học: Chưa cập nhật",
-    },
-    {
-      id: 5,
-      date: new Date(2025, 8, 11),
-      title: "Buổi 4",
-      time: "10:00-12:00",
-      subject: "Vật lý",
-      class: "11A",
-      room: "P102",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "11", name: "Mai Văn L", status: "present" },
-        { id: "12", name: "Tô Thị M", status: "present" },
-        { id: "13", name: "Hồ Văn N", status: "absent" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên vắng mặt*"],
-      description: "Phương học: Lý thuyết và thực hành",
-    },
-    {
-      id: 6,
-      date: new Date(2025, 8, 18),
-      title: "Buổi 5",
-      time: "14:00-16:00",
-      subject: "Tiếng Anh",
-      class: "12B",
-      room: "P104",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "14", name: "Đinh Văn O", status: "present" },
-        { id: "15", name: "Võ Thị P", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Giao tiếp tiếng Anh",
-    },
-    {
-      id: 7,
-      date: new Date(2025, 8, 23),
-      title: "Buổi 6",
-      time: "08:00-10:00",
-      subject: "Toán học",
-      class: "10B",
-      room: "P101",
-      hasAlert: true,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "16", name: "Phan Văn Q", status: "present" },
-        { id: "17", name: "Dương Thị R", status: "late" },
-      ],
-      attendanceWarnings: ["*Có 1 học viên đi muộn*"],
-      description: "Phương học: Giải bài tập nâng cao",
-    },
-    {
-      id: 8,
-      date: new Date(2025, 8, 25),
-      title: "Buổi 7",
-      time: "10:00-12:00",
-      subject: "Vật lý",
-      class: "11A",
-      room: "P102",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "18", name: "Lương Văn S", status: "present" },
-        { id: "19", name: "Chu Thị T", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Ôn tập kiểm tra",
-    },
-    {
-      id: 9,
-      date: new Date(2025, 8, 30),
-      title: "Buổi 8",
-      time: "14:00-16:00",
-      subject: "Hóa học",
-      class: "12A",
-      room: "P103",
-      hasAlert: false,
-      status: "scheduled",
-      teacher: "Ngô Quốc Tu",
-      students: [
-        { id: "20", name: "Trịnh Văn U", status: "present" },
-        { id: "21", name: "Đặng Thị V", status: "present" },
-      ],
-      attendanceWarnings: [],
-      description: "Phương học: Thí nghiệm tổng hợp",
-    },
-  ]
 
-  return sessions.filter((session) => session.date.getFullYear() === year && session.date.getMonth() === month)
-}

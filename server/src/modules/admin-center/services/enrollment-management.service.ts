@@ -569,9 +569,30 @@ export class EnrollmentManagementService {
                 );
             }
 
-            // Check enrollment exists
+            // Check enrollment exists with class info
             const enrollment = await this.prisma.enrollment.findUnique({
-                where: { id: parseInt(id) }
+                where: { id: parseInt(id) },
+                include: {
+                    class: {
+                        select: {
+                            id: true,
+                            name: true,
+                            status: true,
+                            teacherId: true,
+                        }
+                    },
+                    student: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    isActive: true,
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             if (!enrollment) {
@@ -584,16 +605,71 @@ export class EnrollmentManagementService {
                 );
             }
 
+            // Validation: Check if class exists and has teacher
+            if (!enrollment.class) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Lớp học không tồn tại'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Validation: Cannot change status if class is cancelled or completed
+            if (enrollment.class.status === 'cancelled') {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không thể thay đổi trạng thái học sinh trong lớp đã hủy'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Validation: Cannot change to studying if class doesn't have teacher
+            if (body.status === 'studying' && !enrollment.class.teacherId) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Lớp học chưa có giáo viên, không thể chuyển học sinh sang trạng thái đang học'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Validation: Cannot change to studying if class status is not active or ready
+            if (body.status === 'studying' && !['active', 'ready'].includes(enrollment.class.status)) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: `Không thể chuyển học sinh sang trạng thái đang học khi lớp ở trạng thái ${enrollment.class.status}`
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            // Validation: Check if student account is active when changing to studying
+            if (body.status === 'studying' && !enrollment.student.user.isActive) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        message: 'Không thể chuyển học sinh sang trạng thái đang học vì tài khoản học sinh đang không hoạt động'
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
             // Update enrollment
             const updatedEnrollment = await this.prisma.enrollment.update({
                 where: { id: parseInt(id) },
                 data: {
                     status: body.status,
-                    ...(body.status === 'completed' && {
+                    ...(body.status === 'graduated' && {
                         completedAt: new Date(),
-                        finalGrade: body.finalGrade || null,
-                        completionStatus: body.completionStatus || null,
-                        completionNotes: body.completionNotes || null
+                    }),
+                    ...(body.status === 'stopped' && {
+                        completionNotes: body.completionNotes || 'Dừng học',
                     })
                 }
             });

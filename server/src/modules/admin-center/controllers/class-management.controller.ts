@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, Patch, Req } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ClassManagementService } from '../services/class-management.service';
 import { CreateClassDto } from '../dto/class/create-class.dto';
@@ -107,6 +108,25 @@ export class ClassManagementController {
     @ApiResponse({ status: 200, description: 'Danh sách giáo viên' })
     async getTeachersByClass(@Param('id') classId: string) {
         return this.classManagementService.getTeachersByClass(classId);
+    }
+
+    @Post(':id/transfer-teacher')
+    @ApiOperation({ summary: 'Chuyển giáo viên cho lớp' })
+    @ApiResponse({ status: 200, description: 'Yêu cầu chuyển giáo viên đã được tạo' })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' })
+    async transferTeacher(@Param('id') classId: string, @Body() body: any, @Req() req: any) {
+        const requestedBy = req.user?.userId;
+        if (!requestedBy) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không xác định được người yêu cầu',
+                },
+                HttpStatus.UNAUTHORIZED,
+            );
+        }
+        return this.classManagementService.transferTeacher(classId, body, requestedBy);
     }
 
     // ============ STATISTICS ============
