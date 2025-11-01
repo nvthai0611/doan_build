@@ -156,7 +156,7 @@ export const privateRoutes = (
         path="/parent"
         element={<AuthMiddleware allowedRoles={['parent']} />}
       >
-        <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
+        <Route index element={<ParentOverview />} />
         <Route path="dashboard" element={<ParentOverview />} />
         <Route path="children" element={<ListChildren />} />
         <Route path="classes" element={<ChildrenClasses />} />
