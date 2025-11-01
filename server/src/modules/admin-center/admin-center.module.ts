@@ -102,7 +102,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     CloudinaryService,
     // SessionSchedulerService, // Cron jobs service
   ],
-  exports: [AlertService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 
 })
 //check

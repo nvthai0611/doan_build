@@ -1,5 +1,5 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Query, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ScheduleManagementService } from '../services/schedule-management.service';
 import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
 
@@ -36,6 +36,22 @@ export class ScheduleManagementController {
     }
     const data = await this.scheduleService.getScheduleByMonth({ month: monthNum as any, year: yearNum as any });
     return { data, message: 'Lấy lịch theo tháng thành công' };
+  }
+
+  @Get('sessions/:id')
+  @ApiOperation({ summary: 'Lấy chi tiết buổi học theo ID' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async getSessionById(@Param('id') sessionId: string) {
+    const data = await this.scheduleService.getSessionById(sessionId);
+    return { data, message: 'Lấy chi tiết buổi học thành công' };
+  }
+
+  @Get('sessions/:id/attendance')
+  @ApiOperation({ summary: 'Lấy danh sách điểm danh của buổi học' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async getSessionAttendance(@Param('id') sessionId: string) {
+    const data = await this.scheduleService.getSessionAttendance(sessionId);
+    return { data, message: 'Lấy danh sách điểm danh thành công' };
   }
 
   @Get('classes/active-schedules')

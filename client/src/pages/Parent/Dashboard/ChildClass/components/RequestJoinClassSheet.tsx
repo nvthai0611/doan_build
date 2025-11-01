@@ -178,12 +178,19 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       return false;
     }
 
+    // Kiểm tra lớp còn chỗ trống không
+    const hasAvailableSlots = classData.maxStudents ? classData.currentStudents < classData.maxStudents : true;
+    if (!hasAvailableSlots) {
+      return false; // Lớp đã đầy, không thể đăng ký
+    }
+
     // Lấy số buổi đã hoàn thành từ database (backend đã đếm)
     const completedSessions = classData.completedSessionsCount || 0;
     
     // Nếu đã qua 2 buổi trở lên thì yêu cầu đến trung tâm
     return completedSessions >= 2;
   };
+  
 
   if (!classData) {
     return null;
@@ -192,7 +199,6 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const schedules = formatSchedule(classData.recurringSchedule?.schedules);
   const needsInPersonTest = requiresInPersonTest();
   const pastSessionsCount = classData.completedSessionsCount || 0;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
       <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">

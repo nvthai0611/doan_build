@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ interface LessonsInfoProps {
 }
 
 export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<SessionStatus>(SessionStatus.HAPPENING);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -53,7 +55,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     pagination.setCurrentPage(1);
   }, [filter, debouncedSearchTerm, startDate, endDate]);
   
-  // Fetch ALL sessions data from API (không phân trang ở BE)
   const { 
     data: sessionsResponse, 
     isLoading, 
@@ -69,7 +70,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       sortOrder: "asc",
     }),
     enabled: !!classId && !!classData?.academicYear,
-    staleTime: 0,
+    staleTime: 1000,
     refetchOnWindowFocus: true
   });
 
@@ -230,10 +231,13 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       searchPlaceholder: 'Tìm kiếm buổi học...',
       render: (session: any, index: number) => (
         <div>
-          <div className="font-medium text-blue-600 cursor-pointer hover:underline">
+          <div 
+            className="font-medium text-blue-600 cursor-pointer hover:underline"
+            onClick={() => navigate(`/center-qn/session-details/${session.id}`)}
+          >
             {`${session.name || session.notes || session.topic }`}
-                      </div>
-                      <div className="text-sm text-gray-500">
+          </div>
+          <div className="text-sm text-gray-500">
             {(() => {
               const d = session.scheduledDate || session.sessionDate;
               if (!d) return '-';
@@ -242,8 +246,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               const timeText = session.startTime && session.endTime ? ` ${session.startTime} → ${session.endTime}` : '';
               return `${weekday}: ${dateText}${timeText}`;
             })()}
-                      </div>
-                    </div>
+          </div>
+        </div>
       )
     },
     {
@@ -252,16 +256,16 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       width: '80px',
       render: (session: any) => getStatusBadge(session.status)
     },
-    // {
-    //   key: 'teacher',
-    //   header: 'Giáo viên',
-    //   width: '200px',
-    //   render: (session: any) => (
-    //     <div className="text-sm text-gray-600">
-    //       {session.teacher?.name || session.teacherName || '-'}
-    //     </div>
-    //   )
-    // },
+    {
+      key: 'teacher',
+      header: 'Giáo viên',
+      width: '200px',
+      render: (session: any) => (
+        <div className="text-sm text-gray-600">
+          {session.teacher?.name || session.teacherName || '-'}
+        </div>
+      )
+    },
     {
       key: 'attendance',
       header: 'Sĩ số',
@@ -281,6 +285,15 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       align: 'center',
       render: (session: any) => (
         <span className="text-sm">{session.absentCount || 0}</span>
+      )
+    },
+    {
+      key: 'present',
+      header: 'Điểm danh',
+      width: '80px',
+      align: 'center',
+      render: (session: any) => (
+        <span className="text-sm">{session.attendanceCount || 0}</span>
       )
     },
     // {
@@ -310,9 +323,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
-                        <DropdownMenuItem>Điểm danh</DropdownMenuItem>
-                        <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/center-qn/session-details/${session.id}`)}>Xem chi tiết</DropdownMenuItem>
+                        <DropdownMenuItem>Lùi lịch</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">Hủy buổi học</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

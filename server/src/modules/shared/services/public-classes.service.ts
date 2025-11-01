@@ -29,62 +29,72 @@ export class PublicClassesService {
       where.gradeId = gradeId;
     }
 
-    const [classes, total] = await Promise.all([
-      this.prisma.class.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          subject: {
-            select: {
-              id: true,
-              name: true,
-            },
+    // Fetch tất cả lớp phù hợp (không phân trang) để lọc lớp còn chỗ
+    const allClasses = await this.prisma.class.findMany({
+      where,
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
           },
-          grade: {
-            select: {
-              id: true,
-              name: true,
-            },
+        },
+        grade: {
+          select: {
+            id: true,
+            name: true,
           },
-          teacher: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  fullName: true,
-                  avatar: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              enrollments: {
-                where: {
-                  status: { in: ['studying', 'not_been_updated'] },
-                },
-              },
-              classRequests: {
-                where: {
-                  status: 'pending',
-                },
-              },
-              sessions: {
-                where: {
-                  status: 'end',
-                },
+        },
+        teacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                fullName: true,
+                avatar: true,
               },
             },
           },
         },
-        orderBy: [
-          { status: 'desc' }, // ready trước, active sau
-          { createdAt: 'desc' },
-        ],
-      }),
-      this.prisma.class.count({ where }),
-    ]);
+        _count: {
+          select: {
+            enrollments: {
+              where: {
+                status: { in: ['studying', 'not_been_updated'] },
+              },
+            },
+            classRequests: {
+              where: {
+                status: 'pending',
+              },
+            },
+            sessions: {
+              where: {
+                status: 'end',
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { status: 'desc' }, // ready trước, active sau
+        { createdAt: 'desc' },
+      ],
+    });
+
+    // Lọc chỉ lấy các lớp còn chỗ trống
+    const availableClasses = allClasses.filter((classItem) => {
+      // Nếu không giới hạn số lượng thì luôn có chỗ
+      if (!classItem.maxStudents) {
+        return true;
+      }
+      // Kiểm tra số học sinh hiện tại < maxStudents
+      return classItem._count.enrollments < classItem.maxStudents;
+    });
+
+    // Phân trang sau khi filter
+    const total = availableClasses.length;
+    const classes = availableClasses.slice(skip, skip + limit);
 
     const formattedClasses = classes.map((classItem) => ({
       id: classItem.id,

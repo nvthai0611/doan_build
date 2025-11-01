@@ -95,7 +95,7 @@ export const centerOwnerScheduleService = {
    * Lấy chi tiết buổi học
    */
   getSessionById: async (sessionId: string): Promise<ClassSession> => {
-    const response = await ApiService.get<ClassSession>(`/admin-center/schedule/sessions/${sessionId}`)
+    const response = await ApiService.get<ClassSession>(`/admin-center/schedule-management/sessions/${sessionId}`)
     return response.data as any
   },
 
@@ -105,7 +105,7 @@ export const centerOwnerScheduleService = {
    * Lấy danh sách điểm danh của buổi học
    */
   getSessionAttendance: async (sessionId: string): Promise<Attendance[]> => {
-    const response = await ApiService.get<Attendance[]>(`/admin-center/schedule/sessions/${sessionId}/attendance`)
+    const response = await ApiService.get<Attendance[]>(`/admin-center/schedule-management/sessions/${sessionId}/attendance`)
     return response.data as any
   },
 

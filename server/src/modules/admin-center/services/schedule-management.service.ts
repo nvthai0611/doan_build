@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
 import { PrismaService } from 'src/db/prisma.service';
 
@@ -275,5 +275,200 @@ export class ScheduleManagementService {
             });
 
         return result;
+    }
+
+    /**
+     * Lấy chi tiết buổi học theo ID
+     */
+    async getSessionById(sessionId: string) {
+        const session = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        subject: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        },
+                        grade: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        },
+                        teacher: {
+                            select: {
+                                id: true,
+                                user: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        email: true,
+                                        phone: true,
+                                        avatar: true,
+                                    }
+                                }
+                            }
+                        },
+                        _count: {
+                            select: {
+                                enrollments: true,
+                            }
+                        }
+                    }
+                },
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                        capacity: true,
+                    }
+                },
+                teacher: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phone: true,
+                                avatar: true,
+                            }
+                        }
+                    }
+                },
+                attendances: {
+                    select: {
+                        id: true,
+                        status: true,
+                        note: true,
+                        recordedAt: true,
+                        student: {
+                            select: {
+                                id: true,
+                                user: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        email: true,
+                                        avatar: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!session) {
+            throw new NotFoundException('Không tìm thấy buổi học');
+        }
+
+        return {
+            id: session.id,
+            name: session.notes || `Buổi ${session.academicYear}`,
+            topic: session.notes,
+            sessionDate: session.sessionDate,
+            startTime: session.startTime,
+            endTime: session.endTime,
+            status: session.status,
+            notes: session.notes,
+            academicYear: session.academicYear,
+            cancellationReason: session.cancellationReason,
+            createdAt: session.createdAt,
+            class: session.class,
+            room: session.room,
+            teacher: session.teacher,
+            attendanceCount: session.attendances.length,
+        };
+    }
+
+    /**
+     * Lấy danh sách điểm danh của buổi học
+     */
+    async getSessionAttendance(sessionId: string) {
+        // Kiểm tra buổi học có tồn tại không
+        const session = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: { id: true, classId: true }
+        });
+
+        if (!session) {
+            throw new NotFoundException('Không tìm thấy buổi học');
+        }
+
+        // Lấy danh sách attendance từ StudentSessionAttendance
+        const attendances = await this.prisma.studentSessionAttendance.findMany({
+            where: {
+                sessionId: sessionId,
+            },
+            include: {
+                student: {
+                    select: {
+                        id: true,
+                        studentCode: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phone: true,
+                                avatar: true,
+                            }
+                        }
+                    }
+                },
+                recordedByTeacher: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                student: {
+                    user: {
+                        fullName: 'asc'
+                    }
+                }
+            }
+        });
+
+        // Map to frontend format
+        return attendances.map(attendance => ({
+            id: attendance.id.toString(),
+            sessionId: attendance.sessionId,
+            studentId: attendance.studentId,
+            studentName: attendance.student.user.fullName,
+            studentCode: attendance.student.studentCode,
+            status: attendance.status, // present, absent, late, not_attended
+            checkInTime: attendance.recordedAt,
+            checkOutTime: null, // Có thể bổ sung sau nếu cần
+            note: attendance.note,
+            recordedBy: attendance.recordedByTeacher?.user?.fullName,
+            recordedAt: attendance.recordedAt,
+            isSent: attendance.isSent,
+            sentAt: attendance.sentAt,
+            student: {
+                id: attendance.student.id,
+                studentCode: attendance.student.studentCode,
+                user: attendance.student.user,
+            },
+            // Bổ sung các trường đánh giá (nếu có trong database)
+            thaiDoHoc: null, // Có thể thêm vào StudentSessionAttendance model sau
+            kyNangLamViecNhom: null, // Có thể thêm vào StudentSessionAttendance model sau
+        }));
     }
 }

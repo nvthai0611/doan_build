@@ -59,6 +59,8 @@ import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/Tea
 import StudentClassRequestsPage from "../pages/manager/StudentClassRequests/StudentClassRequestsPage";
 import { AlertsPage } from "../pages/manager/Alerts/AlertsPage";
 import { ShowcasesPage } from '../pages/manager/ShowcaseManagement/ShowcasePage';
+import SessionDetail from "../pages/manager/Session-management/SessionDetail";
+import NotFound from "../pages/Error/NotFound";
 
 export const privateRoutes = (
   <>
@@ -101,6 +103,7 @@ export const privateRoutes = (
         <Route path="feedback" element={<FeedbackTeacher />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="communication/showcases" element={<ShowcasesPage />} />
+        <Route path="session-details/:sessionId" element={<SessionDetail />} />
       </Route>
 
       {/* Giáo viên */}
@@ -184,6 +187,9 @@ export const privateRoutes = (
           element={<div>System Settings - Coming Soon</div>}
         />
       </Route>
+
+      {/* 404 - Not Found for authenticated users (Catch all routes) */}
+      <Route path="*" element={<NotFound />} />
     </Route>
   </>
 );

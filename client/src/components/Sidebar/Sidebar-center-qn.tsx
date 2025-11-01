@@ -137,20 +137,6 @@ const centerOwnerMenuItems = [
     ],
   },
   {
-    title: 'Báo cáo - Thống kê',
-    icon: BarChart3,
-    href: '/reports',
-    children: [
-      { title: 'Dashboard trực quan', href: '/reports/dashboard' },
-      { title: 'Báo cáo sĩ số', href: '/reports/enrollment' },
-      { title: 'Báo cáo chuyên cần', href: '/reports/attendance' },
-      { title: 'Báo cáo học phí', href: '/reports/tuition' },
-      { title: 'Báo cáo doanh thu', href: '/reports/revenue' },
-      { title: 'Thống kê kết quả', href: '/reports/results' },
-      { title: 'Xuất PDF/Excel', href: '/reports/export' },
-    ],
-  },
-  {
     title: 'Truyền thông',
     icon: MessageSquare,
     href: '/center-qn/communication',
