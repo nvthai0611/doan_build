@@ -31,6 +31,7 @@ import {
 import { Switch } from "../../assets/shadcn-ui/components/ui/switch";
 import { Button } from "../../assets/shadcn-ui/components/ui/button";
 import { useTheme } from "../../lib/theme";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
@@ -51,7 +52,7 @@ const Header = () => {
   const [navColor, setNavColor] = useState("integrate");
   const [preset, setPreset] = useState("default");
   const [font, setFont] = useState("inter");
-
+  const navigate = useNavigate();
   // Reset settings to default
   const resetSettings = () => {
     toggleDarkMode(); // Reset to light mode
@@ -149,7 +150,6 @@ const Header = () => {
       <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center gap-6">
-          
           {/* CenterUp Demo Section */}
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -158,7 +158,9 @@ const Header = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">QN Edu System</span>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                QN Edu System
+              </span>
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded">
                 ADVANCED
               </span>
@@ -198,7 +200,10 @@ const Header = () => {
 
           {/* Search */}
           {searchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            <form
+              onSubmit={handleSearch}
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+            >
               <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <input
                 type="text"
@@ -213,7 +218,7 @@ const Header = () => {
                 type="button"
                 onClick={() => {
                   setSearchOpen(false);
-                  setSearchQuery("");
+                  setSearchQuery('');
                 }}
                 className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               >
@@ -226,7 +231,9 @@ const Header = () => {
               className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">⌘K</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                ⌘K
+              </span>
             </button>
           )}
 
@@ -242,7 +249,10 @@ const Header = () => {
           </button>
 
           {/* Notifications */}
-          <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+          <DropdownMenu
+            open={notificationsOpen}
+            onOpenChange={setNotificationsOpen}
+          >
             <DropdownMenuTrigger asChild>
               <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                 <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -259,18 +269,28 @@ const Header = () => {
               <DropdownMenuSeparator />
               <div className="max-h-96 overflow-y-auto">
                 <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium text-sm">Học sinh mới đăng ký</div>
-                  <div className="text-xs text-gray-500">Nguyễn Văn A vừa đăng ký khóa học Toán 12</div>
+                  <div className="font-medium text-sm">
+                    Học sinh mới đăng ký
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Nguyễn Văn A vừa đăng ký khóa học Toán 12
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">2 phút trước</div>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium text-sm">Thanh toán thành công</div>
-                  <div className="text-xs text-gray-500">Học phí tháng 9 đã được thanh toán</div>
+                  <div className="font-medium text-sm">
+                    Thanh toán thành công
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Học phí tháng 9 đã được thanh toán
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">1 giờ trước</div>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex flex-col items-start p-3">
                   <div className="font-medium text-sm">Lịch học thay đổi</div>
-                  <div className="text-xs text-gray-500">Lớp Toán 12A chuyển từ 14h sang 15h</div>
+                  <div className="text-xs text-gray-500">
+                    Lớp Toán 12A chuyển từ 14h sang 15h
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">3 giờ trước</div>
                 </DropdownMenuItem>
               </div>
@@ -282,7 +302,7 @@ const Header = () => {
           </DropdownMenu>
 
           {/* Settings */}
-          <button 
+          <button
             onClick={() => setSettingsOpen(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
             title="Settings (Ctrl+,)"
@@ -306,8 +326,12 @@ const Header = () => {
               <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                Hồ sơ cá nhân
+                <div className="flex items-center gap-2" onClick={() => navigate('/profile')}>
+                  <User
+                    className="mr-2 h-4 w-4"
+                  />
+                  Hồ sơ cá nhân
+                </div>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
@@ -327,38 +351,44 @@ const Header = () => {
       {settingsOpen && (
         <div className="fixed inset-0 z-50">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50" 
+          <div
+            className="absolute inset-0 bg-black/50"
             onClick={() => setSettingsOpen(false)}
           />
-          
+
           {/* Settings Panel */}
-          <div className={`absolute right-0 top-0 h-full bg-white dark:bg-gray-900 shadow-xl transition-all duration-300 ${
-            settingsFullscreen ? 'w-full' : 'w-96'
-          }`}>
+          <div
+            className={`absolute right-0 top-0 h-full bg-white dark:bg-gray-900 shadow-xl transition-all duration-300 ${
+              settingsFullscreen ? 'w-full' : 'w-96'
+            }`}
+          >
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Settings</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Settings
+                </h2>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => setSettingsFullscreen(!settingsFullscreen)}
-                    title={settingsFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    title={
+                      settingsFullscreen ? 'Exit fullscreen' : 'Fullscreen'
+                    }
                   >
                     <Maximize2 className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={resetSettings}
                     title="Reset to default"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => setSettingsOpen(false)}
                     title="Close settings"
@@ -375,9 +405,14 @@ const Header = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                      <span className="font-medium text-gray-900 dark:text-white">Dark mode</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Dark mode
+                      </span>
                     </div>
-                    <Switch checked={darkMode === "dark"} onCheckedChange={toggleDarkMode} />
+                    <Switch
+                      checked={darkMode === 'dark'}
+                      onCheckedChange={toggleDarkMode}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -398,7 +433,10 @@ const Header = () => {
                       </div>
                       <span className="font-medium">Right to left</span>
                     </div>
-                    <Switch checked={rightToLeft} onCheckedChange={setRightToLeft} />
+                    <Switch
+                      checked={rightToLeft}
+                      onCheckedChange={setRightToLeft}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -423,14 +461,16 @@ const Header = () => {
 
                   {/* Layout Options */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Layout</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      Layout
+                    </h4>
                     <div className="grid grid-cols-3 gap-2">
                       <button
-                        onClick={() => setNavLayout("sidebar")}
+                        onClick={() => setNavLayout('sidebar')}
                         className={`p-3 border rounded-lg transition-colors ${
-                          navLayout === "sidebar" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          navLayout === 'sidebar'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex">
@@ -442,11 +482,11 @@ const Header = () => {
                         </div>
                       </button>
                       <button
-                        onClick={() => setNavLayout("top")}
+                        onClick={() => setNavLayout('top')}
                         className={`p-3 border rounded-lg transition-colors ${
-                          navLayout === "top" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          navLayout === 'top'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex flex-col space-y-1">
@@ -455,11 +495,11 @@ const Header = () => {
                         </div>
                       </button>
                       <button
-                        onClick={() => setNavLayout("bottom")}
+                        onClick={() => setNavLayout('bottom')}
                         className={`p-3 border rounded-lg transition-colors ${
-                          navLayout === "bottom" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          navLayout === 'bottom'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex flex-col space-y-1">
@@ -472,14 +512,16 @@ const Header = () => {
 
                   {/* Color Options */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Color</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      Color
+                    </h4>
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => setNavColor("integrate")}
+                        onClick={() => setNavColor('integrate')}
                         className={`p-3 border rounded-lg transition-colors ${
-                          navColor === "integrate" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          navColor === 'integrate'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex">
@@ -489,14 +531,16 @@ const Header = () => {
                             <div className="h-1 bg-blue-500 rounded"></div>
                           </div>
                         </div>
-                        <div className="text-xs text-center mt-2">Integrate</div>
+                        <div className="text-xs text-center mt-2">
+                          Integrate
+                        </div>
                       </button>
                       <button
-                        onClick={() => setNavColor("apparent")}
+                        onClick={() => setNavColor('apparent')}
                         className={`p-3 border rounded-lg transition-colors ${
-                          navColor === "apparent" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          navColor === 'apparent'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex">
@@ -517,27 +561,33 @@ const Header = () => {
                   <h3 className="font-semibold">Presets</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "default", color: "blue" },
-                      { id: "green", color: "green" },
-                      { id: "brown", color: "amber" },
-                      { id: "pink", color: "pink" },
-                      { id: "purple", color: "purple" },
-                      { id: "gray", color: "gray" }
+                      { id: 'default', color: 'blue' },
+                      { id: 'green', color: 'green' },
+                      { id: 'brown', color: 'amber' },
+                      { id: 'pink', color: 'pink' },
+                      { id: 'purple', color: 'purple' },
+                      { id: 'gray', color: 'gray' },
                     ].map((presetOption) => (
                       <button
                         key={presetOption.id}
                         onClick={() => setPreset(presetOption.id)}
                         className={`p-3 border rounded-lg transition-colors ${
-                          preset === presetOption.id 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          preset === presetOption.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="w-full h-8 flex">
-                          <div className={`w-2 h-full bg-${presetOption.color}-500 rounded`}></div>
+                          <div
+                            className={`w-2 h-full bg-${presetOption.color}-500 rounded`}
+                          ></div>
                           <div className="flex-1 ml-2 space-y-1">
-                            <div className={`h-1 bg-${presetOption.color}-500 rounded`}></div>
-                            <div className={`h-1 bg-${presetOption.color}-500 rounded`}></div>
+                            <div
+                              className={`h-1 bg-${presetOption.color}-500 rounded`}
+                            ></div>
+                            <div
+                              className={`h-1 bg-${presetOption.color}-500 rounded`}
+                            ></div>
                           </div>
                         </div>
                       </button>
@@ -550,18 +600,18 @@ const Header = () => {
                   <h3 className="font-semibold">Font</h3>
                   <div className="space-y-2">
                     {[
-                      { id: "inter", name: "Inter" },
-                      { id: "roboto", name: "Roboto" },
-                      { id: "poppins", name: "Poppins" },
-                      { id: "open-sans", name: "Open Sans" }
+                      { id: 'inter', name: 'Inter' },
+                      { id: 'roboto', name: 'Roboto' },
+                      { id: 'poppins', name: 'Poppins' },
+                      { id: 'open-sans', name: 'Open Sans' },
                     ].map((fontOption) => (
                       <button
                         key={fontOption.id}
                         onClick={() => setFont(fontOption.id)}
                         className={`w-full p-3 text-left border rounded-lg transition-colors ${
-                          font === fontOption.id 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
+                          font === fontOption.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="font-medium">{fontOption.name}</div>
