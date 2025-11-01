@@ -35,6 +35,9 @@ const handleCreatePayment = async () => {
     toast.error("Vui lòng chọn ít nhất một hóa đơn")
     return
   }
+  if(!window.confirm("Xác nhận tạo hóa đơn thanh toán cho các hóa đơn đã chọn?")){
+    return
+  }
   setLoading(true)
   try {
     // Gọi API mới: tạo payment + QR code trong 1 bước
@@ -71,14 +74,19 @@ const handleCreatePayment = async () => {
   }
 
   // Xóa hóa đơn khỏi payment
-  const handleRemoveFee = (feeId: string) => {
-    const newList = selectedFees.filter(id => id !== feeId)
-    if (newList.length === 0) {
-      toast.error("Phải có ít nhất 1 hóa đơn trong payment")
-      return
-    }
-    handleUpdatePayment(newList)
+const handleRemoveFee = (feeId: string) => {
+  const newList = selectedFees.filter(id => id !== feeId)
+
+  // Nếu chưa tạo payment, chỉ cập nhật state
+  if (!currentPayment?.id) {
+    setSelectedFees(newList)
+    toast.success("Đã xóa hóa đơn")
+    return
   }
+
+  // Nếu đã tạo payment, gọi API để cập nhật
+  handleUpdatePayment(newList)
+}
 
   return (
     <Card>

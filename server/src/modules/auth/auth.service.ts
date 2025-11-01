@@ -6,13 +6,15 @@ import { PermissionService } from './permission.service';
 import { RegisterParentDto } from './dto/register-parent.dto';
 import { AlertService } from '../admin-center/services/alert.service';
 import { generateQNCode } from 'src/utils/function.util';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: PermissionService,
-    private readonly alertService: AlertService
+    private readonly alertService: AlertService,
+    private readonly cloudinaryService: CloudinaryService
   ) {}
 
   async getUserByField(field: string = 'id', value: string) {
@@ -510,6 +512,9 @@ export class AuthService {
       fullName: user.fullName,
       role: user.role,
       phone: user.phone,
+      avatar: user.avatar,
+      gender: user.gender,
+      birthDate: user.birthDate,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -527,12 +532,52 @@ export class AuthService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
+    // Chuẩn bị data để update
+    const updateUserData: any = {};
+
+    if (updateData.fullName !== undefined) {
+      updateUserData.fullName = updateData.fullName;
+    }
+
+    if (updateData.phone !== undefined) {
+      updateUserData.phone = updateData.phone;
+    }
+
+    if (updateData.avatar !== undefined) {
+      let avatarUrl = updateData.avatar;
+      
+      // Nếu avatar là base64, upload lên Cloudinary
+      if (avatarUrl && avatarUrl.startsWith('data:image')) {
+        const base64Data = avatarUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        const file: Express.Multer.File = {
+          fieldname: 'avatar',
+          originalname: `avatar-${userId}-${Date.now()}.jpg`,
+          encoding: '7bit',
+          mimetype: 'image/jpeg',
+          size: buffer.length,
+          buffer: buffer,
+        } as Express.Multer.File;
+        
+        const uploadResult = await this.cloudinaryService.uploadImage(file, 'avatars');
+        avatarUrl = uploadResult.secure_url;
+      }
+      
+      updateUserData.avatar = avatarUrl;
+    }
+
+    if (updateData.gender !== undefined) {
+      updateUserData.gender = updateData.gender;
+    }
+
+    if (updateData.birthDate !== undefined) {
+      updateUserData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        fullName: updateData.fullName,
-        phone: updateData.phone,
-      },
+      data: updateUserData,
       include: {
         // teacher: true,
         student: true,
@@ -546,6 +591,9 @@ export class AuthService {
       fullName: updatedUser.fullName,
       role: updatedUser.role,
       phone: updatedUser.phone,
+      avatar: updatedUser.avatar,
+      gender: updatedUser.gender,
+      birthDate: updatedUser.birthDate,
       isActive: updatedUser.isActive,
       // teacher: updatedUser.teacher,
       student: updatedUser.student,

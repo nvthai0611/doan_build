@@ -335,6 +335,7 @@ export enum PaymentStatus {
   FAILED = 'failed', // Thất bại
   REFUNDED = 'refunded', // Đã hoàn tiền
   CANCELLED = 'cancelled', // Đã hủy
+  PARTIALLY_PAID = 'partially_paid', // Hoàn tiền một phần
 }
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -344,6 +345,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   [PaymentStatus.FAILED]: 'Thất bại',
   [PaymentStatus.REFUNDED]: 'Đã hoàn tiền',
   [PaymentStatus.CANCELLED]: 'Đã hủy',
+  [PaymentStatus.PARTIALLY_PAID]: 'Thanh toán 1 phần',
 };
 
 export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
@@ -353,6 +355,7 @@ export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   [PaymentStatus.FAILED]: 'border-red-500 text-red-700 bg-red-50',
   [PaymentStatus.REFUNDED]: 'border-purple-500 text-purple-700 bg-purple-50',
   [PaymentStatus.CANCELLED]: 'border-gray-500 text-gray-700 bg-gray-50',
+  [PaymentStatus.PARTIALLY_PAID]: 'border-indigo-500 text-indigo-700 bg-indigo-50',
 };
 
 // ==================== LEAVE REQUEST STATUS ====================
