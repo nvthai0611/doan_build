@@ -335,33 +335,33 @@ export default function DocumentUploadPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Section */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-[3px] border-[rgb(25,40,80)]">
-            <CardHeader className="bg-[rgb(240,225,200)]">
-              <CardTitle className="text-[rgb(25,40,80)] font-bold">BƯỚC 1: CHỌN FILE</CardTitle>
-              <CardDescription className="text-[rgb(25,40,80)]">
+          <Card className="border-2 border-blue-200 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200">
+              <CardTitle className="text-blue-900 font-bold">Bước 1: Chọn file</CardTitle>
+              <CardDescription className="text-blue-700">
                 Kéo thả file hoặc click để chọn. Hỗ trợ PDF, Word, Excel, PowerPoint, hình ảnh
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6 bg-[rgb(240,225,200)]">
+            <CardContent className="p-6 bg-white">
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-[3px] border-dashed rounded-lg p-8 text-center transition-colors ${isUploading
-                    ? "border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
+                className={`border-3 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${isUploading
+                    ? "border-gray-300 bg-gray-50 opacity-50 cursor-not-allowed"
                     : isDragging
-                      ? "border-[rgb(255,127,80)] bg-[rgb(255,127,80)]/10"
-                      : "border-[rgb(25,40,80)] bg-white"
+                      ? "border-blue-500 bg-blue-50 shadow-lg"
+                      : "border-blue-300 bg-blue-50/30 hover:bg-blue-50 hover:border-blue-400 hover:shadow-md"
                   }`}
               >
-                <Upload className="w-12 h-12 mx-auto mb-4 text-[rgb(25,40,80)]" />
-                <p className="text-lg font-semibold text-[rgb(25,40,80)] mb-2">Kéo & Thả file vào đây</p>
-                <p className="text-sm text-[rgb(25,40,80)] mb-4">hoặc</p>
+                <Upload className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                <p className="text-lg font-bold text-blue-900 mb-2">Kéo & Thả file vào đây</p>
+                <p className="text-sm text-blue-700 mb-4">hoặc</p>
                 <Label htmlFor="file-upload">
                   <div className="inline-block">
                     <Button
                       type="button"
-                      className="bg-[rgb(255,127,80)] hover:bg-[rgb(255,107,60)] text-white font-bold border-[3px] border-[rgb(25,40,80)]"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all"
                       onClick={() => document.getElementById("file-upload")?.click()}
                       disabled={isUploading}
                     >
@@ -377,23 +377,23 @@ export default function DocumentUploadPage() {
                   className="hidden"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif"
                 />
-                <p className="text-xs text-[rgb(25,40,80)] mt-4">Kích thước tối đa: 50MB mỗi file</p>
+                <p className="text-xs text-blue-600 mt-4 font-medium">Kích thước tối đa: 50MB mỗi file</p>
               </div>
 
               {/* File List */}
               {files.length > 0 && (
                 <div className="mt-6 space-y-3">
-                  <h3 className="font-semibold text-[rgb(25,40,80)]">Danh sách file ({files.length})</h3>
+                  <h3 className="font-bold text-blue-900">Danh sách file ({files.length})</h3>
                   {files.map((file) => (
                     <div
                       key={file.id}
-                      className="p-3 bg-white border-[2px] border-[rgb(25,40,80)] rounded-lg space-y-2"
+                      className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg space-y-2 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="text-[rgb(25,40,80)]">{getFileIcon(file.type)}</div>
+                        <div className="text-blue-700">{getFileIcon(file.type)}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[rgb(25,40,80)] truncate">{file.name}</p>
-                          <p className="text-xs text-[rgb(25,40,80)]/70">{formatFileSize(file.size)}</p>
+                          <p className="text-sm font-bold text-blue-900 truncate">{file.name}</p>
+                          <p className="text-xs text-blue-600">{formatFileSize(file.size)}</p>
                           {file.status === "uploading" && <Progress value={file.progress} className="h-1 mt-2" />}
                         </div>
                         {file.status === "success" && <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />}
@@ -402,7 +402,7 @@ export default function DocumentUploadPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => removeFile(file.id)}
-                          className="flex-shrink-0 text-[rgb(25,40,80)] hover:text-red-600"
+                          className="flex-shrink-0 text-blue-700 hover:text-red-600 hover:bg-red-50"
                           disabled={isUploading}
                         >
                           <X className="w-4 h-4" />
@@ -415,7 +415,7 @@ export default function DocumentUploadPage() {
                           placeholder="Đặt lại tên file cho file này (tùy chọn)..."
                           value={file.customTitle || ""}
                           onChange={(e) => updateFileTitle(file.id, e.target.value)}
-                          className="border-[2px] border-[rgb(25,40,80)] bg-white text-sm h-8"
+                          className="border-2 border-blue-300 bg-white text-sm h-8 focus:border-blue-500"
                           disabled={isUploading}
                         />
                       </div>
@@ -426,21 +426,21 @@ export default function DocumentUploadPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-[3px] border-[rgb(25,40,80)]">
-            <CardHeader className="bg-[rgb(240,225,200)]">
-              <CardTitle className="text-[rgb(25,40,80)] font-bold">BƯỚC 2: THÔNG TIN TÀI LIỆU</CardTitle>
-              <CardDescription className="text-[rgb(25,40,80)]">
+          <Card className="border-2 border-indigo-200 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b-2 border-indigo-200">
+              <CardTitle className="text-indigo-900 font-bold">Bước 2: Thông tin tài liệu</CardTitle>
+              <CardDescription className="text-indigo-700">
                 Điền thông tin để phân loại và quản lý tài liệu
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6 bg-[rgb(240,225,200)] space-y-4">
+            <CardContent className="p-6 bg-white space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-[rgb(25,40,80)] font-bold">
-                    DANH MỤC:
+                  <Label htmlFor="category" className="text-indigo-900 font-bold">
+                    Danh mục
                   </Label>
                   <Select value={category} onValueChange={setCategory} disabled={isUploading}>
-                    <SelectTrigger className="border-[3px] border-[rgb(25,40,80)] bg-white">
+                    <SelectTrigger className="border-2 border-indigo-300 bg-white font-medium">
                       <SelectValue placeholder="Chọn danh mục..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -454,15 +454,15 @@ export default function DocumentUploadPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="class" className="text-[rgb(25,40,80)] font-bold">
-                    LỚP HỌC:
+                  <Label htmlFor="class" className="text-indigo-900 font-bold">
+                    Lớp học
                   </Label>
                   <Select
                     value={targetClass}
                     onValueChange={setTargetClass}
                     disabled={isLoadingClasses || isUploading}
                   >
-                    <SelectTrigger className="border-[3px] border-[rgb(25,40,80)] bg-white">
+                    <SelectTrigger className="border-2 border-indigo-300 bg-white font-medium">
                       <SelectValue placeholder={isLoadingClasses ? "Đang tải..." : "Chọn lớp học..."} />
                     </SelectTrigger>
                     <SelectContent>
@@ -477,8 +477,8 @@ export default function DocumentUploadPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-[rgb(25,40,80)] font-bold">
-                  TÊN FILE CHUNG:
+                <Label htmlFor="title" className="text-indigo-900 font-bold">
+                  Tên file chung
                 </Label>
                 <Input
                   id="title"
@@ -486,31 +486,31 @@ export default function DocumentUploadPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Đặt lại tên file chung cho tất cả file..."
-                  className="border-[3px] border-[rgb(25,40,80)] bg-white"
+                  className="border-2 border-indigo-300 bg-white font-medium focus:border-indigo-500"
                   disabled={isUploading}
                 />
-                <p className="text-xs text-[rgb(25,40,80)]/70">
+                <p className="text-xs text-indigo-600 font-medium">
                   💡 Mỗi file có thể có đặt lại tên riêng bên dưới danh sách file
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-[rgb(25,40,80)] font-bold">
-                  MÔ TẢ:
+                <Label htmlFor="description" className="text-indigo-900 font-bold">
+                  Mô tả
                 </Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                   placeholder="Mô tả ngắn về tài liệu..."
-                  className="border-[3px] border-[rgb(25,40,80)] bg-white min-h-[100px]"
+                  className="border-2 border-indigo-300 bg-white min-h-[100px] font-medium focus:border-indigo-500"
                   disabled={isUploading}
                 />
               </div>
 
               <Button
                 onClick={handleUploadAll}
-                className="w-full bg-[rgb(255,127,80)] hover:bg-[rgb(255,107,60)] text-white font-bold py-6 text-lg border-[3px] border-[rgb(25,40,80)]"
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-lg shadow-md hover:shadow-lg transition-all"
                 disabled={files.length === 0 || files.some((f) => f.status === "uploading") || uploadMutation.isPending || isUploading}
               >
                 {isUploading ? (
@@ -531,12 +531,12 @@ export default function DocumentUploadPage() {
 
         {/* Info Sidebar */}
         <div className="space-y-6">
-          <Card className="border-[3px] border-[rgb(25,40,80)]">
-            <CardHeader className="bg-[rgb(240,225,200)]">
-              <CardTitle className="text-[rgb(25,40,80)] font-bold">HƯỚNG DẪN</CardTitle>
+          <Card className="border-2 border-emerald-200 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b-2 border-emerald-200">
+              <CardTitle className="text-emerald-900 font-bold">Hướng dẫn</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 bg-[rgb(240,225,200)]">
-              <div className="space-y-4 text-sm text-[rgb(25,40,80)]">
+            <CardContent className="p-6 bg-white">
+              <div className="space-y-4 text-sm text-emerald-900">
                 <div>
                   <h4 className="font-bold mb-2">Định dạng hỗ trợ:</h4>
                   <ul className="list-disc list-inside space-y-1 text-xs">
@@ -568,24 +568,24 @@ export default function DocumentUploadPage() {
 
           <Card
             ref={statsCardRef}
-            className={`border-[3px] transition-all duration-300 ${isUploading
-                ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-300/50 scale-105'
-                : 'border-[rgb(25,40,80)]'
+            className={`border-2 shadow-md transition-all duration-300 ${isUploading
+                ? 'border-amber-400 bg-amber-50 shadow-xl shadow-amber-200/50 scale-[1.03]'
+                : 'border-amber-200'
               }`}
           >
-            <CardHeader className={isUploading ? "bg-blue-100" : "bg-[rgb(240,225,200)]"}>
-              <CardTitle className={`font-bold flex items-center gap-2 ${isUploading ? 'text-blue-900' : 'text-[rgb(25,40,80)]'}`}>
+            <CardHeader className={`border-b-2 transition-colors ${isUploading ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300" : "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"}`}>
+              <CardTitle className={`font-bold flex items-center gap-2 ${isUploading ? 'text-amber-900' : 'text-amber-900'}`}>
                 {isUploading && <Loader2 className="w-5 h-5 animate-spin" />}
-                THỐNG KÊ
+                Thống kê
               </CardTitle>
             </CardHeader>
-            <CardContent className={`p-6 space-y-3 ${isUploading ? "bg-blue-50" : "bg-[rgb(240,225,200)]"}`}>
+            <CardContent className={`p-6 space-y-3 ${isUploading ? "bg-amber-50" : "bg-white"}`}>
               {/* Upload Progress Section */}
               {isUploading && (
-                <div className="mb-4 p-3 bg-white rounded-lg border-[2px] border-blue-500">
+                <div className="mb-4 p-3 bg-white rounded-lg border-2 border-amber-400 shadow-md">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-blue-900">Đang upload...</span>
-                    <Badge className="bg-blue-600 text-white">
+                    <span className="text-sm font-bold text-amber-900">Đang upload...</span>
+                    <Badge className="bg-amber-600 text-white font-bold">
                       {uploadProgress.current}/{uploadProgress.total}
                     </Badge>
                   </div>
@@ -593,40 +593,40 @@ export default function DocumentUploadPage() {
                     value={(uploadProgress.current / uploadProgress.total) * 100}
                     className="h-2 mb-2"
                   />
-                  <p className="text-xs text-blue-700">
+                  <p className="text-xs text-amber-800 font-medium">
                     {Math.round((uploadProgress.current / uploadProgress.total) * 100)}% hoàn thành
                   </p>
                 </div>
               )}
 
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isUploading ? 'text-blue-900' : 'text-[rgb(25,40,80)]'}`}>
+                <span className={`text-sm font-medium ${isUploading ? 'text-amber-900' : 'text-amber-800'}`}>
                   File đã chọn:
                 </span>
-                <Badge className="bg-[rgb(255,127,80)] text-white border-[2px] border-[rgb(25,40,80)]">
+                <Badge className="bg-blue-600 text-white font-bold">
                   {files.length}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isUploading ? 'text-blue-900' : 'text-[rgb(25,40,80)]'}`}>
+                <span className={`text-sm font-medium ${isUploading ? 'text-amber-900' : 'text-amber-800'}`}>
                   Đã upload:
                 </span>
-                <Badge className="bg-green-600 text-white border-[2px] border-[rgb(25,40,80)]">
+                <Badge className="bg-green-600 text-white font-bold">
                   {uploadProgress.current > 0 ? uploadProgress.current : files.filter((f) => f.status === "success").length}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isUploading ? 'text-blue-900' : 'text-[rgb(25,40,80)]'}`}>
+                <span className={`text-sm font-medium ${isUploading ? 'text-amber-900' : 'text-amber-800'}`}>
                   Đang upload:
                 </span>
-                <Badge className="bg-blue-600 text-white border-[2px] border-[rgb(25,40,80)]">
+                <Badge className="bg-orange-600 text-white font-bold">
                   {files.filter((f) => f.status === "uploading").length}
                 </Badge>
               </div>
 
               {/* Warning message when uploading */}
               {isUploading && (
-                <div className="mt-3 p-2 bg-yellow-50 border-[2px] border-yellow-400 rounded text-xs text-yellow-800">
+                <div className="mt-3 p-2 bg-red-50 border-2 border-red-400 rounded text-xs text-red-800 font-bold">
                   ⚠️ Vui lòng không đóng trang này!
                 </div>
               )}

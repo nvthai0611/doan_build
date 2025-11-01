@@ -20,22 +20,19 @@ export class GradeController {
     @ApiQuery({ name: 'classFilter', required: false, description: 'Lọc theo lớp học' })
     @ApiQuery({ name: 'testTypeFilter', required: false, description: 'Lọc theo loại kiểm tra' })
     async getGradeViewData(@Req() request: any, @Query() filters: any) {
-        console.log('🎯 API /teacher/grades/view called');
-        console.log('🎯 Request user:', request.user);
-        console.log('🎯 Filters:', filters);
-        
+            
         // Lấy teacherId từ userId hoặc từ request.user.teacherId
         let teacherId = request.user?.teacherId;
         
         // Nếu không có teacherId, query từ userId
         if (!teacherId && request.user?.userId) {
-            console.log('🔍 teacherId not in token, querying from userId:', request.user.userId);
+            console.log('teacherId not in token, querying from userId:', request.user.userId);
             teacherId = await this.gradeService.getTeacherIdFromUserId(request.user.userId);
-            console.log('📋 Found teacherId:', teacherId);
+            console.log('Found teacherId:', teacherId);
         }
         
         if (!teacherId) {
-            console.log('❌ No teacher ID found');
+            console.log('No teacher ID found');
             return { 
                 success: false, 
                 status: HttpStatus.UNAUTHORIZED, 
@@ -53,10 +50,8 @@ export class GradeController {
         
         try {
             const data = await this.gradeService.getGradeViewData(teacherId, filters);
-            console.log('✅ Service returned data');
             return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
         } catch (error) {
-            console.error('❌ Error in getGradeViewData:', error);
             return { 
                 success: false, 
                 status: HttpStatus.INTERNAL_SERVER_ERROR, 
@@ -149,14 +144,10 @@ export class GradeController {
     @ApiOperation({ summary: 'Lấy danh sách học sinh của lớp (kèm điểm TB hiện tại)' })
     @ApiQuery({ name: 'classId', required: true, description: 'ID lớp (UUID)' })
     async getStudents(@Req() request: any, @Query('classId') classId: string) {
-        console.log('🎓 API getStudents called with classId:', classId);
-        console.log('🎓 Request user:', request.user);
         
         const userId = request.user?.userId;
-        console.log('🎓 User ID:', userId);
         
         if (!userId) {
-            console.log('❌ No user ID found');
             return { 
                 success: false, 
                 status: HttpStatus.UNAUTHORIZED, 
@@ -168,12 +159,9 @@ export class GradeController {
         
         try {
             const data = await this.gradeService.getStudentsOfClass(userId, classId);
-            console.log('🎓 Service returned data:', data);
-            console.log('🎓 Data length:', data?.length || 0);
             
             return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
         } catch (error) {
-            console.error('❌ Error in getStudents:', error);
             return { 
                 success: false, 
                 status: HttpStatus.INTERNAL_SERVER_ERROR, 
@@ -221,19 +209,14 @@ export class GradeController {
     @Post('record')
     @ApiOperation({ summary: 'Tạo assessment và ghi điểm hàng loạt' })
     async record(@Req() request: any, @Body() payload: RecordGradesDto) {
-        console.log('🎯 API /teacher/grades/record called with payload:', payload);
-        console.log('🎯 Request user:', request.user);
         
         // Không còn validate maxScore cố định = 10, vì maxScore giờ lấy từ SystemSetting
         // Backend service sẽ tự động query SystemSetting để lấy maxScore theo assessmentType
         
         const userId = request.user?.userId;
-        console.log('🎯 User ID:', userId);
-        console.log('🎯 Payload received:', JSON.stringify(payload, null, 2));
         
         // Validate userId
         if (!userId) {
-            console.log('❌ No user ID found');
             return { 
                 success: false, 
                 status: HttpStatus.UNAUTHORIZED, 
@@ -246,7 +229,6 @@ export class GradeController {
         // Validate UUID format
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(userId)) {
-            console.log('❌ Invalid user ID format:', userId);
             return { 
                 success: false, 
                 status: HttpStatus.BAD_REQUEST, 
@@ -258,11 +240,9 @@ export class GradeController {
         
         try {
             const data = await this.gradeService.recordGrades(userId, payload);
-            console.log('✅ Service returned data:', data);
             
             return { success: true, status: HttpStatus.CREATED, data, message: 'Đã tạo assessment và ghi điểm', meta: null };
         } catch (error) {
-            console.error('❌ Error in recordGrades:', error);
             return { 
                 success: false, 
                 status: HttpStatus.INTERNAL_SERVER_ERROR, 
