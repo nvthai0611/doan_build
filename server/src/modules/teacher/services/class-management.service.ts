@@ -355,7 +355,7 @@ export class ClassManagementService {
             const listStudent = await this.prisma.enrollment.findMany({
                 where: {
                     classId: classItem.id,
-                    status: 'active',
+                    status: 'studying',
                     student: {
                         user: {
                             isActive: true
@@ -379,6 +379,8 @@ export class ClassManagementService {
                     }
                 }
             });
+
+            
             
             const classSessionInfo = await this.prisma.classSession.findMany({
                 where: {
