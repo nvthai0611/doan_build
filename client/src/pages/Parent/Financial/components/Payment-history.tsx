@@ -208,7 +208,7 @@ export function PaymentHistory() {
               )}
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Phương thức thanh toán</div>
-                <div className="text-sm font-medium">{selectedPayment.method === "bank_transfer" ? "Chuyển khoản ngân hàng" : selectedPayment.method}</div>
+                <div className="text-sm font-medium">{selectedPayment.method === "bank_transfer" ? "Chuyển khoản ngân hàng" : "Tiền mặt"}</div>
               </div>
               {selectedPayment.transactionCode && (
                 <div>

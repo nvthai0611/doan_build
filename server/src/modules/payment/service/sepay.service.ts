@@ -7,6 +7,7 @@ import { FeeRecordPaymentInfo } from '../dto/create-payment-qr.dto';
 import { paymentSuccessEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 import emailUtil from 'src/utils/email.util';
 import { PaymentGateway } from '../gateway/payment.gateway';
+import { createOrderCode, extractOrderCode } from '../../../utils/function.util';
 
 export interface SepayTransaction {
   id: string;
@@ -114,7 +115,7 @@ async createPaymentQR(userId: string, dto: CreatePaymentQRDto) {
 
     // Tính tổng tiền
     const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
-    const orderCode = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const orderCode = createOrderCode()
     const expirationDate = new Date(feeRecords[0].dueDate);
 
     // Tạo Payment (status: pending)
@@ -284,7 +285,7 @@ async handleWebhook(webhookData: SepayWebhookDto) {
     }
 
     // Trích xuất orderCode (transactionCode)
-    const orderCode = this.extractOrderCode(webhookData.content);
+    const orderCode = extractOrderCode(webhookData.content);
     if (!orderCode) {
       this.logger.warn(`Không tìm thấy mã đơn hàng trong nội dung: ${webhookData.content}`);
       return { data: null, message: 'Không tìm thấy mã đơn hàng' };
@@ -406,11 +407,11 @@ async handleWebhook(webhookData: SepayWebhookDto) {
   /**
    * Trích xuất mã đơn hàng từ nội dung chuyển khoản
    */
-  private extractOrderCode(content: string): string | null {
-    //PAY1761731230904487
-    const match = content.match(/PAY\d+/);
-    return match ? match[0] : null;
-  }
+  // private extractOrderCode(content: string): string | null {
+  //   //PAY1761731230904487
+  //   const match = content.match(/PAY\d+/);
+  //   return match ? match[0] : null;
+  // }
 
   /**
    * Kiểm tra trạng thái thanh toán theo mã đơn hàng

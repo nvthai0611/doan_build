@@ -359,10 +359,11 @@ export class ParentManagementController {
             expirationDate?: string,
             notes?: string,
             reference?: string,
-            method?: 'bank_transfer' | 'cash'
+            method?: 'bank_transfer' | 'cash',
+            payNow?: boolean
         }
     ) {
-        const { feeRecordIds, expirationDate, notes, reference, method } = body || {};
+        const { feeRecordIds, expirationDate, notes, reference, method, payNow } = body || {};
 
         if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
             throw new HttpException('feeRecordIds là bắt buộc và phải là mảng có ít nhất 1 phần tử', HttpStatus.BAD_REQUEST);
@@ -373,7 +374,8 @@ export class ParentManagementController {
                 expirationDate,
                 notes,
                 reference,
-                method
+                method,
+                payNow
             });
 
             // result already in { data, message } shape in service
@@ -388,6 +390,51 @@ export class ParentManagementController {
             throw new HttpException(`Lỗi khi tạo hóa đơn: ${error?.message || error}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+@Patch(':id/update-payment-status')
+@ApiOperation({ summary: 'Cập nhật trạng thái thanh toán' })
+@ApiQuery({ name: 'status', required: true, type: String, description: 'Trạng thái thanh toán (pending, completed, partially_paid, cancelled)' })
+@ApiResponse({ status: HttpStatus.OK, description: 'Cập nhật trạng thái thành công' })
+@ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Trạng thái không hợp lệ' })
+@ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy thanh toán' })
+async updatePaymentStatus(
+  @Param('id') paymentId: string,
+  @Query('status') status: string
+) {
+  if (!status || status.trim().length === 0) {
+    throw new HttpException(
+      'Trạng thái thanh toán không được để trống',
+      HttpStatus.BAD_REQUEST
+    );
+  }
+
+  const validStatuses = ['pending', 'completed', 'partially_paid', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    throw new HttpException(
+      'Trạng thái thanh toán không hợp lệ. Chỉ chấp nhận: pending, completed, partially_paid, cancelled',
+      HttpStatus.BAD_REQUEST
+    );
+  }
+
+  try {
+    const result = await this.parentManagementService.updateStatusPayment(
+      paymentId,
+      status
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: result.message,
+      data: result.data
+    };
+  } catch (error: any) {
+    if (error instanceof HttpException) throw error;
+    throw new HttpException(
+      `Lỗi khi cập nhật trạng thái thanh toán: ${error?.message || error}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 
     /**
      * Lấy chi tiết phụ huynh theo ID
@@ -588,5 +635,7 @@ export class ParentManagementController {
             data: result.data
         };
     }
+
+
 
 }
