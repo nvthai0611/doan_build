@@ -77,7 +77,6 @@ export default function ClassDetail() {
     { key: 'dashboard', label: 'Tổng quan' },
     { key: 'students', label: 'Học viên' },
     { key: 'lessons', label: 'Buổi học' },
-    { key: 'assignments', label: 'Công việc' },
     { key: 'documents', label: 'Tài liệu' },
   ];
 
@@ -93,8 +92,6 @@ export default function ClassDetail() {
         return <StudentsInfo classId={classId} classData={classData} />;
       case 'lessons':
         return <LessonsInfo classId={classId} classData={classData} />;
-      case 'assignments':
-        return <AssignmentsInfo classId={classId} classData={classData} />;
         case "documents":
           return <DocumentsInfo classId={classId} />
       

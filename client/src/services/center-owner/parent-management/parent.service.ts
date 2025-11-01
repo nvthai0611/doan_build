@@ -323,10 +323,44 @@ const unlinkStudentFromParent = async (parentId: string, studentId: string) => {
     }
 }
 
+const getPaymentDetailsOfParent = async (paymentId: string, parentId: string) => {
+    try {
+        const query = new URLSearchParams({ paymentId, parentId }).toString();
+        const response = await ApiService.get(`/admin-center/parent-management/payment-details?${query}`)
+        return response as any
+    } catch (error) {
+        console.error('Error getting payment details of parent:', error)
+        throw error
+    }
+}
+
+const createBillForParent = async (
+    parentId: string,
+    data: {
+        feeRecordIds: string[],
+        expirationDate?: string,
+        notes?: string,
+        reference?: string,
+        method?: 'bank_transfer' | 'cash'
+    }
+) => {
+    try {
+        const response = await ApiService.post(
+            `/admin-center/parent-management/${encodeURIComponent(parentId)}/create-bill`,
+            data
+        )
+        return response.data as { data: any; message: string; statusCode?: number }
+    } catch (error) {
+        console.error('Error creating bill for parent:', error)
+        throw error
+    }
+}
+
 export const ParentService = {
     getListParents,
     getParentById,
     getCountByStatus,
+    createBillForParent,
     createParent,
     createParentWithStudents,
     addStudentToParent,
@@ -334,5 +368,6 @@ export const ParentService = {
     toggleParentStatus,
     searchStudentByCode,
     linkStudentToParent,
-    unlinkStudentFromParent
+    unlinkStudentFromParent,
+    getPaymentDetailsOfParent
 }

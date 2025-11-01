@@ -105,7 +105,12 @@ export class FinancialService {
             }
 
             const payments = await this.prisma.payment.findMany({
-                where: { parentId, status: status ? status : undefined },
+                where: { 
+        parentId, 
+        status: status === 'pending' 
+            ? { in: ['pending', 'partially_paid'] } 
+            : (status ? status : undefined)
+    },
                 include: {
                     feeRecordPayments: {
                         include: {
@@ -139,16 +144,19 @@ export class FinancialService {
 
             const formattedPayments = payments.map((payment: any) => ({
                 id: payment.id,
-                date: payment.paidAt?.toLocaleDateString('vi-VN'),
+                date: payment.paidAt,
                 amount: Number(payment.amount),
+                paidAmount: Number(payment.paidAmount),
+                orderDate: payment.createdAt,
                 method: payment.method || 'bank_transfer',
                 status: payment.status,
                 transactionCode: payment.transactionCode,
                 reference: payment.reference,
                 notes: payment.notes,
+                expirationDate: payment.expirationDate,
                 allocations: (payment.feeRecordPayments || []).map((frp: any) => ({
                     feeRecordPaymentId: frp.id,
-                    amount: Number(frp.amount),
+                    amount: Number(frp.feeRecord.amount),
                     feeRecordId: frp.feeRecordId,
                     studentId: frp.feeRecord?.studentId,
                     studentName: frp.feeRecord?.student?.user?.fullName,
@@ -196,6 +204,8 @@ export class FinancialService {
                                     feeStructure: {
                                         select: {
                                             name: true,
+                                            amount: true,
+                                            period: true
                                         }
                                     },
                                     student:{
@@ -250,7 +260,9 @@ export class FinancialService {
 
             // Tính tổng tiền
             const totalAmount = feeRecords.reduce((sum, fr) => sum + Number(fr.totalAmount), 0);
+            
             const orderCode = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}` // Ví dụ sinh mã đơn hàng duy nhất
+            const expirationDate = new Date(feeRecords[0].dueDate);
             // Tạo Payment (status: pending)
             const payment = await this.prisma.payment.create({
       data: {
@@ -258,6 +270,8 @@ export class FinancialService {
         amount: totalAmount,
         status: 'pending',
         transactionCode: orderCode,
+        createdAt: new Date(),
+        expirationDate: expirationDate,
         method: 'bank_transfer',
         feeRecordPayments: {
           create: feeRecords.map(fr => ({

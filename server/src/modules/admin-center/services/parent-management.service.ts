@@ -4,6 +4,7 @@ import hash from '../../../utils/hasing.util';
 import { generateQNCode } from '../../../utils/function.util';
 import { templateParentStudentAccount } from 'src/modules/shared/template-email/template-parent-student-account';
 import emailUtil from '../../../utils/email.util';
+import { checkId } from '../../../utils/validate.util';
 
 @Injectable()
 export class ParentManagementService {
@@ -1447,196 +1448,185 @@ export class ParentManagementService {
         }
     }
 
-    /**
-     * Thêm học sinh mới cho phụ huynh đã tồn tại
-     */
-    // async addStudentToParent(parentId: string, studentData: {
-    //     fullName: string;
-    //     username: string;
-    //     email?: string;
-    //     phone?: string;
-    //     gender?: 'MALE' | 'FEMALE' | 'OTHER';
-    //     birthDate?: string;
-    //     address?: string;
-    //     grade?: string;
-    //     schoolId: string;
-    //     password?: string;
-    // }) {
-    //     // ===== VALIDATION PHASE =====
-        
-    //     // Validate parent exists
-    //     const parent = await this.prisma.parent.findUnique({
-    //         where: { id: parentId },
-    //         include: { user: true }
-    //     });
+    async getPaymentDetails(paymentId: string, parentId: string) {
+        try {            
+            const payment = await this.prisma.payment.findFirst({
+                where: { id: paymentId, parentId },
+                include: {
+                    feeRecordPayments: {
+                        include: {
+                            feeRecord: {
+                                include: {
+                                    class: {
+                                        select: {
+                                            name: true,
+                                            classCode: true,
+                                        }
+                                    },
+                                    feeStructure: {
+                                        select: {
+                                            name: true,
+                                            amount: true,
+                                            period: true
+                                        }
+                                    },
+                                    student:{
+                                        include: {
+                                            user:{
+                                                select:{ fullName: true }
+                                            }
+                                        }
+                                    }
 
-    //     if (!parent) {
-    //         throw new HttpException(
-    //             'Phụ huynh không tồn tại',
-    //             HttpStatus.NOT_FOUND
-    //         );
-    //     }
+                                }
+                            },
+                        }
+                    }
+                }
+            })
+            if (!payment) {
+                throw new HttpException(
+                    { message: 'Không tìm thấy payment' },
+                    HttpStatus.NOT_FOUND
+                )
+            }
+            return payment
+        }
+        catch (error) {
 
-    //     if (!parent.user.isActive) {
-    //         throw new HttpException(
-    //             'Tài khoản phụ huynh đã bị vô hiệu hóa',
-    //             HttpStatus.BAD_REQUEST
-    //         );
-    //     }
+        }
+    }
 
-    //     // Validate required fields
-    //     if (!studentData.fullName || !studentData.username || !studentData.schoolId) {
-    //         throw new HttpException(
-    //             'Thông tin học sinh không đầy đủ (cần: fullName, username, schoolId)',
-    //             HttpStatus.BAD_REQUEST
-    //         );
-    //     }
+    async createBillForParent(parentId: string, feeRecordIds: string[], options?: {
+        expirationDate?: string;
+        notes?: string;
+        reference?: string;
+        method?: 'bank_transfer' | 'cash';
+    }) {
+        try {
+            // Validate parent
+            const parent = await this.prisma.parent.findUnique({
+                where: { id: parentId },
+                include: { user: true, students: true }
+            });
 
-    //     // Check if student username already exists
-    //     const existingUsername = await this.prisma.user.findUnique({
-    //         where: { username: studentData.username + "@student.qne.edu.vn" }
-    //     });
+            if (!parent) {
+                throw new HttpException('Phụ huynh không tồn tại', HttpStatus.NOT_FOUND);
+            }
 
-    //     if (existingUsername) {
-    //         throw new HttpException(
-    //             'Username học sinh đã được sử dụng',
-    //             HttpStatus.CONFLICT
-    //         );
-    //     }
+            if (!feeRecordIds || feeRecordIds.length === 0) {
+                throw new HttpException('Danh sách feeRecordIds không được để trống', HttpStatus.BAD_REQUEST);
+            }
 
-    //     // Check if student email already exists (if provided)
-    //     if (studentData.email) {
-    //         const existingEmail = await this.prisma.user.findUnique({
-    //             where: { email: studentData.email }
-    //         });
+            // Load fee records
+            const feeRecords = await this.prisma.feeRecord.findMany({
+                where: { id: { in: feeRecordIds } },
+                include: {
+                    student: { select: { id: true, parentId: true, user: { select: { fullName: true } } } },
+                    feeStructure: true,
+                    class: { select: { id: true, name: true, classCode: true } }
+                }
+            });
 
-    //         if (existingEmail) {
-    //             throw new HttpException(
-    //                 'Email học sinh đã được sử dụng',
-    //                 HttpStatus.CONFLICT
-    //             );
-    //         }
-    //     }
+            // Check all requested fee records exist
+            if (feeRecords.length !== feeRecordIds.length) {
+                const foundIds = feeRecords.map(f => f.id);
+                const missing = feeRecordIds.filter(id => !foundIds.includes(id));
+                throw new HttpException(`Không tìm thấy fee records: ${missing.join(', ')}`, HttpStatus.NOT_FOUND);
+            }
 
-    //     // Check if phone already exists (if provided)
-    //     if (studentData.phone) {
-    //         const existingPhone = await this.prisma.user.findFirst({
-    //             where: { phone: studentData.phone }
-    //         });
+            // Ensure fee records belong to this parent's students and are billable (pending/processing allowed)
+            for (const fr of feeRecords) {
+                if (!fr.student || fr.student.parentId !== parentId) {
+                    throw new HttpException(`FeeRecord ${fr.id} không thuộc phụ huynh này`, HttpStatus.BAD_REQUEST);
+                }
+                // remaining amount
+                const totalAmount = Number(fr.totalAmount ?? fr.amount ?? 0);
+                const paidAmount = Number(fr.paidAmount ?? 0);
+                const remaining = totalAmount - paidAmount;
+                if (remaining <= 0) {
+                    throw new HttpException(`FeeRecord ${fr.id} đã được thanh toán đầy đủ`, HttpStatus.BAD_REQUEST);
+                }
+            }
 
-    //         if (existingPhone) {
-    //             throw new HttpException(
-    //                 'Số điện thoại đã được sử dụng',
-    //                 HttpStatus.CONFLICT
-    //             );
-    //         }
-    //     }
+            // Calculate total remaining amount for the bill
+            const totalAmount = feeRecords.reduce((sum, fr) => {
+                const amt = Number(fr.totalAmount ?? fr.amount ?? 0);
+                const paid = Number(fr.paidAmount ?? 0);
+                return sum + Math.max(0, amt - paid);
+            }, 0);
 
-    //     // Generate unique student code
-    //     const studentCode = generateQNCode();
+            if (totalAmount <= 0) {
+                throw new HttpException('Tổng tiền phải lớn hơn 0', HttpStatus.BAD_REQUEST);
+            }
 
-    //     // Default password if not provided
-    //     const defaultPassword = studentData.password || '123456';
+            // Create payment and link fee records inside transaction
+            const result = await this.prisma.$transaction(async (tx) => {
+                const payment = await tx.payment.create({
+                    data: {
+                        parentId,
+                        amount: totalAmount,
+                        paidAmount: 0,
+                        status: 'pending',
+                        expirationDate: options?.expirationDate ? new Date(options.expirationDate) : null,
+                        notes: options?.notes ?? null,
+                        reference: options?.reference ?? null,
+                        method: options?.method ?? 'bank_transfer'
+                    }
+                });
 
-    //     // Use provided username with student domain
-    //     const studentUsername = studentData.username + "@student.qne.edu.vn";
+                // create feeRecordPayments and update feeRecord status -> processing
+                for (const fr of feeRecords) {
+                    await tx.feeRecordPayment.create({
+                        data: {
+                            paymentId: payment.id,
+                            feeRecordId: fr.id,
+                            notes: null
+                        }
+                    });
 
-    //     // Generate email if not provided (based on username)
-    //     const studentEmail = studentData.email || 
-    //         studentData.username + "@temp.qne.edu.vn";
+                    await tx.feeRecord.update({
+                        where: { id: fr.id },
+                        data: {
+                            status: 'processing',
+                        }
+                    });
+                }
 
-    //     // Create student user
-    //     const studentUser = await this.prisma.user.create({
-    //         data: {
-    //             email: studentEmail,
-    //             username: studentUsername,
-    //             fullName: studentData.fullName,
-    //             phone: studentData.phone || null,
-    //             gender: studentData.gender || 'OTHER',
-    //             birthDate: studentData.birthDate ? new Date(studentData.birthDate) : null,
-    //             password: hash.make(defaultPassword),
-    //             isActive: true,
-    //             role: 'student'
-    //         }
-    //     });
+                // load payment with allocations for response
+                const paymentWithAllocations = await tx.payment.findUnique({
+                    where: { id: payment.id },
+                    include: {
+                        feeRecordPayments: {
+                            include: {
+                                feeRecord: {
+                                    include: {
+                                        student: { include: { user: { select: { fullName: true } } } },
+                                        feeStructure: true,
+                                        class: { select: { name: true, classCode: true } }
+                                    }
+                                }
+                            }
+                        },
+                        parent: { include: { user: { select: { fullName: true, email: true } } } }
+                    }
+                });
 
-    //     // Create student record with auto-generated studentCode
-    //     const newStudent = await this.prisma.student.create({
-    //         data: {
-    //             userId: studentUser.id,
-    //             parentId: parentId,
-    //             studentCode: studentCode,
-    //             address: studentData.address || null,
-    //             grade: studentData.grade || null,
-    //             schoolId: studentData.schoolId
-    //         },
-    //         include: {
-    //             user: {
-    //                 select: {
-    //                     id: true,
-    //                     fullName: true,
-    //                     email: true,
-    //                     username: true,
-    //                     phone: true,
-    //                     avatar: true,
-    //                     isActive: true,
-    //                     gender: true,
-    //                     birthDate: true
-    //                 }
-    //             }
-    //         }
-    //     });
+                return paymentWithAllocations;
+            });
 
-    //     // Get updated parent with all students
-    //     const updatedParent = await this.prisma.parent.findUnique({
-    //         where: { id: parentId },
-    //         include: {
-    //             user: {
-    //                 select: {
-    //                     id: true,
-    //                     email: true,
-    //                     username: true,
-    //                     fullName: true,
-    //                     phone: true,
-    //                     avatar: true,
-    //                     isActive: true,
-    //                     gender: true,
-    //                     birthDate: true
-    //                 }
-    //             },
-    //             students: {
-    //                 include: {
-    //                     user: {
-    //                         select: {
-    //                             id: true,
-    //                             fullName: true,
-    //                             email: true,
-    //                             username: true,
-    //                             phone: true
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     });
+            return {
+                data: result,
+                message: 'Tạo hóa đơn (payment) cho phụ huynh thành công'
+            };
 
-    //     return {
-    //         data: {
-    //             id: updatedParent.id,
-    //             user: updatedParent.user,
-    //             students: updatedParent.students.map(s => ({
-    //                 id: s.id,
-    //                 studentCode: s.studentCode,
-    //                 grade: s.grade,
-    //                 address: s.address,
-    //                 user: {
-    //                     ...s.user,
-    //                     password: s.id === newStudent.id ? defaultPassword : undefined
-    //                 }
-    //             })),
-    //             studentCount: updatedParent.students.length
-    //         },
-    //         message: 'Thêm học sinh mới cho phụ huynh thành công'
-    //     };
-    // }
+        } catch (error: any) {
+            console.error('Error creating bill for parent:', error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(`Lỗi khi tạo hóa đơn: ${error?.message || error}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    
+    
 }

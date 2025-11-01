@@ -125,12 +125,12 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
                     <p className="text-muted-foreground mb-1">Giảm giá khác</p>
                     <p className="font-medium ">{fee.discount.toLocaleString("vi-VN")} đ</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-muted-foreground mb-1">Đã thanh toán</p>
                     <p className="font-medium text-green-600">{fee.paidAmount.toLocaleString("vi-VN")} đ</p>
-                  </div>
+                  </div> */}
                   <div>
-                    <p className="text-muted-foreground mb-1">Còn tiền còn nợ</p>
+                    <p className="text-muted-foreground mb-1">Tổng tiền </p>
                     <p className="font-medium text-primary text-red-600">
                       {(fee.totalAmount - fee.paidAmount).toLocaleString("vi-VN")} đ
                     </p>

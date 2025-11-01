@@ -39,6 +39,8 @@ import { StudentClassRequestController } from './controllers/student-class-reque
 import { StudentClassRequestService } from './services/student-class-request.service';
 import { TeacherFeedbackController } from './controllers/teacher-feedback.controller';
 import { TeacherFeedbackService } from './services/teacher-feedback.service';
+import { ShowcaseManagementController } from './controllers/showcase-management.controller';
+import { ShowcaseManagementService } from './services/showcase-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
@@ -74,6 +76,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     AlertController,
     StudentClassRequestController,
     TeacherFeedbackController,
+    ShowcaseManagementController,
   ],
   providers: [
     PrismaService,
@@ -95,10 +98,11 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     AlertService,
     StudentClassRequestService,
     TeacherFeedbackService,
+    ShowcaseManagementService,
     CloudinaryService,
     // SessionSchedulerService, // Cron jobs service
   ],
-  exports: [AlertService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 
 })
 //check
