@@ -21,6 +21,8 @@ import { ClassJoinService } from './services/class-join.service';
 import { PrismaService } from 'src/db/prisma.service';
 import { ChildTeacherFeedbackController } from './controllers/child-teacher-feedback.controller';
 import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.service';
+import { ParentOverviewController } from './controllers/parent-overview.controller';
+import { ParentOverviewService } from './services/parent-overview.service';
 import { AdminCenterModule } from '../admin-center/admin-center.module';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
@@ -45,6 +47,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     ChildClassesController,
     ClassJoinController,
   ChildTeacherFeedbackController,
+    ParentOverviewController,
   ],
   providers: [
     PrismaService,
@@ -57,6 +60,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     StudentLeaveRequestService,
     ClassJoinService,
     ChildTeacherFeedbackService,
+      ParentOverviewService,
     CloudinaryService,
   ],
 })

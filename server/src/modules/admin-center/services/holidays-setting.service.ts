@@ -30,7 +30,7 @@ export class HolidaysSettingService {
   }
 
   async create(dto: CreateHolidayDto) {
-    const { startDate, endDate, note, isActive } = dto as any;
+    const { type, startDate, endDate, note, isActive } = dto;
     const startAt = new Date(startDate);
     const endAt = new Date(endDate);
     
@@ -43,7 +43,13 @@ export class HolidaysSettingService {
     }
     
     const created = await this.prisma.holidayPeriod.create({
-      data: { startDate: startAt, endDate: endAt, note, isActive: isActive ?? true },
+      data: { 
+        type: type || 'PUBLIC', 
+        startDate: startAt, 
+        endDate: endAt, 
+        note, 
+        isActive: isActive ?? true 
+      },
     });
 
     // Auto-apply: Tự động đánh dấu các sessions bị ảnh hưởng
@@ -74,6 +80,7 @@ export class HolidaysSettingService {
     const updated = await this.prisma.holidayPeriod.update({
       where: { id },
       data: {
+        type: dto.type ?? undefined,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         note: dto.note ?? undefined,

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { Child } from "../../../services/parent/child-management/child.types"
+import type { Child } from "../../../../services/parent/child-management/child.types"
 
 interface ChildProgressReportsProps {
   child: Child

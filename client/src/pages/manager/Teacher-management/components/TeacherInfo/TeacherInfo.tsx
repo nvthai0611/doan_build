@@ -65,7 +65,7 @@ export default function TeacherInfo({ teacher, isLoading, error }: { teacher: Te
   const [timesheetSearch, setTimesheetSearch] = useState("")
 
   // Classes state
-  const [classesActiveTab, setClassesActiveTab] = useState<"all" | "ready" | "active" | "cancelled" | "completed">("all")
+  const [classesActiveTab, setClassesActiveTab] = useState<"all" | "ready" | "active" | "cancelled" | "completed" | "suspended">("all")
   const [classesSearch, setClassesSearch] = useState("")
 
   // Update account status when employee data changes

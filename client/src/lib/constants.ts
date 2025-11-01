@@ -186,7 +186,7 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.HAPPENING]: 'Đang diễn ra',
   [SessionStatus.END]: 'Đã hoàn thành',
   [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
-  [SessionStatus.DAY_OFF]: 'Nghỉ lễ',
+  [SessionStatus.DAY_OFF]: 'Nghỉ',
 };
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {

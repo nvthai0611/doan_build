@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, MapPin, Users, BookOpen, User, CheckCircle, CalendarDays, UserCheck, XCircle, AlertCircle } from "lucide-react"
-import Loading from "../../../components/Loading/LoadingPage"
-import { parentChildService } from "../../../services/parent/child-management/child.service"
-import type { Child } from "../../../services/parent/child-management/child.types"
-import { getDisplaySessionStatus } from "../../../utils/session-status.util"
+import Loading from "../../../../components/Loading/LoadingPage"
+import { parentChildService } from "../../../../services/parent/child-management/child.service"
+import type { Child } from "../../../../services/parent/child-management/child.types"
+import { getDisplaySessionStatus } from "../../../../utils/session-status.util"
 
 interface AttendanceDetailsDialogProps {
   open: boolean

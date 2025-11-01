@@ -459,7 +459,7 @@ export default function ScheduleTab({
                         <div className="flex items-center justify-between">
                           <span className="font-medium truncate flex items-center gap-1">
                             {isDayOff && <span className="text-base">🏖️</span>}
-                            <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
+                            <span>{isDayOff ? 'Nghỉ' : session.description}</span>
                           </span>
                           {session.hasAlert && !isDayOff && <AlertTriangle className="w-3 h-3 text-orange-300" />}
                         </div>
@@ -576,11 +576,11 @@ export default function ScheduleTab({
                               ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
                               : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
                           }`}
-                          title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                          title={isDayOff ? `${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
                           onClick={() => !isDayOff && handleSessionClick(session)}
                           style={{
-                            top: `${sessionIndex * 20}px`,
-                            height: '36px',
+                            top: `${sessionIndex * 48}px`,
+                            height: session.description && session.description !== 'Phương học: Chưa cập nhật' ? '48px' : '36px',
                             fontSize: '12px'
                           }}
                         >
@@ -591,6 +591,11 @@ export default function ScheduleTab({
                           <div className="truncate opacity-90 text-[10px]">
                             {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
                           </div>
+                          {!isDayOff && session.description && session.description !== 'Phương học: Chưa cập nhật' && (
+                            <div className="truncate opacity-75 text-[9px] mt-0.5 font-semibold">
+                              {session.description}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -681,7 +686,14 @@ export default function ScheduleTab({
                       <span className="text-sm font-medium">{session.date.toLocaleDateString("vi-VN")}</span>
                     </div>
                     <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
-                    <span className="text-sm font-medium">{session.title}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{session.title}</span>
+                      {session.description && session.description !== 'Phương học: Chưa cập nhật' && (
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">
+                          {session.description}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="text-right">

@@ -32,8 +32,15 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     totalItems: 0
   })
 
-  const ensureScheduleArray = (schedule: any): string[] => {
-    if (Array.isArray(schedule)) return schedule
+  const ensureScheduleArray = (schedule: any): Array<{ day: string; time: string }> => {
+    if (Array.isArray(schedule)) {
+      // Check if it's already array of objects
+      if (schedule.length > 0 && typeof schedule[0] === 'object') {
+        return schedule
+      }
+      // Convert string array to object array
+      return schedule.map((item: any) => ({ day: '', time: item }))
+    }
     return formatScheduleArray(schedule)
   }
   
@@ -177,10 +184,10 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         return (
           <div className="space-y-1">
             <div className="text-blue-600 font-medium hover:underline cursor-pointer" onClick={() => handleViewClass(item.id)}>{item.name}</div>
-            {scheduleArray.map((time: string, idx: number) => (
+            {scheduleArray.map((scheduleItem: any, idx: number) => (
               <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
                 <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
-                {time}
+                {typeof scheduleItem === 'string' ? scheduleItem : `${scheduleItem.day} ${scheduleItem.time}`}
               </div>
             ))}
           </div>

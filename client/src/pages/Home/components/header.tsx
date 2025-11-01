@@ -38,7 +38,7 @@ export const Header = () => {
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <Button variant="outline" asChild>
-                <Link to="/dashboard">Bảng Điều Khiển</Link>
+                <Link to="/parent">Bảng Điều Khiển</Link>
               </Button>
             ) : (
               <>
@@ -85,25 +85,7 @@ export const Header = () => {
             >
               Đóng Góp
             </a>
-            <div className="flex flex-col gap-2 pt-2">
-              {user ? (
-                <Button variant="outline" asChild className="w-full bg-transparent">
-                  <Link to="/dashboard">Bảng Điều Khiển</Link>
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" asChild className="w-full bg-transparent">
-                    <Link to="/auth/login/family">Đăng Nhập</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 hover:opacity-90 text-white border-0"
-                  >
-                    <Link to="/auth/register/family">Đăng Ký</Link>
-                  </Button>
-                </>
-              )}
-            </div>
+          
           </div>
         )}
       </div>
