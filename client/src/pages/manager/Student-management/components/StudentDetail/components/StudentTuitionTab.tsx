@@ -74,7 +74,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
           {fee.amount.toLocaleString('vi-VN')}đ
         </span>
       ),
-      align: "right",
+      align: "left",
       width: "120px"
     },
     // {
@@ -89,17 +89,17 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     //   align: "right",
     //   width: "120px"
     // },
-    {
-      key: "partiallyPaid",
-      header: "Hóa đơn trả 1 phần",
-      render: (fee) =>
-        getFeeStatus(fee) === FeeStatus.PartiallyPaid ? (
-          <Badge variant="secondary">Trả 1 phần</Badge>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        ),
-      width: "120px"
-    },
+    // {
+    //   key: "partiallyPaid",
+    //   header: "Hóa đơn trả 1 phần",
+    //   render: (fee) =>
+    //     getFeeStatus(fee) === FeeStatus.PartiallyPaid ? (
+    //       <Badge variant="secondary">Trả 1 phần</Badge>
+    //     ) : (
+    //       <span className="text-muted-foreground text-xs">-</span>
+    //     ),
+    //   width: "120px"
+    // },
     {
       key: "dueDate",
       header: "Hạn đóng",
@@ -132,72 +132,72 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
   },
   width: "120px"
 },
-    {
-      key: "payments",
-      header: "Lịch sử thanh toán",
-      render: (fee, index) =>
-        fee.payments && fee.payments.length > 0 ? (
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={e => {
-                e.stopPropagation()
-                setExpandedPayments(prev => {
-                  const newSet = new Set(prev)
-                  if (newSet.has(index)) newSet.delete(index)
-                  else newSet.add(index)
-                  return newSet
-                })
-              }}
-              className="h-6 px-2"
-            >
-              {expandedPayments.has(index) ? (
-                <>
-                  <ChevronUp className="w-3 h-3 mr-1" />
-                  Ẩn
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="w-3 h-3 mr-1" />
-                  Xem
-                </>
-              )}
-            </Button>
-            {expandedPayments.has(index) && (
-              <div className="space-y-1 bg-gray-50 dark:bg-gray-800/50 rounded p-3 mt-2">
-                {fee.payments.map((payment: any, paymentIndex: number) => (
-                  <div key={paymentIndex} className="flex justify-between items-center text-sm py-1">
-                    <div className="flex flex-col">
-                      <span className="text-foreground">
-                        {new Date(payment.paymentDate).toLocaleDateString('vi-VN')}
-                      </span>
-                      {payment.method && (
-                        <span className="text-xs text-muted-foreground">
-                          {payment.method}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="text-green-600 font-medium">
-                        +{payment.amount.toLocaleString('vi-VN')}đ
-                      </span>
-                      {payment.note && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {payment.note}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        ),
-      width: "160px"
-    }
+    // {
+    //   key: "payments",
+    //   header: "Lịch sử thanh toán",
+    //   render: (fee, index) =>
+    //     fee.payments && fee.payments.length > 0 ? (
+    //       <div>
+    //         <Button
+    //           variant="ghost"
+    //           size="sm"
+    //           onClick={e => {
+    //             e.stopPropagation()
+    //             setExpandedPayments(prev => {
+    //               const newSet = new Set(prev)
+    //               if (newSet.has(index)) newSet.delete(index)
+    //               else newSet.add(index)
+    //               return newSet
+    //             })
+    //           }}
+    //           className="h-6 px-2"
+    //         >
+    //           {expandedPayments.has(index) ? (
+    //             <>
+    //               <ChevronUp className="w-3 h-3 mr-1" />
+    //               Ẩn
+    //             </>
+    //           ) : (
+    //             <>
+    //               <ChevronDown className="w-3 h-3 mr-1" />
+    //               Xem
+    //             </>
+    //           )}
+    //         </Button>
+    //         {expandedPayments.has(index) && (
+    //           <div className="space-y-1 bg-gray-50 dark:bg-gray-800/50 rounded p-3 mt-2">
+    //             {fee.payments.map((payment: any, paymentIndex: number) => (
+    //               <div key={paymentIndex} className="flex justify-between items-center text-sm py-1">
+    //                 <div className="flex flex-col">
+    //                   <span className="text-foreground">
+    //                     {new Date(payment.paymentDate).toLocaleDateString('vi-VN')}
+    //                   </span>
+    //                   {payment.method && (
+    //                     <span className="text-xs text-muted-foreground">
+    //                       {payment.method}
+    //                     </span>
+    //                   )}
+    //                 </div>
+    //                 <div className="text-right">
+    //                   <span className="text-green-600 font-medium">
+    //                     +{payment.amount.toLocaleString('vi-VN')}đ
+    //                   </span>
+    //                   {payment.note && (
+    //                     <p className="text-xs text-muted-foreground mt-1">
+    //                       {payment.note}
+    //                     </p>
+    //                   )}
+    //                 </div>
+    //               </div>
+    //             ))}
+    //           </div>
+    //         )}
+    //       </div>
+    //     ) : (
+    //       <span className="text-muted-foreground text-xs">-</span>
+    //     ),
+    //   width: "160px"
+    // }
   ]
 
   // Pagination config

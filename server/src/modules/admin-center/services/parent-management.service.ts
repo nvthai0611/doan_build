@@ -4,6 +4,7 @@ import hash from '../../../utils/hasing.util';
 import { generateQNCode } from '../../../utils/function.util';
 import { templateParentStudentAccount } from 'src/modules/shared/template-email/template-parent-student-account';
 import emailUtil from '../../../utils/email.util';
+import { checkId } from '../../../utils/validate.util';
 
 @Injectable()
 export class ParentManagementService {
@@ -1447,5 +1448,185 @@ export class ParentManagementService {
         }
     }
 
+    async getPaymentDetails(paymentId: string, parentId: string) {
+        try {            
+            const payment = await this.prisma.payment.findFirst({
+                where: { id: paymentId, parentId },
+                include: {
+                    feeRecordPayments: {
+                        include: {
+                            feeRecord: {
+                                include: {
+                                    class: {
+                                        select: {
+                                            name: true,
+                                            classCode: true,
+                                        }
+                                    },
+                                    feeStructure: {
+                                        select: {
+                                            name: true,
+                                            amount: true,
+                                            period: true
+                                        }
+                                    },
+                                    student:{
+                                        include: {
+                                            user:{
+                                                select:{ fullName: true }
+                                            }
+                                        }
+                                    }
+
+                                }
+                            },
+                        }
+                    }
+                }
+            })
+            if (!payment) {
+                throw new HttpException(
+                    { message: 'Không tìm thấy payment' },
+                    HttpStatus.NOT_FOUND
+                )
+            }
+            return payment
+        }
+        catch (error) {
+
+        }
+    }
+
+    async createBillForParent(parentId: string, feeRecordIds: string[], options?: {
+        expirationDate?: string;
+        notes?: string;
+        reference?: string;
+        method?: 'bank_transfer' | 'cash';
+    }) {
+        try {
+            // Validate parent
+            const parent = await this.prisma.parent.findUnique({
+                where: { id: parentId },
+                include: { user: true, students: true }
+            });
+
+            if (!parent) {
+                throw new HttpException('Phụ huynh không tồn tại', HttpStatus.NOT_FOUND);
+            }
+
+            if (!feeRecordIds || feeRecordIds.length === 0) {
+                throw new HttpException('Danh sách feeRecordIds không được để trống', HttpStatus.BAD_REQUEST);
+            }
+
+            // Load fee records
+            const feeRecords = await this.prisma.feeRecord.findMany({
+                where: { id: { in: feeRecordIds } },
+                include: {
+                    student: { select: { id: true, parentId: true, user: { select: { fullName: true } } } },
+                    feeStructure: true,
+                    class: { select: { id: true, name: true, classCode: true } }
+                }
+            });
+
+            // Check all requested fee records exist
+            if (feeRecords.length !== feeRecordIds.length) {
+                const foundIds = feeRecords.map(f => f.id);
+                const missing = feeRecordIds.filter(id => !foundIds.includes(id));
+                throw new HttpException(`Không tìm thấy fee records: ${missing.join(', ')}`, HttpStatus.NOT_FOUND);
+            }
+
+            // Ensure fee records belong to this parent's students and are billable (pending/processing allowed)
+            for (const fr of feeRecords) {
+                if (!fr.student || fr.student.parentId !== parentId) {
+                    throw new HttpException(`FeeRecord ${fr.id} không thuộc phụ huynh này`, HttpStatus.BAD_REQUEST);
+                }
+                // remaining amount
+                const totalAmount = Number(fr.totalAmount ?? fr.amount ?? 0);
+                const paidAmount = Number(fr.paidAmount ?? 0);
+                const remaining = totalAmount - paidAmount;
+                if (remaining <= 0) {
+                    throw new HttpException(`FeeRecord ${fr.id} đã được thanh toán đầy đủ`, HttpStatus.BAD_REQUEST);
+                }
+            }
+
+            // Calculate total remaining amount for the bill
+            const totalAmount = feeRecords.reduce((sum, fr) => {
+                const amt = Number(fr.totalAmount ?? fr.amount ?? 0);
+                const paid = Number(fr.paidAmount ?? 0);
+                return sum + Math.max(0, amt - paid);
+            }, 0);
+
+            if (totalAmount <= 0) {
+                throw new HttpException('Tổng tiền phải lớn hơn 0', HttpStatus.BAD_REQUEST);
+            }
+
+            // Create payment and link fee records inside transaction
+            const result = await this.prisma.$transaction(async (tx) => {
+                const payment = await tx.payment.create({
+                    data: {
+                        parentId,
+                        amount: totalAmount,
+                        paidAmount: 0,
+                        status: 'pending',
+                        expirationDate: options?.expirationDate ? new Date(options.expirationDate) : null,
+                        notes: options?.notes ?? null,
+                        reference: options?.reference ?? null,
+                        method: options?.method ?? 'bank_transfer'
+                    }
+                });
+
+                // create feeRecordPayments and update feeRecord status -> processing
+                for (const fr of feeRecords) {
+                    await tx.feeRecordPayment.create({
+                        data: {
+                            paymentId: payment.id,
+                            feeRecordId: fr.id,
+                            notes: null
+                        }
+                    });
+
+                    await tx.feeRecord.update({
+                        where: { id: fr.id },
+                        data: {
+                            status: 'processing',
+                        }
+                    });
+                }
+
+                // load payment with allocations for response
+                const paymentWithAllocations = await tx.payment.findUnique({
+                    where: { id: payment.id },
+                    include: {
+                        feeRecordPayments: {
+                            include: {
+                                feeRecord: {
+                                    include: {
+                                        student: { include: { user: { select: { fullName: true } } } },
+                                        feeStructure: true,
+                                        class: { select: { name: true, classCode: true } }
+                                    }
+                                }
+                            }
+                        },
+                        parent: { include: { user: { select: { fullName: true, email: true } } } }
+                    }
+                });
+
+                return paymentWithAllocations;
+            });
+
+            return {
+                data: result,
+                message: 'Tạo hóa đơn (payment) cho phụ huynh thành công'
+            };
+
+        } catch (error: any) {
+            console.error('Error creating bill for parent:', error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(`Lỗi khi tạo hóa đơn: ${error?.message || error}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    
     
 }

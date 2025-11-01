@@ -146,6 +146,7 @@ export class FinancialService {
                 id: payment.id,
                 date: payment.paidAt,
                 amount: Number(payment.amount),
+                paidAmount: Number(payment.paidAmount),
                 orderDate: payment.createdAt,
                 method: payment.method || 'bank_transfer',
                 status: payment.status,

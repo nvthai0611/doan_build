@@ -337,6 +337,57 @@ export class ParentManagementController {
             data: result.data
         };
     }
+    
+    @Get('payment-details')
+    async getDetailPaymentOfParent(@Query('paymentId') paymentId: string, @Query('parentId') parentId: string) {
+        return await this.parentManagementService.getPaymentDetails(paymentId, parentId)
+    }
+
+    /**
+     * Tạo hóa đơn (payment) cho phụ huynh từ danh sách feeRecordIds
+     */
+    @Post(':id/create-bill')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Tạo hóa đơn (payment) cho phụ huynh từ danh sách feeRecordIds' })
+    @ApiResponse({ status: HttpStatus.CREATED, description: 'Tạo hóa đơn thành công' })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Phụ huynh hoặc fee record không tồn tại' })
+    async createBillForParent(
+        @Param('id') parentId: string,
+        @Body() body: {
+            feeRecordIds: string[],
+            expirationDate?: string,
+            notes?: string,
+            reference?: string,
+            method?: 'bank_transfer' | 'cash'
+        }
+    ) {
+        const { feeRecordIds, expirationDate, notes, reference, method } = body || {};
+
+        if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
+            throw new HttpException('feeRecordIds là bắt buộc và phải là mảng có ít nhất 1 phần tử', HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            const result = await this.parentManagementService.createBillForParent(parentId, feeRecordIds, {
+                expirationDate,
+                notes,
+                reference,
+                method
+            });
+
+            // result already in { data, message } shape in service
+            return {
+                statusCode: HttpStatus.CREATED,
+                message: result?.message ?? 'Tạo hóa đơn thành công',
+                data: result?.data ?? null
+            };
+        } catch (error: any) {
+            // rethrow HttpException to let Nest handle it, otherwise wrap generic error
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(`Lỗi khi tạo hóa đơn: ${error?.message || error}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     /**
      * Lấy chi tiết phụ huynh theo ID
@@ -504,52 +555,7 @@ export class ParentManagementController {
         };
     }
 
-    /**
-     * Thêm học sinh mới cho phụ huynh
-     */
-    // @Post(':id/add-student')
-    // @HttpCode(HttpStatus.CREATED)
-    // async addStudentToParent(
-    //     @Param('id') parentId: string,
-    //     @Body() body: {
-    //         fullName: string;
-    //         username: string;
-    //         email?: string;
-    //         phone?: string;
-    //         gender?: string;
-    //         birthDate?: string;
-    //         address?: string;
-    //         grade?: string;
-    //         schoolId: string;
-    //         password?: string;
-    //     }
-    // ) {
-    //     // Validation...
-
-    //     const result = await this.parentManagementService.addStudentToParent(
-    //         parentId,
-    //         {
-    //             fullName: body.fullName.trim(),
-    //             username: body.username.trim(),
-    //             email: body.email?.trim() || undefined,
-    //             phone: body.phone?.trim() || undefined,
-    //             gender: body.gender as any,
-    //             birthDate: body.birthDate,
-    //             address: body.address?.trim() || undefined,
-    //             grade: body.grade || undefined,
-    //             schoolId: body.schoolId,
-    //             password: body.password
-    //         }
-    //     );
-
-    //     return {
-    //         success: true,
-    //         status: HttpStatus.CREATED,
-    //         message: result.message,
-    //         data: result.data,
-    //         meta: {}
-    //     };
-    // }
+    
 
     /**
      * Hủy liên kết học sinh khỏi phụ huynh
@@ -582,4 +588,5 @@ export class ParentManagementController {
             data: result.data
         };
     }
+
 }

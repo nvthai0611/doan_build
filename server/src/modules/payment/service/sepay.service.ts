@@ -340,6 +340,7 @@ async handleWebhook(webhookData: SepayWebhookDto) {
           status: newStatus,
           reference: webhookData.referenceCode || null,
           paidAt: new Date(webhookData.transactionDate),
+          paidAmount,
           notes: `Thanh toán qua ${webhookData.gateway}`,
         }
       });

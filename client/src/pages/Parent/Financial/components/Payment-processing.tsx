@@ -203,8 +203,13 @@ export const PaymentProcessing: React.FC = () => {
                 <li key={payment.id} className="border-b pb-2 last:border-b-0">
                   <div className="font-medium">Mã đơn hàng: {payment.orderCode}</div>
                   <div className="text-sm text-muted-foreground ">
-                    Số tiền: <span className="text-red-500">{Number(payment.amount).toLocaleString("vi-VN")} đ</span>
+                    Tổng số tiền: <span className="text-red-500">{Number(payment.amount).toLocaleString("vi-VN")} đ</span>
                   </div>
+                  {payment.status == 'partially_paid' && (
+                    <div className="text-sm text-muted-foreground ">
+                    Đã thanh toán: <span className="text-green-500">{Number(payment.paidAmount).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  )}
                   <div className="text-sm text-muted-foreground text-red-500">
                     Hạn thanh toán: {formatDate(payment.expirationDate)}
                   </div>
