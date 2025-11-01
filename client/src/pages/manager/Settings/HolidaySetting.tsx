@@ -37,6 +37,7 @@ type Holiday = {
   id: string;
   startDate: string;
   endDate: string;
+  type: string;
   note?: string;
   isActive: boolean;
 };
@@ -294,11 +295,18 @@ export function HolidaySetting() {
       key: 'type',
       header: 'Loại',
       sortable: true,
-      render: (item: Holiday) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Nghỉ tết</span>
-        </div>
-      ),
+      render: (item: Holiday) => {
+        const typeLabels: { [key: string]: string } = {
+          'PUBLIC': 'Nghỉ lễ',
+          'CENTER': 'Lịch trung tâm',
+          'EMERGENCY': 'Lịch khẩn cấp',
+        };
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{typeLabels[item.type] || item.type}</span>
+          </div>
+        );
+      },
     },
     {
       key: 'note',

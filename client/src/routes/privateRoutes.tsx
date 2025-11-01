@@ -33,7 +33,7 @@ import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import IncidentReportPage from "../pages/Teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/Teacher/IncidentReport/IncidentManagent";
 import IncidentHandlePage from "../pages/manager/Incident-handle/IncidentHandle";
-import { ParentDashboard } from "../pages/Parent/Dashboard/ListChildren";
+import { ListChildren } from "../pages/Parent/Dashboard/ListChildren/ListChildren";
 import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
@@ -49,11 +49,11 @@ import { StudentLeaveRequestList as TeacherStudentLeaveRequestList } from "../pa
 import LeaveRequestManagement from "../pages/manager/RequestsManagement/LeaveRequestManagement";
 import SessionRequestManagement from "../pages/manager/RequestsManagement/SessionRequestManagement";
 import ChangeScheduleRequestManagement from "../pages/manager/RequestsManagement/ChangeScheduleRequestManagement";
-
-import { ChildSchedulePage } from "../pages/Parent/Dashboard/ChildSchedulePage";
+import { ParentOverview } from "../pages/Parent/Dashboard/ParentOverview/ParentOverview";
+import { ChildSchedulePage } from "../pages/Parent/Dashboard/ListChildren/ChildSchedulePage";
 import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage";
 import FinancialPage from "../pages/Parent/Financial/Financial-Home";
-import {ChildrenClasses} from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
+import { ChildrenClasses } from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
 import RecruitingClasses from "../pages/Parent/Dashboard/RecruitingClasses/RecruitingClasses";
 import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/TeacherFeedback";
 import StudentClassRequestsPage from "../pages/manager/StudentClassRequests/StudentClassRequestsPage";
@@ -160,7 +160,8 @@ export const privateRoutes = (
         element={<AuthMiddleware allowedRoles={['parent']} />}
       >
         <Route index element={<div>Parent Dashboard - Coming Soon</div>} />
-        <Route path="children" element={<ParentDashboard />} />
+        <Route path="dashboard" element={<ParentOverview />} />
+        <Route path="children" element={<ListChildren />} />
         <Route path="classes" element={<ChildrenClasses />} />
         <Route path="recruiting-classes" element={<RecruitingClasses />} />
         <Route path="schedule" element={<ChildSchedulePage />} />

@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Star, Send, Check } from "lucide-react"
-import type { Child } from "../../../services/parent/child-management/child.types"
-import { parentTeacherFeedbackService } from "../../../services/parent/teacher-feedback/teacherfeedback.service"
-import type { AvailableTeacher, TeacherFeedbackItem } from "../../../services/parent/teacher-feedback/teacherfeedback.types"
+import type { Child } from "../../../../services/parent/child-management/child.types"
+import { parentTeacherFeedbackService } from "../../../../services/parent/teacher-feedback/teacherfeedback.service"
+import type { AvailableTeacher, TeacherFeedbackItem } from "../../../../services/parent/teacher-feedback/teacherfeedback.types"
 
 interface ChildTeacherFeedbackProps {
   child: Child

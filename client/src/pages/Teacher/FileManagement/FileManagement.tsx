@@ -357,7 +357,7 @@ export default function DocumentManagePage() {
           </div>
           <Button
             onClick={() => (window.location.href = "/teacher/documents/upload")}
-            className="bg-[rgb(255,127,80)] hover:bg-[rgb(255,107,60)] text-white"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-md hover:shadow-lg transition-all"
           >
             Upload tài liệu mới
           </Button>
@@ -365,43 +365,43 @@ export default function DocumentManagePage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-100 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tổng tài liệu</CardTitle>
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold text-blue-900">Tổng tài liệu</CardTitle>
+              <FolderOpen className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{meta?.total || allDocuments.length}</div>
-              <p className="text-xs text-muted-foreground">Tất cả file</p>
+              <div className="text-3xl font-bold text-blue-900">{meta?.total || allDocuments.length}</div>
+              <p className="text-xs text-blue-700 font-medium mt-1">Tất cả file</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-100 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dung lượng</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold text-purple-900">Dung lượng</CardTitle>
+              <FileText className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatFileSize(totalSize)}</div>
-              <p className="text-xs text-muted-foreground">Tổng dung lượng</p>
+              <div className="text-3xl font-bold text-purple-900">{formatFileSize(totalSize)}</div>
+              <p className="text-xs text-purple-700 font-medium mt-1">Tổng dung lượng</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-100 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Lượt tải</CardTitle>
-              <Download className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold text-green-900">Lượt tải</CardTitle>
+              <Download className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalDownloads}</div>
-              <p className="text-xs text-muted-foreground">Tổng lượt tải xuống</p>
+              <div className="text-3xl font-bold text-green-900">{totalDownloads}</div>
+              <p className="text-xs text-green-700 font-medium mt-1">Tổng lượt tải xuống</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-100 shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Upload gần đây</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold text-orange-900">Upload gần đây</CardTitle>
+              <Calendar className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-3xl font-bold text-orange-900">
                 {recentUploadsCount !== undefined ? recentUploadsCount : allDocuments.filter(d => {
                   const uploadDate = new Date(d.uploadedAt)
                   const weekAgo = new Date()
@@ -409,7 +409,7 @@ export default function DocumentManagePage() {
                   return uploadDate >= weekAgo
                 }).length}
               </div>
-              <p className="text-xs text-muted-foreground">Trong 7 ngày qua</p>
+              <p className="text-xs text-orange-700 font-medium mt-1">Trong 7 ngày qua</p>
             </CardContent>
           </Card>
         </div>

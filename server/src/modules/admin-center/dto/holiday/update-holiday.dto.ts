@@ -1,7 +1,13 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsBoolean, IsDateString, IsOptional, IsString, MaxLength, IsIn } from 'class-validator';
+import { Transform, Expose } from 'class-transformer';
 
 export class UpdateHolidayDto {
+  @Expose()
+  @IsOptional()
+  @IsString({ message: 'Loại kỳ nghỉ phải là chuỗi ký tự' })
+  @IsIn(['PUBLIC', 'CENTER', 'EMERGENCY'], { message: 'Loại kỳ nghỉ phải là PUBLIC, CENTER hoặc EMERGENCY' })
+  type?: string;
+
   @IsOptional()
   @IsDateString({}, { message: 'Ngày bắt đầu phải có định dạng ngày hợp lệ' })
   @Transform(({ value }) => {
