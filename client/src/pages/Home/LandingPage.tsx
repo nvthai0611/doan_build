@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router-dom"
 import { publicClassesService, type RecruitingClass } from "../../services/common/public-classes.service"
+import { publicShowcasesService, type Showcase } from "../../services/common/public-showcases.service"
 import { useAuth } from "../../lib/auth"
 import { formatScheduleArray } from "../../utils/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,62 +32,6 @@ import { BlogSection } from "./components/blog-section"
 // import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
-const topStudents = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    grade: "Lớp 12",
-    subject: "Toán",
-    score: 9.8,
-    rank: 1,
-    achievements: ["Học sinh giỏi", "HSG Quốc gia"],
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    grade: "Lớp 11",
-    subject: "Tiếng Anh",
-    score: 9.7,
-    rank: 2,
-    achievements: ["Học sinh giỏi", "IELTS 8.5"],
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    grade: "Lớp 10",
-    subject: "Hóa học",
-    score: 9.6,
-    rank: 3,
-    achievements: ["Học sinh giỏi", "HSG Tỉnh"],
-  },
-  {
-    id: 4,
-    name: "Phạm Thị D",
-    grade: "Lớp 12",
-    subject: "Vật lý",
-    score: 9.5,
-    rank: 4,
-    achievements: ["Học sinh giỏi"],
-  },
-  {
-    id: 5,
-    name: "Hoàng Văn E",
-    grade: "Lớp 11",
-    subject: "Sinh học",
-    score: 9.4,
-    rank: 5,
-    achievements: ["Học sinh giỏi"],
-  },
-  {
-    id: 6,
-    name: "Đỗ Thị F",
-    grade: "Lớp 10",
-    subject: "Lịch sử",
-    score: 9.3,
-    rank: 6,
-    achievements: ["Học sinh giỏi"],
-  },
-]
 
 const teachers = [
   { id: 1, name: "Thầy Nguyễn Minh Tuấn", subject: "Toán", experience: 15, students: 250, rating: 4.9, avatar: "👨‍🏫" },
@@ -142,7 +87,8 @@ const news = [
   { id: 6, title: "Những sai lầm phổ biến khi học Hóa học", category: "Hóa học", date: "2024-01-10", icon: "⚗️" },
 ]
 
-const showcases = [
+// Legacy showcases data (nếu cần giữ lại section này)
+const legacyShowcases = [
   { id: 1, title: "Học sinh đạt điểm 10 Toán THPT QG 2023", category: "Thành tích", icon: "🏆" },
   { id: 2, title: "Lớp học Tiếng Anh đạt IELTS 8.0+", category: "Thành tích", icon: "🎯" },
   { id: 3, title: "Dự án khoa học của học sinh được công nhận", category: "Dự án", icon: "🔬" },
@@ -183,10 +129,19 @@ export const LandingPage = () => {
     queryFn: () => publicClassesService.getGrades(),
   })
 
+  // Fetch showcases
+  const { data: showcasesData, isLoading: isLoadingShowcases } = useQuery({
+    queryKey: ["public-showcases"],
+    queryFn: () => publicShowcasesService.getShowcases(),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  })
+
   const classes = classesData?.data || []
   const subjects = subjectsData?.data || []
   const grades = gradesData?.data || []
   const meta = classesData?.meta
+  const showcases = showcasesData?.data || []
 
   // Filter by search term
   const filteredClasses = classes.filter(
@@ -330,54 +285,16 @@ export const LandingPage = () => {
       </section>
       <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
         <div className="max-w-7xl mx-auto">
-          <div className="section-header">
+          <div className="text-center mb-8">
             <div className="section-badge">
               <Star className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Top Học Sinh Giỏi</span>
+              <span className="text-sm font-medium gradient-text">Học Sinh Tiêu Biểu</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Những Học Sinh Xuất Sắc</h2>
-            <p className="text-muted-foreground text-lg">
-              Vinh danh những học sinh đạt thành tích cao nhất tại trung tâm
-            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Học Sinh Tiêu Biểu & Xuất Sắc</h2>
+            <p className="text-muted-foreground">Hành trình thành công của những học sinh tại trung tâm</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {topStudents.map((student) => (
-              <div key={student.id} className="top-student-card">
-                <div className="rank-badge">#{student.rank}</div>
-                <div className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-2xl">
-                      👤
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{student.name}</h3>
-                      <p className="text-sm text-muted-foreground">{student.grade}</p>
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">{student.subject}</span>
-                      <span className="text-lg font-bold gradient-text">{student.score}/10</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-orange-500 to-pink-500 h-2 rounded-full"
-                        style={{ width: `${(student.score / 10) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {student.achievements.map((achievement, idx) => (
-                      <span key={idx} className="achievement-badge">
-                        {achievement}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <StudentShowcaseSection data={showcases} isLoading={isLoadingShowcases} />
         </div>
       </section>
 
@@ -437,7 +354,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {showcases.map((item) => (
+            {legacyShowcases.map((item) => (
               <div key={item.id} className="showcase-item">
                 <div className="showcase-image">{item.icon}</div>
                 <div className="p-4">
@@ -628,6 +545,128 @@ const ClassCard = ({
         </Button>
       </CardContent>
     </Card>
+  )
+}
+
+// Student Showcase Section (cards + filter chips)
+const StudentShowcaseSection = ({ data, isLoading }: { data: Showcase[]; isLoading?: boolean }) => {
+  const [filter, setFilter] = useState<string>("all")
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const filters = [
+    { key: "all", label: "Tất cả" },
+    { key: "hoa-hoc", label: "Hóa học" },
+    { key: "sinh-hoc", label: "Sinh học" },
+    { key: "tieng-anh", label: "Tiếng Anh" },
+    { key: "toan", label: "Toán" },
+    { key: "vat-ly", label: "Vật lý" },
+  ]
+
+  const matchByFilter = (item: Showcase) => {
+    if (filter === "all") return true
+    const source = `${item.title} ${item.achievement}`.toLowerCase()
+    switch (filter) {
+      case "hoa-hoc":
+        return source.includes("hóa") || source.includes("hoa hoc")
+      case "sinh-hoc":
+        return source.includes("sinh")
+      case "tieng-anh":
+        return source.includes("anh") || source.includes("ielts")
+      case "toan":
+        return source.includes("toán") || source.includes("toan")
+      case "vat-ly":
+        return source.includes("vật lý") || source.includes("vat ly")
+      default:
+        return true
+    }
+  }
+
+  const filtered = data.filter(matchByFilter)
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 spinner-gradient"></div>
+      </div>
+    )
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="text-center">
+        <div className="flex flex-wrap gap-2 justify-center mb-8">
+          {filters.map((f) => (
+            <Button
+              key={f.key}
+              variant={filter === f.key ? 'default' : 'outline'}
+              className={filter === f.key ? 'btn-gradient' : 'border-2'}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+        <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-foreground mb-2">
+          Chưa có học sinh tiêu biểu
+        </h3>
+        <p className="text-muted-foreground">
+          Hãy quay lại sau để xem các thành tích nổi bật
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 justify-center mb-8">
+        {filters.map((f) => (
+          <Button
+            key={f.key}
+            variant={filter === f.key ? "default" : "outline"}
+            className={filter === f.key ? "btn-gradient" : "border-2"}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map((item) => (
+          <div key={item.id} className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-lg transition-all card-hover">
+            <div className="relative h-44 w-full overflow-hidden">
+              <img src={item.studentImage} alt={item.title} className="h-full w-full object-cover" />
+              {item.featured && (
+                <span className="absolute left-3 top-3 rounded-full bg-yellow-400 px-2.5 py-0.5 text-xs font-semibold text-black shadow">
+                  Nổi bật
+                </span>
+              )}
+            </div>
+            <div className="p-4">
+              <h3 className="font-semibold text-base mb-1 line-clamp-1">{item.title}</h3>
+              <div className="text-xs text-muted-foreground mb-3">Thành tích: {item.achievement}</div>
+              {item.description && expandedId === item.id && (
+                <div className="text-sm text-muted-foreground mb-3">"{item.description}"</div>
+              )}
+              {item.description && (
+                <Button
+                  variant="outline"
+                  className={`h-8 px-3 text-sm border-2 filter-btn-hover ${expandedId === item.id ? "btn-gradient text-white border-transparent" : ""}`}
+                  onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                >
+                  {expandedId === item.id ? (
+                    <span className="flex items-center">Thu gọn hành trình <ChevronRight className="ml-1 h-4 w-4 rotate-90" /></span>
+                  ) : (
+                    <span className="flex items-center">Nhấp để xem hành trình <ChevronRight className="ml-1 h-4 w-4" /></span>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 

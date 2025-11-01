@@ -58,7 +58,7 @@ const centerOwnerMenuItems = [
       { title: 'Báo cáo tổng quan', href: '/center-qn/reports/dashboard' },
       { title: 'Báo cáo học phí', href: '/center-qn/reports/tuition' },
       { title: 'Báo cáo kết quả', href: '/center-qn/reports/results' },
-    ]
+    ],
   },
   {
     title: 'Lịch dạy',
@@ -92,22 +92,6 @@ const centerOwnerMenuItems = [
     ],
   },
   {
-    title: 'Quản lý yêu cầu',
-    icon: FileText,
-    href: '/center-qn/requests',
-    children: [
-      { title: 'Đơn xin nghỉ phép', href: '/center-qn/requests/leave-requests' },
-      {
-        title: 'Yêu cầu đổi lịch',
-        href: '/center-qn/requests/change-schedule-requests',
-      },
-      {
-        title: 'Yêu cầu tạo buổi học',
-        href: '/center-qn/requests/session-requests',
-      },
-    ],
-  },
-  {
     title: 'Lớp học & Khóa học',
     icon: BookOpen,
     href: '/center-qn/classes',
@@ -118,6 +102,25 @@ const centerOwnerMenuItems = [
       { title: 'Quản lý phòng học', href: '/courses/rooms' },
       { title: 'Cảnh báo xung đột', href: '/courses/conflicts' },
       { title: 'Clone khóa học', href: '/courses/clone' },
+    ],
+  },
+  {
+    title: 'Quản lý yêu cầu',
+    icon: FileText,
+    href: '/center-qn/requests',
+    children: [
+      {
+        title: 'Đơn xin nghỉ phép',
+        href: '/center-qn/requests/leave-requests',
+      },
+      {
+        title: 'Yêu cầu đổi lịch',
+        href: '/center-qn/requests/change-schedule-requests',
+      },
+      {
+        title: 'Yêu cầu tạo buổi học',
+        href: '/center-qn/requests/session-requests',
+      },
     ],
   },
   {
@@ -150,13 +153,14 @@ const centerOwnerMenuItems = [
   {
     title: 'Truyền thông',
     icon: MessageSquare,
-    href: '/communication',
+    href: '/center-qn/communication',
     children: [
-      { title: 'Thông báo chung', href: '/communication/announcements' },
-      { title: 'Quản lý sự kiện', href: '/communication/events' },
-      { title: 'Họp phụ huynh', href: '/communication/parent-meetings' },
-      { title: 'Hoạt động ngoại khóa', href: '/communication/activities' },
-      { title: 'Thông báo tự động', href: '/communication/auto-notifications' },
+      { title: 'Thông báo chung', href: '/center-qn/communication/announcements' },
+      { title: 'Học sinh tiêu biểu', href: '/center-qn/communication/showcases' },
+      { title: 'Quản lý sự kiện', href: '/center-qn/communication/events' },
+      { title: 'Họp phụ huynh', href: '/center-qn/communication/parent-meetings' },
+      { title: 'Hoạt động ngoại khóa', href: '/center-qn/communication/activities' },
+      { title: 'Thông báo tự động', href: '/center-qn/communication/auto-notifications' },
     ],
   },
   {
@@ -165,9 +169,9 @@ const centerOwnerMenuItems = [
     href: '/users',
   },
   {
-    title: "Feedback Phụ Huynh",
+    title: 'Feedback Phụ Huynh',
     icon: MessageSquare,
-    href: "/center-qn/feedback",
+    href: '/center-qn/feedback',
   },
   {
     title: 'Báo cáo sự cố',

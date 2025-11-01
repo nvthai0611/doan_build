@@ -66,6 +66,7 @@ export function ScoreSetting() {
 
   const saveToDatabase = (items: ExamType[]) => {
     mutation.mutate({ items });
+    setFilterdExamTypes(items);
   };
 
   const addExamType = () => {
@@ -124,10 +125,17 @@ export function ScoreSetting() {
 
   const onPageChangeAction = (page: number) => {
     setCurrentPage(page);
+    setFilterdExamTypes(examTypes.slice((page - 1) * itemsPerPage, page * itemsPerPage));
   };
   const onItemsPerPageChangeAction = (itemsPerPage: number) => {
     setItemsPerPage(itemsPerPage);
+    setFilterdExamTypes(examTypes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage));
+    setCurrentPage(1);
   };
+
+  useEffect(() => {
+    setFilterdExamTypes(examTypes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage));
+  }, [filterdExamTypes]);
 
   // Filter logic
   const filteredExamTypes = filterdExamTypes.filter(examType => {
@@ -137,7 +145,6 @@ export function ScoreSetting() {
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'active' && examType.isActive) ||
                          (statusFilter === 'inactive' && !examType.isActive);
-    
     return matchesSearch && matchesStatus;
   });
 

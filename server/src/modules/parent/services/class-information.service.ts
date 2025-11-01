@@ -38,7 +38,9 @@ export class ClassInformationService {
       where: {
         studentId: studentId,
         class: {
-          status: 'active',
+          status: {
+            in: ['ready', 'active'], // Bao gồm cả lớp ready và active
+          },
         },
       },
       include: {
@@ -138,7 +140,7 @@ export class ClassInformationService {
         id: classData.id,
         name: classData.name,
         classCode: classData.classCode || '',
-        status: classData.status, // ready, active, completed
+        status: classData.status, // ready, active
         progress: progress,
         currentStudents: classData['currentStudents'] || 0,
         maxStudents: classData['maxStudents'] || 0,
@@ -226,7 +228,9 @@ export class ClassInformationService {
           in: studentIds,
         },
         class: {
-          status: 'active',
+          status: {
+            in: ['ready', 'active'], // Bao gồm cả lớp ready và active
+          },
         },
       },
       include: {

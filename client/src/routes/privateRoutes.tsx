@@ -58,6 +58,7 @@ import RecruitingClasses from "../pages/Parent/Dashboard/RecruitingClasses/Recru
 import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/TeacherFeedback";
 import StudentClassRequestsPage from "../pages/manager/StudentClassRequests/StudentClassRequestsPage";
 import { AlertsPage } from "../pages/manager/Alerts/AlertsPage";
+import { ShowcasesPage } from '../pages/manager/ShowcaseManagement/ShowcasePage';
 
 export const privateRoutes = (
   <>
@@ -99,6 +100,7 @@ export const privateRoutes = (
         <Route path="student-class-requests" element={<StudentClassRequestsPage />} />
         <Route path="feedback" element={<FeedbackTeacher />} />
         <Route path="alerts" element={<AlertsPage />} />
+        <Route path="communication/showcases" element={<ShowcasesPage />} />
       </Route>
 
       {/* Giáo viên */}

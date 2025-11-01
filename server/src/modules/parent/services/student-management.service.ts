@@ -194,11 +194,6 @@ export class StudentManagementService {
           orderBy: { gradedAt: 'desc' },
           take: 50,
         },
-        // payments: {
-        //   include: { feeRecord: { include: { feeStructure: true } } },
-        //   orderBy: { paidAt: 'desc' },
-        //   take: 50,
-        // },
       },
     });
 
@@ -267,14 +262,6 @@ export class StudentManagementService {
           class: { name: g.assessment.class.name },
         },
       })),
-      // payments: student.payments.map((p: any) => ({
-      //   id: p.id,
-      //   amount: Number(p.amount),
-      //   method: p.method,
-      //   status: p.status,
-      //   paidAt: p.paidAt.toISOString(),
-      //   feeRecord: { feeStructure: { name: p.feeRecord.feeStructure.name } },
-      // })),
     };
 
     return { data: result, message: 'Lấy chi tiết học sinh thành công' };
@@ -623,4 +610,86 @@ export class StudentManagementService {
 
     return { success: true, data: result, message: 'Lấy lịch sử điểm danh thành công' };
   }
+
+  async getClassRankingForParent(userId: string, childId: string, classId: string) {
+    // Xác thực phụ huynh
+    const parent = await this.prisma.parent.findUnique({ 
+      where: { userId }, 
+      select: { id: true } 
+    });
+    if (!parent) {
+      return { data: null, message: 'Không tìm thấy phụ huynh' };
+    }
+
+    // Xác thực học sinh thuộc phụ huynh
+    const child = await this.prisma.student.findFirst({ 
+      where: { id: childId, parentId: parent.id }, 
+      select: { id: true } 
+    });
+    if (!child) {
+      return { data: null, message: 'Không tìm thấy học sinh' };
+    }
+
+    // Kiểm tra học sinh có đang học lớp này không
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: {
+        studentId: childId,
+        classId: classId,
+        status: 'studying',
+      },
+    });
+    if (!enrollment) {
+      return { data: null, message: 'Học sinh không học lớp này' };
+    }
+
+    // Tính điểm trung bình của học sinh này trong lớp
+    const studentGradeAgg = await this.prisma.studentAssessmentGrade.aggregate({
+      _avg: { score: true },
+      where: { 
+        studentId: childId, 
+        assessment: { classId: classId }, 
+        score: { not: null } 
+      },
+    });
+    const studentAvg = studentGradeAgg._avg.score != null ? Number(studentGradeAgg._avg.score) : null;
+
+    // Lấy điểm trung bình của tất cả học sinh trong lớp
+    const allStudentsGrades = await this.prisma.studentAssessmentGrade.groupBy({
+      by: ['studentId'],
+      _avg: { score: true },
+      where: { 
+        assessment: { classId: classId }, 
+        score: { not: null } 
+      },
+    });
+
+    // Sắp xếp theo điểm trung bình giảm dần (cao nhất → rank 1, thấp nhất → rank cuối)
+    const sorted = allStudentsGrades
+      .map((g) => ({ 
+        studentId: g.studentId, 
+        avg: g._avg.score ? Number(g._avg.score) : 0 
+      }))
+      .sort((a, b) => {
+        // Sắp xếp giảm dần: điểm cao hơn đứng trước
+        if (b.avg !== a.avg) return b.avg - a.avg;
+        // Nếu cùng điểm, sắp xếp theo ID để đảm bảo consistent
+        return a.studentId.localeCompare(b.studentId);
+      });
+
+    const totalStudents = sorted.length;
+    const idx = sorted.findIndex((s) => s.studentId === childId);
+    
+    // Tính rank: học sinh có điểm cao nhất = rank 1, thấp nhất = rank totalStudents
+    // Nếu cùng điểm, cùng rank (optional - comment dòng dưới nếu muốn)
+    const rank = idx >= 0 ? idx + 1 : null;
+    return {
+      data: { 
+        rank, 
+        totalStudents,
+        averageScore: studentAvg 
+      },
+      message: 'Lấy xếp hạng thành công',
+    };
+  }
 }
+
