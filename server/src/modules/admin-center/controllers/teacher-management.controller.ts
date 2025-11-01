@@ -82,7 +82,6 @@ export class TeacherManagementController {
   ) {
     const yearNum = year ? parseInt(year) : undefined;
     const monthNum = month ? parseInt(month) : undefined;
-    console.log(yearNum, monthNum);
     
     return this.teacherManagementService.getTeacherSchedule(id, yearNum, monthNum);
   }
@@ -90,7 +89,6 @@ export class TeacherManagementController {
   @Post('bulk-import-validate')
   @HttpCode(HttpStatus.OK)
   async validateBulkImport(@Body() body: { teachers: any[] }) {
-    console.log("Validating teachers:", body.teachers.length);
     return this.teacherManagementService.validateTeachersData(body.teachers);
   }
 

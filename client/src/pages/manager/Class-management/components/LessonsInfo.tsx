@@ -141,8 +141,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 
   // Handle delete selected sessions
   const handleDeleteSessions = async () => {
-    console.log(selectedSessions);
-    
     if (selectedSessions.length === 0) {
       toast.error('Vui lòng chọn ít nhất 1 buổi học để xóa');
       return;
@@ -438,7 +436,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               <SheetTrigger asChild>
                 <Button >
                   <Plus className="h-4 w-4 mr-2" />
-                  Thêm mới buổi học
+                  Tự động tạo buổi học
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">

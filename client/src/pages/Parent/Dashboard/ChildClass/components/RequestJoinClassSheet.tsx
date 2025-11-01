@@ -33,6 +33,9 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const [contractPreviewUrl, setContractPreviewUrl] = useState<string>('');
   const [contractMimeType, setContractMimeType] = useState<string>('');
   
+  // Link mẫu form cam kết học tập (có thể là Google Drive, Dropbox, etc.)
+  const COMMITMENT_FORM_URL = 'https://res.cloudinary.com/dgqkmqkdz/raw/upload/v1761971845/ban-cam-ket-cua-hoc-sinh-so-2_1603112518_wtpcg3.docx';
+  
   // Fetch danh sách con
   const { data: studentsResponse, isLoading: isLoadingStudents } = useQuery({
     queryKey: ['parent', 'students'],
@@ -416,8 +419,8 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
                   size="sm"
                   className="h-auto p-0 text-primary"
                   onClick={() => {
-                    // Download mẫu form cam kết
-                    window.open('/templates/mau-cam-ket-hoc-tap.pdf', '_blank');
+                    // Download mẫu form cam kết từ bên thứ 3
+                    window.open(COMMITMENT_FORM_URL, '_blank');
                   }}
                 >
                   <Download className="w-4 h-4 mr-1" />

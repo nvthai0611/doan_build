@@ -51,7 +51,7 @@ export class ClassManagementController {
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học' })
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
     async updateStatus(@Param('id') id: string, @Body() updateClassStatusDto: UpdateClassStatusDto) {
-        return this.classManagementService.updateStatus(id, updateClassStatusDto.status);
+        return this.classManagementService.updateStatus(id, updateClassStatusDto);
     }
 
     @Patch(':id/schedules')

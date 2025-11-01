@@ -1,9 +1,9 @@
 import { formatSchedule } from '../../../utils/function.util';
 
 /**
- * Template email thông báo đăng ký lớp học cho phụ huynh
+ * Template email thông báo chấp nhận yêu cầu tham gia lớp học cho phụ huynh
  */
-export const enrollmentNotificationEmailTemplate = (data: {
+export const classRequestApprovalEmailTemplate = (data: {
   studentName: string;
   parentName: string;
   className: string;
@@ -11,13 +11,10 @@ export const enrollmentNotificationEmailTemplate = (data: {
   teacherName?: string;
   startDate?: string;
   schedule?: any;
-  enrollmentStatus: string;
+  username?: string;
+  password?: string;
 }): string => {
-  const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus } = data;
-  
-  const statusMessage = enrollmentStatus === 'studying' 
-    ? 'Lớp đã có lịch học, học sinh có thể xem lịch ngay.'
-    : 'Lớp đang chuẩn bị lịch học, chúng tôi sẽ thông báo khi có lịch.';
+  const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, username, password } = data;
 
   return `
 <!DOCTYPE html>
@@ -25,7 +22,7 @@ export const enrollmentNotificationEmailTemplate = (data: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thông báo đăng ký lớp học</title>
+  <title>Yêu cầu tham gia lớp học đã được chấp nhận</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -94,18 +91,45 @@ export const enrollmentNotificationEmailTemplate = (data: {
       margin: 20px 0;
       border-radius: 4px;
     }
+    .account-box {
+      background-color: #f0f9ff;
+      border: 2px solid #3b82f6;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .account-row {
+      margin: 12px 0;
+      font-size: 15px;
+    }
+    .account-label {
+      font-weight: bold;
+      color: #1e40af;
+      display: inline-block;
+      min-width: 120px;
+    }
+    .password-display {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      letter-spacing: 1px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>✅ Đăng Ký Lớp Học Thành Công</h1>
+      <h1>✅ Yêu Cầu Đã Được Chấp Nhận</h1>
     </div>
     
     <div class="content">
       <p>Kính gửi <strong>${parentName}</strong>,</p>
       
-      <p>Chúng tôi xin thông báo học sinh <strong>${studentName}</strong> đã được đăng ký thành công vào lớp học.</p>
+      <p>Chúng tôi xin thông báo yêu cầu tham gia lớp học của học sinh <strong>${studentName}</strong> đã được chấp nhận.</p>
       
       <div class="info-box">
         <div class="info-row">
@@ -138,9 +162,30 @@ export const enrollmentNotificationEmailTemplate = (data: {
       
       <div class="status-box">
         <p style="margin: 0; font-size: 15px;">
-          <strong>📌 Trạng thái:</strong> ${statusMessage}
+          <strong>🎉 Học sinh đã được ghi danh vào lớp học thành công!</strong>
         </p>
       </div>
+      
+      ${username && password ? `
+      <div class="account-box">
+        <p style="margin: 0 0 15px 0; font-size: 16px;"><strong>🔐 Thông tin đăng nhập</strong></p>
+        <div class="account-row">
+          <span class="account-label">👨‍🎓 Học sinh:</span> ${studentName}
+        </div>
+        <div class="account-row">
+          <span class="account-label">👤 Tài khoản:</span> <strong>${username}</strong>
+        </div>
+        <div class="account-row">
+          <span class="account-label">🔑 Mật khẩu:</span> 
+          <span class="password-display">${password}</span>
+        </div>
+        <div style="margin-top: 15px; padding: 12px; background-color: #fff9e6; border-radius: 4px;">
+          <p style="margin: 0; font-size: 13px; color: #744210;">
+            <strong>⚠️ Lưu ý:</strong> Vui lòng đổi mật khẩu ngay sau lần đăng nhập đầu tiên để bảo mật tài khoản.
+          </p>
+        </div>
+      </div>
+      ` : ''}
       
       <div class="contact">
         <p style="margin: 0 0 10px 0;"><strong>📞 Liên hệ hỗ trợ:</strong></p>

@@ -168,7 +168,6 @@ export class TeacherManagementService {
           teacherCode
         );
       } catch (emailError) {
-        console.error('Lỗi khi gửi email tài khoản:', emailError);
         // Không throw error, vì teacher đã được tạo thành công
       }
 

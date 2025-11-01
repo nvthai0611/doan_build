@@ -448,32 +448,32 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         );
       }
     },
-    // {
-    //   key: 'graduationStatus',
-    //   header: 'Trạng thái tốt nghiệp',
-    //   width: '150px',
-    //   render: (enrollment: any) => {
-    //     const isGraduated = enrollment?.status === EnrollmentStatus.GRADUATED;
-    //     return (
-    //       <div className="flex items-center gap-2">
-    //         <Switch
-    //           checked={isGraduated}
-    //           onCheckedChange={(checked) => {
-    //             const newStatus = checked ? EnrollmentStatus.GRADUATED : EnrollmentStatus.STUDYING;
-    //             updateEnrollmentMutation.mutate({
-    //               enrollmentId: enrollment.id,
-    //               status: newStatus,
-    //             });
-    //           }}
-    //           disabled={updateEnrollmentMutation.isPending}
-    //         />
-    //         <span className="text-sm">
-    //           {isGraduated ? 'Đã tốt nghiệp' : 'Chưa tốt nghiệp'}
-    //         </span>
-    //       </div>
-    //     );
-    //   }
-    // },
+    {
+      key: 'graduationStatus',
+      header: 'Trạng thái tốt nghiệp',
+      width: '150px',
+      render: (enrollment: any) => {
+        const isGraduated = enrollment?.status === EnrollmentStatus.GRADUATED;
+        return (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isGraduated}
+              onCheckedChange={(checked) => {
+                const newStatus = checked ? EnrollmentStatus.GRADUATED : EnrollmentStatus.STUDYING;
+                updateEnrollmentMutation.mutate({
+                  enrollmentId: enrollment.id,
+                  status: newStatus,
+                });
+              }}
+              disabled={updateEnrollmentMutation.isPending}
+            />
+            <span className="text-sm">
+              {isGraduated ? 'Đã tốt nghiệp' : 'Chưa tốt nghiệp'}
+            </span>
+          </div>
+        );
+      }
+    },
     {
       key: 'actions',
       header: '',

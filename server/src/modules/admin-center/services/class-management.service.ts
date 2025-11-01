@@ -503,7 +503,8 @@ export class ClassManagementService {
         }
       }
 
-      // Check room exists if provided
+      // Check room exists if provided và lấy capacity để làm maxStudents
+      let roomCapacity: number | null = null;
       if (createClassDto.roomId) {
         const room = await this.prisma.room.findUnique({
           where: { id: createClassDto.roomId },
@@ -518,6 +519,9 @@ export class ClassManagementService {
             HttpStatus.NOT_FOUND,
           );
         }
+
+        // Lấy capacity của phòng
+        roomCapacity = room.capacity;
       }
 
       // Check grade exists if provided
@@ -583,13 +587,16 @@ export class ClassManagementService {
         );
       }
 
+      // Xác định maxStudents: ưu tiên giá trị truyền vào, nếu không có thì dùng capacity của phòng
+      const maxStudents = createClassDto.maxStudents ?? roomCapacity;
+
       const newClass = await this.prisma.class.create({
         data: {
           name: createClassDto.name,
           classCode: classCode,
           subjectId: createClassDto.subjectId || null,
           gradeId: createClassDto.gradeId || null,
-          maxStudents: createClassDto.maxStudents || null,
+          maxStudents: maxStudents,
           roomId: createClassDto.roomId || null,
           teacherId: createClassDto.teacherId || null,
           description: createClassDto.description || null,
@@ -918,7 +925,7 @@ export class ClassManagementService {
   }
 
   // Cập nhật trạng thái lớp học (API riêng)
-  async updateStatus(id: string, status: ClassStatus) {
+  async updateStatus(id: string, updateStatusDto: { status: string; startDate?: string; endDate?: string }) {
     try {
       // Validate UUID
       if (!this.isValidUUID(id)) {
@@ -931,6 +938,8 @@ export class ClassManagementService {
         );
       }
 
+      const { status, startDate, endDate } = updateStatusDto;
+      
       // Check class exists
       const existingClass = await this.prisma.class.findUnique({
         where: { id },
@@ -942,6 +951,9 @@ export class ClassManagementService {
               },
             },
           },
+          subject: true,
+          room: true,
+          teacher: true,
         },
       });
 
@@ -955,16 +967,6 @@ export class ClassManagementService {
         );
       }
 
-      // Kiểm tra transition hợp lệ
-      const allowedTransitions = [
-        'draft' as ClassStatus,
-        'ready' as ClassStatus,
-        'active' as ClassStatus,
-        'completed' as ClassStatus,
-        'suspended' as ClassStatus,
-        'cancelled' as ClassStatus,
-      ];
-
       // Thực hiện update trong transaction
       const result = await this.prisma.$transaction(async (tx) => {
         // Update class status
@@ -973,8 +975,9 @@ export class ClassManagementService {
           data: { status },
         });
 
-        // Nếu chuyển từ active sang completed, update enrollments
+        // Nếu chuyển từ active sang completed, update enrollments và sessions
         let updatedEnrollmentsCount = 0;
+        let updatedSessionsCount = 0;
         if (existingClass.status === 'active' && status === 'completed') {
           // Update tất cả enrollments có status là studying hoặc not_been_updated
           // nhưng không update những ai đã withdrawn hoặc stopped
@@ -991,15 +994,133 @@ export class ClassManagementService {
             },
           });
           updatedEnrollmentsCount = updateResult.count;
+
+          // Update tất cả buổi học về status 'end'
+          const sessionsUpdateResult = await tx.classSession.updateMany({
+            where: {
+              classId: id,
+              status: {
+                notIn: ['end', 'cancelled', 'day_off'], // Chỉ update những session chưa end
+              },
+            },
+            data: {
+              status: 'end',
+            },
+          });
+          updatedSessionsCount = sessionsUpdateResult.count;
         }
 
         return {
           class: updatedClass,
           updatedEnrollmentsCount,
+          updatedSessionsCount,
         };
       });
+      
+      // AUTO-GEN SESSIONS: Nếu chuyển từ ready → active, tự động gen sessions
+      if (existingClass.status === 'ready' && status === 'active') {
+        try {
+          // Xác định ngày bắt đầu - ưu tiên từ request, sau đó là từ updatedClass
+          const sessionStartDate =
+            startDate
+              ? new Date(startDate)
+              : result.class.actualStartDate || result.class.expectedStartDate;
+          let sessionEndDate: Date | null = null;
 
-      // Chuẩn bị message
+          if (endDate) {
+            // Sử dụng ngày từ request
+            sessionEndDate = new Date(endDate);
+          } else {
+            // Lấy từ updatedClass hoặc tự động tính 9 tháng từ startDate
+            sessionEndDate = result.class.actualEndDate || null;
+            if (sessionStartDate && !sessionEndDate) {
+              sessionEndDate = new Date(sessionStartDate);
+              sessionEndDate.setMonth(sessionEndDate.getMonth() + 9);
+              console.log(
+                `Auto-calculated endDate: ${sessionEndDate.toLocaleDateString('vi-VN')}`,
+              );
+            }
+          }
+
+          if (sessionStartDate && sessionEndDate && result.class.recurringSchedule) {
+            // Tự động gen sessions
+            console.log(
+              `Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
+            );
+
+            await this.generateSessions(id, {
+              startDate: sessionStartDate.toISOString().split('T')[0],
+              endDate: sessionEndDate.toISOString().split('T')[0],
+              generateForFullYear: false, // Sử dụng startDate và endDate từ request, không tự tính
+            });
+
+            // Chuẩn bị message
+            const statusLabel = {
+              draft: 'Lớp nháp',
+              ready: 'Sẵn sàng',
+              active: 'Đang hoạt động',
+              completed: 'Đã hoàn thành',
+              suspended: 'Tạm dừng',
+              cancelled: 'Đã hủy',
+            }[status] || status;
+
+            let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Đã tạo lịch học từ ${sessionStartDate.toLocaleDateString('vi-VN')} đến ${sessionEndDate.toLocaleDateString('vi-VN')}.`;
+
+            return {
+              success: true,
+              message,
+              data: result.class,
+              updatedEnrollmentsCount: result.updatedEnrollmentsCount,
+              sessionsGenerated: true,
+            };
+          } else {
+            // Thiếu thông tin để gen sessions
+            const statusLabel = {
+              draft: 'Lớp nháp',
+              ready: 'Sẵn sàng',
+              active: 'Đang hoạt động',
+              completed: 'Đã hoàn thành',
+              suspended: 'Tạm dừng',
+              cancelled: 'Đã hủy',
+            }[status] || status;
+
+            let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.`;
+
+            return {
+              success: true,
+              message,
+              data: result.class,
+              updatedEnrollmentsCount: result.updatedEnrollmentsCount,
+              warning:
+                'Chưa thể tạo lịch học do thiếu thông tin ngày bắt đầu hoặc lịch học tuần',
+            };
+          }
+        } catch (error) {
+          // Nếu gen sessions lỗi, vẫn return success nhưng có warning
+          console.error('Error auto-generating sessions:', error);
+          
+          const statusLabel = {
+            draft: 'Lớp nháp',
+            ready: 'Sẵn sàng',
+            active: 'Đang hoạt động',
+            completed: 'Đã hoàn thành',
+            suspended: 'Tạm dừng',
+            cancelled: 'Đã hủy',
+          }[status] || status;
+
+          let message = `Đã chuyển trạng thái lớp sang "${statusLabel}" nhưng có lỗi khi tạo lịch học tự động`;
+
+          return {
+            success: true,
+            message,
+            data: result.class,
+            updatedEnrollmentsCount: result.updatedEnrollmentsCount,
+            warning: error.message || 'Không thể tạo lịch học tự động',
+          };
+        }
+      }
+
+      // Chuẩn bị message cho các trường hợp khác (không phải ready -> active)
       const statusLabel = {
         draft: 'Lớp nháp',
         ready: 'Sẵn sàng',
@@ -1013,6 +1134,14 @@ export class ClassManagementService {
       if (existingClass.status === 'active' && status === 'completed') {
         message += `. Đã cập nhật trạng thái ${result.updatedEnrollmentsCount} học sinh sang "Đã tốt nghiệp"`;
       }
+
+      // Gửi email thông báo cho phụ huynh (không await để không block response)
+      this.emailNotificationService
+        .sendClassStatusChangeEmailToParents(id, existingClass.status, status)
+        .catch(error => {
+          console.error('❌ Lỗi khi gửi email thông báo status:', error);
+          // Không throw để không ảnh hưởng đến response
+        });
 
       return {
         success: true,

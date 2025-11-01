@@ -5,6 +5,7 @@ import JWT from 'src/utils/jwt.util';
 import { PermissionService } from './permission.service';
 import { RegisterParentDto } from './dto/register-parent.dto';
 import { AlertService } from '../admin-center/services/alert.service';
+import { generateQNCode } from 'src/utils/function.util';
 
 @Injectable()
 export class AuthService {
@@ -123,34 +124,7 @@ export class AuthService {
    * Đăng ký tài khoản phụ huynh
    */
   async registerParent(registerDto: RegisterParentDto) {
-    // Kiểm tra email đã tồn tại chưa
-    const existingEmail = await this.prisma.user.findUnique({
-      where: { email: registerDto.email },
-    });
-
-    if (existingEmail) {
-      throw new ConflictException('Email đã được sử dụng');
-    }
-
-    // Kiểm tra username đã tồn tại chưa
-    const existingUsername = await this.prisma.user.findUnique({
-      where: { username: registerDto.username },
-    });
-
-    if (existingUsername) {
-      throw new ConflictException('Tên đăng nhập đã được sử dụng');
-    }
-
-    // Kiểm tra phone đã tồn tại chưa
-    const existingPhone = await this.prisma.user.findFirst({
-      where: { phone: registerDto.phone },
-    });
-
-    if (existingPhone) {
-      throw new ConflictException('Số điện thoại đã được sử dụng');
-    }
-
-    // Tìm role parent
+    // Tìm role parent và student role TRƯỚC transaction (không thay đổi)
     const parentRole = await this.prisma.role.findUnique({
       where: { name: 'parent' },
     });
@@ -159,10 +133,6 @@ export class AuthService {
       throw new NotFoundException('Không tìm thấy vai trò phụ huynh trong hệ thống');
     }
 
-    // Hash password
-    const hashedPassword = await Hash.hash(registerDto.password);
-
-    // Tìm student role để tạo students
     const studentRole = await this.prisma.role.findUnique({
       where: { name: 'student' },
     });
@@ -171,10 +141,42 @@ export class AuthService {
       throw new NotFoundException('Không tìm thấy vai trò học sinh trong hệ thống');
     }
 
-    // No need to validate schools here - will handle in transaction
+    // Hash password TRƯỚC transaction
+    const hashedPassword = await Hash.hash(registerDto.password);
 
     // Tạo user và parent record trong một transaction
-    const result = await this.prisma.$transaction(async (prisma) => {
+    // Validation được thực hiện TRONG transaction để tránh race condition
+    let result;
+    try {
+      result = await this.prisma.$transaction(async (prisma) => {
+      // Kiểm tra email đã tồn tại chưa (TRONG transaction)
+      const existingEmail = await prisma.user.findUnique({
+        where: { email: registerDto.email },
+      });
+
+      if (existingEmail) {
+        throw new ConflictException('Email đã được sử dụng');
+      }
+
+      // Kiểm tra username đã tồn tại chưa (TRONG transaction)
+      const existingUsername = await prisma.user.findUnique({
+        where: { username: registerDto.username },
+      });
+
+      if (existingUsername) {
+        throw new ConflictException('Tên đăng nhập đã được sử dụng');
+      }
+
+      // Kiểm tra phone đã tồn tại chưa (TRONG transaction)
+      if (registerDto.phone) {
+        const existingPhone = await prisma.user.findFirst({
+          where: { phone: registerDto.phone },
+        });
+
+        if (existingPhone) {
+          throw new ConflictException('Số điện thoại đã được sử dụng');
+        }
+      }
       // Tạo user (parent)
       const user = await prisma.user.create({
         data: {
@@ -222,14 +224,18 @@ export class AuthService {
           },
         });
 
-        // Handle school creation/finding (giống teacher-management.service.ts)
+        // Handle school creation/finding
         let schoolId = null;
-        if (child.schoolName) {
-          // Tìm school đã tồn tại
+        if (child.schoolName && child.schoolName.trim()) {
+          const trimmedSchoolName = child.schoolName.trim();
+          
+          // Tìm school đã tồn tại theo name (case-insensitive)
           let school = await prisma.school.findFirst({
             where: {
-              name: child.schoolName,
-              address: child.schoolAddress || undefined,
+              name: {
+                equals: trimmedSchoolName,
+                mode: 'insensitive' // Case insensitive
+              }
             },
           });
 
@@ -237,8 +243,8 @@ export class AuthService {
           if (!school) {
             school = await prisma.school.create({
               data: {
-                name: child.schoolName,
-                address: child.schoolAddress || null,
+                name: trimmedSchoolName,
+                address: child.schoolAddress?.trim() || null,
                 phone: null,
               },
             });
@@ -248,6 +254,21 @@ export class AuthService {
 
         if (!schoolId) {
           throw new BadRequestException(`Thiếu thông tin trường học cho con ${child.fullName}`);
+        }
+
+        // Generate student code (giống student-management.service.ts)
+        let studentCode = generateQNCode('student');
+        
+        // Check code đã tồn tại chưa, regenerate nếu cần
+        while (true) {
+          const existingStudentWithCode = await prisma.student.findFirst({
+            where: { studentCode: studentCode }
+          });
+
+          if (!existingStudentWithCode) {
+            break;
+          }
+          studentCode = generateQNCode('student');
         }
 
         // Tạo student record và liên kết với parent
@@ -261,7 +282,8 @@ export class AuthService {
             },
             school: {
               connect: { id: schoolId }
-            }
+            },
+            studentCode: studentCode
           },
         });
 
@@ -272,21 +294,29 @@ export class AuthService {
       }
 
       return { user, parent, children: createdChildren };
-    });
-
-    // Tạo alert cho center owner
-    try {
-      await this.alertService.createParentRegistrationAlert({
-        id: result.parent.id,
-        fullName: result.user.fullName,
-        email: result.user.email,
-        phone: result.user.phone,
-        childrenCount: result.children.length,
       });
-    } catch (error) {
-      // Log lỗi nhưng không throw để không ảnh hưởng đến registration
-      console.error('Failed to create parent registration alert:', error);
+    } catch (error: any) {
+      // Handle Prisma unique constraint errors (fallback cho race condition)
+      if (error.code === 'P2002') {
+        // Unique constraint violation
+        const field = error.meta?.target?.[0];
+        if (field === 'email') {
+          throw new ConflictException('Email đã được sử dụng');
+        } else if (field === 'username') {
+          throw new ConflictException('Tên đăng nhập đã được sử dụng');
+        } else {
+          throw new ConflictException('Thông tin đã tồn tại trong hệ thống');
+        }
+      }
+      // Re-throw nếu là HttpException đã được throw trong transaction
+      if (error instanceof ConflictException || error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      // Log và throw generic error
+      console.error('Error in registerParent transaction:', error);
+      throw new BadRequestException('Có lỗi xảy ra khi đăng ký tài khoản. Vui lòng thử lại.');
     }
+
 
     return {
       success: true,
