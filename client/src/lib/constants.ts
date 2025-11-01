@@ -184,7 +184,7 @@ export enum SessionStatus {
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.HAPPENING]: 'Đang diễn ra',
-  [SessionStatus.END]: 'Đã hoàn thành',
+  [SessionStatus.END]: 'Đã kết thúc',
   [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
   [SessionStatus.DAY_OFF]: 'Nghỉ',
 };
@@ -215,19 +215,19 @@ export const SESSION_TYPE_LABELS: Record<SessionType, string> = {
 export enum AttendanceStatus {
   PRESENT = 'present', // Có mặt
   ABSENT = 'absent', // Vắng mặt
-  LATE = 'late', // Đi muộn
+  EXCUSED = 'excused', // Có phép
 }
 
 export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   [AttendanceStatus.PRESENT]: 'Có mặt',
   [AttendanceStatus.ABSENT]: 'Vắng mặt',
-  [AttendanceStatus.LATE]: 'Đi muộn',
+  [AttendanceStatus.EXCUSED]: 'Có phép',
 };
 
 export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
   [AttendanceStatus.PRESENT]: 'border-green-500 text-green-700 bg-green-50',
   [AttendanceStatus.ABSENT]: 'border-red-500 text-red-700 bg-red-50',
-  [AttendanceStatus.LATE]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+  [AttendanceStatus.EXCUSED]: 'border-blue-500 text-blue-700 bg-blue-50',
 };
 
 // ==================== ENROLLMENT STATUS ====================

@@ -7,6 +7,7 @@ import { PortalSelection } from "../pages/Auth/PortalSelection";
 import { ParentStudentLogin } from "../pages/Auth/ParentStudentLogin";
 import { ParentRegister } from "../pages/Auth/ParentRegister";
 import { AdminLogin } from "../pages/Auth/AdminLogin";
+import NotFound from "../pages/Error/NotFound";
 import { Route, Navigate } from "react-router-dom";
 import GuestMiddleware from "../middlewares/GuestMiddleware";
 import { useAuth } from "../lib/auth";
@@ -76,5 +77,8 @@ export const publicRoutes = (
         <Route path="/auth/login/admin" element={<AdminLogin />} />
       </Route>
     </Route>
+
+    {/* 404 - Not Found (Catch all routes) */}
+    <Route path="*" element={<NotFound />} />
   </>
 );

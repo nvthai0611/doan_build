@@ -1486,11 +1486,149 @@ export class ClassManagementService {
           ),
       );
 
-      // Tạo buổi học trong database
-      const createdSessions = await this.prisma.classSession.createMany({
-        data: filteredSessions,
-        skipDuplicates: true,
+      // ============================================================
+      // LOGIC XỬ LÝ NGÀY NGHỈ: Kiểm tra và đánh dấu sessions trùng với holiday
+      // ============================================================
+      
+      // Bước 1: Lấy tất cả các kỳ nghỉ đang active có overlap với khoảng thời gian generate sessions
+      // Mục đích: Tìm các ngày nghỉ có thể ảnh hưởng đến các buổi học sắp được tạo
+      const holidays = await this.prisma.holidayPeriod.findMany({
+        where: {
+          isActive: true, // Chỉ lấy các kỳ nghỉ đang active
+          OR: [
+            {
+              AND: [
+                { startDate: { lte: sessionEndDate } }, // Ngày bắt đầu holiday <= ngày kết thúc sessions
+                { endDate: { gte: sessionStartDate } }, // Ngày kết thúc holiday >= ngày bắt đầu sessions
+              ],
+            },
+          ],
+        },
+        select: { id: true, startDate: true, endDate: true, note: true }, // Chỉ lấy các field cần thiết
       });
+
+      // Bước 2: Kiểm tra từng session xem có trùng với ngày nghỉ không
+      // Nếu trùng thì đánh dấu status = 'day_off' và ghi lại lý do nghỉ (cancellationReason)
+      const sessionsWithHolidayCheck = filteredSessions.map((session) => {
+        // Lấy ngày của session và reset về 00:00:00 để so sánh chính xác (bỏ qua giờ phút)
+        const sessionDate = new Date(session.sessionDate);
+        sessionDate.setHours(0, 0, 0, 0);
+        
+        // Tìm kỳ nghỉ mà session này rơi vào (session date nằm trong khoảng startDate và endDate của holiday)
+        const matchingHoliday = holidays.find((holiday) => {
+          // Reset về 00:00:00 để so sánh chính xác
+          const holidayStart = new Date(holiday.startDate);
+          holidayStart.setHours(0, 0, 0, 0);
+          const holidayEnd = new Date(holiday.endDate);
+          holidayEnd.setHours(0, 0, 0, 0);
+          
+          // Kiểm tra xem session date có nằm trong khoảng holiday không
+          return sessionDate >= holidayStart && sessionDate <= holidayEnd;
+        });
+
+        // Nếu tìm thấy holiday trùng với session này
+        if (matchingHoliday) {
+          // Trả về session với status = 'day_off' và ghi lại lý do nghỉ từ holiday.note
+          return {
+            ...session, // Giữ nguyên tất cả thông tin khác của session
+            status: 'day_off', // Đánh dấu là ngày nghỉ
+            cancellationReason: matchingHoliday.note, // Ghi lại lý do nghỉ (ví dụ: "Tết Nguyên Đán", "Quốc khánh", ...)
+          };
+        }
+
+        // Nếu không trùng với holiday nào, giữ nguyên session như cũ
+        return session;
+      });
+
+      // Bước 3: Tạo tất cả các buổi học vào database với trạng thái đã được check holiday
+      const createdSessions = await this.prisma.classSession.createMany({
+        data: sessionsWithHolidayCheck, // Dùng sessions đã được check và mark holiday
+        skipDuplicates: true, // Bỏ qua các session trùng lặp nếu có
+      });
+
+      // Bước 4: Tạo links giữa sessions và holiday periods trong bảng HolidayPeriodSession
+      // Mục đích: Tracking để biết session nào bị ảnh hưởng bởi holiday nào
+      // Chỉ thực hiện nếu có holidays và có sessions được tạo thành công
+      if (holidays.length > 0 && createdSessions.count > 0) {
+        // Query lại tất cả sessions có status = 'day_off' trong khoảng thời gian này
+        // (bao gồm cả các session vừa mới được tạo trong batch này)
+        const dayOffSessions = await this.prisma.classSession.findMany({
+          where: {
+            classId, // Chỉ lấy sessions của lớp này
+            sessionDate: {
+              gte: sessionStartDate, // Từ ngày bắt đầu
+              lte: sessionEndDate, // Đến ngày kết thúc
+            },
+            status: 'day_off', // Chỉ lấy các sessions đã được đánh dấu là ngày nghỉ
+          },
+          select: { id: true, sessionDate: true }, // Chỉ cần id và ngày để check
+        });
+
+        // Lấy tất cả các links đã tồn tại để tránh tạo duplicate
+        const existingLinks = await this.prisma.holidayPeriodSession.findMany({
+          where: {
+            sessionId: { in: dayOffSessions.map(s => s.id) }, // Chỉ check links của các sessions này
+          },
+          select: { sessionId: true, holidayPeriodId: true },
+        });
+
+        // Duyệt qua từng session có status day_off để tạo link với holiday tương ứng
+        const holidayLinks = [];
+        for (const session of dayOffSessions) {
+          // Reset ngày về 00:00:00 để so sánh chính xác
+          const sessionDate = new Date(session.sessionDate);
+          sessionDate.setHours(0, 0, 0, 0);
+          
+          // Tìm holiday mà session này thuộc về
+          const matchingHoliday = holidays.find((holiday) => {
+            const holidayStart = new Date(holiday.startDate);
+            holidayStart.setHours(0, 0, 0, 0);
+            const holidayEnd = new Date(holiday.endDate);
+            holidayEnd.setHours(0, 0, 0, 0);
+            
+            // Kiểm tra session date có nằm trong khoảng holiday không
+            return sessionDate >= holidayStart && sessionDate <= holidayEnd;
+          });
+
+          // Nếu tìm thấy holiday tương ứng
+          if (matchingHoliday) {
+            // Kiểm tra xem link này đã tồn tại chưa (tránh duplicate)
+            const linkExists = existingLinks.some(
+              (link) =>
+                link.sessionId === session.id && // Cùng session
+                link.holidayPeriodId === matchingHoliday.id, // Và cùng holiday
+            );
+
+            // Nếu link chưa tồn tại thì thêm vào danh sách để tạo
+            if (!linkExists) {
+              holidayLinks.push({
+                holidayPeriodId: matchingHoliday.id, // ID của kỳ nghỉ
+                sessionId: session.id, // ID của buổi học
+              });
+            }
+          }
+        }
+
+        // Bước 5: Tạo hàng loạt các links vào bảng HolidayPeriodSession
+        // Sử dụng upsert để tránh duplicate (nếu link đã tồn tại thì không tạo lại)
+        if (holidayLinks.length > 0) {
+          await Promise.all(
+            holidayLinks.map((link) =>
+              this.prisma.holidayPeriodSession.upsert({
+                where: {
+                  // Tìm link theo composite key (holidayPeriodId + sessionId)
+                  holidayPeriodId_sessionId: {
+                    holidayPeriodId: link.holidayPeriodId,
+                    sessionId: link.sessionId,
+                  },
+                },
+                create: link, // Nếu chưa có thì tạo mới
+                update: {}, // Nếu đã có thì không update gì
+              }),
+            ),
+          );
+        }
+      }
 
       // AUTO-UPDATE: Chuyển enrollment status từ not_been_updated → studying
       const updatedEnrollments = await this.prisma.enrollment.updateMany({
