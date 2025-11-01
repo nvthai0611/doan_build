@@ -1,9 +1,9 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { parentChildService } from "../../../services"
-import { ChildSchedule } from "./ChildSchedule/ChildSchedule"
-import Loading from "../../../components/Loading/LoadingPage"
+import { parentChildService } from "../../../../services"
+import { ChildSchedule } from "../ChildSchedule/ChildSchedule"
+import Loading from "../../../../components/Loading/LoadingPage"
 
 export function ChildSchedulePage() {
   const { data: children, isLoading, error } = useQuery({

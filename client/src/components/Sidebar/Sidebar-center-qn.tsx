@@ -307,7 +307,7 @@ const parentMenuItems = [
     {
         title: "Tổng quan",
         icon: Home,
-        href: "/parent/dashboad",
+        href: "/parent/dashboard",
     },
     {
         title: "Đăng ký khoá học",

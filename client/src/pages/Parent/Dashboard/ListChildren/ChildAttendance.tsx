@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, MapPin, Eye, UserCheck, CheckCircle, XCircle, AlertCircle, BookOpen, BarChart3, Target } from "lucide-react"
-import Loading from "../../../components/Loading/LoadingPage"
-import { parentChildService } from "../../../services/parent/child-management/child.service"
-import type { Child } from "../../../services/parent/child-management/child.types"
+import Loading from "../../../../components/Loading/LoadingPage"
+import { parentChildService } from "../../../../services/parent/child-management/child.service"
+import type { Child } from "../../../../services/parent/child-management/child.types"
 import { AttendanceDetailsDialog } from "./AttendanceDetailsDialog"
-import { getDisplaySessionStatus } from "../../../utils/session-status.util"
+import { getDisplaySessionStatus } from "../../../../utils/session-status.util"
 
 interface ChildAttendanceProps {
   child: Child

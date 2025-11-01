@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { User, Phone, CalendarIcon, ChevronDown, Users, BookOpen } from "lucide-react"
-import type { Child } from "../../../services/parent"
+import type { Child } from "../../../../services/parent"
 import { useQuery } from "@tanstack/react-query"
-import { apiClient } from "../../../utils/clientAxios"
+import { apiClient } from "../../../../utils/clientAxios"
 
 interface ChildGeneralInfoProps {
   child: Child

@@ -63,3 +63,12 @@ export type {
   CreateTeacherFeedbackDto,
   TeacherFeedbackItem
 } from './teacher-feedback/teacherfeedback.types'
+
+// Parent Overview
+export { parentOverviewService } from './parent-overview/parent-overview.service'
+export type {
+  ParentOverviewData,
+  UpcomingLesson,
+  ActiveClass,
+  ParentOverviewResponse
+} from './parent-overview/parent-overview.types'

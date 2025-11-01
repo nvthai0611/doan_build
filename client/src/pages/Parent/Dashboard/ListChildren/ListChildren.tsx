@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Search, Filter, MoreVertical, Phone, CalendarIcon, ChevronRight } from "lucide-react"
 import { ChildDetailView } from "./ChildDetailView"
 import { useQuery } from "@tanstack/react-query"
-import { parentChildService } from "../../../services"
+import { parentChildService } from "../../../../services"
 
 type ChildRow = {
   id: string
@@ -68,7 +68,7 @@ const getStatusDisplay = (status: ChildRow['status']) => {
   }
 }
 
-export function ParentDashboard() {
+export function ListChildren() {
   const [selectedChild, setSelectedChild] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
