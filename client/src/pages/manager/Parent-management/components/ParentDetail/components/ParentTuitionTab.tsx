@@ -11,6 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { DollarSign, Calendar, User, AlertCircle } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button"
+import { ParentService } from "../../../../../../services/center-owner/parent-management/parent.service"
 
 interface ParentTuitionTabProps {
   parentData: any
@@ -19,6 +23,8 @@ interface ParentTuitionTabProps {
 export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
   const pendingFees = parentData?.pendingFees || []
   const students = parentData?.students || []
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const formatDate = (date: string | Date) => {
     return new Date(date).toLocaleDateString('vi-VN', {
@@ -29,27 +35,86 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
   }
 
   const formatCurrency = (amount: number) => {
-    return amount?.toLocaleString('vi-VN') + ' đ'
+    if (amount === null || amount === undefined) return '-'
+    return Number(amount).toLocaleString('vi-VN') + ' đ'
   }
 
   // Calculate totals
   const totalPending = pendingFees.reduce(
-    (sum: number, fee: any) => sum + (Number(fee.amount) - Number(fee.paidAmount)), 
+    (sum: number, fee: any) => sum + (Number(fee.amount) - Number(fee.paidAmount)),
     0
   )
 
   const totalFees = pendingFees.reduce(
-    (sum: number, fee: any) => sum + Number(fee.amount), 
+    (sum: number, fee: any) => sum + Number(fee.amount),
     0
   )
 
   const totalPaid = pendingFees.reduce(
-    (sum: number, fee: any) => sum + Number(fee.paidAmount), 
+    (sum: number, fee: any) => sum + Number(fee.paidAmount),
     0
   )
 
+  const allIds = useMemo(() => pendingFees.map((f: any) => f.id), [pendingFees])
+  const isAllSelected = useMemo(
+    () => allIds.length > 0 && allIds.every((id: any) => selectedIds.has(id)),
+    [allIds, selectedIds]
+  )
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (isAllSelected) return new Set()
+      return new Set(allIds)
+    })
+  }
+
+  const handleCreateBill = async () => {
+    if (selectedIds.size === 0) {
+      window.alert("Vui lòng chọn ít nhất 1 hóa đơn để tạo bill.")
+      return
+    }
+
+    if (!parentData?.id) {
+      window.alert("Không xác định được phụ huynh.")
+      return
+    }
+
+    const confirmCreate = window.confirm(`Tạo hóa đơn cho ${selectedIds.size} mục?`)
+    if (!confirmCreate) return
+
+    // try {
+    //   const feeRecordIds = Array.from(selectedIds)
+    //   const resp = await ParentService.createBillForParent(parentData.id, { feeRecordIds })
+    //   const message = resp?.message ?? "Tạo hóa đơn thành công"
+    //   window.alert(message)
+    //   setSelectedIds(new Set())
+    //   // Optionally trigger a parent data refetch here if available
+    // } catch (err: any) {
+    //   console.error('Error creating bill for parent:', err)
+    //   window.alert(err?.message || 'Lỗi khi tạo hóa đơn')
+    // }
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={toggleSelectAll}>
+          {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+        </Button>
+        <Button onClick={handleCreateBill} disabled={selectedIds.size === 0}>
+          Tạo hóa đơn ({selectedIds.size})
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -109,9 +174,16 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Chọn tất cả"
+                      />
+                    </TableHead>
                     <TableHead>Học sinh</TableHead>
                     <TableHead>Khoản phí</TableHead>
-                    <TableHead>Kỳ</TableHead>
+                    {/* <TableHead>Kỳ</TableHead> */}
                     <TableHead>Hạn thanh toán</TableHead>
                     <TableHead className="text-right">Tổng tiền</TableHead>
                     <TableHead className="text-right">Đã trả</TableHead>
@@ -123,9 +195,16 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
                   {pendingFees.map((fee: any) => {
                     const remaining = Number(fee.amount) - Number(fee.paidAmount)
                     const isOverdue = new Date(fee.dueDate) < new Date()
-                    
+
                     return (
                       <TableRow key={fee.id}>
+                        <TableCell className="w-8">
+                          <Checkbox
+                            checked={selectedIds.has(fee.id)}
+                            onCheckedChange={() => toggleSelect(fee.id)}
+                            aria-label={`Chọn hóa đơn ${fee.id}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
@@ -146,11 +225,11 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <Badge variant="outline" className="text-xs">
                             {fee.feeStructure?.period || 'N/A'}
                           </Badge>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -158,11 +237,11 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
                               {formatDate(fee.dueDate)}
                             </span>
                           </div>
-                          {isOverdue && (
+                          {/* {isOverdue && (
                             <Badge variant="destructive" className="mt-1 text-xs">
                               Quá hạn
                             </Badge>
-                          )}
+                          )} */}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(Number(fee.amount))}
@@ -174,7 +253,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
                           {formatCurrency(remaining)}
                         </TableCell>
                         <TableCell>
-                          <Badge 
+                          <Badge
                             variant={isOverdue ? "destructive" : "secondary"}
                           >
                             {isOverdue ? 'Quá hạn' : 'Chưa thanh toán'}
@@ -213,7 +292,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
                   Lưu ý về học phí
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  Vui lòng thanh toán học phí trước hạn để tránh bị gián đoạn quá trình học tập. 
+                  Vui lòng thanh toán học phí trước hạn để tránh bị gián đoạn quá trình học tập.
                   Liên hệ văn phòng để được hỗ trợ thanh toán.
                 </p>
               </div>

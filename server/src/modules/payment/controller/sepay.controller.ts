@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
 import { SepayService, CreatePaymentQRDto, SepayWebhookDto } from '../service/sepay.service';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 
 @Controller('payment')
 export class SepayController {
@@ -11,9 +12,15 @@ export class SepayController {
    * Tạo mã QR thanh toán cho hóa đơn
    * POST /payment/sepay/create-qr
    */
+  @UseGuards(JwtAuthGuard)
   @Post('sepay/create-qr')
-  async createPaymentQR(@Body() dto: CreatePaymentQRDto) {
-    return this.sepayService.createPaymentQR(dto);
+  async createPaymentQR(@Req() req: any, @Body() dto: CreatePaymentQRDto) {
+    const userId = req.user.userId
+    return this.sepayService.createPaymentQR( userId,{ feeRecordIds: dto.feeRecordIds });
+  }
+  @Post('sepay/regenerate-qr')
+  async regeneratePaymentQR( @Body() body: any ) {
+    return this.sepayService.regeneratePaymentQR(body.paymentId);
   }
 
   /**

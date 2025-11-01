@@ -11,6 +11,8 @@ interface PaymentCartSidebarProps {
   currentPayment: any
   setCurrentPayment: (payment: any) => void
   setSelectedFees: (ids: string[]) => void
+  setPaymentData?: (data: any) => void,
+  setShowQrModal?: (show: boolean) => void
 }
 
 export const PaymentCartSidebar: React.FC<PaymentCartSidebarProps> = ({
@@ -18,7 +20,9 @@ export const PaymentCartSidebar: React.FC<PaymentCartSidebarProps> = ({
   feeRecords,
   currentPayment,
   setCurrentPayment,
-  setSelectedFees
+  setSelectedFees,
+  setPaymentData,
+  setShowQrModal
 }) => {
   const [loading, setLoading] = useState(false)
 
@@ -26,22 +30,29 @@ export const PaymentCartSidebar: React.FC<PaymentCartSidebarProps> = ({
   const totalAmount = selectedRecords.reduce((sum, fee) => sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0)
 
   // Tạo payment mới
-  const handleCreatePayment = async () => {
-    if (selectedFees.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một hóa đơn")
+const handleCreatePayment = async () => {
+  if (selectedFees.length === 0) {
+    toast.error("Vui lòng chọn ít nhất một hóa đơn")
+    return
+  }
+  setLoading(true)
+  try {
+    // Gọi API mới: tạo payment + QR code trong 1 bước
+    const res: any = await financialParentService.createQrCodeForPayment(selectedFees)
+    if (!res?.data?.qrCodeUrl) {
+      toast.error(res?.message || "Không thể tạo mã QR cho hóa đơn")
       return
     }
-    setLoading(true)
-    try {
-      const res: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
-      setCurrentPayment(res.data)
-      toast.success(res.message || "Tạo hóa đơn thành công")
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Không thể tạo hóa đơn")
-    } finally {
-      setLoading(false)
-    }
+    setCurrentPayment(res.data)
+    if (setPaymentData) setPaymentData(res.data)
+    if (setShowQrModal) setShowQrModal(true)
+    toast.success(res.message || "Tạo hóa đơn thành công")
+  } catch (error: any) {
+    toast.error(error?.response?.data?.message || "Không thể tạo hóa đơn")
+  } finally {
+    setLoading(false)
   }
+}
 
   // Cập nhật payment (thêm/xóa hóa đơn)
   const handleUpdatePayment = async (newFeeRecordIds: string[]) => {

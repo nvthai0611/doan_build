@@ -451,4 +451,27 @@ export class StudentManagementController {
         );
       }
     }
+
+    @ApiOperation({ summary: 'Lấy attendance của học sinh theo lớp (để tính tiền)' })
+    @ApiResponse({ status: 200, description: 'Thông tin điểm danh' })
+    @ApiResponse({ status: 400, description: 'Invalid studentId or classId' })
+    @ApiResponse({ status: 404, description: 'Lớp hoặc học viên không tồn tại' })
+    @ApiParam({ name: 'studentId', description: 'ID học sinh', type: 'string' })
+    @ApiParam({ name: 'classId', description: 'ID lớp', type: 'string' })
+    @Get(':studentId/classes/:classId/attendance')
+    async getAttendanceByStudentAndClass(
+      @Param('studentId') studentId: string,
+      @Param('classId') classId: string
+    ): Promise<StudentResponse> {
+      try {
+        if (!studentId || !classId) {
+          throw new HttpException('studentId and classId are required', HttpStatus.BAD_REQUEST);
+        }
+        return await this.studentManagementService.getAttendanceByStudentIdAndClassId(studentId, classId);
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        console.error('Error in controller getAttendanceByStudentAndClass:', error);
+        throw new HttpException(error.message || 'Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
 }

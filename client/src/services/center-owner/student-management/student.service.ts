@@ -270,6 +270,12 @@ class StudentService {
     const response = await ApiService.get("/schools")
     return response.data as any
   }
+  
+  async getStudentAttendanceByClass(studentId: string, classId: string) {
+    const response = await ApiService.get(`/admin-center/student-management/${studentId}/classes/${classId}/attendance`)
+    // trả về trực tiếp phần data của server (nhẹ)
+    return response.data?.data ?? response.data
+  };
 }
 
 export const centerOwnerStudentService = new StudentService()

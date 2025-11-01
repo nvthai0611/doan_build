@@ -152,8 +152,9 @@ export function PaymentSelectionPage() {
     }
   }, [])
 
+  
+
   // Subscribe payment updates khi QR modal mở
-  console.log(paymentData);
   
   useEffect(() => {
   if (showQrModal && paymentData?.orderCode) {
@@ -206,10 +207,10 @@ export function PaymentSelectionPage() {
 
             // Dismiss toast cũ
   // ⏳ Đợi 2 giây để user đọc thông báo
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  // await new Promise(resolve => setTimeout(resolve, 2000))
 
-  // 🔄 Reload trang
-  window.location.reload()
+  // // 🔄 Reload trang
+  // window.location.reload()
         },
         
         onFailure: (data) => {
@@ -259,39 +260,39 @@ export function PaymentSelectionPage() {
     }
   }
 
-  const handleSelectPayment = async () => {
-    try {
-      if (selectedFees.length === 0) {
-        toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
-        return
-      }
-      setLoading(true)
-      // 1. Tạo payment
-      const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
-      if (!paymentRes?.data?.id) {
-        toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
-        setLoading(false)
-        return
-      }
-      setCurrentPayment(paymentRes.data)
+  // const handleSelectPayment = async () => {
+  //   try {
+  //     if (selectedFees.length === 0) {
+  //       toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
+  //       return
+  //     }
+  //     setLoading(true)
+  //     // 1. Tạo payment
+  //     const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
+  //     if (!paymentRes?.data?.id) {
+  //       toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
+  //       setLoading(false)
+  //       return
+  //     }
+  //     setCurrentPayment(paymentRes.data)
 
-      // 2. Tạo QR code cho payment vừa tạo
-      const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
-      if (!qrRes?.data?.qrCodeUrl) {
-        toast.error(qrRes?.message || "Không thể tạo mã QR")
-        setLoading(false)
-        return
-      }
-      setPaymentData(qrRes.data)
-      setShowQrModal(true)
-      toast.success("Mã QR thanh toán đã được tạo thành công")
-    } catch (error) {
-      console.error("Error creating payment/QR code:", error)
-      toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
-    } finally {
-      setLoading(false)
-    }
-  }
+  //     // 2. Tạo QR code cho payment vừa tạo
+  //     const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
+  //     if (!qrRes?.data?.qrCodeUrl) {
+  //       toast.error(qrRes?.message || "Không thể tạo mã QR")
+  //       setLoading(false)
+  //       return
+  //     }
+  //     setPaymentData(qrRes.data)
+  //     setShowQrModal(true)
+  //     toast.success("Mã QR thanh toán đã được tạo thành công")
+  //   } catch (error) {
+  //     console.error("Error creating payment/QR code:", error)
+  //     toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   const handleCopyContent = async () => {
     if (paymentData?.content) {
@@ -318,31 +319,39 @@ export function PaymentSelectionPage() {
     }
   }
 
-  const handleCloseModal = () => {
-    // Unsubscribe trước khi đóng
-    if (paymentData?.orderCode) {
-      paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
-    }
-
-    // Cleanup timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current)
-      countdownRef.current = null
-    }
-
-    setShowQrModal(false)
-    setPaymentData(null)
-    setCopied(false)
-    setRemainingTime(0)
-    queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
-  queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
+const handleCloseModal = () => {
+  // Unsubscribe trước khi đóng
+  if (paymentData?.orderCode) {
+    paymentSocketService.unsubscribeFromPayment(paymentData.orderCode)
   }
 
-  if (isLoading) {
+  // Cleanup timers
+  if (timerRef.current) {
+    clearTimeout(timerRef.current)
+    timerRef.current = null
+  }
+  if (countdownRef.current) {
+    clearInterval(countdownRef.current)
+    countdownRef.current = null
+  }
+
+  // Đóng modal và reset state trước
+  setShowQrModal(false)
+  setPaymentData(null)
+  setCopied(false)
+  setRemainingTime(0)
+  setCurrentPayment(null)
+  
+// 1. Chỉ 'invalidate' (làm cũ) các query.
+  // Query nào đang active (đang xem) nó sẽ tự refetch.
+  // Query nào inactive (tab khác) sẽ refetch khi user bấm vào.
+  setSelectedFees([])
+  queryClient.invalidateQueries({ queryKey: ['feeRecords'] })
+  queryClient.invalidateQueries({ queryKey: ['payment-processing'] })
+  queryClient.invalidateQueries({ queryKey: ['payment-history'] }) // Nên thêm cả history
+}
+
+  if (isLoading || isLoadingChildren || isError || isErrorChildren) {
     return <Loading />
   }
 
@@ -358,34 +367,34 @@ export function PaymentSelectionPage() {
   //   )
   // }
 
-  const feeRecords = response as any[] || []
-  const childrenList = children as any[]
+  const feeRecords = (isError) ? [] : (response as any[] || [])
+  const childrenList = (isErrorChildren) ? [] : (children as any[])
 
-  const transformedFeeRecords = feeRecords.map((fee) => {
+  const transformedFeeRecords = feeRecords?.map((fee) => {
     const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
     const remainingAmount = calculatedTotal - Number(fee.paidAmount)
 
     return {
-      id: fee.id,
-      studentId: fee.studentId,
-      studentName: fee.student.user.fullName,
-      studentCode: fee.student.studentCode,
-      className: fee.class.name,
-      classCode: fee.class.classCode,
-      schoolName: fee.student.school.name || "QNEdu",
-      courseName: fee.class.name,
-      courseDetails: `${fee.class.feePeriod === 'per_session' ? 'Theo buổi học' : fee.class.feePeriod === 'monthly' ? 'Theo tháng' : fee.class.feePeriod === 'semester' ? 'Theo học kỳ' : 'Theo năm'}`,
-      pricePerSession: `${Number(fee.class.feeAmount).toLocaleString('vi-VN')} đ/${fee.class.feePeriod === 'per_session' ? 'buổi học' : fee.class.feePeriod}`,
-      dueDate: new Date(fee.dueDate).toLocaleDateString('vi-VN'),
-      status: fee.status,
-      feeStructureAmount: Number(fee.feeStructure.amount),
-      amount: Number(fee.amount),
-      paidAmount: Number(fee.paidAmount),
-      discount: Number(fee.discount),
+      id: fee?.id,
+      studentId: fee?.studentId,
+      studentName: fee?.student.user.fullName,
+      studentCode: fee?.student.studentCode,
+      className: fee?.class.name,
+      classCode: fee?.class.classCode,
+      schoolName: fee?.student.school.name || "QNEdu",
+      courseName: fee?.class.name,
+      courseDetails: `${fee?.class.feePeriod === 'per_session' ? 'Theo buổi học' : fee.class.feePeriod === 'monthly' ? 'Theo tháng' : fee.class.feePeriod === 'semester' ? 'Theo học kỳ' : 'Theo năm'}`,
+      pricePerSession: `${Number(fee?.class.feeAmount).toLocaleString('vi-VN')} đ/${fee.class.feePeriod === 'per_session' ? 'buổi học' : fee.class.feePeriod}`,
+      dueDate: new Date(fee?.dueDate).toLocaleDateString('vi-VN'),
+      status: fee?.status,
+      feeStructureAmount: Number(fee?.feeStructure.amount),
+      amount: Number(fee?.amount),
+      paidAmount: Number(fee?.paidAmount),
+      discount: Number(fee?.discount),
       totalAmount: calculatedTotal,
       remainingAmount: remainingAmount,
-      attendanceCount: fee.student.attendedSessionsCount, 
-      notes: fee.notes,
+      attendanceCount: fee?.student.attendedSessionsCount,
+      notes: fee?.notes,
     }
   })
 
@@ -394,13 +403,19 @@ export function PaymentSelectionPage() {
     ? transformedFeeRecords 
     : transformedFeeRecords.filter(fee => fee.studentId === selectedStudent)
 
-  const selectedRecords = filteredFeeRecords.filter((fee) => 
-    selectedFees.includes(fee.id)
-  )
-  
-  const totalAmount = selectedRecords.reduce((sum, fee) => 
-    sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
-  )
+
+//   useEffect(() => {
+//   // Giữ lại các feeId vẫn còn trong filteredFeeRecords
+//   setSelectedFees((prev) =>
+//     prev.filter((id) => filteredFeeRecords.some((fee) => fee.id === id))
+//   )
+// }, [filteredFeeRecords])
+  //   const selectedRecords = filteredFeeRecords.filter((fee) => 
+  //   selectedFees.includes(fee.id)
+  // )
+  // const totalAmount = selectedRecords.reduce((sum, fee) => 
+  //   sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
+  // )
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -539,6 +554,8 @@ export function PaymentSelectionPage() {
                     currentPayment={currentPayment}
                     setCurrentPayment={setCurrentPayment}
                     setSelectedFees={setSelectedFees}
+                    setPaymentData={setPaymentData}
+                    setShowQrModal={setShowQrModal}
                   />
                 </div>
               </div>
@@ -547,7 +564,7 @@ export function PaymentSelectionPage() {
             
           {/* Payment History Tab */}
           <TabsContent value="history" className="mt-0">
-            <PaymentHistory children={childrenList} />
+            <PaymentHistory  />
           </TabsContent>
 
           <TabsContent value="processing" className="mt-0">
@@ -556,8 +573,13 @@ export function PaymentSelectionPage() {
         </Tabs>
 
         {/* QR Code Modal - Giữ nguyên code cũ */}
-        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
-          <DialogContent className="sm:max-w-md">
+        <Dialog open={showQrModal} onOpenChange={(open) => {
+    // Nếu 'open' là false (tức là dialog được lệnh đóng)
+    if (!open) {
+      handleCloseModal() // GỌI HÀM CLEANUP VÀ REFETCH Ở ĐÂY
+    }
+  }}>
+          <DialogContent className="sm:max-w-md max-h-[100vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 <span>Quét mã QR để thanh toán</span>

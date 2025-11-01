@@ -1,3 +1,9 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/57aa97be-db9c-421e-a27c-957c97d7ec1c/resourceGroups/nestjs-rg/providers/Microsoft.Web/sites/nestjs-sep490-kkk",
+    "appService.deploySubpath": "server"
 }

@@ -900,4 +900,83 @@ export class StudentManagementService {
       );
     }
   }
+
+
+
+  async getAttendanceByStudentIdAndClassId(studentId: string, classId: string): Promise<StudentResponse> {
+    if (!checkId(studentId) || !checkId(classId)) {
+      throw new HttpException('Invalid student ID or class ID', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const getClass = await this.prisma.class.findUnique({
+        where: { id: classId }
+      });
+      if (!getClass) {
+        throw new HttpException('Lớp học không tồn tại', HttpStatus.NOT_FOUND);
+      }
+
+      const student = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include:{
+          user:{
+            select:{
+              fullName:true
+            }
+          }
+        }
+      });
+      if (!student) {
+        throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+      }
+
+      // Giới hạn trong tháng hiện tại (theo recordedAt của attendance)
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      const statusGroups = await this.prisma.studentSessionAttendance.groupBy({
+        by: ['status'],
+        where: {
+          studentId,
+          recordedAt: {
+            gte: startOfMonth,
+            lt: startOfNextMonth
+          },
+          session: { classId }
+        },
+        _count: {
+          status: true
+        },
+        
+      });
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let excusedCount = 0;
+
+      for (const g of statusGroups) {
+        if (g.status === 'present') presentCount = g._count.status;
+        else if (g.status === 'absent') absentCount = g._count.status;
+        else if (g.status === 'excused') excusedCount = g._count.status;
+      }
+
+      return {
+        data: {
+          studentId ,
+          studentName: student.user.fullName,
+          classId,
+          className: getClass.name,
+          presentCount,
+          absentCount,
+          excusedCount
+        },
+        message: 'Lấy thông tin điểm danh học viên trong tháng thành công'
+      };
+    } catch (error) {
+      console.error('Error getting attendance by student and class:', error);
+      throw new HttpException('Error fetching attendance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
 }

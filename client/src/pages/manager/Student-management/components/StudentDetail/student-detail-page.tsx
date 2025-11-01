@@ -144,24 +144,24 @@ export function StudentDetailPage() {
             >
               Công việc
             </TabsTrigger> */}
-            <TabsTrigger
+            {/* <TabsTrigger
               value="invoice"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
             >
               Hoá đơn
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger
               value="tuition"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
             >
               Học phí
             </TabsTrigger>
-            <TabsTrigger
+            {/* <TabsTrigger
               value="learning"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
             >
               Học tập
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger
               value="attendance"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"

@@ -75,10 +75,10 @@ export default function StudentManagement() {
 
   const tabs: Tab[] = [
     { key: "all", label: "Tất cả", count: 120 },
-    { key: "active", label: "Đang học", count: 26 },
-    { key: "dropped", label: "Chờ xếp lớp", count: 44 },
-    { key: "no-schedule", label: "Chưa cập nhật lịch học", count: 30 },
-    { key: "completed", label: "Hoàn thành", count: 44 },
+    { key: "studying", label: "Đang học", count: 26 },
+    { key: "withdrawn", label: "Chờ xếp lớp", count: 44 },
+    { key: "no-not_been_updated", label: "Chưa cập nhật lịch học", count: 30 },
+    { key: "graduated", label: "Hoàn thành", count: 44 },
     { key: "stopped", label: "Dừng học", count: 43 },
   ]
   const navigate = useNavigate()
@@ -88,9 +88,11 @@ export default function StudentManagement() {
   // const toggleStudentStatusMutation = useToggleStudentStatus()
 
   const status: any = {
-    active: "Đang học",
-    completed: "Hoàn thành",
-    dropped: "Dừng học",
+    studying: "Đang học",
+    graduated: "Hoàn thành",
+    stopped: "Dừng học",
+    withdrawn: "Rút học",
+    not_been_updated: "Chưa cập nhật",
   }
 
   const gender: any ={
@@ -383,14 +385,15 @@ export default function StudentManagement() {
   }
 
   const getStatusBadgeColor = (status: string): string => {
+    // not_been_updated, studying, stopped, graduated, withdrawn 
     switch (status) {
-      case "active":
+      case "studying":
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case "completed":
+      case "graduated":
         return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 border border-purple-200 dark:border-purple-800"
-      case "dropped":
+      case "stopped":
         return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-      case "suspended":
+      case "not_been_updated":
         return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
       default:
         return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
@@ -402,18 +405,18 @@ export default function StudentManagement() {
     return new Intl.NumberFormat("vi-VN").format(amount) + " đ"
   }
 
-  const getStudentStatus = (student: any): string => {
-    const activeEnrollment = student?.enrollments?.find((e: any) => e?.status === "active")
-    if (activeEnrollment) return "Đang học"
+  // const getStudentStatus = (student: any): string => {
+  //   const activeEnrollment = student?.enrollments?.find((e: any) => e?.status === "active")
+  //   if (activeEnrollment) return "Đang học"
     
-    const completedEnrollment = student?.enrollments?.find((e: any) => e?.status === "completed")
-    if (completedEnrollment) return "Tốt nghiệp"
+  //   const completedEnrollment = student?.enrollments?.find((e: any) => e?.status === "completed")
+  //   if (completedEnrollment) return "Tốt nghiệp"
     
-    const withdrawnEnrollment = student?.enrollments?.find((e: any) => e?.status === "withdrawn")
-    if (withdrawnEnrollment) return "Dừng học"
+  //   const withdrawnEnrollment = student?.enrollments?.find((e: any) => e?.status === "withdrawn")
+  //   if (withdrawnEnrollment) return "Dừng học"
     
-    return "Chờ xếp lớp"
-  }
+  //   return "Chờ xếp lớp"
+  // }
 
   // Define columns for DataTable
   const columns = useMemo(() => [
@@ -493,20 +496,41 @@ export default function StudentManagement() {
       key: "status",
       header: "Trạng thái",
       width: "200px",
-      render: (student: any) => (
-        <div className="space-y-1">
-          {student?.enrollments?.map((enrollment: any, idx: number) => (
-            <Badge key={idx} variant="secondary" className={getStatusBadgeColor(enrollment?.status)}>
-              {status[enrollment?.status] || "N/A"}
-            </Badge>
-          ))}
-          {(!student?.enrollments || student?.enrollments?.length === 0) && (
-            <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-              Chưa có lớp
-            </Badge>
-          )}
-        </div>
-      )
+      render: (student: any) => {
+  // Đếm số lượng từng trạng thái
+  const statusCount: Record<string, number> = {}
+  student?.enrollments?.forEach((enrollment: any) => {
+    if (enrollment?.status) {
+      statusCount[enrollment.status] = (statusCount[enrollment.status] || 0) + 1
+    }
+  })
+
+  // Lấy các trạng thái đã xuất hiện
+  const uniqueStatuses = Object.keys(statusCount)
+
+  return (
+    <div className="space-y-1">
+      {uniqueStatuses.length > 0 ? (
+        uniqueStatuses.map((enrollmentStatus) => (
+          <Badge
+            key={enrollmentStatus}
+            variant="secondary"
+            className={getStatusBadgeColor(enrollmentStatus)}
+          >
+            {status[enrollmentStatus] || "N/A"}
+            {statusCount[enrollmentStatus] > 1 && (
+              <span className="ml-1">({statusCount[enrollmentStatus] - 1})</span>
+            )}
+          </Badge>
+        ))
+      ) : (
+        <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+          Chưa có lớp
+        </Badge>
+      )}
+    </div>
+  )
+}
     },
     // Course Column
     {
@@ -515,7 +539,7 @@ export default function StudentManagement() {
       width: "200px",
       render: (student: any) => (
         <span className="text-sm text-gray-900 dark:text-white">
-          {student?.enrollments?.map((enrollment: any) => enrollment?.class?.subject?.name)?.join(", ") || "-"}
+          {student?.enrollments?.length}
         </span>
       )
     },
@@ -526,7 +550,7 @@ export default function StudentManagement() {
       width: "200px",
       render: (student: any) => (
         <span className="text-sm text-gray-900 dark:text-white">
-          {student?.enrollments?.map((enrollment: any) => enrollment?.class?.name)?.join(", ") || "-"}
+          {student?.enrollments?.length}
         </span>
       )
     },
