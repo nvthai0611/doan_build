@@ -123,4 +123,10 @@ export const classService = {
     return response;
   },
 
+  // Transfer teacher
+  transferTeacher: async (classId: string, data: any) => {
+    const response = await apiClient.post(`${BASE_URL}/${classId}/transfer-teacher`, data);
+    return response;
+  },
+
 };

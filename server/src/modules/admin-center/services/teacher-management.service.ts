@@ -535,6 +535,7 @@ export class TeacherManagementService {
     const sessions = teacher.classes.flatMap((cls) =>
       cls.sessions.map((session) => ({
         id: session.id,
+        classId: cls.id, // Thêm classId để navigate đến trang lớp học
         date: session.sessionDate,
         title: `Buổi ${cls.name}`,
         time: `${session.startTime}-${session.endTime}`,
@@ -542,7 +543,7 @@ export class TeacherManagementService {
         class: cls.name,
         room: cls.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
-        status: session.status as 'scheduled' | 'completed' | 'cancelled',
+        status: session.status as 'happening' | 'end' | 'has_not_happened' | 'day_off',
         teacher: teacher.user.fullName || 'Chưa xác định',
         students: session.attendances.map((attendance) => ({
           id: attendance.student.id,
@@ -553,6 +554,7 @@ export class TeacherManagementService {
         attendanceWarnings: this.generateAttendanceWarnings(session),
         description: session.notes || 'Phương học: Chưa cập nhật',
         materials: [], // Có thể thêm materials sau
+        cancellationReason: session.cancellationReason, // Thêm cancellationReason nếu có
       })),
     );
 
@@ -595,14 +597,14 @@ export class TeacherManagementService {
     return false;
   }
 
-  private mapAttendanceStatus(status: string): 'present' | 'absent' | 'late' {
+  private mapAttendanceStatus(status: string): 'present' | 'absent' | 'excused' {
     switch (status) {
       case 'present':
         return 'present';
       case 'absent':
         return 'absent';
-      case 'late':
-        return 'late';
+      case 'excused':
+        return 'excused';
       default:
         return 'absent';
     }
@@ -618,16 +620,16 @@ export class TeacherManagementService {
     const absentStudents = session.attendances.filter(
       (att) => att.status === 'absent',
     ).length;
-    const lateStudents = session.attendances.filter(
-      (att) => att.status === 'late',
+    const excusedStudents = session.attendances.filter(
+      (att) => att.status === 'excused',
     ).length;
 
     if (absentStudents > 0) {
       warnings.push(`*Có ${absentStudents} học viên vắng mặt*`);
     }
 
-    if (lateStudents > 0) {
-      warnings.push(`*Có ${lateStudents} học viên đi muộn*`);
+    if (excusedStudents > 0) {
+      warnings.push(`*Có ${excusedStudents} học viên có phép*`);
     }
 
     if (totalStudents === 0) {

@@ -56,7 +56,7 @@ export const STATUS_COLORS: { [key: string]: string } = {
 export const STUDENT_STATUS_TEXT: { [key: string]: string } = {
   "present": "Có mặt",
   "absent": "Vắng mặt",
-  "late": "Đi muộn",
+  "excused": "Có phép",
 } as const
 
 // Available years

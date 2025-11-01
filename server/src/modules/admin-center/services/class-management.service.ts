@@ -2708,6 +2708,237 @@ export class ClassManagementService {
     }
   }
 
+  // Chuyển giáo viên cho lớp học
+  async transferTeacher(classId: string, body: any, requestedBy: string) {
+    try {
+      // Validation
+      if (!body.replacementTeacherId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Thiếu thông tin bắt buộc: replacementTeacherId',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!body.reason || !body.reason.trim()) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Vui lòng nhập lý do chuyển giáo viên',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check class exists
+      const classItem = await this.prisma.class.findUnique({
+        where: { id: classId },
+        include: {
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          enrollments: {
+            where: {
+              status: {
+                in: ['not_been_updated', 'studying'],
+              },
+            },
+          },
+          _count: {
+            select: {
+              sessions: true,
+            },
+          },
+        },
+      });
+
+      if (!classItem) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy lớp học',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Check if class has current teacher
+      if (!classItem.teacherId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Lớp học chưa có giáo viên được phân công',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check if replacement teacher exists and is different
+      if (classItem.teacherId === body.replacementTeacherId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Giáo viên thay thế phải khác giáo viên hiện tại',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const replacementTeacher = await this.prisma.teacher.findUnique({
+        where: { id: body.replacementTeacherId },
+        include: {
+          user: {
+            select: {
+              fullName: true,
+              email: true,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+      if (!replacementTeacher) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy giáo viên thay thế',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Check replacement teacher is active
+      if (!replacementTeacher.user.isActive) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Giáo viên thay thế đang không hoạt động',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check if replacement teacher can teach the subject
+      if (classItem.subjectId) {
+        const classSubject = await this.prisma.subject.findUnique({
+          where: { id: classItem.subjectId },
+        });
+
+        if (
+          classSubject &&
+          replacementTeacher.subjects &&
+          Array.isArray(replacementTeacher.subjects) &&
+          !replacementTeacher.subjects.includes(classSubject.name)
+        ) {
+          throw new HttpException(
+            {
+              success: false,
+              message: `Giáo viên thay thế không thể dạy môn ${classSubject.name}`,
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      // Check if class has active students
+      const activeStudentsCount = classItem.enrollments.length;
+      if (activeStudentsCount === 0 && classItem.status !== 'draft') {
+        // Warning but allow if class is in draft
+      }
+
+      // Check if there are pending/completed transfers for this class
+      const existingTransfers = await this.prisma.teacherClassTransfer.findMany({
+        where: {
+          fromClassId: classId,
+          status: {
+            in: ['pending', 'approved'],
+          },
+        },
+      });
+
+      if (existingTransfers.length > 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Lớp học đang có yêu cầu chuyển giáo viên đang chờ xử lý',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Create transfer record
+      const transfer = await this.prisma.teacherClassTransfer.create({
+        data: {
+          teacherId: classItem.teacherId,
+          fromClassId: classId,
+          replacementTeacherId: body.replacementTeacherId,
+          reason: body.reason.trim(),
+          reasonDetail: body.reasonDetail?.trim() || null,
+          requestedBy: requestedBy,
+          status: 'pending',
+          effectiveDate: body.effectiveDate
+            ? new Date(body.effectiveDate)
+            : null,
+          notes: body.notes?.trim() || null,
+        },
+        include: {
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          replacementTeacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          fromClass: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Yêu cầu chuyển giáo viên đã được tạo thành công',
+        data: transfer,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi tạo yêu cầu chuyển giáo viên',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // Lấy thống kê lớp học
   async getStats(classId: string) {
     try {

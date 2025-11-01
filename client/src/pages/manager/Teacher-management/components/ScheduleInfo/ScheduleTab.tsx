@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -34,6 +35,7 @@ import {
   getSubjectColor, 
   getStatusColor, 
   getStudentStatusText,
+  getSessionStatusText,
   navigateMonth,
   navigateWeek,
   navigateDay,
@@ -121,6 +123,9 @@ export default function ScheduleTab({
   setSelectedMonth,
   setSelectedYear,
 }: ScheduleTabProps) {
+  // Hook để navigate đến các trang khác
+  const navigate = useNavigate()
+  
   // State quản lý session đang được chọn để hiển thị trong dialog chi tiết
   const [selectedSession, setSelectedSession] = useState<TeachingSession | null>(null)
   
@@ -132,6 +137,18 @@ export default function ScheduleTab({
   
   // State quản lý ngày hiện tại của tuần đang xem (chỉ dùng cho week view)
   const [currentWeekDate, setCurrentWeekDate] = useState<Date>(new Date())
+  
+  // State để force re-render mỗi phút (để cập nhật status "Đã kết thúc X giờ/phút trước")
+  const [, setCurrentTime] = useState<Date>(new Date())
+  
+  // Effect để cập nhật currentTime mỗi phút
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Cập nhật mỗi 1 phút
+    
+    return () => clearInterval(interval)
+  }, [])
 
   /**
    * Xử lý thay đổi chế độ xem (month/week/day/list)
@@ -445,26 +462,38 @@ export default function ScheduleTab({
                 <div className="space-y-1 max-h-20 overflow-y-auto">
                   {daySessions.slice(0, 3).map((session) => {
                     const isDayOff = session.status === 'day_off';
+                    const statusText = getSessionStatusText(session);
+                    // isEnded: status = "end" hoặc text chứa "Đã kết thúc"
+                    const isEnded = session.status === 'end' || statusText.includes('Đã kết thúc');
+                    // isOverdue: status = "happening" nhưng đã qua thời gian (màu warning)
+                    const isOverdue = session.status === 'happening' && statusText.includes('Đã kết thúc');
+                    
                     return (
                       <div
                         key={session.id}
                         className={`text-xs p-2 rounded transition-all ${
                           isDayOff 
                             ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                            : session.status === 'end'
+                            ? 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm'
+                            : isOverdue
+                            ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm'
                             : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
                         }`}
-                        title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                        title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : isEnded ? `${session.title} - ${statusText}` : `${session.title} - ${session.time} - ${session.room}`}
                         onClick={() => !isDayOff && handleSessionClick(session)}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium truncate flex items-center gap-1">
                             {isDayOff && <span className="text-base">🏖️</span>}
+                            {session.status === 'end' && !isDayOff && <span className="text-xs">✓</span>}
+                            {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ' : session.description}</span>
                           </span>
-                          {session.hasAlert && !isDayOff && <AlertTriangle className="w-3 h-3 text-orange-300" />}
+                          {session.hasAlert && !isDayOff && !isEnded && <AlertTriangle className="w-3 h-3 text-orange-300" />}
                         </div>
                         <div className="text-xs opacity-90 truncate mt-0.5">
-                          {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
+                          {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : isEnded ? statusText : session.time}
                         </div>
                       </div>
                     );
@@ -568,15 +597,25 @@ export default function ScheduleTab({
                   >
                     {hourSessions.map((session, sessionIndex) => {
                       const isDayOff = session.status === 'day_off';
+                      const statusText = getSessionStatusText(session);
+                      // isEnded: status = "end" hoặc text chứa "Đã kết thúc"
+                      const isEnded = session.status === 'end' || statusText.includes('Đã kết thúc');
+                      // isOverdue: status = "happening" nhưng đã qua thời gian (màu warning)
+                      const isOverdue = session.status === 'happening' && statusText.includes('Đã kết thúc');
+                      
                       return (
                         <div
                           key={session.id}
                           className={`absolute inset-1 rounded text-xs p-1 transition-all ${
                             isDayOff 
                               ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
+                              : session.status === 'end'
+                              ? 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm'
+                              : isOverdue
+                              ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm'
                               : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
                           }`}
-                          title={isDayOff ? `${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : `${session.title} - ${session.time} - ${session.room}`}
+                          title={isDayOff ? `${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : isEnded ? `${session.title} - ${statusText}` : `${session.title} - ${session.time} - ${session.room}`}
                           onClick={() => !isDayOff && handleSessionClick(session)}
                           style={{
                             top: `${sessionIndex * 48}px`,
@@ -586,12 +625,14 @@ export default function ScheduleTab({
                         >
                           <div className="truncate font-medium flex items-center gap-0.5">
                             {isDayOff && <span>🏖️</span>}
+                            {session.status === 'end' && !isDayOff && <span className="text-[10px]">✓</span>}
+                            {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
                           </div>
                           <div className="truncate opacity-90 text-[10px]">
-                            {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : session.time}
+                            {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : isEnded ? statusText : session.time}
                           </div>
-                          {!isDayOff && session.description && session.description !== 'Phương học: Chưa cập nhật' && (
+                          {!isDayOff && !isEnded && session.description && session.description !== 'Phương học: Chưa cập nhật' && (
                             <div className="truncate opacity-75 text-[9px] mt-0.5 font-semibold">
                               {session.description}
                             </div>
@@ -712,13 +753,7 @@ export default function ScheduleTab({
                         variant={session.status === "end" ? "default" : session.status === "day_off" ? "outline" : "secondary"}
                         className={getStatusColor(session.status)}
                       >
-                        {session.status === "end"
-                          ? "Hoàn thành"
-                          : session.status === "day_off"
-                            ? "Nghỉ học"
-                            : session.status === "happening"
-                              ? "Đang diễn ra"
-                              : "Chưa diễn ra"}
+                        {getSessionStatusText(session)}
                       </Badge>
                     </div>
                   </div>
@@ -906,10 +941,29 @@ export default function ScheduleTab({
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (selectedSession?.classId) {
+                        navigate(`/center-qn/classes/${selectedSession.classId}`)
+                        setIsDialogOpen(false)
+                      }
+                    }}
+                    disabled={!selectedSession?.classId}
+                  >
                     Vào lớp
                   </Button>
-                  <Button onClick={() => setIsDialogOpen(false)}>Vào buổi</Button>
+                  <Button 
+                    onClick={() => {
+                      if (selectedSession?.id) {
+                        navigate(`/center-qn/session-details/${selectedSession.id}`)
+                        setIsDialogOpen(false)
+                      }
+                    }}
+                    disabled={!selectedSession?.id}
+                  >
+                    Vào buổi
+                  </Button>
                 </div>
               </div>
             </>
@@ -1109,10 +1163,29 @@ export default function ScheduleTab({
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (selectedSession?.classId) {
+                        navigate(`/center-qn/classes/${selectedSession.classId}`)
+                        setIsDialogOpen(false)
+                      }
+                    }}
+                    disabled={!selectedSession?.classId}
+                  >
                     Vào lớp
                   </Button>
-                  <Button onClick={() => setIsDialogOpen(false)}>Vào buổi</Button>
+                  <Button 
+                    onClick={() => {
+                      if (selectedSession?.id) {
+                        navigate(`/center-qn/session-details/${selectedSession.id}`)
+                        setIsDialogOpen(false)
+                      }
+                    }}
+                    disabled={!selectedSession?.id}
+                  >
+                    Vào buổi
+                  </Button>
                 </div>
               </div>
             </>
