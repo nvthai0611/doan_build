@@ -90,6 +90,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const response = await apiClient.get('/subjects');
       return response;
     },
+    enabled: !!classData.id,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
 
   const { data: roomsData } = useQuery({
@@ -98,6 +101,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const response = await apiClient.get('/rooms');
       return response;
     },
+    enabled: !!classData.id,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
 
   const { data: gradesData } = useQuery({
@@ -106,6 +112,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const response = await apiClient.get('/shared/grades');
       return response;
     },
+    enabled: !!classData.id,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
 
   // Fetch sessions data để kiểm tra lớp đã có lịch học chưa
@@ -162,12 +171,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   
   // Logic kiểm tra có thể edit hay không dựa trên status
   const hasActualDates = Boolean(classData.actualStartDate || classData.actualEndDate);
-  const isClassActive = classData.status === ClassStatus.ACTIVE;
-  const isClassCompleted = classData.status === ClassStatus.COMPLETED;
-  const isClassCancelled = classData.status === ClassStatus.CANCELLED;
-  const isClassSuspended = classData.status === ClassStatus.SUSPENDED;
   
-  // Logic mới: Quyết định edit dựa trên status
   // - DRAFT, READY: Có thể edit tất cả
   // - ACTIVE: Không thể edit (trừ khi có quyền đặc biệt)
   // - COMPLETED, CANCELLED: Không thể edit
@@ -176,6 +180,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                             classData.status === ClassStatus.READY ||
                             classData.status === ClassStatus.SUSPENDED ||
                             classData.status === ClassStatus.COMPLETED; 
+                            
   
   const canEditActualDates = canEditGeneralInfo && hasActualDates && !hasSessions;
   const canEditExpectedDates = canEditGeneralInfo;
@@ -562,7 +567,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   variant="outline" 
                   size="sm" 
                   onClick={handleEdit}
-                  disabled={!canEditGeneralInfo}
+                  // disabled={!canEditGeneralInfo}
                   title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                 >
                   <Edit className="h-4 w-4" />
@@ -662,7 +667,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     variant="ghost" 
                     size="sm"
                     onClick={() => setIsScheduleModalOpen(true)}
-                    disabled={isScheduleLoading || !canEditGeneralInfo}
+                    // disabled={isScheduleLoading || !canEditGeneralInfo}
+                    disabled={isScheduleLoading }
                     title={!canEditGeneralInfo ? `Không thể chỉnh sửa lịch học khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                   >
                     {isScheduleLoading ? (

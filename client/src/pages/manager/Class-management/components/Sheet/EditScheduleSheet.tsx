@@ -223,8 +223,8 @@ export const EditScheduleSheet = ({
                             <Button 
                                 size="sm"
                                 onClick={handleSubmit}
-                                disabled={isLoading || classData?.status === ClassStatus.ACTIVE}
-                                className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
+                                // disabled={isLoading || classData?.status === ClassStatus.ACTIVE}
+                                className="h-8 w-8 p-0 "
                             >
                                 <Check className="h-4 w-4" />
                             </Button>
@@ -252,7 +252,7 @@ export const EditScheduleSheet = ({
                                         </div>
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                                             <User className="h-4 w-4" />
-                                            <span>{classData.teachers?.[0]?.name || 'Chưa phân công'}</span>
+                                            <span>{classData.teacher?.fullName || 'Chưa phân công'}</span>
                                         </div>
                                     </div>
                                     {classData.roomName && (
@@ -276,7 +276,7 @@ export const EditScheduleSheet = ({
                     {classData?.status === ClassStatus.ACTIVE && (
                         <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                             <AlertDescription className="text-sm text-red-800 dark:text-red-200">
-                                ⚠️ Lớp học đang ở trạng thái hoạt động. Không thể cập nhật lịch học. Vui lòng chuyển lớp sang trạng thái khác trước.
+                                ⚠️ Lớp học đang ở trạng thái hoạt động. Vui lòng chắc chắn rằng bạn muốn đổi lịch học này
                             </AlertDescription>
                         </Alert>
                     )}
@@ -292,7 +292,7 @@ export const EditScheduleSheet = ({
                                 size="sm"
                                 onClick={handleAddSchedule}
                                 className="text-blue-600 hover:text-blue-700"
-                                disabled={classData?.status === ClassStatus.ACTIVE}
+                                // disabled={classData?.status === ClassStatus.ACTIVE}
                             >
                                 <Plus className="w-4 h-4 mr-1" />
                                 Lịch học
@@ -315,7 +315,7 @@ export const EditScheduleSheet = ({
                                             <Select 
                                                 value={schedule.day} 
                                                 onValueChange={(value: string) => handleScheduleChange(schedule.id, 'day', value)}
-                                                disabled={classData?.status === ClassStatus.ACTIVE}
+                                                // disabled={classData?.status === ClassStatus.ACTIVE}
                                             >
                                                 <SelectTrigger className={`h-10 ${errors[`${schedule.id}-day`] ? 'border-red-500' : ''}`}>
                                                     <SelectValue placeholder="Chọn thứ" />
@@ -345,7 +345,7 @@ export const EditScheduleSheet = ({
                                                     value={schedule.startTime}
                                                     onChange={(e: any) => handleScheduleChange(schedule.id, 'startTime', e.target.value)}
                                                     className={`pl-10 h-10 ${errors[`${schedule.id}-startTime`] ? 'border-red-500' : ''}`}
-                                                    disabled={classData?.status === ClassStatus.ACTIVE}
+                                                    // disabled={classData?.status === ClassStatus.ACTIVE}
                                                 />
                                             </div>
                                             {errors[`${schedule.id}-startTime`] && (
@@ -369,7 +369,7 @@ export const EditScheduleSheet = ({
                                                 step={15}
                                                 placeholder="90"
                                                 className={`h-10 ${errors[`${schedule.id}-duration`] ? 'border-red-500' : ''}`}
-                                                disabled={classData?.status === ClassStatus.ACTIVE}
+                                                // disabled={classData?.status === ClassStatus.ACTIVE}
                                             />
                                             {errors[`${schedule.id}-duration`] && (
                                                 <p className="text-xs text-red-500 mt-1">{errors[`${schedule.id}-duration`]}</p>
@@ -383,7 +383,7 @@ export const EditScheduleSheet = ({
                                                 size="sm"
                                                 onClick={() => handleRemoveSchedule(schedule.id)}
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-10 w-10 p-0"
-                                                disabled={classData?.status === ClassStatus.ACTIVE}
+                                                // disabled={classData?.status === ClassStatus.ACTIVE}
                                                 title="Xóa lịch học này"
                             >
                                                 <Trash2 className="w-4 h-4" />

@@ -1,23 +1,14 @@
-import { formatSchedule } from '../../../utils/function.util';
-
 /**
- * Template email thông báo đăng ký lớp học cho phụ huynh
+ * Template email thông báo từ chối yêu cầu tham gia lớp học cho phụ huynh
  */
-export const enrollmentNotificationEmailTemplate = (data: {
+export const classRequestRejectionEmailTemplate = (data: {
   studentName: string;
   parentName: string;
   className: string;
   subjectName: string;
-  teacherName?: string;
-  startDate?: string;
-  schedule?: any;
-  enrollmentStatus: string;
+  reason?: string;
 }): string => {
-  const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus } = data;
-  
-  const statusMessage = enrollmentStatus === 'studying' 
-    ? 'Lớp đã có lịch học, học sinh có thể xem lịch ngay.'
-    : 'Lớp đang chuẩn bị lịch học, chúng tôi sẽ thông báo khi có lịch.';
+  const { studentName, parentName, className, subjectName, reason } = data;
 
   return `
 <!DOCTYPE html>
@@ -25,7 +16,7 @@ export const enrollmentNotificationEmailTemplate = (data: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thông báo đăng ký lớp học</title>
+  <title>Thông báo từ chối yêu cầu tham gia lớp học</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -43,7 +34,7 @@ export const enrollmentNotificationEmailTemplate = (data: {
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .header {
-      background-color: #4CAF50;
+      background-color: #f44336;
       color: white;
       padding: 20px;
       text-align: center;
@@ -59,7 +50,7 @@ export const enrollmentNotificationEmailTemplate = (data: {
     }
     .info-box {
       background-color: #f9f9f9;
-      border-left: 4px solid #4CAF50;
+      border-left: 4px solid #f44336;
       padding: 15px;
       margin: 15px 0;
     }
@@ -72,8 +63,8 @@ export const enrollmentNotificationEmailTemplate = (data: {
       color: #555;
     }
     .status-box {
-      background-color: #e8f5e9;
-      border: 1px solid #4CAF50;
+      background-color: #ffebee;
+      border: 1px solid #f44336;
       padding: 15px;
       margin: 20px 0;
       border-radius: 4px;
@@ -94,18 +85,25 @@ export const enrollmentNotificationEmailTemplate = (data: {
       margin: 20px 0;
       border-radius: 4px;
     }
+    .reason-box {
+      background-color: #fff9e6;
+      border: 1px solid #ff9800;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>✅ Đăng Ký Lớp Học Thành Công</h1>
+      <h1>❌ Yêu Cầu Đã Bị Từ Chối</h1>
     </div>
     
     <div class="content">
       <p>Kính gửi <strong>${parentName}</strong>,</p>
       
-      <p>Chúng tôi xin thông báo học sinh <strong>${studentName}</strong> đã được đăng ký thành công vào lớp học.</p>
+      <p>Chúng tôi rất tiếc phải thông báo rằng yêu cầu tham gia lớp học của học sinh <strong>${studentName}</strong> đã bị từ chối.</p>
       
       <div class="info-box">
         <div class="info-row">
@@ -117,28 +115,18 @@ export const enrollmentNotificationEmailTemplate = (data: {
         <div class="info-row">
           <span class="label">📚 Môn học:</span> ${subjectName}
         </div>
-        ${teacherName ? `
-        <div class="info-row">
-          <span class="label">👨‍🏫 Giáo viên:</span> ${teacherName}
-        </div>
-        ` : ''}
-        ${startDate ? `
-        <div class="info-row">
-          <span class="label">📅 Ngày bắt đầu:</span> ${startDate}
-        </div>
-        ` : ''}
       </div>
       
-      ${schedule ? `
-      <div style="background-color: #e0f2fe; padding: 15px; border-radius: 5px; margin: 15px 0;">
-        <p style="margin: 0 0 10px 0;"><strong>📅 Lịch học:</strong></p>
-        <p style="margin: 5px 0; font-size: 14px;">${formatSchedule(schedule)}</p>
+      ${reason ? `
+      <div class="reason-box">
+        <p style="margin: 0 0 10px 0;"><strong>📝 Lý do từ chối:</strong></p>
+        <p style="margin: 5px 0; font-size: 14px;">${reason}</p>
       </div>
       ` : ''}
       
       <div class="status-box">
         <p style="margin: 0; font-size: 15px;">
-          <strong>📌 Trạng thái:</strong> ${statusMessage}
+          <strong>⚠️ Yêu cầu đã bị từ chối</strong>
         </p>
       </div>
       
@@ -147,6 +135,9 @@ export const enrollmentNotificationEmailTemplate = (data: {
         <p style="margin: 5px 0;">☎️ Hotline: 0386828929</p>
         <p style="margin: 5px 0;">📧 Email: hainvthe172670@fpt.edu.vn</p>
         <p style="margin: 5px 0;">🏢 Địa chỉ: Thủy Nguyên - Hải Phòng</p>
+        <p style="margin: 10px 0 0 0; font-size: 14px;">
+          Nếu bạn có bất kỳ thắc mắc nào về quyết định này, vui lòng liên hệ với chúng tôi để được giải đáp.
+        </p>
       </div>
       
       <p style="margin-top: 20px;">

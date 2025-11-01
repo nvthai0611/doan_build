@@ -36,8 +36,11 @@ export const classService = {
     },
 
     // Update class status (API riêng)
-    updateClassStatus: async (id: string, status: string) => {
-        const response = await apiClient.patch(`${BASE_URL}/${id}/status`, { status });
+    updateClassStatus: async (id: string, status: string, startDate?: string, endDate?: string) => {
+        const body: any = { status };
+        if (startDate) body.startDate = startDate;
+        if (endDate) body.endDate = endDate;
+        const response = await apiClient.patch(`${BASE_URL}/${id}/status`, body);
         return response;
     },
 

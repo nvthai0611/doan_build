@@ -18,6 +18,8 @@ import { apiClient } from '../../utils/clientAxios';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 // Import utility function để merge CSS classes
 import { cn } from '@/lib/utils';
+import { generateTimeSlots } from '../../utils/generate';
+import { dayOptions } from '../../utils/commonData';
 
 // ==================== TYPESCRIPT INTERFACES ====================
 
@@ -60,6 +62,7 @@ interface WeeklySchedulePickerProps {
   selectedSlots: ScheduleSlot[];                    // Mảng các slots đã chọn (controlled state)
   onSlotsChange: (slots: ScheduleSlot[]) => void;   // Callback khi slots thay đổi
   defaultDuration?: number;                         // Thời lượng mặc định (phút), default = 90
+  expectedStartDate?: string;                       // Ngày khai giảng dự kiến (YYYY-MM-DD), nếu có sẽ lấy lịch từ ngày này đến 31/05 năm sau
 }
 
 // ==================== CONSTANTS ====================
@@ -68,34 +71,9 @@ interface WeeklySchedulePickerProps {
  * Danh sách các ngày trong tuần
  * Dùng để map giữa value (dùng trong code) và label (hiển thị cho user)
  */
-const DAYS_OF_WEEK = [
-  { value: 'monday', label: 'Thứ 2' },
-  { value: 'tuesday', label: 'Thứ 3' },
-  { value: 'wednesday', label: 'Thứ 4' },
-  { value: 'thursday', label: 'Thứ 5' },
-  { value: 'friday', label: 'Thứ 6' },
-  { value: 'saturday', label: 'Thứ 7' },
-  { value: 'sunday', label: 'Chủ nhật' },
-];
 
-/**
- * Function tạo mảng các time slots từ 7:00 sáng đến 21:00 tối
- * Mỗi slot cách nhau 30 phút
- * VD: ["07:00", "07:30", "08:00", ..., "21:00"]
- */
-const generateTimeSlots = () => {
-  const slots = [];
-  // Loop từ giờ 7 đến giờ 21
-  for (let hour = 7; hour <= 21; hour++) {
-    // Với mỗi giờ, tạo 2 slots: :00 và :30
-    for (let minute = 0; minute < 60; minute += 30) {
-      // Format thành HH:mm với leading zeros (VD: 07:00, 08:30)
-      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      slots.push(time);
-    }
-  }
-  return slots;
-};
+
+
 
 // Tạo mảng TIME_SLOTS một lần duy nhất khi component load
 // Kết quả: ["07:00", "07:30", "08:00", ..., "21:00"] - tổng 29 slots
@@ -106,6 +84,7 @@ export const WeeklySchedulePicker = ({
   selectedSlots,        // Mảng các slots đã chọn từ parent component
   onSlotsChange,        // Callback để update slots cho parent
   defaultDuration = 90, // Thời lượng mặc định = 90 phút (1.5 giờ)
+  expectedStartDate,    // Ngày dự kiến bắt đầu lớp học (optional)
 }: WeeklySchedulePickerProps) => {
   
   // ===== LOCAL STATES =====
@@ -115,9 +94,14 @@ export const WeeklySchedulePicker = ({
   // State lưu thời lượng hiện tại (user có thể thay đổi)
   const [duration, setDuration] = useState<number>(defaultDuration);
   
-  // State lưu offset tuần (0 = tuần hiện tại, -1 = tuần trước, +1 = tuần sau)
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-
+  // State lưu phòng đã được chọn slot đầu tiên (chỉ cho phép chọn 1 phòng)
+  // Nếu đã chọn slot ở phòng A, không thể chọn slot ở phòng B nữa
+  const selectedRoomId = useMemo(() => {
+    if (selectedSlots.length === 0) return null;
+    // Lấy roomId của slot đầu tiên (tất cả slots phải cùng phòng)
+    return selectedSlots[0].roomId;
+  }, [selectedSlots]);
+  
   // ===== FETCH ROOMS DATA =====
   // Sử dụng React Query để fetch danh sách phòng học từ API
   // React Query tự động handle caching, loading states, và error handling
@@ -132,140 +116,148 @@ export const WeeklySchedulePicker = ({
   // Extract mảng rooms từ response (với fallback là empty array)
   const rooms = (roomsData as any)?.data || [];
 
-  // ===== CALCULATE WEEK RANGE =====
+  // ===== CALCULATE DATE RANGE =====
   /**
-   * Tính toán ngày bắt đầu (Monday) và kết thúc (Sunday) của tuần hiện tại
-   * Sử dụng useMemo để tránh recalculate mỗi lần render
-   * Chỉ recalculate khi currentWeekOffset thay đổi
+   * Tính toán start và end date dựa trên expectedStartDate:
+   * - Nếu có expectedStartDate: từ ngày đó đến 31/05 năm sau
    */
-  const weekDates = useMemo(() => {
-    const today = new Date();                    // Lấy ngày hiện tại
-    const currentDay = today.getDay();           // Lấy ngày trong tuần (0=Sunday, 1=Monday, ..., 6=Saturday)
-    
-    // Tính offset để về ngày Monday của tuần hiện tại
-    // Nếu hôm nay là Sunday (0) → cần lùi 6 ngày
-    // Nếu hôm nay là Monday-Saturday (1-6) → công thức: 1 - currentDay
-    // VD: Wednesday (3) → offset = 1 - 3 = -2 (lùi 2 ngày về Monday)
-    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
-    
-    // Tạo Date object cho Monday
-    const monday = new Date(today);
-    // Cộng mondayOffset để về Monday + cộng thêm (currentWeekOffset * 7) để navigate tuần
-    // VD: currentWeekOffset = 1 → next week, currentWeekOffset = -1 → previous week
-    monday.setDate(today.getDate() + mondayOffset + (currentWeekOffset * 7));
-    // Set giờ về 00:00:00 để có đầy đủ ngày Monday
-    monday.setHours(0, 0, 0, 0);
+  const dateRange = useMemo(() => {
+    if (expectedStartDate) {
+      // Nếu có expectedStartDate: từ ngày đó đến 31/05 năm sau
+      const start = new Date(expectedStartDate);
+      if (isNaN(start.getTime())) {
+        // Nếu date không hợp lệ, return null để dùng API all-active
+        return null;
+      }
+      start.setHours(0, 0, 0, 0);
+      
+      // Lấy năm sau và tạo Date cho 31/05
+      const nextYear = start.getFullYear() + 1;
+      const end = new Date(nextYear, 4, 31); // Tháng 5 (index 4 = tháng 5)
+      end.setHours(23, 59, 59, 999);
+      
+      return { start, end };
+    }
+    return null;
+  }, [expectedStartDate]);  // Chỉ recalculate khi expectedStartDate thay đổi
 
-    // Tạo Date object cho Sunday (6 ngày sau Monday)
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);        // Cộng 6 ngày để đến Sunday
-    sunday.setHours(23, 59, 59, 999);            // Set giờ về cuối ngày Sunday
-
-    // Return object chứa start và end date của tuần
-    return { start: monday, end: sunday };
-  }, [currentWeekOffset]);  // Chỉ recalculate khi currentWeekOffset thay đổi
-
-  // ===== FETCH WEEKLY SCHEDULE =====
+  // ===== FETCH CLASSES WITH SCHEDULES =====
   /**
-   * Fetch danh sách các buổi học trong tuần để hiển thị
-   * Query key bao gồm start và end date để cache riêng cho mỗi tuần
+   * Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm recurringSchedule
+   * Backend sẽ tự động filter theo khoảng thời gian nếu có expectedStartDate
    */
-  const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
-    queryKey: ['weekly-schedule', weekDates.start.toISOString(), weekDates.end.toISOString()],
+  const { data: classesData, isLoading: scheduleLoading } = useQuery({
+    queryKey: ['classes', 'active-schedules', expectedStartDate],
     queryFn: async () => {
-      // Gọi API với startDate và endDate (format YYYY-MM-DD)
-      const response = await apiClient.get('/admin-center/schedule-management/sessions/week', {
-        startDate: weekDates.start.toISOString().split('T')[0],  // "2025-10-27"
-        endDate: weekDates.end.toISOString().split('T')[0],      // "2025-11-02"
-      });
+      // Gọi API để lấy tất cả lớp đang hoạt động kèm lịch học
+      // Nếu có expectedStartDate, truyền vào query param để backend filter
+      const params = expectedStartDate ? { expectedStartDate } : {};
+      const response = await apiClient.get('/admin-center/schedule-management/classes/active-schedules', { params });
       return response;
     },
+    enabled: true,
   });
 
-  // Extract mảng sessions từ response
-  const sessions: ClassSession[] = (scheduleData as any)?.data || [];
+  // Extract mảng classes từ response
+  const allClasses: Array<{
+    classId: string;
+    className: string;
+    teacherName: string;
+    subjectName: string;
+    roomId: string | null;
+    roomName: string | null;
+    expectedStartDate: string | null;
+    actualStartDate: string | null;
+    actualEndDate: string | null;
+    schedules: Array<{ day: string; startTime: string; endTime: string; roomId?: string }>;
+  }> = (classesData as any)?.data || [];
+  
+  // Backend đã filter rồi, không cần filter lại ở frontend
+  // filteredClasses = allClasses (backend đã trả về danh sách đã được filter)
+  const filteredClasses = allClasses;
+  
+  // ===== HELPER: Format date =====
+  /**
+   * Format date thành string dạng dd/mm/yyyy
+   */
+  const formatDate = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      return date.toLocaleDateString('vi-VN', options);
+    } catch {
+      return '';
+    }
+  };
 
   // ===== BUILD OCCUPIED SLOTS MAP =====
   /**
    * Tạo một Map để tra cứu nhanh xem một time slot có bị chiếm bởi lớp học nào không
    * Key format: "{day}-{time}-{roomName}" → VD: "monday-08:00-Phòng A1"
-   * Value: ClassSession object của lớp đang học
+   * Value: Class info object với className, teacherName, dates, etc.
    * 
-   * Tại sao dùng Map thay vì Array?
-   * - Map.has() và Map.get() có complexity O(1)
-   * - Array.find() có complexity O(n)
-   * - Với hàng trăm sessions, Map nhanh hơn rất nhiều
+   * Dựa trên recurringSchedule của các lớp để tạo occupied slots
    */
   const occupiedSlots = useMemo(() => {
-    const map = new Map<string, ClassSession>();
-    
-    // Nếu không có sessions thì return empty map
-    if (!sessions || sessions.length === 0) {
+    const map = new Map<string, { 
+      className: string; 
+      teacherName: string; 
+      subjectName: string;
+      actualStartDate: string | null;
+      actualEndDate: string | null;
+      expectedStartDate: string | null;
+    }>();
+    // Nếu không có classes thì return empty map
+    if (!filteredClasses || filteredClasses.length === 0) {
       return map;
     }
-    
-    // Loop qua tất cả sessions để build map
-    sessions.forEach((session) => {
-      // === STEP 1: Validate dữ liệu session ===
-      if (!session || !session.date || !session.startTime || !session.endTime) {
-        console.warn('Invalid session data:', session);
-        return; // Skip session không hợp lệ
-      }
-
-      // Skip sessions chưa được assign phòng
-      if (!session.roomName) {
+    // Loop qua tất cả classes để build map từ recurringSchedule
+    filteredClasses.forEach((cls) => {
+      // Skip lớp không có schedules
+      if (!cls.schedules || cls.schedules.length === 0) {
         return;
       }
-
-      // === STEP 2: Convert date string thành Date object ===
-      const sessionDate = new Date(session.date);
-      
-      // Validate date có hợp lệ không
-      if (isNaN(sessionDate.getTime())) {
-        console.warn('Invalid session date:', session.date);
+      // Skip lớp chưa được assign phòng
+      const roomName = cls.roomName;
+      if (!roomName) {
         return;
       }
-
-      // === STEP 3: Lấy day index và convert sang day value ===
-      const dayIndex = sessionDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-      
-      let dayValue: string;
-      if (dayIndex === 0) {
-        // Sunday có index 0
-        dayValue = 'sunday';
-      } else if (dayIndex >= 1 && dayIndex <= 6) {
-        // Monday-Saturday có index 1-6, map với DAYS_OF_WEEK[0-5]
-        const dayObj = DAYS_OF_WEEK[dayIndex - 1];
-        if (!dayObj) {
-          console.warn('Invalid day index:', dayIndex);
+      // Loop qua từng schedule trong recurringSchedule
+      cls.schedules.forEach((schedule) => {
+        // Validate schedule
+        if (!schedule.day || !schedule.startTime || !schedule.endTime) {
           return;
         }
-        dayValue = dayObj.value;  // 'monday', 'tuesday', etc.
-      } else {
-        console.warn('Day index out of range:', dayIndex);
-        return;
-      }
-      
-      // === STEP 4: Tạo map keys cho TẤT CẢ time slots trong khoảng session ===
-      const startTime = session.startTime;  // VD: "08:00"
-      const endTime = session.endTime;      // VD: "10:00"
-      
-      // Loop qua tất cả TIME_SLOTS (07:00, 07:30, 08:00, ..., 21:00)
-      TIME_SLOTS.forEach((timeSlot) => {
-        // Check xem timeSlot có nằm trong range [startTime, endTime) không
-        // Dùng >= startTime và < endTime (không bao gồm endTime)
-        // VD: Session 08:00-10:00 → chiếm slots: 08:00, 08:30, 09:00, 09:30 (không chiếm 10:00)
-        if (timeSlot >= startTime && timeSlot < endTime) {
-          // Tạo unique key format: "day-time-roomName"
-          const key = `${dayValue}-${timeSlot}-${session.roomName}`;
-          // Store session vào map với key này
-          map.set(key, session);
-        }
+        const dayValue = schedule.day.toLowerCase(); // 'monday', 'tuesday', etc.
+        const startTime = schedule.startTime;  // VD: "08:00"
+        const endTime = schedule.endTime;      // VD: "10:00"
+        // Loop qua tất cả TIME_SLOTS (07:00, 07:30, 08:00, ..., 21:00)
+        TIME_SLOTS.forEach((timeSlot) => {
+          // Check xem timeSlot có nằm trong range [startTime, endTime) không
+          // Dùng >= startTime và < endTime (không bao gồm endTime)
+          // VD: Schedule 08:00-10:00 → chiếm slots: 08:00, 08:30, 09:00, 09:30 (không chiếm 10:00)
+          if (timeSlot >= startTime && timeSlot < endTime) {
+            // Tạo unique key format: "day-time-roomName"
+            const key = `${dayValue}-${timeSlot}-${roomName}`;
+            // Store class info vào map với key này (chỉ lưu lần đầu, không override)
+            if (!map.has(key)) {
+              map.set(key, {
+                className: cls.className,
+                teacherName: cls.teacherName,
+                subjectName: cls.subjectName,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
+                expectedStartDate: cls.expectedStartDate,
+              });
+            }
+          }
+        });
       });
     });
     
     return map;
-  }, [sessions]);  // Chỉ rebuild map khi sessions data thay đổi
+  }, [filteredClasses]);  // Chỉ rebuild map khi filteredClasses thay đổi
 
   // ===== HELPER FUNCTIONS =====
   
@@ -337,9 +329,21 @@ export const WeeklySchedulePicker = ({
    * Flow:
    * 1. Check slot có bị occupied bởi lớp học không → return nếu có
    * 2. Check slot có phải start time của slot đã chọn không → remove nếu có
-   * 3. Nếu chưa chọn → validate và add slot mới
+   * 3. Check nếu đã chọn phòng khác → không cho phép chọn phòng khác
+   * 4. Nếu chưa chọn → validate và add slot mới
    */
   const handleSlotClick = (day: string, startTime: string, roomId: string, roomName: string) => {
+    // ===== STEP 0: CHECK DIFFERENT ROOM =====
+    // Chỉ cho phép chọn 1 phòng duy nhất
+    if (selectedSlots.length > 0) {
+      const firstSlotRoomId = selectedSlots[0].roomId;
+      if (firstSlotRoomId && firstSlotRoomId !== roomId) {
+        // Đã chọn phòng khác → không cho phép chọn phòng mới
+        // Có thể show toast/warning ở đây nếu cần
+        return;
+      }
+    }
+
     // ===== STEP 1: CHECK OCCUPIED =====
     // Tạo key để tra cứu trong occupiedSlots map
     const key = `${day}-${startTime}-${roomName}`;
@@ -475,12 +479,16 @@ export const WeeklySchedulePicker = ({
   const filteredRooms = selectedRoom === 'all' ? rooms : rooms.filter((r: any) => r.id === selectedRoom);
 
   /**
-   * Format week range thành string để hiển thị
-   * VD: "27/10/2025 - 02/11/2025"
+   * Format date range thành string để hiển thị
+   * VD: "27/10/2025 - 31/05/2026" hoặc "Hiển thị tất cả lịch các lớp đang hoạt động"
    */
-  const formatWeekRange = () => {
-    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
-    return `${weekDates.start.toLocaleDateString('vi-VN', options)} - ${weekDates.end.toLocaleDateString('vi-VN', options)}`;
+  const formatDateRange = () => {
+    if (expectedStartDate && dateRange) {
+      const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      return `${dateRange.start.toLocaleDateString('vi-VN', options)} - ${dateRange.end.toLocaleDateString('vi-VN', options)}`;
+    } else {
+      return `Hiển thị tất cả lịch các lớp đang hoạt động`;
+    }
   };
 
   // ===== LOADING STATE =====
@@ -536,43 +544,23 @@ export const WeeklySchedulePicker = ({
           />
         </div>
 
-        {/* Week Navigation */}
+        {/* Date Range Display */}
         <div>
-          <Label>Tuần hiển thị</Label>
-          <div className="flex items-center gap-2 mt-1.5">
-            {/* Button để về tuần trước (giảm offset) */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            {/* Hiển thị range của tuần hiện tại */}
-            <div className="flex-1 text-center text-sm">
-              {formatWeekRange()}
-            </div>
-            {/* Button để tới tuần sau (tăng offset) */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentWeekOffset(currentWeekOffset + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+          <Label>Khoảng thời gian hiển thị</Label>
+          <div className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded-md">
+            {formatDateRange()}
           </div>
         </div>
       </div>
 
       {/* ===== INFO ALERT ===== */}
       {/* Hướng dẫn sử dụng cho user */}
-      <Alert>
+        <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
           Click vào ô trống để chọn thời gian bắt đầu. Hệ thống sẽ tự động block các ô theo thời lượng đã chọn. 
           Ô màu đỏ đã có lớp, ô xanh đậm là thời gian bắt đầu, ô xanh nhạt là khoảng thời gian trong buổi học.
+          <strong className="block mt-1">Lưu ý: Chỉ có thể chọn lịch trong 1 phòng duy nhất.</strong>
         </AlertDescription>
       </Alert>
 
@@ -590,7 +578,7 @@ export const WeeklySchedulePicker = ({
             <div className="flex flex-wrap gap-2">
               {selectedSlots.map((slot) => {
                 // Tìm label của ngày (Thứ 2, Thứ 3, etc.)
-                const dayLabel = DAYS_OF_WEEK.find((d) => d.value === slot.day)?.label;
+                const dayLabel = dayOptions.find((d: any) => d.value === slot.day)?.label;
                 return (
                   <Badge
                     key={slot.id}
@@ -628,11 +616,26 @@ export const WeeklySchedulePicker = ({
             </div>
           ) : (
             /* Loop qua các rooms đã filter (tất cả hoặc 1 phòng cụ thể) */
-            filteredRooms.map((room: any) => (
-              <div key={room.id} className="mb-6 last:mb-0">
+            filteredRooms.map((room: any) => {
+              // Kiểm tra xem phòng này có bị disable không
+              // Phòng bị disable nếu đã chọn phòng khác
+              const isRoomDisabled = selectedRoomId !== null && selectedRoomId !== room.id;
+              
+              return (
+              <div key={room.id} className={`mb-6 last:mb-0 ${isRoomDisabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 {/* Header hiển thị tên phòng và sức chứa */}
-                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 font-semibold">
+                <div className={`bg-gray-100 dark:bg-gray-800 px-4 py-2 font-semibold ${selectedRoomId === room.id ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500' : ''}`}>
                   {room.name} (Sức chứa: {room.capacity})
+                  {selectedRoomId === room.id && (
+                    <span className="ml-2 text-sm text-green-700 dark:text-green-300 font-normal">
+                      (Đang chọn lịch)
+                    </span>
+                  )}
+                  {isRoomDisabled && (
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
+                      (Đã chọn phòng khác)
+                    </span>
+                  )}
                 </div>
                 
                 {/* Table chính hiển thị lịch */}
@@ -645,7 +648,7 @@ export const WeeklySchedulePicker = ({
                         Giờ
                       </th>
                       {/* Loop các ngày trong tuần để tạo columns */}
-                      {DAYS_OF_WEEK.map((day) => (
+                      {dayOptions.map((day) => (
                         <th
                           key={day.value}
                           className="border-2 p-3 bg-gray-50 dark:bg-gray-900 text-sm font-semibold"
@@ -667,7 +670,7 @@ export const WeeklySchedulePicker = ({
                         </td>
                         
                         {/* Loop qua các ngày để tạo cells cho mỗi time slot */}
-                        {DAYS_OF_WEEK.map((day) => {
+                        {dayOptions.map((day) => {
                           // ===== STEP 1: Xác định state của cell =====
                           // Build key để tra cứu trong occupiedSlots map
                           const key = `${day.value}-${timeSlot}-${room.name}`;
@@ -676,7 +679,6 @@ export const WeeklySchedulePicker = ({
                           const occupiedSession = occupiedSlots.get(key);  // Có lớp học không?
                           const isSelected = isSlotSelected(day.value, timeSlot, room.id);  // Là start time đã chọn không?
                           const isBlocked = isTimeBlocked(day.value, timeSlot, room.id);    // Bị block bởi duration không?
-
                           // ===== STEP 2: Render cell với styling động =====
                           return (
                             <td
@@ -703,36 +705,60 @@ export const WeeklySchedulePicker = ({
                                   
                                   // STATE 4: Available - Trống, có thể chọn
                                   // → Màu trắng, cursor pointer, hover xanh dương nhạt
+                                  // STATE 5: Disabled - Ở phòng khác khi đã chọn phòng
+                                  // → Màu xám, cursor not-allowed
                                   'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                                    !occupiedSession && !isBlocked,
+                                    !occupiedSession && !isBlocked && !(selectedSlots.length > 0 && selectedSlots[0].roomId !== room.id),
+                                  'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50':
+                                    selectedSlots.length > 0 && selectedSlots[0].roomId !== room.id,
                                 }
                               )}
-                              // Click handler: chỉ cho phép click nếu không occupied và không blocked
+                              // Click handler: chỉ cho phép click nếu không occupied, không blocked, và phòng không bị disable
                               onClick={() =>
-                                (!occupiedSession && !isBlocked) && handleSlotClick(day.value, timeSlot, room.id, room.name)
+                                (!isRoomDisabled && !occupiedSession && !isBlocked) && handleSlotClick(day.value, timeSlot, room.id, room.name)
                               }
                               // Tooltip hiển thị thông tin khi hover
                               title={
                                 occupiedSession
-                                  ? `${occupiedSession.name} - ${occupiedSession.teacherName || 'Chưa có GV'}`
+                                  ? (() => {
+                                      const dateInfo = occupiedSession.actualStartDate 
+                                        ? `Bắt đầu: ${formatDate(occupiedSession.actualStartDate)}${occupiedSession.actualEndDate ? ` | Kết thúc: ${formatDate(occupiedSession.actualEndDate)}` : ''}`
+                                        : occupiedSession.expectedStartDate
+                                        ? `Dự kiến: ${formatDate(occupiedSession.expectedStartDate)}`
+                                        : '';
+                                      return `${occupiedSession.className} - ${occupiedSession.teacherName || 'Chưa có GV'}${dateInfo ? `\n${dateInfo}` : ''}`;
+                                    })()
                                   : isSelected
                                   ? 'Click để bỏ chọn'
                                   : isBlocked
                                   ? 'Đã được chọn trong khoảng thời gian của lịch khác'
+                                      : isRoomDisabled
+                                  ? 'Đã chọn phòng khác, không thể chọn phòng này'
                                   : 'Click để chọn'
                               }
                             >
                               {/* ===== STEP 3: Render nội dung cell theo state ===== */}
                               
-                              {/* CASE 1: Có lớp học → Hiển thị tên lớp và giáo viên */}
+                              {/* CASE 1: Có lớp học → Hiển thị tên lớp, giáo viên và ngày */}
                               {occupiedSession ? (
                                 <div className="text-[11px] leading-tight min-h-[32px]">
                                   <div className="font-semibold truncate">
-                                    {occupiedSession.name}
+                                    {occupiedSession.className}
                                   </div>
                                   <div className="text-gray-600 dark:text-gray-400 truncate">
                                     {occupiedSession.teacherName || 'N/A'}
                                   </div>
+                                  {occupiedSession.actualStartDate && (
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-500 truncate mt-0.5">
+                                      {formatDate(occupiedSession.actualStartDate)}
+                                      {occupiedSession.actualEndDate ? ` - ${formatDate(occupiedSession.actualEndDate)}` : ''}
+                                    </div>
+                                  )}
+                                  {!occupiedSession.actualStartDate && occupiedSession.expectedStartDate && (
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-500 truncate mt-0.5">
+                                      Dự kiến: {formatDate(occupiedSession.expectedStartDate)}
+                                    </div>
+                                  )}
                                 </div>
                               ) 
                               
@@ -760,7 +786,8 @@ export const WeeklySchedulePicker = ({
                   </tbody>
                 </table>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

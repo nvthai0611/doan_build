@@ -11,7 +11,9 @@ export class EmailNotificationService {
     @InjectQueue('email_notification') private readonly emailNotificationQueue: Queue,
     @InjectQueue('teacher_account') private readonly teacherAccountQueue: Queue,
     @InjectQueue('class_assign_teacher') private readonly classAssignTeacherQueue: Queue,
-    @InjectQueue('enrollment_email') private readonly enrollmentEmailQueue: Queue
+    @InjectQueue('enrollment_email') private readonly enrollmentEmailQueue: Queue,
+    @InjectQueue('class_status_change_email') private readonly classStatusChangeEmailQueue: Queue,
+    @InjectQueue('class_request_email') private readonly classRequestEmailQueue: Queue
   ) {}
 
 
@@ -649,6 +651,357 @@ export class EmailNotificationService {
         error.message || 'Lỗi khi gửi email thông báo đăng ký',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  /**
+   * Gửi email thông báo thay đổi trạng thái lớp học cho phụ huynh
+   * @param classId ID của lớp học
+   * @param oldStatus Trạng thái cũ
+   * @param newStatus Trạng thái mới
+   */
+  async sendClassStatusChangeEmailToParents(
+    classId: string,
+    oldStatus: string,
+    newStatus: string
+  ) {
+    try {
+      // Chỉ gửi email cho các status quan trọng
+      const importantStatuses = ['active', 'completed', 'suspended', 'cancelled'];
+      if (!importantStatuses.includes(newStatus)) {
+        return { success: true, skipped: true, reason: 'Status không yêu cầu thông báo' };
+      }
+
+      console.log(`Bắt đầu gửi email thông báo thay đổi status lớp ${classId} từ "${oldStatus}" sang "${newStatus}"`);
+
+      // Lấy thông tin lớp học với enrollments
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        include: {
+          subject: true,
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          },
+          enrollments: {
+            where: {
+              status: {
+                in: ['studying', 'not_been_updated', 'graduated']
+              }
+            },
+            include: {
+              student: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      fullName: true
+                    }
+                  },
+                  parent: {
+                    include: {
+                      user: {
+                        select: {
+                          id: true,
+                          fullName: true,
+                          email: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!classData) {
+        throw new HttpException('Không tìm thấy lớp học', HttpStatus.NOT_FOUND);
+      }
+
+      if (classData.enrollments.length === 0) {
+        console.log(`Lớp học không có học sinh đang học`);
+        return { success: true, skipped: true, reason: 'Không có học sinh đang học' };
+      }
+
+      const statusLabels: Record<string, { label: string; color: string; icon: string }> = {
+        'active': {
+          label: 'Đang hoạt động',
+          color: '#4CAF50',
+          icon: '✅'
+        },
+        'completed': {
+          label: 'Đã hoàn thành',
+          color: '#2196F3',
+          icon: '🎓'
+        },
+        'suspended': {
+          label: 'Tạm dừng',
+          color: '#FF9800',
+          icon: '⏸️'
+        },
+        'cancelled': {
+          label: 'Đã hủy',
+          color: '#F44336',
+          icon: '❌'
+        }
+      };
+
+      const statusInfo = statusLabels[newStatus] || {
+        label: newStatus,
+        color: '#757575',
+        icon: '📌'
+      };
+
+      const className = classData.name || 'N/A';
+      const subjectName = classData.subject?.name || 'N/A';
+      const teacherName = classData.teacher?.user?.fullName;
+
+      // Gửi email cho từng phụ huynh (group theo parent để tránh duplicate)
+      const parentEmailMap = new Map<string, { parentName: string; students: string[] }>();
+
+      for (const enrollment of classData.enrollments) {
+        const parent = enrollment.student.parent;
+        if (!parent || !parent.user?.email) {
+          console.warn(`Học sinh ${enrollment.student.user.fullName} không có email phụ huynh`);
+          continue;
+        }
+
+        const parentEmail = parent.user.email;
+        const parentName = parent.user.fullName || 'Quý phụ huynh';
+        const studentName = enrollment.student.user.fullName || 'N/A';
+
+        if (!parentEmailMap.has(parentEmail)) {
+          parentEmailMap.set(parentEmail, {
+            parentName,
+            students: [studentName]
+          });
+        } else {
+          parentEmailMap.get(parentEmail)!.students.push(studentName);
+        }
+      }
+
+      // Thêm job vào queue cho từng phụ huynh
+      const emailResults = [];
+      const jobPromises = [];
+
+      for (const [email, data] of parentEmailMap.entries()) {
+        try {
+          const studentList = data.students.join(', ');
+
+          // Thêm vào queue class_status_change_email
+          const jobPromise = this.classStatusChangeEmailQueue.add(
+            'send_class_status_change_notification',
+            {
+              to: email,
+              parentName: data.parentName,
+              studentName: studentList,
+              className,
+              subjectName,
+              teacherName,
+              oldStatus,
+              newStatus,
+              statusLabel: statusInfo.label,
+              statusColor: statusInfo.color,
+              statusIcon: statusInfo.icon,
+              classId
+            },
+            {
+              priority: 2,
+              delay: 500,
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000
+              },
+              removeOnComplete: 10,
+              removeOnFail: 5
+            }
+          );
+
+          jobPromises.push(jobPromise);
+
+          emailResults.push({
+            email,
+            parentName: data.parentName,
+            students: data.students,
+            success: true
+          });
+
+          console.log(`Đã thêm job gửi email thông báo status cho ${data.parentName} (${email}) vào queue`);
+        } catch (error: any) {
+          console.error(`❌ Lỗi khi thêm job cho ${email}:`, error.message);
+          emailResults.push({
+            email,
+            parentName: data.parentName,
+            students: data.students,
+            success: false,
+            error: error.message
+          });
+        }
+      }
+
+      // Đợi tất cả jobs được thêm vào queue
+      await Promise.all(jobPromises);
+
+      const successCount = emailResults.filter(r => r.success).length;
+      const failCount = emailResults.filter(r => !r.success).length;
+
+      console.log(
+        `Đã thêm ${successCount}/${parentEmailMap.size} job gửi email thông báo status vào queue\n` +
+        `   - Thành công: ${successCount}\n` +
+        `   - Thất bại: ${failCount}`
+      );
+
+      return {
+        success: true,
+        sentCount: successCount,
+        failCount,
+        totalParents: parentEmailMap.size,
+        details: emailResults
+      };
+    } catch (error: any) {
+      console.error(' Lỗi khi gửi email thông báo status:', error);
+      // Không throw error để không ảnh hưởng đến update status
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Gửi email thông báo chấp nhận yêu cầu tham gia lớp học
+   */
+  async sendClassRequestApprovalEmail(
+    requestId: string,
+    studentId: string,
+    classId: string,
+    parentEmail: string,
+    parentName: string,
+    studentName: string,
+    className: string,
+    subjectName: string,
+    teacherName?: string,
+    startDate?: string,
+    schedule?: any,
+    username?: string,
+    password?: string
+  ) {
+    try {
+      console.log(`📧 Thêm job gửi email chấp nhận yêu cầu cho: ${parentEmail}`);
+
+      await this.classRequestEmailQueue.add(
+        'send_approval_notification',
+        {
+          to: parentEmail,
+          studentName,
+          parentName,
+          className,
+          subjectName,
+          teacherName,
+          startDate,
+          schedule,
+          username,
+          password,
+          requestId,
+          studentId,
+          classId
+        },
+        {
+          priority: 2,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5
+        }
+      );
+
+      console.log(`✅ Đã thêm job gửi email chấp nhận vào queue cho: ${parentEmail}`);
+
+      return {
+        success: true,
+        message: 'Email job đã được thêm vào queue',
+        parentEmail,
+        requestId,
+      };
+    } catch (error: any) {
+      console.error(`❌ Lỗi khi thêm job email chấp nhận: ${error.message}`);
+      // Không throw error để không ảnh hưởng đến quá trình approve
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Gửi email thông báo từ chối yêu cầu tham gia lớp học
+   */
+  async sendClassRequestRejectionEmail(
+    requestId: string,
+    studentId: string,
+    classId: string,
+    parentEmail: string,
+    parentName: string,
+    studentName: string,
+    className: string,
+    subjectName: string,  
+    reason: string
+  ) {
+    try {
+      console.log(`📧 Thêm job gửi email từ chối yêu cầu cho: ${parentEmail}`);
+
+      await this.classRequestEmailQueue.add(
+        'send_rejection_notification',
+        {
+          to: parentEmail,
+          studentName,
+          parentName,
+          className,
+          subjectName,
+          reason,
+          requestId,
+          studentId,
+          classId,
+        },
+        {
+          priority: 2,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5
+        }
+      );
+
+      console.log(`✅ Đã thêm job gửi email từ chối vào queue cho: ${parentEmail}`);
+
+      return {
+        success: true,
+        message: 'Email job đã được thêm vào queue',
+        parentEmail,
+        requestId,
+      };
+    } catch (error: any) {
+      console.error(`❌ Lỗi khi thêm job email từ chối: ${error.message}`);
+      // Không throw error để không ảnh hưởng đến quá trình reject
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 }

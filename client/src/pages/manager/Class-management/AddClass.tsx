@@ -622,6 +622,7 @@ export const CreateClass = () => {
                             selectedSlots={schedules}
                             onSlotsChange={setSchedules}
                             defaultDuration={90}
+                            expectedStartDate={formData.expectedStartDate || undefined}
                           />
                           <div className="flex justify-end gap-2 pt-4 border-t">
                             <Button

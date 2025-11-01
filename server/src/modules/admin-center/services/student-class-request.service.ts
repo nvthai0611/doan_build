@@ -2,12 +2,14 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { AlertService } from './alert.service';
 import { AlertSeverity } from '../dto/alert.dto';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
 
 @Injectable()
 export class StudentClassRequestService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alertService: AlertService,
+    private readonly emailNotificationService: EmailNotificationService,
   ) {}
 
   /**
@@ -173,11 +175,17 @@ export class StudentClassRequestService {
                 select: {
                   fullName: true,
                   email: true,
+                  username: true,
                 },
               },
               parent: {
-                select: {
-                  id: true,
+                include: {
+                  user: {
+                    select: {
+                      fullName: true,
+                      email: true,
+                    },
+                  },
                 },
               },
             },
@@ -185,6 +193,15 @@ export class StudentClassRequestService {
           class: {
             include: {
               subject: true,
+              teacher: {
+                include: {
+                  user: {
+                    select: {
+                      fullName: true,
+                    },
+                  },
+                },
+              },
               _count: {
                 select: {
                   enrollments: {
@@ -216,7 +233,10 @@ export class StudentClassRequestService {
         );
       }
 
-      // Kiểm tra lớp có còn chỗ không
+      console.log('request', request);
+      
+
+      // // Kiểm tra lớp có còn chỗ không
       if (
         request.class.maxStudents &&
         request.class._count.enrollments >= request.class.maxStudents
@@ -304,22 +324,32 @@ export class StudentClassRequestService {
         return { updatedRequest, enrollment, contractUpload };
       });
 
-      // Tạo alert thông báo đã approve (optional)
-      try {
-        await this.alertService.createAlert({
-          alertType: 'enrollment' as any,
-          title: 'Yêu cầu tham gia lớp đã được chấp nhận',
-          message: `Học sinh ${request.student.user.fullName} đã được chấp nhận vào lớp ${request.class.name}`,
-          severity: AlertSeverity.HIGH,
-          payload: {
-            requestId: request.id,
-            enrollmentId: result.enrollment.id,
-            studentId: request.studentId,
-            classId: request.classId,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to create alert for approved request:', error);
+
+      // Gửi email thông báo chấp nhận
+      if (request.student.parent?.user?.email) {
+        const parentEmail = request.student.parent.user.email;
+        const parentName = request.student.parent.user.fullName;
+        
+        // Format start date
+        const startDate = request.class.expectedStartDate 
+          ? new Date(request.class.expectedStartDate).toLocaleDateString('vi-VN') 
+          : undefined;
+        
+        await this.emailNotificationService.sendClassRequestApprovalEmail(
+          requestId,
+          request.studentId,
+          request.classId,
+          parentEmail,
+          parentName,
+          request.student.user.fullName,
+          request.class.name,
+          request.class.subject?.name || 'N/A',
+          request.class.teacher?.user?.fullName,
+          startDate,
+          request.class.recurringSchedule,
+          request.student.user.username,
+          '123456' // Mật khẩu mặc định
+        );
       }
 
       return {
@@ -379,11 +409,27 @@ export class StudentClassRequestService {
                   fullName: true,
                 },
               },
+              parent: {
+                include: {
+                  user: {
+                    select: {
+                      fullName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
             },
           },
           class: {
             select: {
+              id: true,
               name: true,
+              subject: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -434,22 +480,23 @@ export class StudentClassRequestService {
         });
       }
 
-      // Tạo alert thông báo đã reject (optional)
-      try {
-        await this.alertService.createAlert({
-          alertType: 'other' as any,
-          title: 'Yêu cầu tham gia lớp đã bị từ chối',
-          message: `Yêu cầu của học sinh ${request.student.user.fullName} vào lớp ${request.class.name} đã bị từ chối`,
-          severity: AlertSeverity.MEDIUM,
-          payload: {
-            requestId: request.id,
-            studentId: request.studentId,
-            classId: request.classId,
-            reason,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to create alert for rejected request:', error);
+
+      // Gửi email thông báo từ chối
+      if (request.student.parent?.user?.email) {
+        const parentEmail = request.student.parent.user.email;
+        const parentName = request.student.parent.user.fullName;
+        
+        await this.emailNotificationService.sendClassRequestRejectionEmail(
+          requestId,
+          request.studentId,
+          request.classId,
+          parentEmail,
+          parentName,
+          request.student.user.fullName,
+          request.class.name,
+          request.class.subject?.name || 'N/A',
+          reason
+        );
       }
 
       return {

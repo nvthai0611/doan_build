@@ -27,7 +27,17 @@ export class ScheduleManagementService {
         const { date } = queryDto;
         if (!date) return [];
         const sessions = await this.prisma.classSession.findMany({
-            where: { sessionDate: new Date(date) },
+            where: { 
+                sessionDate: new Date(date),
+                status: {
+                    notIn: ['end', 'cancelled']
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended']
+                    }
+                }
+            },
             orderBy: { startTime: 'asc' },
             include: {
                 room: { select: { name: true } },
@@ -59,7 +69,17 @@ export class ScheduleManagementService {
         const end = new Date(endDate);
         // bao gồm cả endDate: dùng lte
         const sessions = await this.prisma.classSession.findMany({
-            where: { sessionDate: { gte: start, lte: end } },
+            where: { 
+                sessionDate: { gte: start, lte: end },
+                status: {
+                    notIn: ['end', 'cancelled']
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended']
+                    }
+                }
+            },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
             include: {
                 room: { select: { name: true } },
@@ -93,7 +113,17 @@ export class ScheduleManagementService {
         const firstDayNextMonth = new Date(Date.UTC(yearNum, monthNum, 1));
         // dùng lt next month để bao toàn bộ tháng
         const sessions = await this.prisma.classSession.findMany({
-            where: { sessionDate: { gte: firstDay, lt: firstDayNextMonth } },
+            where: { 
+                sessionDate: { gte: firstDay, lt: firstDayNextMonth },
+                status: {
+                    notIn: ['end', 'cancelled']
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended']
+                    }
+                }
+            },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
             include: {
                 room: { select: { name: true } },
@@ -117,5 +147,133 @@ export class ScheduleManagementService {
             },
         });
         return sessions.map((s) => this.mapSessionToClientShape(s));
+    }
+
+    /**
+     * Lấy tất cả lịch của các lớp đang hoạt động/đang tuyển sinh/tạm dừng
+     * Trả về các lớp kèm recurringSchedule của chúng để hiển thị pattern lịch học
+     * 
+     * @param expectedStartDate - Ngày bắt đầu dự kiến của lớp mới. Nếu có, chỉ trả về lớp có overlap với khoảng thời gian [expectedStartDate, 31/05 năm sau]
+     */
+    async getAllActiveClassesWithSchedules(expectedStartDate?: string) {
+        const classes = await this.prisma.class.findMany({
+            where: { 
+                status: {
+                    in: ['active', 'ready', 'suspended']
+                },
+                // Chỉ lấy lớp có recurringSchedule
+                recurringSchedule: {
+                    not: null
+                }
+            },
+            select: {
+                id: true,
+                name: true,
+                recurringSchedule: true,
+                room: { 
+                    select: { 
+                        id: true,
+                        name: true 
+                    } 
+                },
+                teacher: { 
+                    select: { 
+                        user: { 
+                            select: { 
+                                fullName: true 
+                            } 
+                        } 
+                    } 
+                },
+                subject: { 
+                    select: { 
+                        name: true 
+                    } 
+                },
+                expectedStartDate: true,
+                actualStartDate: true,
+                actualEndDate: true,
+            },
+            orderBy: { name: 'asc' },
+        });
+
+        // Transform để trả về format phù hợp với frontend
+        let result = classes.map((cls) => {
+            const schedule = cls.recurringSchedule as any;
+            return {
+                classId: cls.id,
+                className: cls.name,
+                teacherName: cls.teacher?.user?.fullName || '',
+                subjectName: cls.subject?.name || '',
+                roomId: cls.room?.id || null,
+                roomName: cls.room?.name || null,
+                expectedStartDate: cls.expectedStartDate,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
+                schedules: schedule?.schedules || [], // Mảng các { day, startTime, endTime, roomId }
+            };
+        });
+
+        // Filter các lớp có overlap với khoảng thời gian
+        // Nếu có expectedStartDate: dùng expectedStartDate
+        // Nếu không có: dùng ngày hiện tại
+        const rangeStart = expectedStartDate 
+            ? new Date(expectedStartDate)
+            : new Date(); // Dùng ngày hiện tại nếu không có expectedStartDate
+        
+        rangeStart.setHours(0, 0, 0, 0);
+        
+        // Tính ngày kết thúc: 31/05 năm sau
+        const nextYear = rangeStart.getFullYear() + 1;
+        const rangeEnd = new Date(nextYear, 4, 31); // Tháng 5 (index 4)
+        rangeEnd.setHours(23, 59, 59, 999);
+
+        result = result.filter((cls) => {
+                // Lấy ngày bắt đầu của lớp (ưu tiên actualStartDate, nếu không có thì dùng expectedStartDate)
+                const classStart = cls.actualStartDate 
+                    ? new Date(cls.actualStartDate)
+                    : cls.expectedStartDate 
+                    ? new Date(cls.expectedStartDate)
+                    : null;
+                
+                if (!classStart) return false;
+
+                // Lấy ngày kết thúc của lớp
+                let classEnd: Date | null = null;
+                if (cls.actualEndDate) {
+                    classEnd = new Date(cls.actualEndDate);
+                    classEnd.setHours(23, 59, 59, 999);
+                } else {
+                    // Mặc định là 31/05 năm sau của classStart
+                    const classNextYear = classStart.getFullYear() + 1;
+                    classEnd = new Date(classNextYear, 4, 31); // Tháng 5 (index 4)
+                    classEnd.setHours(23, 59, 59, 999);
+                }
+
+                // Normalize dates để so sánh chỉ theo ngày
+                const normalizedClassStart = new Date(classStart.getFullYear(), classStart.getMonth(), classStart.getDate());
+                const normalizedClassEnd = new Date(classEnd.getFullYear(), classEnd.getMonth(), classEnd.getDate());
+                const normalizedRangeStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+                const normalizedRangeEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
+
+                // Lớp có overlap nếu:
+                // 1. Lớp chưa kết thúc trước khi khoảng thời gian bắt đầu: classEnd >= rangeStart
+                // 2. Lớp chưa bắt đầu sau khi khoảng thời gian kết thúc: classStart <= rangeEnd
+                
+                // Nếu lớp đã kết thúc trước khi khoảng thời gian bắt đầu → loại bỏ
+                if (normalizedClassEnd < normalizedRangeStart) {
+                    return false;
+                }
+                
+                // Nếu lớp sẽ bắt đầu sau khi khoảng thời gian kết thúc → loại bỏ
+                if (normalizedClassStart > normalizedRangeEnd) {
+                    return false;
+                }
+                
+                // Các trường hợp còn lại đều có overlap
+                return true;
+            });
+
+        return result;
     }
 }
