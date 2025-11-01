@@ -70,6 +70,8 @@ export interface UpdateProfileRequest {
   fullName?: string
   phone?: string
   avatar?: string
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  birthDate?: string
 }
 
 export interface ProfileResponse extends User {

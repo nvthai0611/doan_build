@@ -67,7 +67,7 @@ export const authService = {
    * Đổi mật khẩu
    */
   changePassword: async (data: { oldPassword: string; newPassword: string }): Promise<void> => {
-    await apiClient.post("/auth/change-password", data)
+    await apiClient.patch("/auth/change-password", data)
   },
 
   /**
