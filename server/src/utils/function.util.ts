@@ -59,4 +59,13 @@ function generateQNCode(type: CodeType = 'default'): string {
   return result;
 };
 
-export { generateQNCode, CodeType , formatSchedule};
+const extractOrderCode = (content: string): string | null => {
+    //PAY1761731230904487
+    const match = content.match(/PAY\d+/);
+    return match ? match[0] : null;
+  }
+
+  const createOrderCode = () => {
+    return `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  }
+export { generateQNCode, CodeType , formatSchedule, extractOrderCode, createOrderCode };

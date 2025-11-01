@@ -1,129 +1,268 @@
-"use client"
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { DollarSign, Calendar, User, AlertCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ParentService } from '../../../../../../services/center-owner/parent-management/parent.service';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { DollarSign, Calendar, User, AlertCircle } from "lucide-react"
-import { useState, useMemo } from "react"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
-import { ParentService } from "../../../../../../services/center-owner/parent-management/parent.service"
+  DataTable,
+  Column,
+} from '../../../../../../components/common/Table/DataTable';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { FeeRecordStatus, FEE_RECORD_STATUS_LABELS, FEE_RECORD_STATUS_COLORS } from '../../../../../../lib/constants';
 
 interface ParentTuitionTabProps {
-  parentData: any
+  parentData: any;
 }
 
 export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
-  const pendingFees = parentData?.pendingFees || []
-  const students = parentData?.students || []
+  const queryClient = useQueryClient();
+  const pendingFees = parentData?.pendingFees || [];
+  const students = parentData?.students || [];
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  const [creating, setCreating] = useState<boolean>(false);
+
+  // Pagination state
+  const [page, setPage] = useState<number>(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
+
+  const pagedPendingFees = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return pendingFees.slice(start, start + rowsPerPage);
+  }, [pendingFees, page, rowsPerPage]);
+
+  const pagination = {
+    currentPage: page,
+    totalPages: Math.max(1, Math.ceil(pendingFees.length / rowsPerPage)),
+    totalItems: pendingFees.length,
+    itemsPerPage: rowsPerPage,
+    onPageChange: (p: number) => setPage(p),
+    onItemsPerPageChange: (r: number) => {
+      setRowsPerPage(r);
+      setPage(1);
+    },
+    showItemsPerPage: true,
+    showPageInfo: true,
+  };
 
   const formatDate = (date: string | Date) => {
+    if (!date) return '-';
     return new Date(date).toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
-    })
-  }
+      year: 'numeric',
+    });
+  };
 
   const formatCurrency = (amount: number) => {
-    if (amount === null || amount === undefined) return '-'
-    return Number(amount).toLocaleString('vi-VN') + ' đ'
-  }
+    if (amount === null || amount === undefined) return '-';
+    return Number(amount).toLocaleString('vi-VN') + ' đ';
+  };
 
-  // Calculate totals
-  const totalPending = pendingFees.reduce(
-    (sum: number, fee: any) => sum + (Number(fee.amount) - Number(fee.paidAmount)),
-    0
-  )
+  const getStatusBadge = (status: string) => {
+    const statusKey = status as FeeRecordStatus;
+    const label = FEE_RECORD_STATUS_LABELS[statusKey] || status;
+    const colorClass = FEE_RECORD_STATUS_COLORS[statusKey] || 'border-gray-500 text-gray-700 bg-gray-50';
+    
+    return (
+      <Badge variant="outline" className={`${colorClass} border-2 font-medium`}>
+        {label}
+      </Badge>
+    );
+  };
 
-  const totalFees = pendingFees.reduce(
-    (sum: number, fee: any) => sum + Number(fee.amount),
-    0
-  )
+  // Tính tổng số tiền chưa thanh toán (chỉ tính amount của các fee pending)
+  const totalPending = useMemo(
+    () =>
+      pendingFees.reduce(
+        (sum: number, fee: any) => sum + Number(fee.amount || 0),
+        0,
+      ),
+    [pendingFees],
+  );
 
-  const totalPaid = pendingFees.reduce(
-    (sum: number, fee: any) => sum + Number(fee.paidAmount),
-    0
-  )
+  // Tính tổng học phí (tất cả các fee)
+  const totalFees = useMemo(
+    () =>
+      pendingFees.reduce(
+        (sum: number, fee: any) => sum + Number(fee.amount || 0),
+        0,
+      ),
+    [pendingFees],
+  );
 
-  const allIds = useMemo(() => pendingFees.map((f: any) => f.id), [pendingFees])
-  const isAllSelected = useMemo(
-    () => allIds.length > 0 && allIds.every((id: any) => selectedIds.has(id)),
-    [allIds, selectedIds]
-  )
+  // Tổng đã thanh toán sẽ được tính từ các payment có status completed/partially_paid
+  const totalPaid = useMemo(() => {
+    const payments = parentData?.payments || [];
+    return payments.reduce((sum: number, payment: any) => {
+      if (payment.status === 'completed') {
+        return sum + Number(payment.amount || 0);
+      }
+      if (payment.status === 'partially_paid') {
+        return sum + Number(payment.paidAmount || 0);
+      }
+      return sum;
+    }, 0);
+  }, [parentData?.payments]);
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+  const columns: Column<any>[] = [
+    {
+      key: 'student',
+      header: 'Học sinh',
+      render: (fee) => (
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <div className="text-sm font-medium">
+              {fee.student?.user?.fullName || 'N/A'}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {students.find((s: any) => s.id === fee.studentId)?.studentCode ||
+                ''}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'feeName',
+      header: 'Khoản phí',
+      render: (fee) => (
+        <div className="text-sm">
+          <div className="font-medium">{fee.feeStructure?.name || 'N/A'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'dueDate',
+      header: 'Hạn thanh toán',
+      render: (fee) => {
+        const isOverdue = fee.dueDate
+          ? new Date(fee.dueDate) < new Date()
+          : false;
+        return (
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div
+                className={`text-sm ${
+                  isOverdue ? 'text-red-600 font-medium' : ''
+                }`}
+              >
+                {formatDate(fee.dueDate)}
+              </div>
+              {isOverdue && (
+                <div className="text-xs text-destructive">Quá hạn</div>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'amount',
+      header: 'Tổng tiền',
+      align: 'right',
+      render: (fee) => (
+        <div className="font-medium text-right">
+          {formatCurrency(Number(fee.amount))}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      render: (fee) => getStatusBadge(fee.status),
+      align: 'center',
+    },
+  ];
 
-  const toggleSelectAll = () => {
-    setSelectedIds((prev) => {
-      if (isAllSelected) return new Set()
-      return new Set(allIds)
-    })
-  }
+  const selectedFees = useMemo(() => {
+    return (pendingFees || []).filter((f: any) => selectedItems.includes(f.id));
+  }, [pendingFees, selectedItems]);
 
-  const handleCreateBill = async () => {
-    if (selectedIds.size === 0) {
-      window.alert("Vui lòng chọn ít nhất 1 hóa đơn để tạo bill.")
-      return
+  const selectedTotalAmount = useMemo(() => {
+    return selectedFees.reduce(
+      (sum: number, fee: any) => sum + Number(fee.amount || 0),
+      0,
+    );
+  }, [selectedFees]);
+
+  const handleOpenConfirm = () => {
+    if (selectedItems.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 hóa đơn để tạo.');
+      return;
     }
+    setConfirmOpen(true);
+  };
 
+  const handleConfirmCreate = async (payNow = false) => {
     if (!parentData?.id) {
-      window.alert("Không xác định được phụ huynh.")
-      return
+      toast.error('Không xác định được phụ huynh.');
+      return;
     }
+    setCreating(true);
+    try {
+      console.log(payNow);
+      
+      const payload: any = { 
+        feeRecordIds: selectedItems,
+        payNow: payNow,
+        method: payNow ? 'cash' : 'bank_transfer',
+        notes: payNow ? 'Thanh toán ngay khi tạo hóa đơn' : null
+      };
+      
+      const resp = await ParentService.createBillForParent(
+        parentData.id,
+        payload,
+      );
+      const message =
+        resp?.message ??
+        (payNow
+          ? 'Tạo và thanh toán hóa đơn thành công'
+          : 'Tạo hóa đơn thành công');
+      toast.success(message);
+      setSelectedItems([]);
+      setConfirmOpen(false);
+      
+      await queryClient.invalidateQueries({
+        queryKey: ['parent-detail', parentData.id],
+      });
 
-    const confirmCreate = window.confirm(`Tạo hóa đơn cho ${selectedIds.size} mục?`)
-    if (!confirmCreate) return
-
-    // try {
-    //   const feeRecordIds = Array.from(selectedIds)
-    //   const resp = await ParentService.createBillForParent(parentData.id, { feeRecordIds })
-    //   const message = resp?.message ?? "Tạo hóa đơn thành công"
-    //   window.alert(message)
-    //   setSelectedIds(new Set())
-    //   // Optionally trigger a parent data refetch here if available
-    // } catch (err: any) {
-    //   console.error('Error creating bill for parent:', err)
-    //   window.alert(err?.message || 'Lỗi khi tạo hóa đơn')
-    // }
-  }
+      await queryClient.invalidateQueries({
+        queryKey: ['parent-payments', parentData.id],
+      });
+    } catch (err: any) {
+      console.error('Error creating (and paying) bill for parent:', err);
+      toast.error(err?.message || 'Lỗi khi tạo hóa đơn');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={toggleSelectAll}>
-          {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-        </Button>
-        <Button onClick={handleCreateBill} disabled={selectedIds.size === 0}>
-          Tạo hóa đơn ({selectedIds.size})
-        </Button>
-      </div>
-
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng học phí</CardTitle>
+            <CardTitle className="text-sm font-medium">Tổng học phí cần thanh toán</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-orange-600">
               {formatCurrency(totalFees)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -131,175 +270,166 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
             </p>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Đã thanh toán</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalPaid)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalFees > 0 ? Math.round((totalPaid / totalFees) * 100) : 0}% hoàn thành
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Còn nợ</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(totalPending)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Cần thanh toán
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Pending Fees Table */}
-      {pendingFees.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Chi tiết học phí chưa thanh toán</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">
-                      <Checkbox
-                        checked={isAllSelected}
-                        onCheckedChange={toggleSelectAll}
-                        aria-label="Chọn tất cả"
-                      />
-                    </TableHead>
-                    <TableHead>Học sinh</TableHead>
-                    <TableHead>Khoản phí</TableHead>
-                    {/* <TableHead>Kỳ</TableHead> */}
-                    <TableHead>Hạn thanh toán</TableHead>
-                    <TableHead className="text-right">Tổng tiền</TableHead>
-                    <TableHead className="text-right">Đã trả</TableHead>
-                    <TableHead className="text-right">Còn lại</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingFees.map((fee: any) => {
-                    const remaining = Number(fee.amount) - Number(fee.paidAmount)
-                    const isOverdue = new Date(fee.dueDate) < new Date()
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            if (selectedItems.length === pendingFees.length)
+              setSelectedItems([]);
+            else setSelectedItems(pendingFees.map((f: any) => f.id));
+          }}
+        >
+          {selectedItems.length === pendingFees.length
+            ? 'Bỏ chọn tất cả'
+            : 'Chọn tất cả'}
+        </Button>
+        <Button
+          onClick={handleOpenConfirm}
+          disabled={selectedItems.length === 0}
+        >
+          Tạo hóa đơn ({selectedItems.length})
+        </Button>
+      </div>
 
-                    return (
-                      <TableRow key={fee.id}>
-                        <TableCell className="w-8">
-                          <Checkbox
-                            checked={selectedIds.has(fee.id)}
-                            onCheckedChange={() => toggleSelect(fee.id)}
-                            aria-label={`Chọn hóa đơn ${fee.id}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <p className="text-sm font-medium">
-                                {fee.student?.user?.fullName || 'N/A'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {students.find((s: any) => s.id === fee.studentId)?.studentCode || ''}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {fee.feeStructure?.name || 'N/A'}
-                            </div>
-                          </div>
-                        </TableCell>
-                        {/* <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {fee.feeStructure?.period || 'N/A'}
-                          </Badge>
-                        </TableCell> */}
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : ''}`}>
-                              {formatDate(fee.dueDate)}
-                            </span>
-                          </div>
-                          {/* {isOverdue && (
-                            <Badge variant="destructive" className="mt-1 text-xs">
+      <Card>
+        <CardHeader>
+          <CardTitle>Hóa đơn chưa thanh toán</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            data={pagedPendingFees}
+            columns={columns}
+            emptyMessage="Không có học phí chưa thanh toán"
+            enableSearch
+            striped
+            enableCheckbox
+            selectedItems={selectedItems}
+            onSelectionChange={(items) => setSelectedItems(items)}
+            getItemId={(item) => item.id}
+            allData={pendingFees}
+            pagination={pagination}
+            className="mt-2"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Confirm modal */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Xác nhận tạo hóa đơn</DialogTitle>
+            <DialogDescription>
+              Kiểm tra chi tiết các khoản trước khi tạo
+              {selectedItems.length > 1 ? ' các' : ''} hóa đơn.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[50vh] overflow-auto">
+            {selectedFees.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                Không có mục nào được chọn.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedFees.map((fee: any) => {
+                  const isOverdue = fee.dueDate
+                    ? new Date(fee.dueDate) < new Date()
+                    : false;
+                  const student =
+                    fee.student ||
+                    students.find((s: any) => s.id === fee.studentId);
+                  return (
+                    <div
+                      key={fee.id}
+                      className="flex items-start justify-between border rounded-md p-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          {fee.feeStructure?.name || 'Khoản phí'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Học sinh: {student?.user?.fullName || 'N/A'}
+                          {student?.studentCode
+                            ? ` • ${student.studentCode}`
+                            : ''}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <Calendar className="h-3.5 w-3.5" />
+                          Hạn:{' '}
+                          <span
+                            className={
+                              isOverdue ? 'text-red-600 font-medium' : ''
+                            }
+                          >
+                            {formatDate(fee.dueDate)}
+                          </span>
+                          {isOverdue && (
+                            <Badge variant="destructive" className="ml-2">
                               Quá hạn
                             </Badge>
-                          )} */}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(Number(fee.amount))}
-                        </TableCell>
-                        <TableCell className="text-right text-green-600">
-                          {formatCurrency(Number(fee.paidAmount))}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-orange-600">
-                          {formatCurrency(remaining)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={isOverdue ? "destructive" : "secondary"}
-                          >
-                            {isOverdue ? 'Quá hạn' : 'Chưa thanh toán'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center py-8">
-              <DollarSign className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Không có học phí chưa thanh toán</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Tất cả học phí đã được thanh toán đầy đủ
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          {getStatusBadge(fee.status)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm">
+                          Tổng:{' '}
+                          <span className="font-medium text-lg text-orange-600">
+                            {formatCurrency(Number(fee.amount || 0))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-      {/* Info Note */}
-      {pendingFees.length > 0 && (
-        <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-900">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  Lưu ý về học phí
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  Vui lòng thanh toán học phí trước hạn để tránh bị gián đoạn quá trình học tập.
-                  Liên hệ văn phòng để được hỗ trợ thanh toán.
-                </p>
+          <div className="border-t pt-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-sm text-muted-foreground">
+                Đã chọn:{' '}
+                <span className="font-medium">{selectedFees.length}</span> khoản
+              </div>
+              <div className="text-right space-y-0.5">
+                <div className="text-sm">
+                  Tổng tiền:{' '}
+                  <span className="font-semibold text-lg text-orange-600">
+                    {formatCurrency(selectedTotalAmount)}
+                  </span>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={creating}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={() => handleConfirmCreate(false)}
+              disabled={creating || selectedFees.length === 0}
+            >
+              {creating ? 'Đang tạo...' : 'Tạo hóa đơn'}
+            </Button>
+            <Button
+              onClick={() => handleConfirmCreate(true)}
+              disabled={creating || selectedFees.length === 0}
+            >
+              {creating ? 'Đang xử lý...' : 'Tạo và thanh toán'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

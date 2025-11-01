@@ -342,6 +342,7 @@ const createBillForParent = async (
         notes?: string,
         reference?: string,
         method?: 'bank_transfer' | 'cash'
+        payNow?: boolean
     }
 ) => {
     try {
@@ -352,6 +353,22 @@ const createBillForParent = async (
         return response.data as { data: any; message: string; statusCode?: number }
     } catch (error) {
         console.error('Error creating bill for parent:', error)
+        throw error
+    }
+}
+
+const updatePaymentStatus = async (paymentId: string, status: string) => {
+    try {
+        const query = new URLSearchParams({ status }).toString()
+        const response = await ApiService.patch(
+            `/admin-center/parent-management/${paymentId}/update-payment-status?${query}`
+        )
+        return response.data as {
+            data: any
+            message: string
+        }
+    } catch (error) {
+        console.error('Error updating payment status:', error)
         throw error
     }
 }
@@ -369,5 +386,6 @@ export const ParentService = {
     searchStudentByCode,
     linkStudentToParent,
     unlinkStudentFromParent,
-    getPaymentDetailsOfParent
+    getPaymentDetailsOfParent, 
+    updatePaymentStatus
 }
