@@ -1,8 +1,14 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, IsNotEmpty, MaxLength, ValidateIf } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsNotEmpty, MaxLength, IsIn } from 'class-validator';
+import { Transform, Expose } from 'class-transformer';
 import { IsDateRange, IsEndDateAfterStart } from '../../../../common/validators/date-range.validator';
 
 export class CreateHolidayDto {
+  @Expose()
+  @IsNotEmpty({ message: 'Loại kỳ nghỉ không được để trống' })
+  @IsString({ message: 'Loại kỳ nghỉ phải là chuỗi ký tự' })
+  @IsIn(['PUBLIC', 'CENTER', 'EMERGENCY'], { message: 'Loại kỳ nghỉ phải là PUBLIC, CENTER hoặc EMERGENCY' })
+  type!: string;
+
   @IsNotEmpty({ message: 'Ngày bắt đầu không được để trống' })
   @IsDateString({}, { message: 'Ngày bắt đầu phải có định dạng ngày hợp lệ' })
   @IsDateRange({ message: 'Ngày bắt đầu không hợp lệ' })

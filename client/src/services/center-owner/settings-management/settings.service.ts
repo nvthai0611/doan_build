@@ -27,12 +27,12 @@ class SettingsService {
     return res.data;
   }
 
-  async createHoliday(payload: { startDate: string; endDate: string; note?: string; isActive?: boolean; }) {
+  async createHoliday(payload: { type: string; startDate: string; endDate: string; note?: string; isActive?: boolean; }) {
     const res = await apiClient.post('/admin-center/holidays-setting', payload);
     return res.data;
   }
 
-  async updateHoliday(id: string, payload: { startDate?: string; endDate?: string; note?: string; isActive?: boolean; }) {
+  async updateHoliday(id: string, payload: { type?: string; startDate?: string; endDate?: string; note?: string; isActive?: boolean; }) {
     const res = await apiClient.put(`/admin-center/holidays-setting/${id}`, payload);
     return res.data;
   }

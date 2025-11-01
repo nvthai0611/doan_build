@@ -743,6 +743,7 @@ model HolidayPeriod {
   id        String                 @id @default(uuid()) @db.Uuid
   startDate DateTime               @map("start_date") @db.Date
   endDate   DateTime               @map("end_date") @db.Date
+  type      String                 @default("PUBLIC") // PUBLIC: Nghỉ lễ, CENTER: Lịch trung tâm, EMERGENCY: Lịch khẩn cấp
   note      String?
   isActive  Boolean                @default(true) @map("is_active")
   createdAt DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
