@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { CalendarIcon, User, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { parentChildService } from "../../../services/parent/child-management/child.service"
-import type { Child, ChildGrade } from "../../../services/parent/child-management/child.types"
+import { parentChildService } from "../../../../services/parent/child-management/child.service"
+import type { Child, ChildGrade } from "../../../../services/parent/child-management/child.types"
 
 
 interface ChildExamResultsProps {

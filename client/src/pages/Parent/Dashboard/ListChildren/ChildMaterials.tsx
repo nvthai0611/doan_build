@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, FileDown } from "lucide-react"
-import Loading from "../../../components/Loading/LoadingPage"
-import { parentMaterialsService } from "../../../services/parent/materials/materials.service"
-import type { ParentMaterial } from "../../../services/parent/materials/materials.types"
+import Loading from "../../../../components/Loading/LoadingPage"
+import { parentMaterialsService } from "../../../../services/parent/materials/materials.service"
+import type { ParentMaterial } from "../../../../services/parent/materials/materials.types"
 
 interface ChildMaterialsProps {
   childId: string
