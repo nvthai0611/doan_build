@@ -238,41 +238,7 @@ export function ClassDetailsPage() {
         assignmentRoom={classDetail?.room}
       />
 
-      {/* Delete Confirmation Modal */}
-      {/* <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa{" "}
-              {selectedItem?.type === "student"
-                ? "học viên"
-                : selectedItem?.type === "teacher"
-                  ? "giáo viên"
-                  : selectedItem?.type === "session"
-                    ? "buổi học"
-                    : selectedItem?.type === "task"
-                      ? "công việc"
-                      : selectedItem?.type === "assessment"
-                        ? "đánh giá"
-                        : "mục"}{" "}
-              này không? Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirmOpen(false)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                setDeleteConfirmOpen(false)
-                setSelectedItem(null)
-              }}
-            >
-              Xóa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog> */}
+      
     </div>
   )
 }

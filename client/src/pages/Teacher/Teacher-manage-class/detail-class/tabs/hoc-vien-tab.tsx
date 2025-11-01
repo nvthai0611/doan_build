@@ -44,6 +44,34 @@ interface StudentDetailModalProps {
   teacherClassAssignmentId: string
 }
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'studying':
+        return 'Đang học'
+      case 'not_been_updated':
+        return 'Chưa cập nhật'
+        case 'stopped':
+        return 'Nghỉ học'
+      case 'graduated':
+        return 'Hoàn thành'
+      default:
+        return status
+    }
+  }
+
+    const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'studying':
+        return 'bg-green-100 text-green-700'
+      case 'not_been_updated':
+        return 'bg-red-100 text-red-700'
+      case 'graduated':
+        return 'bg-blue-100 text-blue-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
 function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignmentId }: any) {
   // Sử dụng TanStack Query để fetch student detail
   const { 
@@ -79,33 +107,9 @@ function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignment
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-700'
-      case 'inactive':
-        return 'bg-red-100 text-red-700'
-      case 'completed':
-        return 'bg-blue-100 text-blue-700'
-      default:
-        return 'bg-gray-100 text-gray-700'
-    }
-  }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Đang học'
-      case 'inactive':
-        return 'Tạm ngừng'
-      case 'completed':
-        return 'Hoàn thành'
-      default:
-        return status
-    }
-  }
-  console.log(student);
-  
+
+
   // Show error toast when error occurs
   if (errorDetail) {
     toast.error("Không thể tải thông tin chi tiết học viên", { duration: 3000 })
@@ -348,17 +352,6 @@ export function HocVienTab({ classId, classData }: any) {
   const [searchQuery, setSearchQuery] = useState('')
   const [students, setStudents] = useState<any[]>([])
 
-  // const { data: listStudents, isLoading, error } = useQuery({
-  //   queryKey: ['students', teacherClassAssignmentId],
-  //   queryFn: async () => {
-  //     const response = await teacherCommonService.getListStudentOfClass(teacherClassAssignmentId)
-  //     return response as any
-  //   },
-  //   enabled: !!teacherClassAssignmentId,
-  //   staleTime: 30000,
-  //   refetchOnWindowFocus: false
-  // })
-
   // Thay đổi handleStudentClick để sử dụng TanStack Query
   const handleStudentClick = (studentId: string) => {
     setSelectedStudentId(studentId)
@@ -392,7 +385,7 @@ export function HocVienTab({ classId, classData }: any) {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Danh sách học viên ({classData?.enrolment?.length || 0})
+            Danh sách học viên ({classData?.emrollments?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -436,8 +429,8 @@ export function HocVienTab({ classId, classData }: any) {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <Badge variant={student.status === "active" ? "default" : "secondary"}>
-                        {student.status === "active" ? "Đang học" : "Tạm nghỉ"}
+                      <Badge variant={student.status === "studying" ? "default" : "secondary"} className={getStatusColor(student.status)}>
+                        {getStatusText(student.status)}
                       </Badge>
                       <p className="text-xs text-muted-foreground mt-1">
                         Tham gia lớp học: {new Date(student.enrolledAt).toLocaleDateString('vi-VN')}

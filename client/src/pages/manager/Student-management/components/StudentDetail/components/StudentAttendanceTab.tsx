@@ -26,7 +26,7 @@ export function StudentAttendanceTab({ student }: StudentAttendanceTabProps) {
       total: attendances.length,
       present: attendances.filter((a: any) => a.status === "present").length,
       absent: attendances.filter((a: any) => a.status === "absent").length,
-      late: attendances.filter((a: any) => a.status === "late").length,
+      excused: attendances.filter((a: any) => a.status === "excused").length,
     }),
     [attendances]
   )
@@ -78,22 +78,22 @@ export function StudentAttendanceTab({ student }: StudentAttendanceTabProps) {
           variant={
             a.status === "present"
               ? "default"
-              : a.status === "late"
+              : a.status === "excused"
               ? "secondary"
               : "destructive"
           }
           className={
             a.status === "present"
               ? "bg-green-100 text-green-700 border-green-200"
-              : a.status === "late"
+              : a.status === "excused"
               ? "bg-yellow-100 text-yellow-700 border-yellow-200"
               : ""
           }
         >
           {a.status === "present"
             ? "Có mặt"
-            : a.status === "late"
-            ? "Muộn"
+            : a.status === "excused"
+            ? "Có phép"
             : "Vắng mặt"}
         </Badge>
       ),

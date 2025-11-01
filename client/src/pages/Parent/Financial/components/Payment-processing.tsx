@@ -246,7 +246,7 @@ export const PaymentProcessing: React.FC = () => {
                     const isThisGenerating = generatingId === payment.id && qrLoading
                     return (
                       <div className="mt-2 flex items-center gap-3">
-                        {payment.status != 'partially_paid' && (
+                        {/* {payment.status != 'partially_paid' && (
                           <Button
                           size="sm"
                           disabled={isExpired || isThisGenerating}
@@ -258,7 +258,7 @@ export const PaymentProcessing: React.FC = () => {
                           {isThisGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Tạo mã QR
                         </Button>
-                        )}
+                        )} */}
 
                         <button
                           className="text-blue-600 underline text-sm hover:text-blue-800"
@@ -305,6 +305,11 @@ export const PaymentProcessing: React.FC = () => {
               <div className="mb-2">
                 Số tiền: <span className="text-red-500 font-semibold">{Number(paymentDetail.amount).toLocaleString("vi-VN")} đ</span>
               </div>
+              {paymentDetail.status === 'partially_paid' && (
+                <div className="mb-2">
+                  Đã thanh toán: <span className="text-green-500 font-semibold">{Number(paymentDetail.paidAmount).toLocaleString("vi-VN")} đ</span>
+                </div>
+              )}
               <div className="mb-2">
                 Trạng thái: {getPaymentStatusBadge(paymentDetail.status)}
               </div>
