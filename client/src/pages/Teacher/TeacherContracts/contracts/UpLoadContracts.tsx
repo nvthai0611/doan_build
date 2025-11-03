@@ -29,7 +29,9 @@ interface ContractUploadDialogProps {
 
 export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: ContractUploadDialogProps) {
   const [fileName, setFileName] = useState("")
-  const [contractType, setContractType] = useState("employment")
+  const [contractType, setContractType] = useState("indefinite")
+  const [customContractType, setCustomContractType] = useState("")
+  const [startDate, setStartDate] = useState("")
   const [expiryDate, setExpiryDate] = useState("")
   const [notes, setNotes] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -49,12 +51,23 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       return
     }
 
+    if (!startDate) {
+      alert("Vui lòng nhập ngày bắt đầu")
+      return
+    }
+
+    if (contractType === "other" && !customContractType.trim()) {
+      alert("Vui lòng nhập loại hợp đồng")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       const formData = new FormData()
       formData.append('file', file as Blob)
-      formData.append('contractType', contractType)
+      formData.append('contractType', contractType === "other" ? customContractType : contractType)
+      formData.append('startDate', startDate)
       formData.append('expiryDate', expiryDate)
       if (notes.trim()) {
         formData.append('notes', notes.trim())
@@ -73,6 +86,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
         uploadedImageUrl: created.uploadedImageUrl,
         contractType: created.contractType,
         type: created.contractType,
+        startDate: created.startDate || startDate || null,
         expiryDate: created.expiryDate || expiryDate || null,
         fileSize: undefined,
         notes: created.notes || notes || null,
@@ -84,7 +98,9 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
 
       // Reset form
       setFileName("")
-      setContractType("employment")
+      setContractType("indefinite")
+      setCustomContractType("")
+      setStartDate("")
       setExpiryDate("")
       setNotes("")
       setFile(null)
@@ -182,12 +198,39 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="employment">Hợp đồng lao động</SelectItem>
-                <SelectItem value="probation">Hợp đồng thử việc</SelectItem>
-                <SelectItem value="renewal">Hợp đồng gia hạn</SelectItem>
-                <SelectItem value="other">Khác</SelectItem>
+                <SelectItem value="indefinite">Hợp đồng Vô Thời hạn</SelectItem>
+                <SelectItem value="one_year">Hợp đồng 1 năm</SelectItem>
+                <SelectItem value="two_years">Hợp đồng 2 năm</SelectItem>
+                <SelectItem value="three_months">Hợp đồng 3 tháng</SelectItem>
+                <SelectItem value="other">Khác (nhập tay)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {contractType === "other" && (
+            <div className="space-y-2">
+              <Label htmlFor="customContractType">Nhập loại hợp đồng <span className="text-red-500">*</span></Label>
+              <Input
+                id="customContractType"
+                placeholder="Ví dụ: Hợp đồng cộng tác viên"
+                value={customContractType}
+                onChange={(e) => setCustomContractType(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Ngày bắt đầu <span className="text-red-500">*</span></Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              disabled={isSubmitting}
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -198,7 +241,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
               disabled={isSubmitting}
-              min={new Date().toISOString().split('T')[0]}
+              min={startDate || new Date().toISOString().split('T')[0]}
               required
             />
           </div>

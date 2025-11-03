@@ -50,6 +50,8 @@ const formatDateToYYYYMMDD = (date: Date) => {
         return 'Có mặt'
       case 'absent':
         return 'Vắng'
+      case 'excused':
+        return 'Nghỉ có phép'
       default:
         return status || 'Chưa điểm danh'
     }
@@ -584,6 +586,8 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                                             ? 'bg-green-500 hover:bg-green-600' 
                                             : attendanceBySession[session.id].attendanceStatus === 'absent'
                                             ? 'bg-red-500 hover:bg-red-600'
+                                            : attendanceBySession[session.id].attendanceStatus === 'excused'
+                                            ? 'bg-yellow-500 hover:bg-yellow-600'
                                             : 'bg-gray-400 hover:bg-gray-500'
                                         }
                                       >

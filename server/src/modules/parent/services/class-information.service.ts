@@ -37,6 +37,7 @@ export class ClassInformationService {
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
         studentId: studentId,
+        status: 'studying', // Chỉ lấy lớp đang học
         class: {
           status: {
             in: ['ready', 'active'], // Bao gồm cả lớp ready và active
@@ -227,6 +228,7 @@ export class ClassInformationService {
         studentId: {
           in: studentIds,
         },
+        status: 'studying', // Chỉ lấy lớp đang học
         class: {
           status: {
             in: ['ready', 'active'], // Bao gồm cả lớp ready và active
