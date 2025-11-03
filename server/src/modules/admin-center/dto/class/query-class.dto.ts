@@ -7,7 +7,7 @@ export class QueryClassDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum(['draft', 'active', 'completed', 'cancelled', 'all'])
+  @IsEnum(['draft', 'ready', 'active', 'completed', 'suspended', 'cancelled', 'all'])
   status?: string = 'all';
 
   @IsOptional()

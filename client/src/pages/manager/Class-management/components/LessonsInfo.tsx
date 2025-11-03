@@ -113,7 +113,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
   const endIndex = startIndex + pagination.itemsPerPage;
   const sessions = filteredSessions.slice(startIndex, endIndex);
-  console.log(filteredSessions);
   
   // Update pagination total items when data changes
   useEffect(() => {

@@ -90,7 +90,10 @@ export class StudentClassRequestController {
   })
   async approveRequest(@Param('id') id: string, @Body() body?: { overrideCapacity?: boolean }) {
     try {
-      return await this.studentClassRequestService.approveRequest(id, body?.overrideCapacity || false);
+      // Đảm bảo overrideCapacity được parse đúng
+      const overrideCapacity = body?.overrideCapacity === true;
+      console.log('Controller received overrideCapacity:', body?.overrideCapacity, 'parsed as:', overrideCapacity);
+      return await this.studentClassRequestService.approveRequest(id, overrideCapacity);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

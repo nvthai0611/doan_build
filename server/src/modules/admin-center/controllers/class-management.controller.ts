@@ -129,6 +129,51 @@ export class ClassManagementController {
         return this.classManagementService.transferTeacher(classId, body, requestedBy);
     }
 
+    @Get('transfers')
+    @ApiOperation({ summary: 'Lấy danh sách yêu cầu chuyển giáo viên' })
+    @ApiResponse({ status: 200, description: 'Danh sách yêu cầu chuyển giáo viên' })
+    async getTransferRequests(@Query() query: any) {
+        return this.classManagementService.getTransferRequests(query);
+    }
+
+    @Post('transfers/:id/approve')
+    @ApiOperation({ summary: 'Duyệt yêu cầu chuyển giáo viên' })
+    @ApiResponse({ status: 200, description: 'Duyệt yêu cầu thành công' })
+    @ApiResponse({ status: 400, description: 'Yêu cầu đã được xử lý hoặc thiếu thông tin' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy yêu cầu' })
+    async approveTransfer(@Param('id') transferId: string, @Body() body: any, @Req() req: any) {
+        const approvedBy = req.user?.userId;
+        if (!approvedBy) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không xác định được người duyệt',
+                },
+                HttpStatus.UNAUTHORIZED,
+            );
+        }
+        return this.classManagementService.approveTransfer(transferId, body, approvedBy);
+    }
+
+    @Post('transfers/:id/reject')
+    @ApiOperation({ summary: 'Từ chối yêu cầu chuyển giáo viên' })
+    @ApiResponse({ status: 200, description: 'Từ chối yêu cầu thành công' })
+    @ApiResponse({ status: 400, description: 'Yêu cầu đã được xử lý' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy yêu cầu' })
+    async rejectTransfer(@Param('id') transferId: string, @Body() body: any, @Req() req: any) {
+        const rejectedBy = req.user?.userId;
+        if (!rejectedBy) {
+            throw new HttpException(
+                {
+                    success: false,
+                    message: 'Không xác định được người từ chối',
+                },
+                HttpStatus.UNAUTHORIZED,
+            );
+        }
+        return this.classManagementService.rejectTransfer(transferId, body, rejectedBy);
+    }
+
     // ============ STATISTICS ============
 
     @Get(':id/stats')

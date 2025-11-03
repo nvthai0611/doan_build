@@ -181,59 +181,109 @@ export class FinancialService {
 
 
     async getPaymentDetails(paymentId: string, parentId: string) {
-        try {
-            if (!checkId(paymentId) || !checkId(parentId)) {
-                throw new HttpException(
-                    { message: 'ID không hợp lệ' },
-                    HttpStatus.BAD_REQUEST
-                )
-            }
-            const payment = await this.prisma.payment.findFirst({
-                where: { id: paymentId, parentId },
-                include: {
-                    feeRecordPayments: {
-                        include: {
-                            feeRecord: {
-                                include: {
-                                    class: {
-                                        select: {
-                                            name: true,
-                                            classCode: true,
-                                        }
-                                    },
-                                    feeStructure: {
-                                        select: {
-                                            name: true,
-                                            amount: true,
-                                            period: true
-                                        }
-                                    },
-                                    student:{
-                                        include: {
-                                            user:{
-                                                select:{ fullName: true }
+    try {
+        if (!checkId(paymentId) || !checkId(parentId)) {
+            throw new HttpException(
+                { message: 'ID không hợp lệ' },
+                HttpStatus.BAD_REQUEST
+            )
+        }
+
+        const payment = await this.prisma.payment.findFirst({
+            where: { id: paymentId, parentId },
+            include: {
+                feeRecordPayments: {
+                    include: {
+                        feeRecord: {
+                            include: {
+                                class: {
+                                    select: {
+                                        name: true,
+                                        classCode: true,
+                                    }
+                                },
+                                feeStructure: {
+                                    select: {
+                                        name: true,
+                                        amount: true,
+                                        period: true
+                                    }
+                                },
+                                student: {
+                                    select: {
+                                        id: true,
+                                        studentCode: true,
+                                        user: {
+                                            select: { 
+                                                fullName: true 
                                             }
                                         }
                                     }
-
                                 }
-                            },
-                        }
+                            }
+                        },
                     }
                 }
-            })
-            if (!payment) {
-                throw new HttpException(
-                    { message: 'Không tìm thấy payment' },
-                    HttpStatus.NOT_FOUND
-                )
             }
-            return payment
-        }
-        catch (error) {
+        })
 
+        if (!payment) {
+            throw new HttpException(
+                { message: 'Không tìm thấy payment' },
+                HttpStatus.NOT_FOUND
+            )
         }
+
+        // Format response để frontend dễ sử dụng
+        const formattedPayment = {
+            id: payment.id,
+            transactionCode: payment.transactionCode,
+            status: payment.status,
+            amount: Number(payment.amount),
+            paidAmount: Number(payment.paidAmount) || 0,
+            changeAmount: Number(payment.returnMoney) || 0,
+            method: payment.method,
+            createdAt: payment.createdAt,
+            paidAt: payment.paidAt,
+            expirationDate: payment.expirationDate,
+            notes: payment.notes,
+            reference: payment.reference,
+            feeRecordPayments: payment.feeRecordPayments.map(frp => ({
+                id: frp.id,
+                feeRecordId: frp.feeRecordId,
+                feeRecord: {
+                    id: frp.feeRecord.id,
+                    amount: Number(frp.feeRecord.amount), // Học phí gốc
+                    totalAmount: Number(frp.feeRecord.totalAmount), // Sau giảm giá
+                    discountAmount: Number(frp.feeRecord.amount) - Number(frp.feeRecord.totalAmount), // Số tiền giảm
+                    dueDate: frp.feeRecord.dueDate,
+                    status: frp.feeRecord.status,
+                    notes: frp.feeRecord.notes,
+                    class: frp.feeRecord.class,
+                    feeStructure: frp.feeRecord.feeStructure,
+                    student: {
+                        id: frp.feeRecord.student.id,
+                        studentCode: frp.feeRecord.student.studentCode,
+                        user: frp.feeRecord.student.user
+                    }
+                }
+            }))
+        }
+
+        return formattedPayment
+    } catch (error) {
+        if (error instanceof HttpException) {
+            throw error
+        }
+        throw new HttpException(
+            { 
+                message: 'Lỗi khi lấy chi tiết payment',
+                error: error.message 
+            },
+            HttpStatus.INTERNAL_SERVER_ERROR
+        )
     }
+}
 
     async createPaymentForFeeRecords(parentId: string, feeRecordIds: string[]) {
         try {

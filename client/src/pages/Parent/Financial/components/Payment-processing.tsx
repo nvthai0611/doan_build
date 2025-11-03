@@ -4,6 +4,7 @@ import financialParentService from "../../../../services/parent/financial-manage
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import Loading from "../../../../components/Loading/LoadingPage"
 import { formatDate } from "../../../../utils/format"
 import { Download, Copy, CheckCircle, Clock, Loader2 } from "lucide-react"
@@ -22,12 +23,11 @@ export const PaymentProcessing: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0)
   const [showQrModal, setShowQrModal] = useState(false)
   const [generatingId, setGeneratingId] = useState<string | null>(null)
-  const QR_EXPIRY_TIME = 15 * 60 * 1000 // 15 phút
+  const QR_EXPIRY_TIME = 15 * 60 * 1000
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const queryClient = useQueryClient()
 
-  // Socket: subscribe khi có QR mới
   useEffect(() => {
     paymentSocketService.connect()
     return () => {
@@ -69,7 +69,6 @@ export const PaymentProcessing: React.FC = () => {
     }
   }, [showQrModal, qrInfo?.orderCode])
 
-  // Countdown QR
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null
     let countdown: NodeJS.Timeout | null = null
@@ -192,7 +191,6 @@ export const PaymentProcessing: React.FC = () => {
   }
 
   const getPaymentStatusBadge = (status: string) => {
-    // Ensure statusKey matches the enum value (likely lowercase)
     const statusKey = status as PaymentStatus
     const label = PAYMENT_STATUS_LABELS[statusKey] || status
     const colorClass = PAYMENT_STATUS_COLORS[statusKey] || 'border-gray-500 text-gray-700 bg-gray-50'
@@ -202,6 +200,29 @@ export const PaymentProcessing: React.FC = () => {
         {label}
       </Badge>
     )
+  }
+
+  // Tính toán tổng tiền gốc và giảm giá
+  const calculatePaymentSummary = (feeRecordPayments: any[]) => {
+    const totalOriginal = feeRecordPayments.reduce((sum: number, frp: any) => {
+      return sum + (Number(frp.feeRecord?.amount) || 0)
+    }, 0)
+
+    const totalDiscount = feeRecordPayments.reduce((sum: number, frp: any) => {
+      const original = Number(frp.feeRecord?.amount) || 0
+      const final = Number(frp.feeRecord?.totalAmount) || 0
+      return sum + (original - final)
+    }, 0)
+
+    const totalFinal = feeRecordPayments.reduce((sum: number, frp: any) => {
+      return sum + (Number(frp.feeRecord?.totalAmount) || 0)
+    }, 0)
+
+    return {
+      totalOriginal,
+      totalDiscount,
+      totalFinal
+    }
   }
 
   if (isLoading) return <Loading />
@@ -246,20 +267,6 @@ export const PaymentProcessing: React.FC = () => {
                     const isThisGenerating = generatingId === payment.id && qrLoading
                     return (
                       <div className="mt-2 flex items-center gap-3">
-                        {/* {payment.status != 'partially_paid' && (
-                          <Button
-                          size="sm"
-                          disabled={isExpired || isThisGenerating}
-                          onClick={() => {
-                            setGeneratingId(payment.id)
-                            mutation.mutate(payment.id)
-                          }}
-                        >
-                          {isThisGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Tạo mã QR
-                        </Button>
-                        )} */}
-
                         <button
                           className="text-blue-600 underline text-sm hover:text-blue-800"
                           onClick={() => {
@@ -303,71 +310,141 @@ export const PaymentProcessing: React.FC = () => {
             <div>
               <div className="mb-2 font-medium">Mã đơn hàng: {paymentDetail.transactionCode}</div>
               <div className="mb-2">
-                Số tiền: <span className="text-red-500 font-semibold">{Number(paymentDetail.amount).toLocaleString("vi-VN")} đ</span>
-              </div>
-              {paymentDetail.status === 'partially_paid' && (
-                <div className="mb-2">
-                  Đã thanh toán: <span className="text-green-500 font-semibold">{Number(paymentDetail.paidAmount).toLocaleString("vi-VN")} đ</span>
-                </div>
-              )}
-              <div className="mb-2">
                 Trạng thái: {getPaymentStatusBadge(paymentDetail.status)}
               </div>
               <div className="mb-2">Ngày tạo: {new Date(paymentDetail.createdAt).toLocaleString("vi-VN")}</div>
               <div className="mb-2">
                 Hạn thanh toán: {paymentDetail.expirationDate ? formatDate(paymentDetail.expirationDate) : "--"}
               </div>
+
+              <Separator className="my-4" />
+
               <div className="mb-4">
                 <div className="font-bold text-lg mb-3 text-primary">Danh sách học phí</div>
                 <ul className="space-y-4">
-                  {(paymentDetail.feeRecordPayments || []).map((frp: any) => (
-                    <li
-                      key={frp.id}
-                      className="border-2 border-primary/30 rounded-xl p-4 bg-white shadow-sm flex flex-col gap-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-semibold text-primary">
-                          {frp.feeRecord?.student?.user?.fullName}
-                        </span>
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">
-                          {frp.feeRecord?.student?.studentCode}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-sm mt-1">
-                        <div>
-                          <span className="font-medium text-muted-foreground">Lớp:&nbsp;</span>
-                          <span className="font-semibold">{frp.feeRecord?.class?.name}</span>
-                          <span className="ml-1 text-xs text-muted-foreground">({frp.feeRecord?.class?.classCode})</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-muted-foreground">Khoản phí:&nbsp;</span>
-                          <span className="font-semibold">{frp.feeRecord?.feeStructure?.name}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-base mt-1">
-                        <div>
-                          <span className="font-medium text-muted-foreground">Số tiền:&nbsp;</span>
-                          <span className="font-bold text-red-600 text-lg">
-                            {Number(frp.feeRecord?.totalAmount).toLocaleString("vi-VN")} đ
+                  {(paymentDetail.feeRecordPayments || []).map((frp: any) => {
+                    const originalAmount = Number(frp.feeRecord?.amount) || 0
+                    const finalAmount = Number(frp.feeRecord?.totalAmount) || 0
+                    const discountAmount = originalAmount - finalAmount
+
+                    return (
+                      <li
+                        key={frp.id}
+                        className="border-2 border-primary/30 rounded-xl p-4 bg-white shadow-sm flex flex-col gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-semibold text-primary">
+                            {frp.feeRecord?.student?.user?.fullName}
                           </span>
-                          {frp.feeRecord?.feeStructure?.amount && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              (Đơn giá: {Number(frp.feeRecord?.feeStructure?.amount).toLocaleString("vi-VN")} đ/ buổi)
-                            </span>
-                          )}
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">
+                            {frp.feeRecord?.student?.studentCode}
+                          </span>
                         </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        <span className="font-medium">Ghi chú:&nbsp;</span>
-                        {frp.feeRecord?.notes || "--"}
-                      </div>
-                    </li>
-                  ))}
+                        <div className="flex flex-wrap gap-4 text-sm mt-1">
+                          <div>
+                            <span className="font-medium text-muted-foreground">Lớp:&nbsp;</span>
+                            <span className="font-semibold">{frp.feeRecord?.class?.name}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">({frp.feeRecord?.class?.classCode})</span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-muted-foreground">Khoản phí:&nbsp;</span>
+                            <span className="font-semibold">{frp.feeRecord?.feeStructure?.name}</span>
+                          </div>
+                        </div>
+
+                        <Separator className="my-2" />
+
+                        {/* Hiển thị chi tiết học phí */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Học phí gốc:</span>
+                            <span className="font-semibold">
+                              {originalAmount.toLocaleString("vi-VN")} đ
+                            </span>
+                          </div>
+
+                          {discountAmount > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-green-600 font-medium">Giảm giá học bổng:</span>
+                              <span className="text-green-600 font-semibold">
+                                - {discountAmount.toLocaleString("vi-VN")} đ
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between text-base pt-1 border-t">
+                            <span className="font-semibold">Còn lại:</span>
+                            <span className="font-bold text-red-600 text-lg">
+                              {finalAmount.toLocaleString("vi-VN")} đ
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-muted-foreground mt-1">
+                          <span className="font-medium">Ghi chú:&nbsp;</span>
+                          {frp.feeRecord?.notes || "--"}
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
-              {/* Cảnh báo nếu payment đã partially_paid */}
+
+              <Separator className="my-4" />
+
+              {/* Tổng kết thanh toán */}
+              {(() => {
+                const summary = calculatePaymentSummary(paymentDetail.feeRecordPayments || [])
+                return (
+                  <div className="bg-primary/5 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Tổng học phí gốc:</span>
+                      <span className="font-medium">
+                        {summary.totalOriginal.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+
+                    {summary.totalDiscount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-green-600 font-medium">Tổng giảm giá:</span>
+                        <span className="text-green-600 font-semibold">
+                          - {summary.totalDiscount.toLocaleString("vi-VN")} đ
+                        </span>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-lg">Tổng thanh toán:</span>
+                      <span className="font-bold text-2xl text-primary">
+                        {summary.totalFinal.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+
+                    {paymentDetail.status === 'partially_paid' && (
+                      <>
+                        <Separator />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Đã thanh toán:</span>
+                          <span className="text-green-600 font-semibold">
+                            {Number(paymentDetail.paidAmount).toLocaleString("vi-VN")} đ
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Còn lại:</span>
+                          <span className="text-red-600 font-bold text-lg">
+                            {(summary.totalFinal - Number(paymentDetail.paidAmount)).toLocaleString("vi-VN")} đ
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
+
               {paymentDetail.status === "partially_paid" && (
-                <div className="p-4 bg-amber-100 border-l-4 border-amber-500 rounded text-amber-900 font-medium mb-2">
+                <div className="p-4 bg-amber-100 border-l-4 border-amber-500 rounded text-amber-900 font-medium mt-4">
                   Việc thay đổi nội dung thanh toán đã khiến giao dịch này bị sai, hãy liên hệ đến chủ trung tâm để giải quyết.
                 </div>
               )}
@@ -412,14 +489,12 @@ export const PaymentProcessing: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Countdown Timer */}
             <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
               <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
                 Mã QR hết hạn sau: <span className="font-mono font-bold">{formatTime(remainingTime)}</span>
               </span>
             </div>
-            {/* QR Code Image */}
             <div className="flex justify-center p-4 bg-white rounded-lg">
               {qrUrl ? (
                 <img
@@ -436,7 +511,6 @@ export const PaymentProcessing: React.FC = () => {
                 </div>
               )}
             </div>
-            {/* Payment Info */}
             {qrInfo && (
               <Card>
                 <CardContent className="pt-4 space-y-3">
@@ -481,7 +555,6 @@ export const PaymentProcessing: React.FC = () => {
                 </CardContent>
               </Card>
             )}
-            {/* Action Buttons */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -499,7 +572,6 @@ export const PaymentProcessing: React.FC = () => {
                 Đóng
               </Button>
             </div>
-            {/* Warning */}
             <div className="text-xs text-muted-foreground text-center p-3 bg-muted rounded">
               ⚠️ Vui lòng kiểm tra kỹ thông tin trước khi chuyển khoản, không thay đổi nội dung để không xảy ra lỗi.
               Có lỗi hãy liên hệ với chủ trung tâm của QNEdu để được giúp đỡ.
