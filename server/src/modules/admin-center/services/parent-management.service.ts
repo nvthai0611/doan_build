@@ -1505,6 +1505,7 @@ export class ParentManagementService {
       reference?: string;
       method?: 'bank_transfer' | 'cash';
       payNow?: boolean;
+      cashGiven?: number; // Thêm số tiền khách đưa
     },
   ) {
     try {
@@ -1560,8 +1561,9 @@ export class ParentManagementService {
         }
       }
 
+      // Tính tổng tiền từ totalAmount (đã trừ giảm giá)
       const totalAmount = feeRecords.reduce((sum, fr) => {
-        return sum + Number(fr.amount || 0);
+        return sum + Number(fr.totalAmount || fr.amount || 0);
       }, 0);
 
       if (totalAmount <= 0) {
@@ -1573,6 +1575,39 @@ export class ParentManagementService {
 
       const payNow = options?.payNow ?? false;
       const method = options?.method ?? 'bank_transfer';
+
+      // Validate cashGiven for cash payment
+      let paidAmount = 0;
+      let returnMoney = 0;
+
+      if (payNow && method === 'cash') {
+        const cashGiven = Number(options?.cashGiven ?? 0);
+        console.log(options?.cashGiven);
+
+        console.log(cashGiven);
+        
+        
+        if (isNaN(cashGiven) || cashGiven <= 0) {
+          throw new HttpException(
+            'Số tiền khách đưa không hợp lệ',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        if (cashGiven < totalAmount) {
+          throw new HttpException(
+            `Số tiền khách đưa (${cashGiven.toLocaleString('vi-VN')}đ) chưa đủ để thanh toán (${totalAmount.toLocaleString('vi-VN')}đ)`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        paidAmount = totalAmount;
+        returnMoney = cashGiven - totalAmount;
+      } else if (payNow) {
+        // Nếu không phải cash nhưng payNow = true
+        paidAmount = totalAmount;
+        returnMoney = 0;
+      }
 
       // Calculate expiration date
       let expirationDate: Date | null = null;
@@ -1596,29 +1631,34 @@ export class ParentManagementService {
       const result = await this.prisma.$transaction(async (tx) => {
         const transactionCode = createOrderCode();
 
-        // Determine payment status and paidAmount
-        // If payNow = true (thanh toán trực tiếp), status = completed, paidAmount = totalAmount
-        // If payNow = false (chuyển khoản), status = pending, paidAmount = 0
+        // Build notes with cash details
+        let finalNotes = options?.notes || '';
+        if (payNow && method === 'cash' && options?.cashGiven) {
+          const cashDetails = `Khách đưa: ${Number(options.cashGiven).toLocaleString('vi-VN')}đ; Tiền thừa: ${returnMoney.toLocaleString('vi-VN')}đ`;
+          finalNotes = finalNotes 
+            ? `${finalNotes} | ${cashDetails}` 
+            : cashDetails;
+        }
+
         const paymentStatus = payNow ? 'completed' : 'pending';
         const paidAt = payNow ? new Date() : null;
-        const paidAmount = payNow ? totalAmount : 0;
 
         const payment = await tx.payment.create({
           data: {
             parentId,
             amount: totalAmount,
-            paidAmount: paidAmount,
+            paidAmount: payNow ? paidAmount : 0,
+            returnMoney: payNow ? returnMoney : 0,
             transactionCode: transactionCode,
             status: paymentStatus,
             paidAt: paidAt,
             expirationDate: expirationDate,
-            notes: options?.notes ?? null,
+            notes: finalNotes || null,
             reference: options?.reference ?? transactionCode,
             method: method,
           },
         });
 
-        // Fee record status: paid nếu thanh toán trực tiếp, processing nếu chờ chuyển khoản
         const feeRecordStatus = payNow ? 'paid' : 'processing';
 
         for (const fr of feeRecords) {
@@ -1664,7 +1704,9 @@ export class ParentManagementService {
       });
 
       const message = payNow
-        ? 'Tạo và thanh toán hóa đơn thành công'
+        ? method === 'cash'
+          ? `Tạo và thanh toán hóa đơn thành công. Tiền thừa: ${returnMoney.toLocaleString('vi-VN')}đ`
+          : 'Tạo và thanh toán hóa đơn thành công'
         : 'Tạo hóa đơn cho phụ huynh thành công';
 
       return {
