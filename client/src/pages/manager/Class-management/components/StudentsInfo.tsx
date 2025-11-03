@@ -517,7 +517,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
             <div className="flex gap-3">
               <Button 
                 onClick={() => setIsSelectStudentOpen(true)}
-                disabled={classData?.status === ClassStatus.DRAFT}
+                disabled={classData?.status === ClassStatus.DRAFT || classData?.status === ClassStatus.COMPLETED}
                 title={classData?.status === ClassStatus.DRAFT ? 'Lớp cần có lịch học và giáo viên (status READY) trước khi thêm học viên' : ''}
               >
                 <Plus className="h-4 w-4 mr-2" />

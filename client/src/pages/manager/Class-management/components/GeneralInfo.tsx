@@ -124,11 +124,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     queryKey: ['classSessions', classData.id, classData.academicYear],
     queryFn: () => classService.getClassSessions(classData.id, {
       page: 1,
-      limit: 1, // Chỉ cần kiểm tra có sessions hay không
+      limit: 10, // Chỉ cần kiểm tra có sessions hay không
       academicYear: classData.academicYear, // Chỉ lấy sessions cùng academicYear
     }),
     enabled: !!classData.id && !!classData.academicYear,
-    staleTime: 3000,
+    staleTime: 0, // Không cache data
     refetchOnWindowFocus: true
   });
 
@@ -916,8 +916,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     variant="outline" 
                     size="sm"
                     onClick={handleRemoveTeacher}
-                    disabled={isAssignTeacherLoading || !canEditGeneralInfo}
-                    title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
+                    disabled={isAssignTeacherLoading || !canEditGeneralInfo || classData.status === ClassStatus.COMPLETED}
+                    title={!canEditGeneralInfo || classData.status === ClassStatus.COMPLETED ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                   >
                     {isAssignTeacherLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />

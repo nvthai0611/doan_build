@@ -88,9 +88,9 @@ export class StudentClassRequestController {
     status: 400,
     description: 'Yêu cầu đã được xử lý hoặc lớp đã đầy',
   })
-  async approveRequest(@Param('id') id: string) {
+  async approveRequest(@Param('id') id: string, @Body() body?: { overrideCapacity?: boolean }) {
     try {
-      return await this.studentClassRequestService.approveRequest(id);
+      return await this.studentClassRequestService.approveRequest(id, body?.overrideCapacity || false);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

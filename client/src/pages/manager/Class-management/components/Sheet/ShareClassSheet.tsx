@@ -137,7 +137,7 @@ export const ShareClassSheet = ({
           {isShareEnabled ? (
             <>
               {/* Link chia sẻ */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label className="text-sm font-medium">Link chia sẻ</Label>
             <div className="flex gap-2">
               <Input
@@ -154,10 +154,10 @@ export const ShareClassSheet = ({
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
-          </div>
+          </div> */}
 
           {/* Mật khẩu */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Mật khẩu</Label>
               <Button
@@ -192,7 +192,7 @@ export const ShareClassSheet = ({
             <p className="text-xs text-gray-500">
               Để trống nếu không muốn đặt mật khẩu cho lớp học
             </p>
-          </div>
+          </div> */}
 
           {/* Danh sách yêu cầu truy cập */}
           <div 

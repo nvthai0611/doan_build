@@ -10,6 +10,16 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   X,
   Search,
   Check,
@@ -22,11 +32,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
 import studentClassRequestService from '../../../../../services/center-owner/student-class-request.service';
+import { enrollmentService } from '../../../../../services/center-owner/enrollment/enrollment.service';
 import * as Popover from '@radix-ui/react-popover';
 
 interface ClassJoinRequestsSheetProps {
@@ -49,6 +61,10 @@ export const ClassJoinRequestsSheet = ({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [openedImage, setOpenedImage] = useState<string | null>(null); // mới
+  const [showCapacityWarning, setShowCapacityWarning] = useState(false);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [pendingRequestIds, setPendingRequestIds] = useState<string[]>([]);
+  const [isApproveAll, setIsApproveAll] = useState(false);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   // Fetch requests khi sheet mở
@@ -70,10 +86,21 @@ export const ClassJoinRequestsSheet = ({
     refetchOnWindowFocus: true,
   });
 
+  // Get current class capacity info
+  const { data: capacityInfo } = useQuery({
+    queryKey: ['class-capacity', classData?.id],
+    queryFn: () => enrollmentService.checkCapacity(classData?.id),
+    enabled: !!classData?.id && open,
+    staleTime: 30000,
+  });
+
+  const maxStudents = classData?.maxStudents || ((capacityInfo as any)?.data?.maxStudents as number) || 30;
+  const currentStudents = classData?.currentStudents || ((capacityInfo as any)?.data?.currentStudents as number) || 0;
+
   // Approve mutation
   const approveMutation = useMutation({
-    mutationFn: (requestId: string) =>
-      studentClassRequestService.approveRequest(requestId),
+    mutationFn: ({ requestId, overrideCapacity = false }: { requestId: string; overrideCapacity?: boolean }) =>
+      studentClassRequestService.approveRequest(requestId, overrideCapacity),
     onSuccess: () => {
       toast({
         title: 'Thành công',
@@ -142,8 +169,23 @@ export const ClassJoinRequestsSheet = ({
       .slice(0, 2);
   };
 
-  const handleApprove = (requestId: string) => {
-    approveMutation.mutate(requestId);
+  const handleApprove = async (requestId: string) => {
+    // Check capacity before approving
+    // Cảnh báo khi: đã đầy (currentStudents >= maxStudents) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
+    const newTotalStudents = currentStudents + 1;
+    const availableSlots = maxStudents ? maxStudents - currentStudents : 999999;
+    
+    // Nếu không đủ chỗ hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
+    if (maxStudents && (availableSlots <= 0 || newTotalStudents > maxStudents)) {
+      // Show warning dialog để user xác nhận override capacity
+      setPendingRequestId(requestId);
+      setIsApproveAll(false);
+      setShowCapacityWarning(true);
+      return;
+    }
+
+    // If no capacity issue, proceed directly
+    approveMutation.mutate({ requestId, overrideCapacity: false });
   };
 
   const handleReject = (requestId: string) => {
@@ -153,10 +195,51 @@ export const ClassJoinRequestsSheet = ({
   const handleApproveAll = async () => {
     const pending = (requestsData?.data || []).filter((r: any) => r.status === 'pending');
     if (pending.length === 0) return;
+
+    // Check capacity before approving all
+    // Cảnh báo khi: đã đầy (currentStudents >= maxStudents) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
+    const newTotalStudents = currentStudents + pending.length;
+    const availableSlots = maxStudents ? maxStudents - currentStudents : 999999;
+    
+    // Nếu không đủ chỗ hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
+    if (maxStudents && (availableSlots <= 0 || newTotalStudents > maxStudents)) {
+      // Show warning dialog để user xác nhận override capacity
+      setPendingRequestIds(pending.map((r: any) => r.id));
+      setIsApproveAll(true);
+      setShowCapacityWarning(true);
+      return;
+    }
+
+    // If no capacity issue, proceed directly
     for (const req of pending) {
-      await approveMutation.mutateAsync(req.id);
+      await approveMutation.mutateAsync({ requestId: req.id, overrideCapacity: false });
     }
     refetch();
+  };
+
+  const handleConfirmWarning = async () => {
+    setShowCapacityWarning(false);
+    
+    if (isApproveAll && pendingRequestIds.length > 0) {
+      // Approve all pending requests with overrideCapacity = true
+      for (const requestId of pendingRequestIds) {
+        await approveMutation.mutateAsync({ requestId, overrideCapacity: true });
+      }
+      setPendingRequestIds([]);
+      setIsApproveAll(false);
+      refetch();
+    } else if (pendingRequestId) {
+      // Approve single request with overrideCapacity = true
+      approveMutation.mutate({ requestId: pendingRequestId, overrideCapacity: true });
+      setPendingRequestId(null);
+    }
+  };
+
+  const handleCancelWarning = () => {
+    setShowCapacityWarning(false);
+    setPendingRequestId(null);
+    setPendingRequestIds([]);
+    setIsApproveAll(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -358,6 +441,70 @@ export const ClassJoinRequestsSheet = ({
             </>
           )}
         </div>
+
+        {/* Capacity Warning Dialog */}
+        <AlertDialog open={showCapacityWarning} onOpenChange={setShowCapacityWarning}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                </div>
+                <AlertDialogTitle className="text-lg font-semibold">
+                  Cảnh báo sức chứa lớp học
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="pt-2">
+                <div className="space-y-2">
+                  <p>
+                    Lớp học hiện tại đã có <strong>{currentStudents}</strong> học viên 
+                    {maxStudents && ` (tối đa ${maxStudents} học viên)`}.
+                  </p>
+                  <p>
+                    Bạn đang muốn phê duyệt{' '}
+                    <strong>
+                      {isApproveAll ? pendingRequestIds.length : 1} yêu cầu tham gia lớp học
+                    </strong>
+                    {isApproveAll && ` (${pendingRequestIds.length} học viên)`}.
+                  </p>
+                  {maxStudents && (() => {
+                    const newTotal = currentStudents + (isApproveAll ? pendingRequestIds.length : 1);
+                    const availableSlots = maxStudents - currentStudents;
+                    
+                    if (availableSlots <= 0) {
+                      return (
+                        <p className="text-red-600 font-medium">
+                          ⚠️ Lớp đã đầy (<strong>{currentStudents}/{maxStudents}</strong>). 
+                          Phê duyệt sẽ vượt quá giới hạn.
+                        </p>
+                      );
+                    } else if (newTotal > maxStudents) {
+                      return (
+                        <p className="text-red-600 font-medium">
+                          ⚠️ Tổng số học viên sẽ là <strong>{newTotal}</strong>, 
+                          vượt quá giới hạn <strong>{maxStudents} học viên</strong>.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <p className="pt-2">
+                    Bạn có chắc chắn muốn tiếp tục phê duyệt yêu cầu này không?
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelWarning}>Hủy</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmWarning}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Xác nhận phê duyệt
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

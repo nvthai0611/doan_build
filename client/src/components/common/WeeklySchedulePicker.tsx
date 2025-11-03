@@ -141,6 +141,61 @@ export const WeeklySchedulePicker = ({
     return null;
   }, [expectedStartDate]);  // Chỉ recalculate khi expectedStartDate thay đổi
 
+  // ===== CALCULATE DATES FOR EACH DAY OF WEEK =====
+  /**
+   * Tính toán ngày cụ thể cho mỗi thứ trong tuần
+   * Dựa trên expectedStartDate hoặc tuần hiện tại
+   */
+  const dayDates = useMemo(() => {
+    // Map từ day value sang số thứ tự trong tuần (0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7)
+    const dayToNumberMap: Record<string, number> = {
+      'sunday': 0,
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+    };
+
+    // Lấy ngày tham chiếu: nếu có expectedStartDate thì dùng ngày đó, không thì dùng hôm nay
+    let referenceDate: Date;
+    if (expectedStartDate) {
+      referenceDate = new Date(expectedStartDate);
+      referenceDate.setHours(0, 0, 0, 0);
+    } else {
+      referenceDate = new Date();
+      referenceDate.setHours(0, 0, 0, 0);
+    }
+
+    // Tính toán thứ của ngày tham chiếu (0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7)
+    const referenceDay = referenceDate.getDay();
+
+    // Tìm thứ 2 của tuần chứa ngày tham chiếu
+    // Nếu referenceDay = 0 (Chủ nhật), thì thứ 2 là ngày mai (+1)
+    // Nếu referenceDay = 1 (Thứ 2), thì thứ 2 là hôm nay (0)
+    // Nếu referenceDay > 1, thì thứ 2 là - (referenceDay - 1) ngày
+    const mondayOffset = referenceDay === 0 ? 1 : referenceDay === 1 ? 0 : -(referenceDay - 1);
+    const mondayDate = new Date(referenceDate);
+    mondayDate.setDate(referenceDate.getDate() + mondayOffset);
+
+    // Tạo map chứa ngày cho mỗi thứ trong tuần
+    const dates: Record<string, Date> = {};
+    dayOptions.forEach((day) => {
+      const dayNumber = dayToNumberMap[day.value];
+      if (dayNumber !== undefined) {
+        // Tính số ngày cần cộng từ thứ 2 để đến thứ cần tìm
+        // Thứ 2 = 1, nên offset = dayNumber - 1
+        const offset = dayNumber === 0 ? 6 : dayNumber - 1; // Chủ nhật là ngày thứ 6 sau thứ 2
+        const dayDate = new Date(mondayDate);
+        dayDate.setDate(mondayDate.getDate() + offset);
+        dates[day.value] = dayDate;
+      }
+    });
+
+    return dates;
+  }, [expectedStartDate]);
+
   // ===== FETCH CLASSES WITH SCHEDULES =====
   /**
    * Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm recurringSchedule
@@ -152,7 +207,7 @@ export const WeeklySchedulePicker = ({
       // Gọi API để lấy tất cả lớp đang hoạt động kèm lịch học
       // Nếu có expectedStartDate, truyền vào query param để backend filter
       const params = expectedStartDate ? { expectedStartDate } : {};
-      const response = await apiClient.get('/admin-center/schedule-management/classes/active-schedules', { params });
+      const response = await apiClient.get('/admin-center/schedule-management/classes/active-schedules', params );
       return response;
     },
     enabled: true,
@@ -185,6 +240,18 @@ export const WeeklySchedulePicker = ({
     try {
       const date = new Date(dateStr);
       const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      return date.toLocaleDateString('vi-VN', options);
+    } catch {
+      return '';
+    }
+  };
+
+  /**
+   * Format Date object thành string dạng dd/mm (chỉ ngày và tháng)
+   */
+  const formatDayDate = (date: Date): string => {
+    try {
+      const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit' };
       return date.toLocaleDateString('vi-VN', options);
     } catch {
       return '';
@@ -648,14 +715,24 @@ export const WeeklySchedulePicker = ({
                         Giờ
                       </th>
                       {/* Loop các ngày trong tuần để tạo columns */}
-                      {dayOptions.map((day) => (
-                        <th
-                          key={day.value}
-                          className="border-2 p-3 bg-gray-50 dark:bg-gray-900 text-sm font-semibold"
-                        >
-                          {day.label}
-                        </th>
-                      ))}
+                      {dayOptions.map((day) => {
+                        const dayDate = dayDates[day.value];
+                        return (
+                          <th
+                            key={day.value}
+                            className="border-2 p-3 bg-gray-50 dark:bg-gray-900 text-sm font-semibold"
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <span>{day.label}</span>
+                              {dayDate && (
+                                <span className="text-xs font-normal text-gray-600 dark:text-gray-400">
+                                  {formatDayDate(dayDate)}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   
