@@ -39,6 +39,8 @@ import { StudentClassRequestController } from './controllers/student-class-reque
 import { StudentClassRequestService } from './services/student-class-request.service';
 import { TeacherFeedbackController } from './controllers/teacher-feedback.controller';
 import { TeacherFeedbackService } from './services/teacher-feedback.service';
+import { TeacherFeedbackMonitoringController } from './controllers/teacher-feedback-monitoring.controller';
+import { TeacherFeedbackMonitoringService } from './services/teacher-feedback-monitoring.service';
 import { ShowcaseManagementController } from './controllers/showcase-management.controller';
 import { ShowcaseManagementService } from './services/showcase-management.service';
 import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center-owner.middleware';
@@ -76,6 +78,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     AlertController,
     StudentClassRequestController,
     TeacherFeedbackController,
+    TeacherFeedbackMonitoringController,
     ShowcaseManagementController,
   ],
   providers: [
@@ -98,6 +101,7 @@ import { SessionSchedulerService } from './crons/session-scheduler.service';
     AlertService,
     StudentClassRequestService,
     TeacherFeedbackService,
+    TeacherFeedbackMonitoringService,
     ShowcaseManagementService,
     CloudinaryService,
     // SessionSchedulerService, // Cron jobs service
