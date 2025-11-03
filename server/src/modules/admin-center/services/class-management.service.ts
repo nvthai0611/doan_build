@@ -2920,6 +2920,23 @@ export class ClassManagementService {
         );
       }
 
+      // Validate substituteEndDate if provided
+      if (body.substituteEndDate) {
+        const substituteEndDate = new Date(body.substituteEndDate);
+        if (body.effectiveDate) {
+          const effectiveDate = new Date(body.effectiveDate);
+          if (substituteEndDate <= effectiveDate) {
+            throw new HttpException(
+              {
+                success: false,
+                message: 'Ngày kết thúc giáo viên thay thế phải sau ngày bắt đầu có hiệu lực',
+              },
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+        }
+      }
+
       // Create transfer record
       const transfer = await this.prisma.teacherClassTransfer.create({
         data: {
@@ -2929,9 +2946,12 @@ export class ClassManagementService {
           reason: body.reason.trim(),
           reasonDetail: body.reasonDetail?.trim() || null,
           requestedBy: requestedBy,
-          status: 'pending',
+          status: body.status || 'pending', // Allow auto_created status
           effectiveDate: body.effectiveDate
             ? new Date(body.effectiveDate)
+            : null,
+          substituteEndDate: body.substituteEndDate
+            ? new Date(body.substituteEndDate)
             : null,
           notes: body.notes?.trim() || null,
         },
@@ -2977,6 +2997,364 @@ export class ClassManagementService {
         {
           success: false,
           message: 'Có lỗi xảy ra khi tạo yêu cầu chuyển giáo viên',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Lấy danh sách transfer requests
+  async getTransferRequests(params: any) {
+    try {
+      const {
+        status,
+        classId,
+        teacherId,
+        page = 1,
+        limit = 10,
+      } = params;
+
+      const where: any = {};
+      if (status) where.status = status;
+      if (classId) where.fromClassId = classId;
+      if (teacherId) where.teacherId = teacherId;
+
+      const skip = (page - 1) * limit;
+
+      const [transfers, total] = await Promise.all([
+        this.prisma.teacherClassTransfer.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            replacementTeacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            fromClass: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        }),
+        this.prisma.teacherClassTransfer.count({ where }),
+      ]);
+
+      return {
+        success: true,
+        data: transfers,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+        message: 'Lấy danh sách yêu cầu chuyển giáo viên thành công',
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách yêu cầu chuyển giáo viên',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Duyệt yêu cầu chuyển giáo viên
+  async approveTransfer(
+    transferId: string,
+    body: any,
+    approvedBy: string,
+  ) {
+    try {
+      // Find transfer request
+      const transfer = await this.prisma.teacherClassTransfer.findUnique({
+        where: { id: transferId },
+        include: {
+          fromClass: {
+            select: {
+              id: true,
+              teacherId: true,
+              name: true,
+            },
+          },
+          teacher: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (!transfer) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy yêu cầu chuyển giáo viên',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (transfer.status !== 'pending' && transfer.status !== 'auto_created') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Yêu cầu này đã được xử lý',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Ensure replacementTeacherId is set
+      const replacementTeacherId =
+        body.replacementTeacherId || transfer.replacementTeacherId;
+      if (!replacementTeacherId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Chưa chọn giáo viên thay thế',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Update substituteEndDate if provided in body
+      const substituteEndDate = body.substituteEndDate
+        ? new Date(body.substituteEndDate)
+        : transfer.substituteEndDate;
+
+      // Validate substituteEndDate if both dates exist
+      if (substituteEndDate && transfer.effectiveDate) {
+        if (substituteEndDate <= transfer.effectiveDate) {
+          throw new HttpException(
+            {
+              success: false,
+              message:
+                'Ngày kết thúc giáo viên thay thế phải sau ngày bắt đầu có hiệu lực',
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      // Use transaction to ensure data consistency
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Update transfer status
+        const updatedTransfer = await tx.teacherClassTransfer.update({
+          where: { id: transferId },
+          data: {
+            status: 'approved',
+            approvedBy: approvedBy,
+            approvedAt: new Date(),
+            replacementTeacherId: replacementTeacherId,
+            substituteEndDate: substituteEndDate,
+            notes: body.notes || transfer.notes,
+          },
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            replacementTeacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            fromClass: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+        // Get effective date
+        const effectiveDate = transfer.effectiveDate
+          ? new Date(transfer.effectiveDate)
+          : new Date();
+
+        // Update ClassSessions
+        if (substituteEndDate) {
+          // Temporary transfer: Update sessions in the date range
+          // Set teacherId to replacement, keep original teacher in substituteTeacherId
+          await tx.classSession.updateMany({
+            where: {
+              classId: transfer.fromClassId,
+              sessionDate: {
+                gte: effectiveDate,
+                lte: substituteEndDate,
+              },
+              status: {
+                not: 'end', // Don't update completed sessions
+              },
+            },
+            data: {
+              teacherId: replacementTeacherId,
+              substituteTeacherId: transfer.teacherId,
+              substituteEndDate: substituteEndDate,
+            },
+          });
+        } else {
+          // Permanent transfer: Update all future sessions and class
+          await tx.classSession.updateMany({
+            where: {
+              classId: transfer.fromClassId,
+              sessionDate: {
+                gte: effectiveDate,
+              },
+              status: {
+                not: 'end',
+              },
+            },
+            data: {
+              teacherId: replacementTeacherId,
+            },
+          });
+
+          // Update class teacher
+          await tx.class.update({
+            where: { id: transfer.fromClassId },
+            data: {
+              teacherId: replacementTeacherId,
+            },
+          });
+        }
+
+        return updatedTransfer;
+      });
+
+      return {
+        success: true,
+        message: 'Yêu cầu chuyển giáo viên đã được duyệt thành công',
+        data: result,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi duyệt yêu cầu chuyển giáo viên',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Từ chối yêu cầu chuyển giáo viên
+  async rejectTransfer(transferId: string, body: any, rejectedBy: string) {
+    try {
+      const transfer = await this.prisma.teacherClassTransfer.findUnique({
+        where: { id: transferId },
+      });
+
+      if (!transfer) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy yêu cầu chuyển giáo viên',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (transfer.status !== 'pending' && transfer.status !== 'auto_created') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Yêu cầu này đã được xử lý',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const updatedTransfer = await this.prisma.teacherClassTransfer.update({
+        where: { id: transferId },
+        data: {
+          status: 'rejected',
+          approvedBy: rejectedBy,
+          approvedAt: new Date(),
+          notes: body.reason || body.notes || transfer.notes,
+        },
+        include: {
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          replacementTeacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          fromClass: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Yêu cầu chuyển giáo viên đã bị từ chối',
+        data: updatedTransfer,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi từ chối yêu cầu chuyển giáo viên',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,

@@ -63,6 +63,7 @@ model Teacher {
   createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   classSessions       ClassSession[]
+  substituteSessions  ClassSession[]                @relation("SubstituteTeacher")
   classes             Class[]
   contractUploads     ContractUpload[]
   contracts           Contract[]
@@ -197,6 +198,8 @@ model ClassSession {
   id                           String                        @id @default(uuid()) @db.Uuid
   classId                      String                        @map("class_id") @db.Uuid
   teacherId                    String?                       @map("teacher_id") @db.Uuid
+  substituteTeacherId          String?                       @map("substitute_teacher_id") @db.Uuid
+  substituteEndDate            DateTime?                     @map("substitute_end_date") @db.Date
   academicYear                 String                        @map("academic_year")
   sessionDate                  DateTime                      @map("session_date") @db.Date
   startTime                    String                        @map("start_time")
@@ -209,10 +212,12 @@ model ClassSession {
   class                        Class                         @relation(fields: [classId], references: [id], onDelete: Cascade)
   room                         Room?                         @relation(fields: [roomId], references: [id])
   teacher                      Teacher?                      @relation(fields: [teacherId], references: [id])
+  substituteTeacher            Teacher?                      @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id])
   holidayLinks                 HolidayPeriodSession[]
   leaveRequestAffectedSessions LeaveRequestAffectedSession[]
   attendances                  StudentSessionAttendance[]
 
+  @@index([substituteEndDate], map: "idx_session_substitute_end_date")
   @@map("class_sessions")
 }
 
@@ -826,11 +831,12 @@ model TeacherClassTransfer {
   replacementTeacherId String?   @map("replacement_teacher_id") @db.Uuid
   reason               String
   reasonDetail         String?   @map("reason_detail")
-  status               String    @default("pending") // pending, approved, rejected, completed, cancelled
+  status               String    @default("pending") // pending, approved, rejected, completed, cancelled, auto_created
   requestedBy          String    @map("requested_by") @db.Uuid
   approvedBy           String?   @map("approved_by") @db.Uuid
   approvedAt           DateTime? @map("approved_at") @db.Timestamptz(6)
   effectiveDate        DateTime? @map("effective_date") @db.Date
+  substituteEndDate    DateTime? @map("substitute_end_date") @db.Date
   completedAt          DateTime? @map("completed_at") @db.Timestamptz(6)
   notes                String?
   feedbackSummary      Json?     @map("feedback_summary")
@@ -845,6 +851,7 @@ model TeacherClassTransfer {
   @@index([fromClassId], map: "idx_transfer_from_class")
   @@index([status], map: "idx_transfer_status")
   @@index([effectiveDate], map: "idx_transfer_effective_date")
+  @@index([substituteEndDate], map: "idx_transfer_substitute_end_date")
   @@map("teacher_class_transfers")
 }
 
