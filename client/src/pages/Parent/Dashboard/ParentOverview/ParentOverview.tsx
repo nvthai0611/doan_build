@@ -156,7 +156,8 @@ export function ParentOverview() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold">{classItem.className}</h4>
-                          <span className="text-xs text-muted-foreground">{classItem.room}</span>
+                          <span className="text-xs text-muted-foreground">{classItem.room} - </span>
+                          <h4 className="flex items-center gap-1 text-sm text-muted-foreground">{classItem.studentName}</h4>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{classItem.time}</p>
                       </div>
@@ -243,7 +244,7 @@ export function ParentOverview() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{c.name}</h3>
+                        <h3 className="font-semibold">{c.name} - {c.studentName}</h3>
                         <p className="text-sm text-muted-foreground mt-1">{c.subject} • {c.teacher}</p>
                         <p className="text-xs text-muted-foreground mt-1">Phòng: {c.room}</p>
                       </div>

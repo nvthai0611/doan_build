@@ -84,12 +84,14 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
   }
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "employment":
-        return "Hợp đồng lao động"
-      case "probation":
-        return "Hợp đồng thử việc"
-      case "renewal":
-        return "Hợp đồng gia hạn"
+      case "indefinite":
+        return "Hợp đồng Vô Thời hạn"
+      case "one_year":
+        return "Hợp đồng 1 năm"
+      case "two_years":
+        return "Hợp đồng 2 năm"
+      case "three_months":
+        return "Hợp đồng 3 tháng"
       case "other":
         return "Khác"
       default:
@@ -150,6 +152,7 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
                     </div>
                     <div className="text-sm text-muted-foreground mt-1 space-y-1">
                       <p>Loại: {getTypeLabel(contract.contractType || contract.type)}</p>
+                      <p>Ngày bắt đầu: {contract.startDate ? formatDate(contract.startDate) : 'Chưa có'}</p>
                       <p>Tải lên: {formatDate(contract.uploadedAt || contract.uploadDate)}</p>
                       <p>Hết hạn: {formatDate(contract.expiryDate)}</p>
                       {contract.notes && <p className="text-xs italic">Ghi chú: {contract.notes}</p>}
