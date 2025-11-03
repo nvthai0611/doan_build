@@ -103,10 +103,11 @@ const studentClassRequestService = {
   /**
    * Approve request
    */
-  async approveRequest(id: string): Promise<any> {
+  async approveRequest(id: string, overrideCapacity = false): Promise<any> {
     try {
       const response = await apiClient.post(
-        `/admin-center/student-class-requests/${id}/approve`
+        `/admin-center/student-class-requests/${id}/approve`,
+        { overrideCapacity }
       );
       return response.data;
     } catch (error: any) {
