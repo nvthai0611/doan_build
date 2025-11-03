@@ -40,16 +40,16 @@ model User {
 }
 
 model Parent {
-  id              String            @id @default(uuid()) @db.Uuid
-  userId          String            @unique @map("user_id") @db.Uuid
-  relationshipType String?          @map("relationship_type") @default("OTHER") // FATHER, MOTHER, OTHER
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  contractUploads ContractUpload[]
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments        Payment[]
-  students        Student[]
-  feedbacks       TeacherFeedback[]
+  id               String            @id @default(uuid()) @db.Uuid
+  userId           String            @unique @map("user_id") @db.Uuid
+  relationshipType String?           @default("OTHER") @map("relationship_type") // FATHER, MOTHER, OTHER
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contractUploads  ContractUpload[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments         Payment[]
+  students         Student[]
+  feedbacks        TeacherFeedback[]
 
   @@map("parents")
 }
@@ -93,6 +93,7 @@ model Student {
   grade          String?
   schoolId       String                     @map("school_id") @db.Uuid
   parentId       String?                    @map("parent_id") @db.Uuid
+  scholarshipId  String?                    @map("scholarship_id") @db.Uuid
   enrollments    Enrollment[]
   feeRecords     FeeRecord[]
   leaveRequests  LeaveRequest[]
@@ -104,7 +105,9 @@ model Student {
   school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   feedbacks      TeacherFeedback[]
+  scholarship    Scholarship?               @relation(fields: [scholarshipId], references: [id])
 
+  @@index([scholarshipId], map: "idx_student_scholarship")
   @@map("students")
 }
 
@@ -356,9 +359,8 @@ model FeeRecord {
   classId           String?            @map("class_id") @db.Uuid
   amount            Decimal            @db.Decimal(12, 2)
   dueDate           DateTime           @map("due_date") @db.Date
-  paidAmount        Decimal            @default(0) @map("paid_amount") @db.Decimal(12, 2)
   status            String             @default("pending") // pending, paid, overdue, cancelled, processing
-  discount          Decimal?           @default(0) @db.Decimal(12, 2)
+  scholarship       Decimal?           @default(0) @db.Decimal(12, 2)
   notes             String?
   createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   totalAmount       Decimal?           @map("total_amount") @db.Decimal(12, 2)
@@ -917,4 +919,21 @@ model Blog {
   @@index([publishedAt], map: "idx_blog_published")
   @@index([isFeatured], map: "idx_blog_featured")
   @@map("blogs")
+}
+
+model Scholarship {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  percent     Decimal  @db.Decimal(5, 2)
+  criteria    Json? // Lưu điều kiện xét học bổng
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  student Student[] @relation()
+
+  @@index([isActive], map: "idx_scholarship_active")
+  @@map("scholarships")
 }
