@@ -233,11 +233,11 @@ export class StudentClassRequestService {
         );
       }
 
-      console.log('request', request);
+      // Kiểm tra lớp có còn chỗ không (chỉ check nếu không override)
+      // Chuyển đổi overrideCapacity sang boolean để đảm bảo logic đúng
+      const shouldCheckCapacity = !overrideCapacity;
       
-
-      // // Kiểm tra lớp có còn chỗ không (chỉ check nếu không override)
-      if (!overrideCapacity) {
+      if (shouldCheckCapacity) {
         if (
           request.class.maxStudents &&
           request.class._count.enrollments >= request.class.maxStudents
@@ -250,6 +250,8 @@ export class StudentClassRequestService {
             HttpStatus.BAD_REQUEST,
           );
         }
+      } else {
+        console.log('⚠️ Bypassing capacity check - overrideCapacity is true');
       }
 
       // Kiểm tra học sinh đã enrolled chưa

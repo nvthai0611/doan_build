@@ -844,12 +844,28 @@ export class ClassManagementService {
       });
       [];
 
-      // AUTO-GEN SESSIONS: Nếu status chuyển từ ready → active, tự động gen sessions
+      // AUTO-GEN SESSIONS: Nếu status chuyển từ ready → active hoặc suspended → active, tự động gen sessions (chỉ khi chưa có sessions)
       const isStatusChangedToActive =
-        existingClass.status === 'ready' && updateClassDto.status === 'active';
+        (existingClass.status === 'ready' || existingClass.status === 'suspended') && updateClassDto.status === 'active';
 
       if (isStatusChangedToActive) {
         try {
+          // Kiểm tra xem lớp đã có sessions chưa
+          const existingSessionsCount = await this.prisma.classSession.count({
+            where: { classId: id },
+          });
+
+          // Nếu đã có sessions rồi thì không tạo lại, chỉ cập nhật status
+          if (existingSessionsCount > 0) {
+            return {
+              success: true,
+              message: `Cập nhật lớp học thành công. Lớp đã có ${existingSessionsCount} buổi học.`,
+              data: updatedClass,
+              sessionsGenerated: false,
+            };
+          }
+
+          // Nếu chưa có sessions, tiến hành tạo mới
           // Xác định ngày bắt đầu
           const startDate =
             updatedClass.actualStartDate || updatedClass.expectedStartDate;
@@ -1017,9 +1033,38 @@ export class ClassManagementService {
         };
       });
       
-      // AUTO-GEN SESSIONS: Nếu chuyển từ ready → active, tự động gen sessions
-      if (existingClass.status === 'ready' && status === 'active') {
+      // AUTO-GEN SESSIONS: Nếu chuyển từ ready → active hoặc suspended → active, tự động gen sessions (chỉ khi chưa có sessions)
+      const isStatusChangedToActive = 
+        (existingClass.status === 'ready' || existingClass.status === 'suspended') && status === 'active';
+      
+      if (isStatusChangedToActive) {
         try {
+          // Kiểm tra xem lớp đã có sessions chưa
+          const existingSessionsCount = await this.prisma.classSession.count({
+            where: { classId: id },
+          });
+
+          // Nếu đã có sessions rồi thì không tạo lại, chỉ chuyển status
+          if (existingSessionsCount > 0) {
+            const statusLabel = {
+              draft: 'Lớp nháp',
+              ready: 'Sẵn sàng',
+              active: 'Đang hoạt động',
+              completed: 'Đã hoàn thành',
+              suspended: 'Tạm dừng',
+              cancelled: 'Đã hủy',
+            }[status] || status;
+
+            return {
+              success: true,
+              message: `Đã chuyển trạng thái lớp sang "${statusLabel}". Lớp đã có ${existingSessionsCount} buổi học.`,
+              data: result.class,
+              updatedEnrollmentsCount: result.updatedEnrollmentsCount,
+              sessionsGenerated: false,
+            };
+          }
+
+          // Nếu chưa có sessions, tiến hành tạo mới
           // Xác định ngày bắt đầu - ưu tiên từ request, sau đó là từ updatedClass
           const sessionStartDate =
             startDate

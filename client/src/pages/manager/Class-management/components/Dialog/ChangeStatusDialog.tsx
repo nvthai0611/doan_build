@@ -77,29 +77,46 @@ export const ChangeStatusDialog = ({
   useEffect(() => {
     if (
       selectedStatus === ClassStatus.ACTIVE &&
-      currentStatus === ClassStatus.READY
+      (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED)
     ) {
-      // Ngày bắt đầu: expectedStartDate hoặc ngày hiện tại
-      const defaultStartDate = classData?.expectedStartDate
-        ? new Date(classData.expectedStartDate).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
+      // Ngày bắt đầu: actualStartDate hoặc expectedStartDate hoặc ngày hiện tại
+      let defaultStartDate = '';
+      
+      if (currentStatus === ClassStatus.READY) {
+        defaultStartDate = classData?.expectedStartDate
+          ? new Date(classData.expectedStartDate).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+      } else if (currentStatus === ClassStatus.SUSPENDED) {
+        // Nếu đã từng active, dùng actualStartDate, nếu không thì dùng expectedStartDate hoặc ngày hiện tại
+        defaultStartDate = classData?.actualStartDate
+          ? new Date(classData.actualStartDate).toISOString().split('T')[0]
+          : (classData?.expectedStartDate
+            ? new Date(classData.expectedStartDate).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0]);
+      }
 
-      // Ngày kết thúc: 31/05 năm sau (từ ngày bắt đầu)
-      const startDateObj = new Date(defaultStartDate);
-      const nextYear = startDateObj.getFullYear() + 1;
-      const defaultEndDate = `${nextYear}-05-31`;
+      // Ngày kết thúc: actualEndDate hoặc 31/05 năm sau (từ ngày bắt đầu)
+      let defaultEndDate = '';
+      if (classData?.actualEndDate) {
+        defaultEndDate = new Date(classData.actualEndDate).toISOString().split('T')[0];
+      } else {
+        const startDateObj = new Date(defaultStartDate);
+        const nextYear = startDateObj.getFullYear() + 1;
+        defaultEndDate = `${nextYear}-05-31`;
+      }
 
       setStartDate(defaultStartDate);
       setEndDate(defaultEndDate);
     }
-  }, [selectedStatus, classData?.expectedStartDate, currentStatus]);
+  }, [selectedStatus, classData?.expectedStartDate, classData?.actualStartDate, classData?.actualEndDate, currentStatus]);
 
   // Check sessions khi chọn active
   useEffect(() => {
     const checkSessions = async () => {
+      // Check sessions khi chuyển sang ACTIVE từ READY hoặc SUSPENDED
       if (
         selectedStatus === ClassStatus.ACTIVE &&
-        currentStatus === ClassStatus.READY
+        (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED)
       ) {
         setIsCheckingSessions(true);
         try {
@@ -111,16 +128,21 @@ export const ChangeStatusDialog = ({
           setSessionCount(total);
           setHasExistingSessions(total > 0);
 
-          // Nếu có sessions và muốn tạo sessions, hiển thị warning
-          if (total > 0 && wantToGenerateSessions) {
-            setShowDeleteSessionsWarning(true);
+          // Xử lý cho READY → ACTIVE và SUSPENDED → ACTIVE
+          // Nếu đã có sessions rồi thì không cảnh báo xóa, cho phép chuyển status luôn
+          if (total > 0) {
+            // Đã có sessions → không làm gì, cho phép chuyển status luôn (không cảnh báo xóa)
+            // setShowDateForm(false) và setShowDeleteSessionsWarning(false) đã được set ở else block
           } else if (total === 0 && wantToGenerateSessions) {
+            // Chưa có sessions → hiển thị form nhập ngày để tự động tạo sessions
             setShowDateForm(true);
           }
         } catch (error) {
           console.error('Error checking sessions:', error);
           // Giả sử không có sessions nếu lỗi
           setHasExistingSessions(false);
+          
+          // Nếu không thể check sessions, giả sử chưa có và hiển thị form nhập ngày
           if (wantToGenerateSessions) {
             setShowDateForm(true);
           }
@@ -137,7 +159,7 @@ export const ChangeStatusDialog = ({
     if (open && selectedStatus) {
       checkSessions();
     }
-  }, [selectedStatus, open, classData?.id, currentStatus, wantToGenerateSessions]);
+  }, [selectedStatus, open, classData?.id, classData?.name, currentStatus, wantToGenerateSessions]);
 
   // Reset khi đóng dialog (chỉ reset khi cả dialog chính và dialog xác nhận đều đóng)
   useEffect(() => {
@@ -224,21 +246,28 @@ export const ChangeStatusDialog = ({
   const handleChangeStatus = async () => {
     if (!selectedStatus) return;
 
-    // Nếu chuyển sang active từ ready
+    // Nếu chuyển sang active từ ready hoặc suspended
     if (
-      currentStatus === ClassStatus.READY &&
-      selectedStatus === ClassStatus.ACTIVE
+      selectedStatus === ClassStatus.ACTIVE &&
+      (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED)
     ) {
       // Kiểm tra số học sinh
       const studentCount =
         classData?._count?.enrollments || classData?.enrollments?.length || 0;
 
-      // Nếu có sessions hiện có, đã xử lý trong useEffect - hiển thị warning xóa
+      // Nếu đã có sessions rồi → cho phép chuyển luôn, không cần ngày, không cảnh báo xóa
       if (hasExistingSessions) {
-        // Nút "Xác nhận" đã bị disabled, nhưng để an toàn
+        // Hiển thị dialog xác nhận đơn giản (không cần ngày)
+        const statusName = currentStatus === ClassStatus.READY ? 'Sẵn sàng' : 'Tạm dừng';
+        const message = `Bạn sắp chuyển lớp "${classData?.name}" từ trạng thái "${statusName}" sang "Đang hoạt động". ` +
+          `Lớp đã có ${sessionCount} buổi học. Bạn có chắc chắn muốn tiếp tục không?`;
+        
+        setWarningMessage(message);
+        setShowConfirmWarning(true);
         return;
       }
 
+      // Nếu chưa có sessions (cả READY và SUSPENDED), cần nhập ngày để tạo sessions
       // Kiểm tra đã nhập ngày chưa
       if (!startDate || !endDate) {
         toast({
@@ -351,15 +380,17 @@ export const ChangeStatusDialog = ({
         return;
       }
 
+      // Nếu đã có sessions rồi thì không cần truyền startDate/endDate (không tạo sessions mới)
+      const shouldCreateSessions = 
+        (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED) && 
+        statusValue === ClassStatus.ACTIVE && 
+        !hasExistingSessions;
+
       const response = (await classService.updateClassStatus(
         classData.id,
         statusValue,
-        currentStatus === ClassStatus.READY && statusValue === ClassStatus.ACTIVE
-          ? startDateToUse
-          : undefined,
-        currentStatus === ClassStatus.READY && statusValue === ClassStatus.ACTIVE
-          ? endDateToUse
-          : undefined,
+        shouldCreateSessions ? startDateToUse : undefined,
+        shouldCreateSessions ? endDateToUse : undefined,
       )) as any;
 
       const statusLabel = statusValue
@@ -424,6 +455,7 @@ export const ChangeStatusDialog = ({
     : null;
 
   const handleConfirmWarning = async () => {
+    // Các trường hợp thì tiếp tục update
     setShowConfirmWarning(false);
     await performUpdate();
   };
@@ -644,7 +676,7 @@ export const ChangeStatusDialog = ({
 
             {/* Additional Info for Active Status */}
             {selectedStatus === ClassStatus.ACTIVE &&
-              currentStatus === ClassStatus.READY && (
+              (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED) && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
                   <div className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5" />
@@ -670,7 +702,7 @@ export const ChangeStatusDialog = ({
             {/* Date Form - Hiển thị khi chuyển sang active và không có sessions hoặc đã xóa */}
             {showDateForm &&
               selectedStatus === ClassStatus.ACTIVE &&
-              currentStatus === ClassStatus.READY && (
+              (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED) && (
                 <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-600" />
@@ -753,13 +785,17 @@ export const ChangeStatusDialog = ({
               disabled={
                 !selectedStatus ||
                 isLoading ||
+                // Nếu chuyển sang ACTIVE từ READY hoặc SUSPENDED
+                // và chưa có sessions → cần nhập ngày
                 (selectedStatus === ClassStatus.ACTIVE &&
-                  currentStatus === ClassStatus.READY &&
+                  (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED) &&
+                  !hasExistingSessions &&
                   (!startDate ||
                     !endDate ||
                     new Date(startDate) >= new Date(endDate))) ||
-                isCheckingSessions ||
-                showDeleteSessionsWarning
+                isCheckingSessions
+                // Không còn cần disabled vì showDeleteSessionsWarning nữa
+                // (nếu đã có sessions thì không có warning này, cho phép chuyển luôn)
               }
               className={
                 selectedStatus === ClassStatus.CANCELLED

@@ -124,8 +124,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     queryKey: ['classSessions', classData.id, classData.academicYear],
     queryFn: () => classService.getClassSessions(classData.id, {
       page: 1,
-      limit: 10, // Chỉ cần kiểm tra có sessions hay không
+      limit: 30, // Chỉ cần kiểm tra có sessions hay không
       academicYear: classData.academicYear, // Chỉ lấy sessions cùng academicYear
+      sortOrder: "asc",
     }),
     enabled: !!classData.id && !!classData.academicYear,
     staleTime: 0, // Không cache data

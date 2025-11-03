@@ -858,10 +858,8 @@ export class EnrollmentManagementService {
             await this.prisma.enrollment.delete({
                 where: { id: parseInt(id) }
             });
-
             // Note: currentStudents count is now managed through _count.enrollments in Class model
             // No need to manually update teacherClassAssignment since it no longer exists
-
             return {
                 success: true,
                 message: 'Xóa enrollment thành công'
@@ -967,7 +965,21 @@ export class EnrollmentManagementService {
                 }
             });
 
-            const excludedIds = enrolledStudentIds.map(e => e.studentId);
+            // Lấy danh sách studentIds đang có request pending
+            const pendingRequestStudentIds = await this.prisma.studentClassRequest.findMany({
+                where: {
+                    classId,
+                    status: 'pending'
+                },
+                select: {
+                    studentId: true
+                }
+            });
+
+            // Kết hợp danh sách studentIds cần loại bỏ (đã enroll + đang pending)
+            const enrolledIds = enrolledStudentIds.map(e => e.studentId);
+            const pendingIds = pendingRequestStudentIds.map(r => r.studentId);
+            const excludedIds = [...enrolledIds, ...pendingIds];
 
             // Build where clause cho students chưa enroll
             const where: any = {
