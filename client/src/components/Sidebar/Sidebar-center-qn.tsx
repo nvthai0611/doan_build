@@ -72,10 +72,10 @@ const centerOwnerMenuItems = [
     children: [
       { title: 'Danh sách học sinh', href: '/center-qn/students' },
       { title: 'Thông tin phụ huynh', href: '/center-qn/parents' },
-      { title: 'Phân lớp tự động', href: '/center-qn/students/auto-assign' },
-      { title: 'Học bạ nội bộ', href: '/center-qn/students/records' },
-      { title: 'Kết quả học tập', href: '/center-qn/students/results' },
-      { title: 'Chuyên cần', href: '/center-qn/students/attendance' },
+    //   { title: 'Phân lớp tự động', href: '/center-qn/students/auto-assign' },
+    //   { title: 'Học bạ nội bộ', href: '/center-qn/students/records' },
+    //   { title: 'Kết quả học tập', href: '/center-qn/students/results' },
+    //   { title: 'Chuyên cần', href: '/center-qn/students/attendance' },
     ],
   },
   {
@@ -85,7 +85,7 @@ const centerOwnerMenuItems = [
     children: [
       { title: 'Danh sách giáo viên', href: '/center-qn/teachers' },
       { title: 'Thông tin chuyên môn', href: '/center-qn/teachers/expertise' },
-      { title: 'Hợp đồng & Nhân sự', href: '/center-qn/teachers/contracts' },
+    //   { title: 'Hợp đồng & Nhân sự', href: '/center-qn/teachers/contracts' },
       { title: 'Quản lý lương', href: '/center-qn/teachers/salary' },
       { title: 'Đánh giá từ PH/HS', href: '/center-qn/teachers/reviews' },
       { title: 'Đổi lịch dạy', href: '/center-qn/teachers/schedule-changes' },
@@ -98,10 +98,10 @@ const centerOwnerMenuItems = [
     children: [
       { title: 'Quản lý lớp học', href: '/center-qn/classes' },
       { title: 'Quản lý môn học', href: '/courses' },
-      { title: 'Thời khóa biểu', href: '/courses/timetable' },
+    //   { title: 'Thời khóa biểu', href: '/courses/timetable' },
       { title: 'Quản lý phòng học', href: '/courses/rooms' },
       { title: 'Cảnh báo xung đột', href: '/courses/conflicts' },
-      { title: 'Clone khóa học', href: '/courses/clone' },
+    //   { title: 'Clone khóa học', href: '/courses/clone' },   
     ],
   },
   {

@@ -56,7 +56,8 @@ export class ScheduleManagementController {
 
   @Get('classes/active-schedules')
   @ApiOperation({ summary: 'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng' })
-  async getAllActiveClassesWithSchedules(@Query('expectedStartDate') expectedStartDate?: string) {
+  async getAllActiveClassesWithSchedules(@Query() query: any) {
+    const expectedStartDate = query?.expectedStartDate;
     const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
     return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
   }
