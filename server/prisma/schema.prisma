@@ -102,6 +102,7 @@ model Student {
   classRequests  StudentClassRequest[]
   studentReports StudentReport[]
   attendances    StudentSessionAttendance[]
+  contractUploads ContractUpload[] // MỚI: Nhiều cam kết của học sinh
   parent         Parent?                    @relation(fields: [parentId], references: [id])
   school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -259,13 +260,17 @@ model StudentClassRequest {
   id                 String    @id @default(uuid()) @db.Uuid
   studentId          String    @map("student_id") @db.Uuid
   classId            String    @map("class_id") @db.Uuid
+  contractUploadId   String?   @map("contract_upload_id") @db.Uuid // Reference đến ContractUpload đã có (để dùng chung cho nhiều lớp)
   message            String?
-  commitmentImageUrl String?   @map("commitment_image_url") // URL của ảnh cam kết học tập
+  commitmentImageUrl String?   @map("commitment_image_url") // DEPRECATED: Dùng contractUploadId thay thế, giữ để backward compatible
   status             String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
   processedAt        DateTime? @map("processed_at") @db.Timestamptz(6)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
   class              Class     @relation(fields: [classId], references: [id])
   student            Student   @relation(fields: [studentId], references: [id])
+  contractUpload     ContractUpload? @relation(fields: [contractUploadId], references: [id])
 
   @@map("student_class_requests")
 }
@@ -653,10 +658,12 @@ model RolePermission {
 
 model ContractUpload {
   id                String   @id @default(uuid()) @db.Uuid
-  enrollmentId      BigInt?  @map("enrollment_id")
+  enrollmentId      BigInt?  @map("enrollment_id") // DEPRECATED: Không dùng nữa, giữ để backward compatible
+  studentId         String?  @map("student_id") @db.Uuid // MỚI: Link với Student (cam kết của học sinh)
   parentId          String?  @map("parent_id") @db.Uuid
   teacherId         String?  @map("teacher_id") @db.Uuid
   contractType      String   @map("contract_type")
+  subjectIds        String[] // MỚI: Mảng các Subject ID (UUID) - các môn học được cam kết
   uploadedImageUrl  String   @map("uploaded_image_url")
   uploadedImageName String?  @map("uploaded_image_name")
   uploadedAt        DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
@@ -666,10 +673,14 @@ model ContractUpload {
   note      String?   @map("note")
   status    String?   @default("active") @map("status") // active, expiring_soon, expired
 
-  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  // Relations
+  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade) // DEPRECATED
+  student    Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade) // MỚI
   parent     Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
   teacher    Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classRequests StudentClassRequest[] // MỚI: Nhiều request dùng chung 1 cam kết
 
+  @@index([studentId], map: "idx_contract_upload_student")
   @@map("contract_uploads")
 }
 

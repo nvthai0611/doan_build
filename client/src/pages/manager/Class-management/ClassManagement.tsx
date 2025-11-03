@@ -552,13 +552,13 @@ export const ClassManagement = () => {
                             <Edit className="w-4 h-4" />
                             Chương trình học
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        {/* <DropdownMenuItem 
                             className="gap-2 cursor-pointer"
                             onClick={() => handleAssignTeacher(item)}
                         >
                             <UserPlus className="w-4 h-4" />
                             Cập nhật chương trình học theo khoá học
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         <DropdownMenuItem 
                             className="gap-2 cursor-pointer text-blue-600 hover:text-blue-700 focus:text-blue-700"
                             onClick={() => handleCloneClass(item)}
