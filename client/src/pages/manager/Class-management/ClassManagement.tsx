@@ -155,13 +155,17 @@ export const ClassManagement = () => {
         totalClasses: meta.total,
         activeClasses: classes.filter((c: any) => c.status === ClassStatus.ACTIVE).length,
         draftClasses: classes.filter((c: any) => c.status === ClassStatus.DRAFT).length,
-        completedClasses: classes.filter((c: any) => c.status === ClassStatus.COMPLETED).length
+        completedClasses: classes.filter((c: any) => c.status === ClassStatus.COMPLETED).length,
+        readyClasses: classes.filter((c: any) => c.status === ClassStatus.READY).length,
+        suspendedClasses: classes.filter((c: any) => c.status === ClassStatus.SUSPENDED).length
     };
 
     // Tabs
     const tabs = [
         { key: ClassStatus.ALL, label: 'Tất cả', count: meta.total },
         { key: ClassStatus.ACTIVE, label: CLASS_STATUS_LABELS[ClassStatus.ACTIVE], count: stats.activeClasses },
+        { key: ClassStatus.READY, label: CLASS_STATUS_LABELS[ClassStatus.READY], count: stats.readyClasses },
+        { key: ClassStatus.SUSPENDED, label: CLASS_STATUS_LABELS[ClassStatus.SUSPENDED], count: stats.suspendedClasses },
         { key: ClassStatus.DRAFT, label: CLASS_STATUS_LABELS[ClassStatus.DRAFT], count: stats.draftClasses },
         { key: ClassStatus.COMPLETED, label: CLASS_STATUS_LABELS[ClassStatus.COMPLETED], count: stats.completedClasses }
     ];

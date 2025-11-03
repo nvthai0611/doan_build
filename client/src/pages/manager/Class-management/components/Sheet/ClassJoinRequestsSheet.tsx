@@ -94,8 +94,21 @@ export const ClassJoinRequestsSheet = ({
     staleTime: 30000,
   });
 
-  const maxStudents = classData?.maxStudents || ((capacityInfo as any)?.data?.maxStudents as number) || 30;
+  const maxStudents = classData?.maxStudents || ((capacityInfo as any)?.data?.maxStudents as number) || null;
   const currentStudents = classData?.currentStudents || ((capacityInfo as any)?.data?.currentStudents as number) || 0;
+  
+  // Debug log để kiểm tra giá trị
+  useEffect(() => {
+    if (open) {
+      console.log('ClassJoinRequestsSheet - Capacity Info:', {
+        maxStudents,
+        currentStudents,
+        classDataMaxStudents: classData?.maxStudents,
+        classDataCurrentStudents: classData?.currentStudents,
+        capacityInfoData: (capacityInfo as any)?.data,
+      });
+    }
+  }, [open, maxStudents, currentStudents, classData, capacityInfo]);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -143,13 +156,16 @@ export const ClassJoinRequestsSheet = ({
     },
   });
 
-  // Reset page khi đổi classId
+  // Reset page khi đổi classId và invalidate queries khi sheet mở để refetch data
   useEffect(() => {
     if (open) {
       setCurrentPage(1);
       setSearchQuery('');
+      // Invalidate queries để refetch data khi sheet mở
+      queryClient.invalidateQueries({ queryKey: ['class-join-requests', classData?.id] });
+      queryClient.invalidateQueries({ queryKey: ['class-capacity', classData?.id] });
     }
-  }, [classData?.id, open]);
+  }, [classData?.id, open, queryClient]);
 
   const requests = requestsData?.data || [];
   const meta: any = requestsData?.meta || {
@@ -170,13 +186,25 @@ export const ClassJoinRequestsSheet = ({
   };
 
   const handleApprove = async (requestId: string) => {
-    // Check capacity before approving
-    // Cảnh báo khi: đã đầy (currentStudents >= maxStudents) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
-    const newTotalStudents = currentStudents + 1;
-    const availableSlots = maxStudents ? maxStudents - currentStudents : 999999;
+    console.log('handleApprove - maxStudents:', maxStudents, 'currentStudents:', currentStudents);
     
-    // Nếu không đủ chỗ hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
-    if (maxStudents && (availableSlots <= 0 || newTotalStudents > maxStudents)) {
+    if (!maxStudents || maxStudents === 0) {
+      // Không có giới hạn, approve trực tiếp
+      console.log('No max students limit, approving directly');
+      approveMutation.mutate({ requestId, overrideCapacity: false });
+      return;
+    }
+
+    // Check capacity before approving
+    // Cảnh báo khi: đã đầy (availableSlots <= 0) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
+    const newTotalStudents = currentStudents + 1;
+    const availableSlots = maxStudents - currentStudents;
+    
+    console.log('Capacity check - newTotalStudents:', newTotalStudents, 'availableSlots:', availableSlots, 'maxStudents:', maxStudents);
+    
+    // Nếu lớp đã đầy hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
+    if (availableSlots <= 0 || newTotalStudents > maxStudents) {
+      console.log('⚠️ Showing capacity warning dialog');
       // Show warning dialog để user xác nhận override capacity
       setPendingRequestId(requestId);
       setIsApproveAll(false);
@@ -184,6 +212,7 @@ export const ClassJoinRequestsSheet = ({
       return;
     }
 
+    console.log('No capacity issue, approving directly');
     // If no capacity issue, proceed directly
     approveMutation.mutate({ requestId, overrideCapacity: false });
   };
@@ -196,13 +225,22 @@ export const ClassJoinRequestsSheet = ({
     const pending = (requestsData?.data || []).filter((r: any) => r.status === 'pending');
     if (pending.length === 0) return;
 
+    if (!maxStudents) {
+      // Không có giới hạn, approve trực tiếp tất cả
+      for (const req of pending) {
+        await approveMutation.mutateAsync({ requestId: req.id, overrideCapacity: false });
+      }
+      refetch();
+      return;
+    }
+
     // Check capacity before approving all
-    // Cảnh báo khi: đã đầy (currentStudents >= maxStudents) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
+    // Cảnh báo khi: đã đầy (availableSlots <= 0) hoặc sẽ vượt quá (newTotalStudents > maxStudents)
     const newTotalStudents = currentStudents + pending.length;
-    const availableSlots = maxStudents ? maxStudents - currentStudents : 999999;
+    const availableSlots = maxStudents - currentStudents;
     
-    // Nếu không đủ chỗ hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
-    if (maxStudents && (availableSlots <= 0 || newTotalStudents > maxStudents)) {
+    // Nếu lớp đã đầy hoặc sẽ vượt quá giới hạn → hiển thị dialog cảnh báo
+    if (availableSlots <= 0 || newTotalStudents > maxStudents) {
       // Show warning dialog để user xác nhận override capacity
       setPendingRequestIds(pending.map((r: any) => r.id));
       setIsApproveAll(true);
@@ -456,41 +494,41 @@ export const ClassJoinRequestsSheet = ({
               </div>
               <AlertDialogDescription className="pt-2">
                 <div className="space-y-2">
-                  <p>
+                  <div>
                     Lớp học hiện tại đã có <strong>{currentStudents}</strong> học viên 
                     {maxStudents && ` (tối đa ${maxStudents} học viên)`}.
-                  </p>
-                  <p>
+                  </div>
+                  <div>
                     Bạn đang muốn phê duyệt{' '}
                     <strong>
                       {isApproveAll ? pendingRequestIds.length : 1} yêu cầu tham gia lớp học
                     </strong>
                     {isApproveAll && ` (${pendingRequestIds.length} học viên)`}.
-                  </p>
+                  </div>
                   {maxStudents && (() => {
                     const newTotal = currentStudents + (isApproveAll ? pendingRequestIds.length : 1);
                     const availableSlots = maxStudents - currentStudents;
                     
                     if (availableSlots <= 0) {
                       return (
-                        <p className="text-red-600 font-medium">
+                        <div className="text-red-600 font-medium">
                           ⚠️ Lớp đã đầy (<strong>{currentStudents}/{maxStudents}</strong>). 
                           Phê duyệt sẽ vượt quá giới hạn.
-                        </p>
+                        </div>
                       );
                     } else if (newTotal > maxStudents) {
                       return (
-                        <p className="text-red-600 font-medium">
+                        <div className="text-red-600 font-medium">
                           ⚠️ Tổng số học viên sẽ là <strong>{newTotal}</strong>, 
                           vượt quá giới hạn <strong>{maxStudents} học viên</strong>.
-                        </p>
+                        </div>
                       );
                     }
                     return null;
                   })()}
-                  <p className="pt-2">
+                  <div className="pt-2">
                     Bạn có chắc chắn muốn tiếp tục phê duyệt yêu cầu này không?
-                  </p>
+                  </div>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>

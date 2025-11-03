@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Ban,
   Trash2,
+  User,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -48,6 +49,16 @@ import { usePagination } from '../../../../hooks/usePagination';
 import { CodeDisplay } from '../../../../components/common/CodeDisplay';
 import { useToast } from '../../../../hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface StudentsInfoProps {
   classId: string;
@@ -159,6 +170,68 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
     },
     onSettled: () => {
       // Invalidate all queries that start with 'class-enrollments'
+      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+    },
+  });
+
+  // State cho confirmation dialogs
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showResumeConfirm, setShowResumeConfirm] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<any>(null);
+
+  // Mutation để xóa enrollment
+  const deleteEnrollmentMutation = useMutation({
+    mutationFn: (enrollmentId: string) =>
+      enrollmentService.deleteEnrollment(enrollmentId),
+    onMutate: async (enrollmentId) => {
+      const queryKey = [
+        'class-enrollments',
+        {
+          classId,
+          q: debouncedSearch,
+          page: pagination.currentPage,
+          limit: pagination.itemsPerPage,
+        },
+      ];
+      
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData(queryKey);
+      
+      // Optimistically remove enrollment
+      queryClient.setQueryData(queryKey, (old: any) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.filter((enrollment: any) => enrollment.id !== enrollmentId),
+          meta: {
+            ...old.meta,
+            total: (old.meta?.total || 1) - 1,
+          },
+        };
+      });
+      
+      return { previousData, queryKey };
+    },
+    onError: (error: any, variables, context: any) => {
+      if (context?.previousData && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousData);
+      }
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể xóa học sinh khỏi lớp. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã xóa học sinh khỏi lớp",
+      });
+      setShowDeleteConfirm(false);
+      setSelectedEnrollment(null);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
     },
   });
@@ -488,12 +561,42 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Xem hồ sơ</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              <Ban className="h-4 w-4 mr-2" />
-              Ngưng học
+            <DropdownMenuItem
+              onClick={() => navigate(`/center-qn/students/${enrollment?.student?.id}`)}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Xem hồ sơ
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
+            {enrollment?.status === EnrollmentStatus.STOPPED ? (
+              <DropdownMenuItem
+                className="text-green-600"
+                onClick={() => {
+                  setSelectedEnrollment(enrollment);
+                  setShowResumeConfirm(true);
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Quay trở lại học
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => {
+                  setSelectedEnrollment(enrollment);
+                  setShowStopConfirm(true);
+                }}
+              >
+                <Ban className="h-4 w-4 mr-2" />
+                Ngưng học
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className="text-red-600"
+              onClick={() => {
+                setSelectedEnrollment(enrollment);
+                setShowDeleteConfirm(true);
+              }}
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               Xóa khỏi lớp
             </DropdownMenuItem>
@@ -598,6 +701,120 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
           queryClient.invalidateQueries({ queryKey: ['class-enrollments', { classId }] });
         }}
       />
+
+      {/* Stop Enrollment Confirmation Dialog */}
+      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận ngưng học</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn ngưng học cho học sinh{' '}
+              <strong>{selectedEnrollment?.student?.user?.fullName}</strong> không?
+              <br />
+              Học sinh sẽ chuyển sang trạng thái "Ngưng học" và không thể tiếp tục học trong lớp này.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowStopConfirm(false);
+              setSelectedEnrollment(null);
+            }}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (selectedEnrollment) {
+                  updateEnrollmentMutation.mutate({
+                    enrollmentId: selectedEnrollment.id,
+                    status: EnrollmentStatus.STOPPED,
+                  });
+                  setShowStopConfirm(false);
+                  setSelectedEnrollment(null);
+                }
+              }}
+              disabled={updateEnrollmentMutation.isPending}
+            >
+              {updateEnrollmentMutation.isPending ? 'Đang xử lý...' : 'Xác nhận'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resume Enrollment Confirmation Dialog */}
+      <AlertDialog open={showResumeConfirm} onOpenChange={setShowResumeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận quay trở lại học</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn cho học sinh{' '}
+              <strong>{selectedEnrollment?.student?.user?.fullName}</strong> quay trở lại học không?
+              <br />
+              Học sinh sẽ chuyển từ trạng thái "Ngưng học" sang "Đang học" và có thể tiếp tục học trong lớp này.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowResumeConfirm(false);
+              setSelectedEnrollment(null);
+            }}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (selectedEnrollment) {
+                  updateEnrollmentMutation.mutate({
+                    enrollmentId: selectedEnrollment.id,
+                    status: EnrollmentStatus.STUDYING,
+                  });
+                  setShowResumeConfirm(false);
+                  setSelectedEnrollment(null);
+                }
+              }}
+              disabled={updateEnrollmentMutation.isPending}
+            >
+              {updateEnrollmentMutation.isPending ? 'Đang xử lý...' : 'Xác nhận'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Enrollment Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa học sinh</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa học sinh{' '}
+              <strong>{selectedEnrollment?.student?.user?.fullName}</strong> khỏi lớp này không?
+              <br />
+              <span className="text-red-600 font-medium">
+                Hành động này không thể hoàn tác. Học sinh sẽ bị xóa khỏi lớp và mất tất cả dữ liệu liên quan.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteConfirm(false);
+              setSelectedEnrollment(null);
+            }}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (selectedEnrollment) {
+                  deleteEnrollmentMutation.mutate(selectedEnrollment.id);
+                }
+              }}
+              disabled={deleteEnrollmentMutation.isPending}
+            >
+              {deleteEnrollmentMutation.isPending ? 'Đang xử lý...' : 'Xác nhận xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
