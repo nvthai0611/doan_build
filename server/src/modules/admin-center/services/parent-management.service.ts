@@ -993,7 +993,7 @@ export class ParentManagementService {
       });
 
       const totalPending = pendingFees.reduce(
-        (sum, fee) => sum + Number(fee.amount) - Number(fee.paidAmount),
+        (sum, fee) => sum + Number(fee.amount),
         0,
       );
 
