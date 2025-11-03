@@ -680,8 +680,8 @@ export default function StudentManagement() {
               <SelectContent>
                 <SelectItem value="Tất cả khóa học">Tất cả khóa học</SelectItem>
                 {subjectData?.map((subject: any) => (
-                  <SelectItem key={subject.id} value={subject.id}>
-                    {subject.name}
+                  <SelectItem key={subject?.id} value={subject?.id}>
+                    {subject?.name}
                   </SelectItem>
                 ))}
               </SelectContent>

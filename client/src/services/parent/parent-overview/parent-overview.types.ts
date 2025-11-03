@@ -6,6 +6,7 @@ export interface UpcomingLesson {
   teacher: string
   status: string
   attendanceStatus: string
+  studentName: string
 }
 
 export interface ActiveClass {
@@ -17,6 +18,7 @@ export interface ActiveClass {
   schedule: string
   room: string
   nextClass: string
+  studentName: string
 }
 
 export interface ParentOverviewData {

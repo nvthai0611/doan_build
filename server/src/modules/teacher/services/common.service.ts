@@ -10,8 +10,6 @@ export class CommonService {
    */
   async getListStudentOfClass(classId: string, teacherId: string) {
     try {
-      console.log(`🔍 Getting students for class: ${classId}, teacher: ${teacherId}`);
-
       const students = await this.prisma.enrollment.findMany({
         where: {
           classId: classId,
@@ -102,17 +100,12 @@ export class CommonService {
         },
       });
 
-      console.log(
-        `📚 Found ${students.length} studying students for class ${classId}`,
-      );
-
       return {
         success: true,
         data: students,
         message: `Lấy danh sách học sinh thành công - ${students.length} học sinh đang học`,
       };
     } catch (error) {
-      console.error(`❌ Error in getListStudentOfClass:`, error);
       throw new Error(`Lỗi khi lấy danh sách học sinh: ${error.message}`);
     }
   }
@@ -394,12 +387,6 @@ export class CommonService {
           },
         }),
       ]);
-
-      console.log(`📊 Class statistics for class ${classId}:`);
-      console.log(`   - Total active students: ${totalStudents}`);
-      console.log(`   - Attendance stats:`, attendanceStats);
-      console.log(`   - Grade stats:`, gradeStats);
-
       return {
         success: true,
         data: {

@@ -116,7 +116,7 @@ export class ClassManagementService {
                     const activeStudentCount = await this.prisma.enrollment.count({
                         where: {
                             classId: classItem.id,
-                            status: 'studying',
+                            status: { not: 'stopped' },
                             completedAt: null,
                             student: {
                                 user: {
@@ -355,7 +355,7 @@ export class ClassManagementService {
             const listStudent = await this.prisma.enrollment.findMany({
                 where: {
                     classId: classItem.id,
-                    status: 'studying',
+                    status: { not: 'stopped' },
                     student: {
                         user: {
                             isActive: true

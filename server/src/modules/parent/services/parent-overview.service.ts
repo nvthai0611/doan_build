@@ -106,9 +106,13 @@ export class ParentOverviewService {
         const classData = enrollment.class;
 
         // Get ALL sessions for progress calculation (not just today's sessions)
+        // Loại bỏ các buổi nghỉ học (day_off) khi tính tiến độ
         const allSessions = await this.prisma.classSession.findMany({
           where: {
             classId: classData.id,
+            status: {
+              not: 'day_off',
+            },
           },
         });
 
