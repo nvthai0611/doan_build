@@ -45,7 +45,7 @@ export function Combobox({
   options,
   value,
   onValueChange,
-  placeholder = "Chọn...",
+  // placeholder = "Chọn...",
   searchPlaceholder = "Tìm kiếm...",
   emptyText = "Không tìm thấy kết quả.",
   className,
@@ -124,7 +124,7 @@ export function Combobox({
                   )}
                 </>
               ) : (
-                <span className="text-muted-foreground">{placeholder}</span>
+                <span className="text-muted-foreground">Chọn</span>
               )}
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -168,7 +168,7 @@ export function Combobox({
                   {emptyText}
                 </div>
               )}
-               {searchValue.trim() && !filteredOptions.some(option => option.label.toLowerCase() === searchValue.toLowerCase()) && (
+               {allowCustom && searchValue.trim() && !filteredOptions.some(option => option.label.toLowerCase() === searchValue.toLowerCase()) && (
                  <div
                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground border-t mt-1"
                    onClick={handleCustomValue}

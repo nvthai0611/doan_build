@@ -8,6 +8,11 @@ enum Gender {
   OTHER = 'OTHER'
 }
 
+enum RelationshipType {
+  FATHER = 'FATHER',
+  MOTHER = 'MOTHER'
+}
+
 export class ChildDto {
   @ApiProperty({ description: 'Họ và tên con', example: 'Nguyễn Văn B' })
   @IsString()
@@ -71,12 +76,12 @@ export class RegisterParentDto {
   phone: string;
 
   @IsDateString({}, { message: 'Ngày sinh không hợp lệ' })
-  @IsNotEmpty({ message: 'Ngày sinh không được để trống' })
-  birthDate: string;
+  @IsOptional()
+  birthDate?: string;
 
-  @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
-  @IsNotEmpty({ message: 'Giới tính không được để trống' })
-  gender: Gender;
+  @IsEnum(RelationshipType, { message: 'Quan hệ không hợp lệ' })
+  @IsNotEmpty({ message: 'Quan hệ không được để trống' })
+  relationshipType: RelationshipType;
 
   @ApiProperty({ 
     description: 'Danh sách con (ít nhất 1 con)', 

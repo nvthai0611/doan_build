@@ -25,8 +25,8 @@ export interface RegisterRequest {
   fullName: string
   username: string
   phone: string
-  birthDate: string
-  gender: string
+  birthDate?: string
+  relationshipType: string
   role?: UserRole
   children: ChildData[]
 }

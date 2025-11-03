@@ -187,8 +187,7 @@ export class AuthService {
           password: hashedPassword,
           fullName: registerDto.fullName,
           phone: registerDto.phone,
-          birthDate: new Date(registerDto.birthDate),
-          gender: registerDto.gender,
+          birthDate: registerDto.birthDate ? new Date(registerDto.birthDate) : null,
           role: 'parent',
           roleId: parentRole.id,
           isActive: true,
@@ -199,6 +198,7 @@ export class AuthService {
       const parent = await prisma.parent.create({
         data: {
           userId: user.id,
+          relationshipType: registerDto.relationshipType,
         },
       });
 
