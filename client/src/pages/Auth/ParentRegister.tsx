@@ -90,9 +90,9 @@ export function ParentRegister() {
     })
   }
 
-  const handleGenderChange = (value: string) => {
+  const handleRelationshipTypeChange = (value: string) => {
     setFormData({
-      gender: value,
+      relationshipType: value,
     })
   }
 
@@ -110,24 +110,6 @@ export function ParentRegister() {
     updateChildInStore(id, field, value)
   }
 
-  // Handler to add new school
-  const handleAddSchool = (name: string, address?: string) => {
-    // Generate temporary ID for new school
-    const tempId = `temp_${crypto.randomUUID()}`
-    
-    const newSchool: ComboboxOption = {
-      value: tempId,
-      label: name,
-      description: address || ''
-    }
-
-    // Add to localSchools
-    setLocalSchools(prev => [...prev, newSchool])
-
-    sonnerToast.success(`Đã thêm trường học "${name}" vào danh sách`)
-    
-    return tempId
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -187,13 +169,8 @@ export function ParentRegister() {
       return
     }
 
-    if (!formData.gender) {
-      setError("Vui lòng chọn giới tính")
-      return
-    }
-
-    if (!formData.birthDate) {
-      setError("Vui lòng nhập ngày sinh")
+    if (!formData.relationshipType) {
+      setError("Vui lòng chọn Cha hoặc Mẹ")
       return
     }
 
@@ -230,8 +207,7 @@ export function ParentRegister() {
         password: formData.password,
         fullName: formData.fullName,
         phone: formData.phone,
-        birthDate: formData.birthDate,
-        gender: formData.gender,
+        relationshipType: formData.relationshipType,
         children: childrenData,
       })
 
@@ -496,45 +472,20 @@ export function ParentRegister() {
               </div>
             </div>
 
-            {/* Row 3: Birth Date & Gender */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Birth Date Input */}
-              <div className="space-y-2">
-                <Label htmlFor="birthDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Ngày sinh <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <Input
-                    id="birthDate"
-                    name="birthDate"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={handleChange}
-                    required
-                    className="pl-10 h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Gender Select */}
-              <div className="space-y-2">
-                <Label htmlFor="gender" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Giới tính <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.gender} onValueChange={handleGenderChange} required>
-                  <SelectTrigger className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all">
-                    <SelectValue placeholder="Chọn giới tính" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MALE">Nam</SelectItem>
-                    <SelectItem value="FEMALE">Nữ</SelectItem>
-                    <SelectItem value="OTHER">Khác</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Relationship Type Select */}
+            <div className="space-y-2">
+              <Label htmlFor="relationshipType" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Cha / Mẹ <span className="text-red-500">*</span>
+              </Label>
+              <Select value={formData.relationshipType} onValueChange={handleRelationshipTypeChange} required>
+                <SelectTrigger className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all">
+                  <SelectValue placeholder="Chọn" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FATHER">Cha</SelectItem>
+                  <SelectItem value="MOTHER">Mẹ</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Divider */}
@@ -646,17 +597,11 @@ export function ParentRegister() {
                           options={schools}
                           value={child.schoolId}
                           onValueChange={(value) => updateChild(child.id, 'schoolId', value)}
-                          placeholder={loadingSchools ? "Đang tải danh sách trường..." : "Chọn hoặc thêm trường học"}
+                          placeholder={loadingSchools ? "Đang tải danh sách trường..." : "Chọn trường học"}
                           searchPlaceholder="Tìm kiếm tên trường..."
                           emptyText={schoolsError ? "Lỗi tải danh sách trường học" : "Không tìm thấy trường học phù hợp"}
                           className="w-full h-10 bg-white dark:bg-slate-800"
-                          allowCustom={true}
-                          onAddCustom={(name, address) => {
-                            const newSchoolId = handleAddSchool(name, address)
-                            updateChild(child.id, 'schoolId', newSchoolId)
-                          }}
-                          customDialogTitle="Thêm trường học mới"
-                          customDialogDescription="Nhập tên và địa chỉ của trường học mới. Trường sẽ được thêm vào danh sách của bạn."
+                          allowCustom={false}
                           disabled={loadingSchools}
                         />
                         {loadingSchools && (

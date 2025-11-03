@@ -16,8 +16,7 @@ export interface ParentFormData {
   confirmPassword: string
   fullName: string
   phone: string
-  birthDate: string
-  gender: string
+  relationshipType: string
 }
 
 interface ParentRegisterState {
@@ -40,8 +39,7 @@ const initialFormData: ParentFormData = {
   confirmPassword: '',
   fullName: '',
   phone: '',
-  birthDate: '',
-  gender: '',
+  relationshipType: '',
 }
 
 const initialChild: Child = {
