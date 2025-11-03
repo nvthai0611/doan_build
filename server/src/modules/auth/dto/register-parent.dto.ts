@@ -8,9 +8,10 @@ enum Gender {
   OTHER = 'OTHER'
 }
 
-enum RelationshipType {
+export enum RelationshipType {
   FATHER = 'FATHER',
-  MOTHER = 'MOTHER'
+  MOTHER = 'MOTHER',
+  OTHER = 'OTHER'
 }
 
 export class ChildDto {
