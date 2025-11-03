@@ -129,4 +129,22 @@ export const classService = {
     return response;
   },
 
+  // Get transfer requests
+  getTransferRequests: async (params?: any) => {
+    const response = await apiClient.get(`${BASE_URL}/transfers`, params);
+    return response;
+  },
+
+  // Approve transfer request
+  approveTransfer: async (transferId: string, data?: any) => {
+    const response = await apiClient.post(`${BASE_URL}/transfers/${transferId}/approve`, data);
+    return response;
+  },
+
+  // Reject transfer request
+  rejectTransfer: async (transferId: string, data?: any) => {
+    const response = await apiClient.post(`${BASE_URL}/transfers/${transferId}/reject`, data);
+    return response;
+  },
+
 };
