@@ -12,14 +12,14 @@ export const parentClassJoinService = {
     }
   },
 
-  async requestJoinClassForm(params: { classId: string; studentId: string; password?: string; message?: string; commitmentFile: File }) {
+  async requestJoinClassForm(params: { classId: string; studentId: string; contractUploadId: string; password?: string; message?: string }) {
     try {
       const formData = new FormData();
       formData.append('classId', params.classId);
       formData.append('studentId', params.studentId);
+      formData.append('contractUploadId', params.contractUploadId);
       if (params.password) formData.append('password', params.password);
       if (params.message) formData.append('message', params.message);
-      formData.append('commitmentFile', params.commitmentFile);
 
       const response = await apiClient.post('/parent/class-join/request-join', formData, {
         contentType: 'multipart/form-data'

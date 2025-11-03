@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { X, Clock, Download, Upload, GraduationCap, User, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, GraduationCap, User, Calendar, AlertCircle, Upload, Download, X } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
 import { parentClassJoinService } from '../../../../../services/parent/class-join/class-join.service';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { parentStudentsService } from '../../../../../services/parent/students/s
 import { RecruitingClass } from '../../../../../services/common/public-classes.service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClassStatus, CLASS_STATUS_LABELS } from '../../../../../lib/constants';
-// Upload handled by backend; FE only previews
+import { parentCommitmentsService } from '../../../../../services/parent/commitments/commitments.service';
 
 interface RequestJoinClassSheetProps {
   open: boolean;
@@ -26,14 +26,16 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [contractFile, setContractFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState('');
+  const [contractFile, setContractFile] = useState<File | null>(null);
   const [contractPreviewUrl, setContractPreviewUrl] = useState<string>('');
   const [contractMimeType, setContractMimeType] = useState<string>('');
+  const [isUploadingCommitment, setIsUploadingCommitment] = useState(false);
   
-  // Link mẫu form cam kết học tập (có thể là Google Drive, Dropbox, etc.)
+  // Link mẫu form cam kết học tập
   const COMMITMENT_FORM_URL = 'https://res.cloudinary.com/dgqkmqkdz/raw/upload/v1761971845/ban-cam-ket-cua-hoc-sinh-so-2_1603112518_wtpcg3.docx';
   
   // Fetch danh sách con
@@ -45,16 +47,35 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const students = studentsResponse?.data || [];
   const hasNoChildren = !isLoadingStudents && students.length === 0;
 
+  // Fetch danh sách hợp đồng của học sinh đã chọn
+  const { data: commitmentsResponse } = useQuery({
+    queryKey: ['commitments', selectedStudentId],
+    queryFn: () => parentCommitmentsService.getStudentCommitments(selectedStudentId),
+    enabled: !!selectedStudentId && !!classData,
+  });
+
+  const allCommitments = commitmentsResponse?.data || [];
+  
+  // Filter hợp đồng có môn học của lớp và chưa hết hạn
+  const validCommitments = allCommitments.filter((commitment: any) => {
+    if (!classData?.subject?.id) return false;
+    const hasSubject = commitment.subjectIds?.includes(classData.subject.id);
+    const isNotExpired = !commitment.expiredAt || new Date(commitment.expiredAt) > new Date();
+    return hasSubject && isNotExpired;
+  });
+
   // Reset when close
   useEffect(() => {
     if (!open) {
       setPassword('');
       setMessage('');
-      setContractFile(null);
-      setContractPreviewUrl('');
-      setContractMimeType('');
       setSelectedStudentId('');
       setShowPasswordInput(false);
+      setSelectedContractId('');
+      setContractFile(null);
+      if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
+      setContractPreviewUrl('');
+      setContractMimeType('');
     }
   }, [open]);
 
@@ -88,13 +109,53 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       return;
     }
 
-    if (!contractFile) {
+    // Nếu không có hợp đồng hợp lệ, cần upload file mới
+    if (validCommitments.length === 0 && !contractFile) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng upload bản cam kết học tập",
+        description: "Chưa có hợp đồng hợp lệ. Vui lòng upload hợp đồng mới hoặc tạo hợp đồng cho môn học này trước.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Nếu có hợp đồng nhưng chưa chọn, hoặc không có hợp đồng nhưng chưa upload file
+    if (validCommitments.length > 0 && !selectedContractId) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn hợp đồng cam kết học tập",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Nếu upload file mới, cần upload trước để tạo hợp đồng
+    let finalContractId = selectedContractId;
+    if (contractFile && !selectedContractId) {
+      setIsUploadingCommitment(true);
+      try {
+        // Upload hợp đồng mới với môn học của lớp
+        const uploadResponse = await parentCommitmentsService.uploadCommitment({
+          studentId: selectedStudentId,
+          file: contractFile,
+          subjectIds: [classData.subject?.id || ''], // Chỉ upload cho môn học của lớp này
+          note: `Hợp đồng được tạo khi đăng ký lớp ${classData.name}`,
+        });
+        finalContractId = uploadResponse.data.id;
+        toast({
+          title: "Thành công",
+          description: "Đã tạo hợp đồng mới",
+        });
+      } catch (error: any) {
+        setIsUploadingCommitment(false);
+        toast({
+          title: "Lỗi",
+          description: error.response?.data?.message || "Không thể upload hợp đồng. Vui lòng thử lại.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsUploadingCommitment(false);
     }
 
     // Nếu lớp yêu cầu password nhưng chưa nhập
@@ -110,13 +171,12 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
 
     setIsLoading(true);
     try {
-      // Send multipart form-data; backend handles upload
       await parentClassJoinService.requestJoinClassForm({
         classId: classData.id,
         studentId: selectedStudentId,
+        contractUploadId: finalContractId,
         password: password || undefined,
         message: message || `Phụ huynh đăng ký lớp học cho con`,
-        commitmentFile: contractFile as File,
       });
       
       toast({
@@ -413,153 +473,224 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
               </p>
             </div>
 
-            {/* Upload file cam kết */}
+            {/* Chọn hợp đồng cam kết hoặc upload mới */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-medium text-muted-foreground">
                   Bản cam kết học tập <span className="text-red-500">*</span>
                 </Label>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-primary"
-                  onClick={() => {
-                    // Download mẫu form cam kết từ bên thứ 3
-                    window.open(COMMITMENT_FORM_URL, '_blank');
-                  }}
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  Tải mẫu cam kết
-                </Button>
-              </div>
-              
-              <div className={`border-2 border-dashed rounded-lg p-4 hover:border-primary/50 transition-colors ${!contractFile ? 'border-red-300' : ''}`}>
-                <input
-                  type="file"
-                  id="contract-upload"
-                  accept="image/*,.pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      // Validate file size (max 5MB)
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast({
-                          title: "Lỗi",
-                          description: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setContractFile(file);
-                      setContractMimeType(file.type || '');
-                      try {
-                        const url = URL.createObjectURL(file);
-                        setContractPreviewUrl(url);
-                      } catch (_) {
-                        setContractPreviewUrl('');
-                      }
-                    }
-                  }}
-                  className="hidden"
-                />
-                
-                {!contractFile ? (
-                  <label
-                    htmlFor="contract-upload"
-                    className="flex flex-col items-center gap-2 cursor-pointer"
+                {validCommitments.length === 0 && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-primary"
+                    onClick={() => {
+                      window.open(COMMITMENT_FORM_URL, '_blank');
+                    }}
                   >
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                    <div className="text-center">
-                      <p className="text-sm font-medium">
-                        Click để chọn file
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Hỗ trợ: JPG, PNG, PDF (tối đa 5MB)
-                      </p>
-                    </div>
-                  </label>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
-                          <Upload className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium truncate max-w-[200px]">
-                            {contractFile.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {(contractFile.size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {contractPreviewUrl && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const a = document.createElement('a');
-                              a.href = contractPreviewUrl;
-                              a.target = '_blank';
-                              a.rel = 'noopener noreferrer';
-                              a.click();
-                            }}
-                          >
-                            Xem file
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
+                    <Download className="w-4 h-4 mr-1" />
+                    Tải mẫu cam kết
+                  </Button>
+                )}
+              </div>
+              {selectedStudentId ? (
+                <div className="space-y-3 mt-2">
+                  {validCommitments.length > 0 ? (
+                    <>
+                      <select
+                        value={selectedContractId}
+                        onChange={(e) => {
+                          setSelectedContractId(e.target.value);
+                          // Reset file khi chọn hợp đồng có sẵn
+                          if (e.target.value) {
                             setContractFile(null);
                             if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
                             setContractPreviewUrl('');
                             setContractMimeType('');
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                          }
+                        }}
+                        className="w-full px-3 py-2 border rounded-md bg-background"
+                      >
+                        <option value="">-- Chọn hợp đồng có sẵn --</option>
+                        {validCommitments.map((commitment: any) => (
+                          <option key={commitment.id} value={commitment.id}>
+                            Hợp đồng {new Date(commitment.uploadedAt).toLocaleDateString('vi-VN')} - 
+                            Hết hạn: {commitment.expiredAt 
+                              ? new Date(commitment.expiredAt).toLocaleDateString('vi-VN')
+                              : 'Không hết hạn'}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="text-xs text-muted-foreground text-center py-1">
+                        hoặc
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-3 border border-amber-300 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                            Chưa có hợp đồng hợp lệ
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            {allCommitments.length === 0
+                              ? `Học sinh này chưa có hợp đồng nào cho môn "${classData.subject?.name || ''}". Vui lòng upload hợp đồng bên dưới.`
+                              : `Không có hợp đồng nào cho môn "${classData.subject?.name || ''}" hoặc hợp đồng đã hết hạn. Vui lòng upload hợp đồng mới.`}
+                          </p>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Inline preview */}
-                    {contractPreviewUrl && (
-                      contractMimeType.startsWith('image/') ? (
-                        <img
-                          src={contractPreviewUrl}
-                          alt="Xem trước bản cam kết"
-                          className="max-h-64 rounded border"
-                        />
+                  )}
+                  
+                  {/* Upload file mới (nếu chưa chọn hợp đồng có sẵn) */}
+                  {!selectedContractId && (
+                    <div className={`border-2 border-dashed rounded-lg p-4 hover:border-primary/50 transition-colors ${!contractFile ? 'border-red-300' : ''}`}>
+                      <input
+                        type="file"
+                        id="contract-upload"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Validate file size (max 5MB)
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast({
+                                title: "Lỗi",
+                                description: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setContractFile(file);
+                            setContractMimeType(file.type || '');
+                            try {
+                              const url = URL.createObjectURL(file);
+                              setContractPreviewUrl(url);
+                            } catch (_) {
+                              setContractPreviewUrl('');
+                            }
+                          }
+                        }}
+                        className="hidden"
+                        disabled={isUploadingCommitment}
+                      />
+                      
+                      {!contractFile ? (
+                        <label
+                          htmlFor="contract-upload"
+                          className="flex flex-col items-center gap-2 cursor-pointer"
+                        >
+                          <Upload className="w-8 h-8 text-muted-foreground" />
+                          <div className="text-center">
+                            <p className="text-sm font-medium">
+                              Click để upload hợp đồng mới
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Hỗ trợ: JPG, PNG, PDF (tối đa 5MB)
+                            </p>
+                          </div>
+                        </label>
                       ) : (
-                        <div className="text-xs text-muted-foreground">
-                          File tài liệu (PDF). Bấm "Xem file" để mở trong tab mới.
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                                <Upload className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium truncate max-w-[200px]">
+                                  {contractFile.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {(contractFile.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {contractPreviewUrl && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const a = document.createElement('a');
+                                    a.href = contractPreviewUrl;
+                                    a.target = '_blank';
+                                    a.rel = 'noopener noreferrer';
+                                    a.click();
+                                  }}
+                                >
+                                  Xem file
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setContractFile(null);
+                                  if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
+                                  setContractPreviewUrl('');
+                                  setContractMimeType('');
+                                }}
+                                disabled={isUploadingCommitment}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Inline preview */}
+                          {contractPreviewUrl && (
+                            contractMimeType.startsWith('image/') ? (
+                              <img
+                                src={contractPreviewUrl}
+                                alt="Xem trước bản cam kết"
+                                className="max-h-64 rounded border"
+                              />
+                            ) : (
+                              <div className="text-xs text-muted-foreground">
+                                File tài liệu (PDF). Bấm "Xem file" để mở trong tab mới.
+                              </div>
+                            )
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Hợp đồng này sẽ được tạo cho môn "{classData.subject?.name || ''}" khi gửi yêu cầu
+                          </p>
                         </div>
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Tải mẫu cam kết, điền thông tin và upload bản scan/ảnh đã ký
-              </p>
-              {!contractFile && (
-                <p className="text-xs text-red-500 mt-1">Bắt buộc phải upload bản cam kết</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {validCommitments.length > 0 && selectedContractId && (
+                    <div className="text-xs text-muted-foreground">
+                      Hợp đồng này bao gồm môn học của lớp và chưa hết hạn
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Vui lòng chọn học sinh trước
+                </p>
+              )}
+              {!selectedContractId && !contractFile && selectedStudentId && (
+                <p className="text-xs text-red-500 mt-1">Bắt buộc phải chọn hợp đồng hoặc upload hợp đồng mới</p>
               )}
             </div>
 
             {/* Nút gửi yêu cầu */}
             <Button
               onClick={handleRequestJoin}
-              disabled={isLoading || !selectedStudentId || !contractFile}
+              disabled={isLoading || isUploadingCommitment || !selectedStudentId || (!selectedContractId && !contractFile)}
               className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
             >
-              {isLoading ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu tham gia'}
+              {isUploadingCommitment 
+                ? 'Đang tạo hợp đồng...' 
+                : isLoading 
+                ? 'Đang gửi yêu cầu...' 
+                : 'Gửi yêu cầu tham gia'}
             </Button>
           </div>
           )}
