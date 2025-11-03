@@ -199,25 +199,28 @@ export class EnrollmentManagementService {
             }
 
             // Check capacity (count active enrollments)
-            const activeEnrollments = await this.prisma.enrollment.count({
-                where: {
-                    classId: body.classId,
-                    status: {
-                        notIn: ['stopped', 'graduated']
+            // Only validate capacity if overrideCapacity is not set to true
+            if (!body.overrideCapacity) {
+                const activeEnrollments = await this.prisma.enrollment.count({
+                    where: {
+                        classId: body.classId,
+                        status: {
+                            notIn: ['stopped', 'graduated']
+                        }
                     }
-                }
-            });
+                });
 
-            const availableSlots = classItem.maxStudents ? classItem.maxStudents - activeEnrollments : 999999;
-            
-            if (body.studentIds.length > availableSlots) {
-                throw new HttpException(
-                    {
-                        success: false,
-                        message: `Không đủ chỗ. Chỉ còn ${availableSlots} chỗ trống`
-                    },
-                    HttpStatus.BAD_REQUEST
-                );
+                const availableSlots = classItem.maxStudents ? classItem.maxStudents - activeEnrollments : 999999;
+                
+                if (body.studentIds.length > availableSlots) {
+                    throw new HttpException(
+                        {
+                            success: false,
+                            message: `Không đủ chỗ. Chỉ còn ${availableSlots} chỗ trống`
+                        },
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
             }
 
             // Determine enrollment status based on class sessions
@@ -472,7 +475,7 @@ export class EnrollmentManagementService {
                             classId: classId,
                             sessionDate: {
                                 gte: enrollment.enrolledAt, // Từ ngày đăng ký
-                                lte: new Date()    // Đến ngày kết thúc lớp hoặc hiện tại
+                                lte: endDate
                             }
                         }
                     });

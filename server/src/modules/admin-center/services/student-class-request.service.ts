@@ -162,7 +162,7 @@ export class StudentClassRequestService {
   /**
    * Approve student class request
    */
-  async approveRequest(requestId: string) {
+  async approveRequest(requestId: string, overrideCapacity = false) {
     try {
       // Get request details
       const request = await this.prisma.studentClassRequest.findUnique({
@@ -236,18 +236,20 @@ export class StudentClassRequestService {
       console.log('request', request);
       
 
-      // // Kiểm tra lớp có còn chỗ không
-      if (
-        request.class.maxStudents &&
-        request.class._count.enrollments >= request.class.maxStudents
-      ) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Lớp học đã đầy, không thể chấp nhận thêm học sinh',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
+      // // Kiểm tra lớp có còn chỗ không (chỉ check nếu không override)
+      if (!overrideCapacity) {
+        if (
+          request.class.maxStudents &&
+          request.class._count.enrollments >= request.class.maxStudents
+        ) {
+          throw new HttpException(
+            {
+              success: false,
+              message: 'Lớp học đã đầy, không thể chấp nhận thêm học sinh',
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
 
       // Kiểm tra học sinh đã enrolled chưa

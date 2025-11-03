@@ -1440,10 +1440,10 @@ export class ClassManagementService {
           );
 
           // Auto set status dựa trên khoảng cách
-          // < 3 ngày: happening (đang diễn ra)
-          // >= 3 ngày: has_not_happened (chưa diễn ra)
+          // Đúng ngày (diffInDays === 0): happening (đang diễn ra)
+          // Các ngày khác: has_not_happened (chưa diễn ra)
           const sessionStatus =
-            diffInDays < 3 ? 'happening' : 'has_not_happened';
+            diffInDays === 0 ? 'happening' : 'has_not_happened';
 
           sessions.push({
             classId,

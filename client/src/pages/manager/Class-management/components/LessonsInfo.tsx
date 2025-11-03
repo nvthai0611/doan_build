@@ -17,7 +17,7 @@ import { usePagination } from '../../../../hooks/usePagination';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import { toast } from 'sonner';
-import { SessionStatus, SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '../../../../lib/constants';
+import { SessionStatus, SESSION_STATUS_LABELS, SESSION_STATUS_COLORS, ClassStatus, CLASS_STATUS_LABELS } from '../../../../lib/constants';
 
 interface LessonsInfoProps {
   classId: string;
@@ -113,7 +113,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
   const endIndex = startIndex + pagination.itemsPerPage;
   const sessions = filteredSessions.slice(startIndex, endIndex);
-
+  console.log(filteredSessions);
+  
   // Update pagination total items when data changes
   useEffect(() => {
     // Đảm bảo currentPage không vượt quá totalPages
@@ -125,7 +126,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   // Calculate metrics từ filteredSessions
   const metrics = {
     attended: filteredSessions.reduce((sum: number, s: any) => sum + (s.attendanceCount || 0), 0),
-    onTime: filteredSessions.reduce((sum: number, s: any) => sum + (s.status === 'in_progress' ? (s.attendanceCount || 0) : 0), 0),
+    onTime: filteredSessions.reduce((sum: number, s: any) => sum + (s.status === 'happening' ? (s.attendanceCount || 0) : 0), 0),
     late: filteredSessions.reduce((sum: number, s: any) => sum + (s.lateCount || 0), 0),
     excusedAbsence: filteredSessions.reduce((sum: number, s: any) => sum + (s.excusedAbsenceCount || 0), 0),
     unexcusedAbsence: filteredSessions.reduce((sum: number, s: any) => sum + (s.unexcusedAbsenceCount || 0), 0),
@@ -371,19 +372,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col items-center text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                {metrics.onTime}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Đúng giờ
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col items-center text-center">
               <div className="text-2xl font-bold text-orange-600 mb-1">
                 {metrics.late}
               </div>
@@ -446,7 +434,10 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           <div className="flex gap-2">
             <Sheet open={isAddLessonOpen} onOpenChange={setIsAddLessonOpen}>
               <SheetTrigger asChild>
-                <Button >
+                <Button 
+                  disabled={classData?.status === ClassStatus.COMPLETED || classData?.status === ClassStatus.CANCELLED || allSessions.length > 0}
+                  title={classData?.status === ClassStatus.COMPLETED || classData?.status === ClassStatus.CANCELLED || allSessions.length > 0 ? `Không thể tạo buổi học khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
+                  >
                   <Plus className="h-4 w-4 mr-2" />
                   Tự động tạo buổi học
                 </Button>

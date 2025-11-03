@@ -156,6 +156,7 @@ export class ScheduleManagementService {
      * @param expectedStartDate - Ngày bắt đầu dự kiến của lớp mới. Nếu có, chỉ trả về lớp có overlap với khoảng thời gian [expectedStartDate, 31/05 năm sau]
      */
     async getAllActiveClassesWithSchedules(expectedStartDate?: string) {
+
         const classes = await this.prisma.class.findMany({
             where: { 
                 status: {
@@ -217,56 +218,66 @@ export class ScheduleManagementService {
         // Filter các lớp có overlap với khoảng thời gian
         // Nếu có expectedStartDate: dùng expectedStartDate
         // Nếu không có: dùng ngày hiện tại
-        const rangeStart = expectedStartDate 
-            ? new Date(expectedStartDate)
-            : new Date(); // Dùng ngày hiện tại nếu không có expectedStartDate
-        
-        rangeStart.setHours(0, 0, 0, 0);
+        let rangeStartDate: Date;
+        if (expectedStartDate) {
+            // Parse date string thành UTC date (format: YYYY-MM-DD)
+            const [year, month, day] = expectedStartDate.split('-').map(Number);
+            rangeStartDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        } else {
+            // Dùng ngày hiện tại
+            const now = new Date();
+            rangeStartDate = new Date(Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate(),
+                0, 0, 0, 0
+            ));
+        }
         
         // Tính ngày kết thúc: 31/05 năm sau
-        const nextYear = rangeStart.getFullYear() + 1;
-        const rangeEnd = new Date(nextYear, 4, 31); // Tháng 5 (index 4)
-        rangeEnd.setHours(23, 59, 59, 999);
+        const nextYear = rangeStartDate.getUTCFullYear() + 1;
+        const rangeEndDate = new Date(Date.UTC(nextYear, 4, 31, 0, 0, 0, 0)); // Tháng 5 (index 4)
 
         result = result.filter((cls) => {
                 // Lấy ngày bắt đầu của lớp (ưu tiên actualStartDate, nếu không có thì dùng expectedStartDate)
-                const classStart = cls.actualStartDate 
-                    ? new Date(cls.actualStartDate)
-                    : cls.expectedStartDate 
-                    ? new Date(cls.expectedStartDate)
-                    : null;
-                
-                if (!classStart) return false;
+                const classStartRaw = cls.actualStartDate || cls.expectedStartDate;
+                if (!classStartRaw) return false;
+
+                const classStart = new Date(classStartRaw);
+                const classStartDate = new Date(Date.UTC(
+                    classStart.getUTCFullYear(), 
+                    classStart.getUTCMonth(), 
+                    classStart.getUTCDate(), 
+                    0, 0, 0, 0
+                ));
 
                 // Lấy ngày kết thúc của lớp
-                let classEnd: Date | null = null;
+                let classEndDate: Date;
                 if (cls.actualEndDate) {
-                    classEnd = new Date(cls.actualEndDate);
-                    classEnd.setHours(23, 59, 59, 999);
+                    const classEnd = new Date(cls.actualEndDate);
+                    classEndDate = new Date(Date.UTC(
+                        classEnd.getUTCFullYear(), 
+                        classEnd.getUTCMonth(), 
+                        classEnd.getUTCDate(), 
+                        0, 0, 0, 0
+                    ));
                 } else {
                     // Mặc định là 31/05 năm sau của classStart
-                    const classNextYear = classStart.getFullYear() + 1;
-                    classEnd = new Date(classNextYear, 4, 31); // Tháng 5 (index 4)
-                    classEnd.setHours(23, 59, 59, 999);
+                    const classNextYear = classStartDate.getUTCFullYear() + 1;
+                    classEndDate = new Date(Date.UTC(classNextYear, 4, 31, 0, 0, 0, 0)); // Tháng 5 (index 4)
                 }
-
-                // Normalize dates để so sánh chỉ theo ngày
-                const normalizedClassStart = new Date(classStart.getFullYear(), classStart.getMonth(), classStart.getDate());
-                const normalizedClassEnd = new Date(classEnd.getFullYear(), classEnd.getMonth(), classEnd.getDate());
-                const normalizedRangeStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
-                const normalizedRangeEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
 
                 // Lớp có overlap nếu:
                 // 1. Lớp chưa kết thúc trước khi khoảng thời gian bắt đầu: classEnd >= rangeStart
                 // 2. Lớp chưa bắt đầu sau khi khoảng thời gian kết thúc: classStart <= rangeEnd
                 
                 // Nếu lớp đã kết thúc trước khi khoảng thời gian bắt đầu → loại bỏ
-                if (normalizedClassEnd < normalizedRangeStart) {
+                if (classEndDate.getTime() < rangeStartDate.getTime()) {
                     return false;
                 }
                 
                 // Nếu lớp sẽ bắt đầu sau khi khoảng thời gian kết thúc → loại bỏ
-                if (normalizedClassStart > normalizedRangeEnd) {
+                if (classStartDate.getTime() > rangeEndDate.getTime()) {
                     return false;
                 }
                 
