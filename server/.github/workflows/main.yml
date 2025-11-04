@@ -41,7 +41,7 @@ jobs:
     - name: npm build (server)
       run: npm run build
       working-directory: ./server
-
+#TETDTDTDTĐTD
     # Bước 5: Xóa devDependencies (server)
     - name: Prune production dependencies (server)
       run: npm prune --production
