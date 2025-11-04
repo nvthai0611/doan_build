@@ -57,14 +57,25 @@ jobs:
     - name: Check if App Service exists
       run: |
         echo "Checking App Service: ${{ env.AZURE_APP_NAME }} in Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
+        echo "Current subscription:"
+        az account show --query "{name:name, id:id}" -o table
+        echo ""
+        echo "Checking Resource Group..."
+        if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
+          echo "✅ Resource Group exists!"
+        else
+          echo "❌ Resource Group does NOT exist!"
+          exit 1
+        fi
+        echo ""
+        echo "Checking App Service..."
         if az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
           echo "✅ App Service exists!"
-          az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "{name:name, state:state, location:location}" -o table
+          az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "{name:name, state:state, location:location, defaultHostName:defaultHostName}" -o table
         else
           echo "❌ App Service does NOT exist!"
-          echo "Please create the App Service first using one of these methods:"
-          echo "1. Azure Portal: https://portal.azure.com"
-          echo "2. Azure CLI: See server/create-app-service.md"
+          echo "Listing all App Services in Resource Group:"
+          az webapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[].name" -o table
           exit 1
         fi
 
