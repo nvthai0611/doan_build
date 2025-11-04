@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router-dom"
 import { publicClassesService, type RecruitingClass } from "../../services/common/public-classes.service"
@@ -33,8 +33,6 @@ import { BlogSection } from "./components/blog-section"
 // import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
-
-// Dữ liệu giáo viên sẽ fetch từ API
 
 const news = [
   {
@@ -146,6 +144,33 @@ export const LandingPage = () => {
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.classCode?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Map subjectId -> subjectName để hiển thị
+  const subjectNameById = useMemo(() => {
+    try {
+      return new Map<string, string>(subjects.map((s: any) => [s.id, s.name]))
+    } catch {
+      return new Map<string, string>()
+    }
+  }, [subjects])
+
+  const getInitials = (fullName?: string) =>
+    (fullName || 'GV')
+      .split(' ')
+      .filter(Boolean)
+      .slice(-2)
+      .map((p) => p[0]?.toUpperCase())
+      .join('')
+
+  const displaySubject = (t: any) => {
+    if (t?.subject && typeof t.subject === 'string') return subjectNameById.get(t.subject) || t.subject
+    if (Array.isArray(t?.subjects)) {
+      if (t.subjects.length === 1) return subjectNameById.get(t.subjects[0]) || t.subjects[0]
+      if (t.subjects.length > 1) return 'Đa môn'
+    }
+    return 'Giáo viên'
+  }
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -368,40 +393,81 @@ export const LandingPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((teacher) => (
-              <div key={teacher.id} className="teacher-card">
-                <div className="teacher-avatar">{teacher.avatar}</div>
-                <div className="p-4">
-                  <h3 className="font-bold text-lg mb-1">{teacher.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {teacher.subject}
-                  </p>
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Kinh nghiệm:
-                      </span>
-                      <span className="font-semibold">
-                        {teacher.experience} năm
-                      </span>
+            {teachers
+              .filter((t: any) => Array.isArray(t?.assignedClasses) && t.assignedClasses.length > 0)
+              .slice()
+              .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0) || (b.students || 0) - (a.students || 0))
+              .map((t: any) => {
+                const name = t?.name || 'Giáo viên'
+                const subjectIds: string[] = Array.isArray((t as any).subjects) ? (t as any).subjects : []
+                const allSubjectNames = subjectIds.map((id) => subjectNameById.get(id) || id).filter(Boolean)
+                const subjectShort = allSubjectNames.length > 0
+                  ? `${allSubjectNames.join(', ')}${allSubjectNames.length > 2 ? `` : ''}`
+                  : displaySubject(t)
+                const displayExp = typeof t?.experience === 'number' && t.experience >= 1 ? `${t.experience} năm` : undefined
+                const students = typeof t?.students === 'number' && t.students > 0 ? `${t.students}+` : '—'
+                const rating = typeof t?.rating === 'number' && t.rating > 0 ? t.rating.toFixed(1) : ''
+                const isFeatured = (t?.rating || 0) >= 4.5 || (t?.students || 0) >= 100
+                const activeNames: string[] = Array.isArray(t?.assignedClasses)
+                  ? t.assignedClasses.filter((c: any) => c?.status === 'active' || c?.status === 'ready').map((c: any) => c?.className).filter(Boolean)
+                  : []
+                const activeNamesLabel = activeNames.length > 0
+                  ? `${activeNames.join(', ')}${activeNames.length > 2 ? `` : ''}`
+                  : ''
+
+                return (
+                  <div key={t.id} className="teacher-card">
+                    <div className="teacher-avatar relative overflow-hidden">
+                      {t?.avatar ? (
+                        <img src={t.avatar} alt={name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted text-foreground">
+                          {getInitials(name)}
+                        </div>
+                      )}
+                      {isFeatured && (
+                        <span className="absolute left-3 top-3 rounded-full bg-yellow-400 px-2.5 py-0.5 text-xs font-semibold text-black shadow">
+                          Nổi bật
+                        </span>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Học sinh:</span>
-                      <span className="font-semibold">{teacher.students}+</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Đánh giá:</span>
-                      <span className="font-semibold text-orange-500">
-                        ⭐ {teacher.rating}
-                      </span>
+                    <div className="p-4">
+                      <h3 className="font-bold text-lg mb-1 line-clamp-1">{name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-1" title={allSubjectNames.join(', ')}>
+                        {subjectShort}
+                      </p>
+                      <div className="space-y-2 text-sm mb-4">
+                        {displayExp && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Kinh nghiệm:</span>
+                            <span className="font-semibold">{displayExp}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Học sinh:</span>
+                          <span className="font-semibold">{students}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Đánh giá:</span>
+                          <span className="font-semibold text-orange-500">{rating ? `⭐ ${rating}` : 'Chưa có'}</span>
+                        </div>
+                        {activeNamesLabel && (
+                          <div className="line-clamp-1 tooltip" title={activeNamesLabel}>
+                            <span className="text-muted-foreground">Đang dạy:</span>{' '}
+                            <span className="font-semibold">{activeNamesLabel}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        className="w-full btn-gradient text-sm"
+                        onClick={() => document.getElementById('classes')?.scrollIntoView({ behavior: 'smooth' })}
+                      >
+                        Xem lớp đang tuyển
+                      </Button>
                     </div>
                   </div>
-                  <Button className="w-full btn-gradient text-sm">
-                    Xem chi tiết
-                  </Button>
-                </div>
-              </div>
-            ))}
+                )
+              })}
           </div>
         </div>
       </section>

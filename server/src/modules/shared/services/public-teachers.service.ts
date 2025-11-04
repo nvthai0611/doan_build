@@ -31,6 +31,8 @@ export class PublicTeachersService {
         classes: {
           select: {
             status: true,
+            name: true,
+            classCode: true,
             enrollments: {
               where: {
                 status: { in: ['studying', 'not_been_updated'] },
@@ -69,11 +71,17 @@ export class PublicTeachersService {
         id: t.id,
         name: t.user.fullName || 'Giáo viên',
         subject: subjectLabel,
+        subjects: t.subjects,
         experience,
         students,
         rating,
         avatar: t.user.avatar,
         classesStatus: t.classes.map(c => c.status),
+        assignedClasses: t.classes.filter(c => c.status === 'active' || c.status === 'ready').map(c => ({
+          className: c.name,
+          classCode: c.classCode,
+          status: c.status,
+        })),
       };
     });
 
