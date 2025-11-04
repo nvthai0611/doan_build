@@ -25,11 +25,11 @@ jobs:
 
     # Bước 2: Cài đặt Node.js
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: server/package-lock.json # Chỉ cache cho server
+        # Tắt cache để tránh lỗi tìm package-lock.json ở root
+        # Cache sẽ được xử lý tự động bởi npm khi chạy trong working-directory
 
     # Bước 3: Cài đặt dependencies cho server
     # Thêm 'working-directory' để chạy lệnh bên trong thư mục 'server'
