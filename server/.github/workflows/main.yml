@@ -53,38 +53,70 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Bước 6.5: Kiểm tra App Service có tồn tại không
-    - name: Check if App Service exists
+    # Bước 6.5: Set subscription và kiểm tra App Service
+    - name: Set subscription and verify App Service
       run: |
-        echo "Checking App Service: ${{ env.AZURE_APP_NAME }} in Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
-        echo "Current subscription:"
-        az account show --query "{name:name, id:id}" -o table
+        # Set subscription cụ thể (từ .vscode/settings.json)
+        SUBSCRIPTION_ID="57aa97be-db9c-421e-a27c-957c97d7ec1c"
+        echo "Setting subscription to: $SUBSCRIPTION_ID"
+        az account set --subscription $SUBSCRIPTION_ID
         echo ""
-        echo "Checking Resource Group..."
+        echo "Current subscription:"
+        az account show --query "{name:name, id:id, tenantId:tenantId}" -o table
+        echo ""
+        echo "Checking Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
         if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
           echo "✅ Resource Group exists!"
+          az group show --name ${{ env.AZURE_RESOURCE_GROUP }} --query "{name:name, location:location, provisioningState:provisioningState}" -o table
         else
           echo "❌ Resource Group does NOT exist!"
+          echo "Listing all Resource Groups:"
+          az group list --query "[].name" -o table
           exit 1
         fi
         echo ""
-        echo "Checking App Service..."
+        echo "Checking App Service: ${{ env.AZURE_APP_NAME }}"
         if az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
           echo "✅ App Service exists!"
-          az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "{name:name, state:state, location:location, defaultHostName:defaultHostName}" -o table
+          az webapp show --name ${{ env.AZURE_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "{name:name, state:state, location:location, defaultHostName:defaultHostName, resourceGroup:resourceGroup}" -o table
         else
           echo "❌ App Service does NOT exist!"
           echo "Listing all App Services in Resource Group:"
-          az webapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[].name" -o table
+          az webapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[].{name:name, state:state, location:location}" -o table
+          echo ""
+          echo "Listing all App Services in subscription:"
+          az webapp list --query "[].{name:name, resourceGroup:resourceGroup}" -o table | head -20
           exit 1
         fi
 
-    # Bước 7: Deploy lên Azure App Service
+    # Bước 7: Set environment variables cho App Service
+    - name: Configure App Service settings
+      run: |
+        echo "Setting environment variables..."
+        az webapp config appsettings set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_APP_NAME }} \
+          --settings \
+            NODE_ENV=production \
+            PORT=8080 \
+            FRONTEND_URL=https://thayquang.site \
+            WEBSITE_NODE_DEFAULT_VERSION="~18" \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false
+        
+        echo "Setting startup command..."
+        az webapp config set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_APP_NAME }} \
+          --startup-file "npm run start:prod"
+
+    # Bước 8: Deploy lên Azure App Service
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_APP_NAME }}
         resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
+        subscription-id: 57aa97be-db9c-421e-a27c-957c97d7ec1c
         # Chỉ định deploy nội dung của thư mục 'server'
         package: ./server 
         

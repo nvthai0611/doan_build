@@ -39,8 +39,39 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   //CORS + cookie
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  const allowedOrigins = isProduction
+    ? [
+        'https://thayquang.site',
+        'https://www.thayquang.site',
+        process.env.FRONTEND_URL,
+      ].filter(Boolean)
+    : [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+  
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (!allowed) return false;
+        return allowed === origin;
+      });
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS blocked origin: ${origin}`);
+        callback(null, false);
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
