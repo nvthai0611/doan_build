@@ -21,6 +21,7 @@ export class PublicClassesController {
     @Query('limit') limit?: number,
     @Query('subjectId') subjectId?: string,
     @Query('gradeId') gradeId?: string,
+    @Query('teacherId') teacherId?: string,
   ) {
     console.log();
     
@@ -29,6 +30,7 @@ export class PublicClassesController {
       limit: limit ? Number(limit) : 10,
       subjectId,
       gradeId,
+      teacherId,
     });
   }
 
