@@ -1722,7 +1722,7 @@ export class ParentManagementService {
     }
   }
 
-  async updateStatusPayment(paymentId: string, status: string) {
+async updateStatusPayment(paymentId: string, status: string, customNotes?: string) {
   try {
     checkId(paymentId);
 
@@ -1753,8 +1753,16 @@ export class ParentManagementService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    // Build notes
     let note = existingPayment.notes || "";
-    if(existingPayment.status == "partially_paid"){
+    
+    // If customNotes provided, use it
+    if (customNotes && customNotes.trim()) {
+      note = customNotes.trim();
+    } 
+    // Otherwise, use default note
+    else if (existingPayment.status === "partially_paid" && status === "completed") {
       note += " => Phụ huynh đã thanh toán phần còn lại của hóa đơn.";
     }
 

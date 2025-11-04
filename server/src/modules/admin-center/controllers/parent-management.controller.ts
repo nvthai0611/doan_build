@@ -398,7 +398,8 @@ export class ParentManagementController {
 @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy thanh toán' })
 async updatePaymentStatus(
   @Param('id') paymentId: string,
-  @Query('status') status: string
+  @Query('status') status: string,
+  @Body() body: any
 ) {
   if (!status || status.trim().length === 0) {
     throw new HttpException(
@@ -418,7 +419,8 @@ async updatePaymentStatus(
   try {
     const result = await this.parentManagementService.updateStatusPayment(
       paymentId,
-      status
+      status,
+    body.note
     );
 
     return {
