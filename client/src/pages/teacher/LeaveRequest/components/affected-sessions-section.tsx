@@ -1,8 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
-import type { AffectedSession } from '../Leave-request-form';
+import type { AffectedSessionItem } from '../leave-request-form';
 
 interface AffectedSessionsSectionProps {
-  sessions: AffectedSession[];
+  sessions: AffectedSessionItem[];
 }
 
 export function AffectedSessionsSection({
