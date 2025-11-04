@@ -1,0 +1,470 @@
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { 
+  Users, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Eye,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  School,
+  BookOpen,
+  GraduationCap,
+  UserCheck,
+  Loader2,
+  Search
+} from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { teacherCommonService } from "../../../../../services/teacher/common/common.service"
+import Loading from "../../../../../components/Loading/LoadingPage"
+import { toast } from "sonner"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+
+interface HocVienTabProps {
+  onAddStudent: () => void
+  onEditStudent: (student: any) => void
+  onDeleteStudent: (student: any) => void
+  teacherClassAssignmentId: string
+}
+
+interface StudentDetailModalProps {
+  isOpen: boolean
+  onClose: () => void
+  studentId: string | null
+  teacherClassAssignmentId: string
+}
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'studying':
+        return 'Đang học'
+      case 'not_been_updated':
+        return 'Chưa cập nhật'
+        case 'stopped':
+        return 'Nghỉ học'
+      case 'graduated':
+        return 'Hoàn thành'
+      default:
+        return status
+    }
+  }
+
+    const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'studying':
+        return 'bg-green-100 text-green-700'
+      case 'not_been_updated':
+        return 'bg-red-100 text-red-700'
+      case 'graduated':
+        return 'bg-blue-100 text-blue-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+function StudentDetailModal({ isOpen, onClose, studentId, teacherClassAssignmentId }: any) {
+  // Sử dụng TanStack Query để fetch student detail
+  const { 
+    data: student, 
+    isLoading: isLoadingDetail, 
+    error: errorDetail 
+  } = useQuery({
+    queryKey: ['student-detail', studentId, teacherClassAssignmentId],
+    queryFn: async () => {
+      if (!studentId) return null
+      return await teacherCommonService.getDetailStudentOfClass(studentId, teacherClassAssignmentId)
+    },
+    enabled: !!studentId && !!teacherClassAssignmentId && isOpen,
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    gcTime: 10 * 60 * 1000, // Giữ cache 10 phút
+    refetchOnWindowFocus: false,
+    retry: 1
+  })
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN')
+    } catch {
+      return "N/A"
+    }
+  }
+
+  const formatDateTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString('vi-VN')
+    } catch {
+      return "N/A"
+    }
+  }
+
+
+
+
+  // Show error toast when error occurs
+  if (errorDetail) {
+    toast.error("Không thể tải thông tin chi tiết học viên", { duration: 3000 })
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            Thông tin chi tiết học viên
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Loading State */}
+        {isLoadingDetail && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Đang tải thông tin học viên...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {errorDetail && (
+          <div className="text-center py-8">
+            <p className="text-red-500 mb-4">Có lỗi xảy ra khi tải thông tin học viên</p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Thử lại
+            </Button>
+          </div>
+        )}
+
+        {/* Success State - Show student data */}
+        {student && !isLoadingDetail && !errorDetail && (
+          <div className="space-y-6">
+            {/* Basic Info Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Thông tin cơ bản
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-6">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage 
+                      src={student.student?.user?.avatar} 
+                      alt={student.student?.user?.fullName}
+                    />
+                    <AvatarFallback className="text-lg">
+                      {student.student?.user?.fullName?.charAt(0) || 'S'}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
+                      <p className="text-lg font-semibold">{student.student?.user?.fullName || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Mã học viên</label>
+                      <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {student.student?.studentCode || 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p>{student.student?.user?.email || 'Không có email'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
+                        <p>{student.student?.user?.phone || 'Không có số điện thoại'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Ngày sinh</label>
+                        <p>{student.student?.user?.birthDate ? formatDate(student.student.user.birthDate) : 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Giới tính</label>
+                      <p>{student.student?.user?.gender === 'male' ? 'Nam' : student.student?.user?.gender === 'female' ? 'Nữ' : 'Khác'}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Address & School Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Thông tin địa chỉ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>{student.student?.address || 'Chưa cập nhật'}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <School className="h-5 w-5" />
+                    Trường học
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Tên trường</label>
+                    <p>{student.student?.school?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Địa chỉ trường</label>
+                    <p className="text-sm">{student.student?.school?.address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">SĐT trường</label>
+                    <p className="text-sm">{student.student?.school?.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Khối lớp</label>
+                    <p>{student.student?.grade || 'N/A'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Parent Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Thông tin người dám hộ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Họ và tên</label>
+                    <p>{student.student?.parent?.user?.fullName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                    <p>{student.student?.parent?.user?.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Số điện thoại</label>
+                    <p>{student.student?.parent?.user?.phone || 'N/A'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Class & Enrollment Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Thông tin lớp học
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Tên lớp</label>
+                    <p className="font-medium">{student.class?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Môn học</label>
+                    <p>{student.class?.subject?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Mã môn</label>
+                    <p className="font-mono text-sm">{student.class?.subject?.code || 'N/A'}</p>
+                  </div>
+                  {/* <div>
+                    <label className="text-sm font-medium text-muted-foreground">Khối</label>
+                    <p>{student.class?.grade || 'N/A'}</p>
+                  </div> */}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Thông tin ghi danh
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Trạng thái</label>
+                    <div className="mt-1">
+                      <Badge className={getStatusColor(student.status)}>
+                        {getStatusText(student.status)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Ngày ghi danh</label>
+                    <p>{formatDateTime(student.enrolledAt) || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Học kỳ</label>
+                    <p>{student.semester || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Năm học</label>
+                    <p>{student.teacherClassAssignment?.academicYear || 'N/A'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function HocVienTab({ classId, classData }: any) {
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [students, setStudents] = useState<any[]>([])
+
+  // Thay đổi handleStudentClick để sử dụng TanStack Query
+  const handleStudentClick = (studentId: string) => {
+    setSelectedStudentId(studentId)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedStudentId(null)
+  }
+
+  const filteredStudents = classData?.emrollments?.filter((student: any) => {
+    return student.student?.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
+      || student.student?.studentCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  })
+  
+  
+  // if (isLoading) {
+  //   return <Loading />
+  // }
+
+  // if (error) {
+  //   toast.error("Đã có lỗi xảy ra khi tải danh sách học viên.", { duration: 3000 })
+  //   return null
+  // }
+
+  
+  return (
+    <div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Danh sách học viên ({classData?.emrollments?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Search and Add Button */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Tìm kiếm học sinh..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddStudent}>
+                <Plus className="w-4 h-4" />
+                Thêm học sinh
+              </Button> */}
+            </div>
+
+            {filteredStudents && filteredStudents.length > 0 ? (
+              filteredStudents.map((student: any) => (
+                <div 
+                  key={student.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => handleStudentClick(student.studentId)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="font-semibold text-blue-600">
+                        {student.student?.user?.fullName?.charAt(0) || 'S'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{student.student?.user?.fullName || 'N/A'}</p>
+                      <p className="text-sm text-muted-foreground">{student.student?.user?.email || 'N/A'}</p>
+                      <p className="text-xs text-muted-foreground">Mã SV: {student.student?.studentCode || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <Badge variant={student.status === "studying" ? "default" : "secondary"} className={getStatusColor(student.status)}>
+                        {getStatusText(student.status)}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tham gia lớp học: {new Date(student.enrolledAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStudentClick(student.studentId)
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-8">
+                Chưa có học viên nào trong lớp.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Student Detail Modal */}
+      <StudentDetailModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        studentId={selectedStudentId}
+        teacherClassAssignmentId={classId}
+      />
+    </div>
+  )
+}

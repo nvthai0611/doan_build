@@ -1,0 +1,64 @@
+import { Controller, Get, Query, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ScheduleManagementService } from '../services/schedule-management.service';
+import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
+
+@ApiTags('Admin Center - Schedule Management')
+@Controller('schedule-management')
+export class ScheduleManagementController {
+  constructor(private readonly scheduleService: ScheduleManagementService) {}
+
+  @Get('sessions/day')
+  @ApiOperation({ summary: 'Lấy lịch theo ngày' })
+  async getByDay(@Query() query: QueryScheduleDto) {
+    const data = await this.scheduleService.getScheduleByDay(query);
+    return { data, message: 'Lấy lịch theo ngày thành công' };
+  }
+
+  @Get('sessions/week')
+  @ApiOperation({ summary: 'Lấy lịch theo tuần' })
+  async getByWeek(@Query() query: QueryScheduleWeekDto) {
+    const data = await this.scheduleService.getScheduleByWeek(query);
+    return { data, message: 'Lấy lịch theo tuần thành công' };
+  }
+
+  @Get('sessions/month')
+  @ApiOperation({ summary: 'Lấy lịch theo tháng' })
+  async getByMonth(@Query() query: QueryScheduleMonthDto) {
+    // Parse thủ công month/year từ string và validate phạm vi
+    const monthNum = Number(query.month);
+    const yearNum = Number(query.year);
+    if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
+      throw new Error('month must be an integer between 1 and 12');
+    }
+    if (!Number.isInteger(yearNum) || yearNum < 1970 || yearNum > 3000) {
+      throw new Error('year must be an integer between 1970 and 3000');
+    }
+    const data = await this.scheduleService.getScheduleByMonth({ month: monthNum as any, year: yearNum as any });
+    return { data, message: 'Lấy lịch theo tháng thành công' };
+  }
+
+  @Get('sessions/:id')
+  @ApiOperation({ summary: 'Lấy chi tiết buổi học theo ID' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async getSessionById(@Param('id') sessionId: string) {
+    const data = await this.scheduleService.getSessionById(sessionId);
+    return { data, message: 'Lấy chi tiết buổi học thành công' };
+  }
+
+  @Get('sessions/:id/attendance')
+  @ApiOperation({ summary: 'Lấy danh sách điểm danh của buổi học' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async getSessionAttendance(@Param('id') sessionId: string) {
+    const data = await this.scheduleService.getSessionAttendance(sessionId);
+    return { data, message: 'Lấy danh sách điểm danh thành công' };
+  }
+
+  @Get('classes/active-schedules')
+  @ApiOperation({ summary: 'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng' })
+  async getAllActiveClassesWithSchedules(@Query() query: any) {
+    const expectedStartDate = query?.expectedStartDate;
+    const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
+    return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
+  }
+}

@@ -1,4 +1,7 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 const {
   SMTP_HOST,
@@ -12,8 +15,8 @@ const {
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
-  port: Number(SMTP_PORT), // 587, 25
-  secure: SMTP_SECURE === `"true"`, // true for port 465, false for other ports
+  port: Number(SMTP_PORT),
+  secure: SMTP_PORT === '465' || SMTP_SECURE === 'true',
   auth: {
     user: SMTP_USERNAME,
     pass: SMTP_PASSWORD,
@@ -21,29 +24,34 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
+  connectionTimeout: 60000,
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
 });
 
-export default async (
+export default async function emailUtil(
   to: string,
   subject: string,
-  message: string,
-): Promise<any> => {
+  html: string,
+) {
   try {
+    if (!SMTP_USERNAME || !SMTP_PASSWORD) {
+      throw new Error('Thiếu cấu hình SMTP_USERNAME hoặc SMTP_PASSWORD.');
+    }
+
+    await transporter.verify();
+
     const info = await transporter.sendMail({
-      from: `"${SMTP_FROMNAME}" <${SMTP_FROMEMAIL}>`,
+      from: `"${SMTP_FROMNAME}" <${SMTP_FROMEMAIL || SMTP_USERNAME}>`,
       to,
       subject,
-      html: message,
+      html,
     });
 
-    console.log(`"Email sent: %s"`, info.messageId);
     return info;
   } catch (error: any) {
-    console.error(`"Failed to send email:"`, error);
-    throw {
-      status: 500,
-      message: `"Không gửi được email. Vui lòng kiểm tra cấu hình hoặc App Password."`,
-      error,
-    };
+    throw new Error(
+      error.message || 'Không thể gửi email, vui lòng kiểm tra cấu hình.',
+    );
   }
-};
+}

@@ -1,0 +1,532 @@
+# Dự án SEP - Hệ thống quản lý trung tâm giáo dục
+
+## Tổng quan dự án
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: NestJS + TypeScript + Prisma + PostgreSQL
+- **UI Library**: shadcn/ui + Lucide React icons
+- **State Management**: TanStack Query (React Query)
+- **Authentication**: JWT + AuthGuard
+
+## Cấu trúc thư mục chi tiết
+
+### Frontend (client/)
+```
+client/
+├── public/                    # Static assets
+│   └── vite.svg
+├── src/
+│   ├── assets/               # Static resources
+│   │   ├── css/             # Global CSS files
+│   │   │   └── style.css
+│   │   ├── scss/            # SCSS files
+│   │   │   └── style.scss
+│   │   └── shadcn-ui/       # shadcn/ui components
+│   │       ├── components/  # UI components (Button, Input, etc.)
+│   │       └── lib/         # shadcn/ui utilities
+│   ├── components/          # Reusable UI components
+│   │   ├── Auth/           # Authentication components
+│   │   │   ├── AuthGuard.tsx
+│   │   │   ├── PermissionGate.tsx
+│   │   │   └── RoleGate.tsx
+│   │   ├── Banner/         # Banner components
+│   │   ├── Card/           # Card components
+│   │   ├── common/         # Common components
+│   │   │   └── Table/      # Table components
+│   │   ├── Loading/        # Loading components
+│   │   ├── PermissionTest/ # Permission testing
+│   │   └── Sidebar/        # Sidebar components
+│   ├── core/               # Core application logic
+│   │   └── Layout.tsx
+│   ├── hooks/              # Custom React hooks
+│   │   ├── use-permission.ts
+│   │   ├── useClient.ts
+│   │   ├── usePagination.ts
+│   │   └── useTracking.ts
+│   ├── layouts/            # Layout components
+│   │   ├── AuthLayout/     # Authentication layout
+│   │   ├── DefaultLayout/  # Default layout
+│   │   └── DynamicLayout/  # Dynamic layout
+│   ├── lib/                # Libraries và configurations
+│   │   ├── auth.tsx        # Authentication utilities
+│   │   ├── class.ts        # Class utilities
+│   │   ├── constants.ts    # Application constants
+│   │   ├── permission.tsx  # Permission utilities
+│   │   ├── settings.tsx    # Settings configuration
+│   │   ├── theme.tsx       # Theme configuration
+│   │   └── utils.ts        # General utilities
+│   ├── middlewares/        # Route middlewares
+│   │   ├── AuthMiddleware.tsx
+│   │   └── GuestMiddleware.tsx
+│   ├── pages/              # Page components
+│   │   ├── Auth/           # Authentication pages
+│   │   ├── Home/           # Home pages
+│   │   ├── manager/        # Manager pages
+│   │   └── teacher/        # Teacher pages
+│   ├── routes/             # Route definitions
+│   │   ├── privateRoutes.tsx
+│   │   └── publicRoutes.tsx
+│   ├── services/           # API services
+│   │   ├── center-owner/   # Center owner services
+│   │   ├── common/         # Common services
+│   │   ├── parent/         # Parent services
+│   │   ├── student/        # Student services
+│   │   ├── teacher/        # Teacher services
+│   │   └── index.ts        # Service exports
+│   ├── stores/             # State management (Redux/Zustand)
+│   │   ├── middlewares/    # Store middlewares
+│   │   ├── slices/         # Store slices
+│   │   └── store.ts        # Store configuration
+│   ├── types/              # TypeScript type definitions
+│   │   ├── dtos/           # Data Transfer Objects
+│   │   ├── js-cookie.d.ts  # Cookie types
+│   │   ├── response.ts     # API response types
+│   │   └── styles.d.ts    # Style types
+│   ├── utils/              # Utility functions
+│   │   ├── clientAxios.ts  # Axios configuration
+│   │   ├── commonData.ts   # Common data utilities
+│   │   └── format.ts       # Formatting utilities
+│   ├── App.tsx             # Main App component
+│   ├── main.tsx            # Application entry point
+│   └── vite-env.d.ts       # Vite environment types
+├── components.json         # shadcn/ui configuration
+├── index.html              # HTML template
+├── package.json            # Dependencies
+├── postcss.config.js       # PostCSS configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+├── tsconfig.json           # TypeScript configuration
+└── vite.config.js          # Vite configuration
+```
+
+### Backend (server/)
+```
+server/
+├── prisma/                 # Database schema và migrations
+│   ├── migrations/         # Database migrations
+│   ├── seeder/            # Database seeders
+│   └── schema.prisma      # Prisma schema
+├── src/
+│   ├── common/            # Shared utilities
+│   │   ├── constants.ts   # Application constants
+│   │   ├── decorators/    # Custom decorators
+│   │   ├── filters/       # Exception filters
+│   │   ├── guards/        # Authentication guards
+│   │   ├── interceptors/  # Response interceptors
+│   │   └── middleware/    # Custom middleware
+│   ├── db/                # Database configuration
+│   │   └── prisma.service.ts
+│   ├── modules/           # Feature modules
+│   │   ├── admin-center/  # Admin center module
+│   │   ├── auth/          # Authentication module
+│   │   ├── class-history/ # Class history module
+│   │   ├── manager/       # Manager module
+│   │   ├── parent/        # Parent module
+│   │   ├── school/        # School module
+│   │   ├── shared/        # Shared module
+│   │   ├── student/       # Student module
+│   │   └── teacher/       # Teacher module
+│   ├── request/           # Request types
+│   ├── transform/         # Data transformers
+│   ├── utils/             # Utility functions
+│   │   ├── crypto.helper.util.ts
+│   │   ├── email.util.ts
+│   │   ├── hasing.util.ts
+│   │   ├── jwt.util.ts
+│   │   ├── redis.util.ts
+│   │   └── validate.util.ts
+│   ├── app.controller.ts   # Main controller
+│   ├── app.module.ts      # Main module
+│   ├── app.service.ts     # Main service
+│   └── main.ts            # Application entry point
+├── test/                  # Test files
+├── package.json           # Dependencies
+├── nest-cli.json          # NestJS CLI configuration
+├── tsconfig.json          # TypeScript configuration
+└── tsconfig.build.json    # Build configuration
+```
+
+## Quy tắc coding
+
+### Frontend (React + TypeScript)
+- Sử dụng functional components với hooks
+- Luôn type props với any và state với any    
+- Sử dụng TanStack Query cho data fetching
+- Component naming: PascalCase (VD: `LeaveRequestsTab`)
+- File naming: kebab-case (VD: `leave-requests-tab.tsx`)
+
+### Backend (NestJS + Prisma)
+- Sử dụng decorators cho validation và API documentation
+- Service pattern cho business logic
+- Controller chỉ handle HTTP requests/responses
+- DTOs cho request/response validation
+- Error handling với HttpException
+
+### Database (Prisma)
+- Model naming: PascalCase (VD: `LeaveRequest`)
+- Field naming: camelCase (VD: `createdAt`)
+- Luôn có `id`, `createdAt`, `updatedAt` cho các model chính
+- Sử dụng relations thay vì foreign keys trực tiếp
+
+## API Conventions
+- RESTful endpoints với proper HTTP methods
+- Response format: `{ data: any, message: string }`
+- Error format: `{ success: false, error: string, message: string }`
+- Pagination: `{ meta: { total, page, limit, totalPages } }`
+
+## Thư viện giao diện và UI Framework
+
+### Frontend Libraries
+- **React 18+**: Core framework
+- **TypeScript**: Type safety
+- **Vite**: Build tool và dev server
+- **Tailwind CSS**: Utility-first CSS framework
+- **shadcn/ui**: Component library (built on Radix UI)
+- **Lucide React**: Icon library
+- **TanStack Query**: Data fetching và caching
+- **Axios**: HTTP client
+- **React Router**: Client-side routing
+- **React Hook Form**: Form handling
+- **Zod**: Schema validation
+
+### UI Components Location
+```
+client/src/assets/shadcn-ui/
+├── components/           # shadcn/ui components
+│   ├── button.tsx       # Button component
+│   ├── input.tsx        # Input component
+│   ├── card.tsx         # Card component
+│   ├── table.tsx        # Table component
+│   ├── dialog.tsx       # Dialog/Modal component
+│   ├── dropdown-menu.tsx # Dropdown component
+│   ├── form.tsx         # Form components
+│   ├── toast.tsx        # Toast notifications
+│   ├── badge.tsx        # Badge component
+│   ├── avatar.tsx       # Avatar component
+│   ├── calendar.tsx     # Calendar component
+│   ├── date-picker.tsx  # Date picker
+│   ├── select.tsx       # Select component
+│   ├── textarea.tsx     # Textarea component
+│   ├── checkbox.tsx     # Checkbox component
+│   ├── radio-group.tsx  # Radio group
+│   ├── switch.tsx       # Switch component
+│   ├── slider.tsx       # Slider component
+│   ├── progress.tsx     # Progress bar
+│   ├── skeleton.tsx     # Loading skeleton
+│   ├── alert.tsx        # Alert component
+│   ├── tabs.tsx         # Tabs component
+│   ├── accordion.tsx    # Accordion component
+│   ├── sheet.tsx        # Sheet/Drawer component
+│   └── popover.tsx      # Popover component
+└── lib/
+    └── utils.ts         # Utility functions (cn, etc.)
+```
+
+### Custom Components Location
+```
+client/src/components/
+├── Auth/                # Authentication components
+├── Banner/              # Banner components
+├── Card/                # Custom card components
+├── common/              # Common reusable components
+│   └── Table/          # Custom table components
+├── Loading/             # Loading components
+├── PermissionTest/      # Permission testing components
+└── Sidebar/             # Sidebar components
+```
+
+### Layout Components
+```
+client/src/layouts/
+├── AuthLayout/          # Authentication layout
+├── DefaultLayout/       # Default application layout
+└── DynamicLayout/       # Dynamic layout system
+```
+
+## UI/UX Guidelines
+- Sử dụng shadcn/ui components làm base
+- Responsive design với Tailwind CSS
+- Dark mode support (theme switching)
+- Loading states và error handling
+- Debouncing cho search inputs (500ms)
+- DataTable component cho tables với pagination
+- Consistent spacing và typography
+- Accessibility compliance (ARIA labels)
+- Mobile-first approach
+
+## Naming Conventions
+- **Variables**: camelCase (`userName`, `isLoading`)
+- **Functions**: camelCase (`getUserData`, `handleSubmit`)
+- **Components**: PascalCase (`UserProfile`, `DataTable`)
+- **Files**: kebab-case (`user-profile.tsx`, `data-table.tsx`)
+- **API endpoints**: kebab-case (`/admin-center/leave-requests`)
+- **Database tables**: snake_case (`leave_requests`)
+
+## Code Style
+- Sử dụng 2 spaces cho indentation
+- Single quotes cho strings
+- Semicolons ở cuối statements
+- Trailing commas trong objects/arrays
+- Destructuring khi có thể
+- Async/await thay vì .then()
+
+## Common Patterns
+
+### React Query Usage
+```typescript
+const { data, isLoading, isError, refetch } = useQuery({
+  queryKey: ['resource', params],
+  queryFn: () => service.getData(params),
+  enabled: !!requiredParam,
+  staleTime: 30000,
+  refetchOnWindowFocus: false
+})
+```
+
+### Service Pattern
+```typescript
+class Service {
+  async getData(params: any) {
+    try {
+      const response = await apiClient.get('/endpoint', params)
+      return response
+    } catch (error) {
+      console.error('Error:', error)
+      throw error
+    }
+  }
+}
+```
+
+### Error Handling
+```typescript
+try {
+  const result = await operation()
+  return { data: result }
+} catch (error) {
+  return { error: error.message }
+}
+```
+
+## Database Relations
+- User -> Teacher (1:1)
+- User -> Student (1:1) 
+- User -> Parent (1:1)
+- Teacher -> LeaveRequest (1:N)
+- Class -> Student (N:N through enrollments)
+
+## Security
+- JWT authentication
+- Role-based access control
+- Input validation với DTOs
+- SQL injection prevention với Prisma
+- CORS configuration
+
+## Performance
+- Lazy loading cho routes
+- Memoization với useMemo/useCallback
+- Pagination cho large datasets
+- Debouncing cho search
+- Image optimization
+
+## Testing
+- Unit tests cho utilities
+- Integration tests cho APIs
+- Component testing với React Testing Library
+
+## Deployment
+- Frontend: Vite build
+- Backend: NestJS build
+- Database: PostgreSQL với Prisma migrations
+- Environment variables cho configs
+
+## Installation & Setup
+
+### Frontend Dependencies
+```bash
+# Core dependencies
+npm install react react-dom
+npm install -D @types/react @types/react-dom
+
+# Build tools
+npm install -D vite @vitejs/plugin-react typescript
+
+# UI & Styling
+npm install tailwindcss postcss autoprefixer
+npm install @radix-ui/react-slot class-variance-authority clsx tailwind-merge
+npm install lucide-react
+
+# State management & Data fetching
+npm install @tanstack/react-query @tanstack/react-query-devtools
+npm install axios
+
+# Routing & Forms
+npm install react-router-dom
+npm install react-hook-form @hookform/resolvers zod
+
+# Utilities
+npm install js-cookie
+npm install -D @types/js-cookie
+
+# shadcn/ui setup
+npx shadcn-ui@latest init
+npx shadcn-ui@latest add button input card table dialog
+```
+
+### Backend Dependencies
+```bash
+# Core dependencies
+npm install @nestjs/core @nestjs/common @nestjs/platform-express
+npm install @nestjs/jwt @nestjs/passport passport passport-jwt
+npm install @nestjs/config @nestjs/throttler
+
+# Database
+npm install prisma @prisma/client
+npm install -D prisma
+
+# Validation & Security
+npm install class-validator class-transformer
+npm install bcryptjs jsonwebtoken
+npm install -D @types/bcryptjs @types/jsonwebtoken
+
+# Utilities
+npm install nodemailer redis
+npm install -D @types/nodemailer
+```
+
+### shadcn/ui Components Installation
+```bash
+# Essential components
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add input
+npx shadcn-ui@latest add card
+npx shadcn-ui@latest add table
+npx shadcn-ui@latest add dialog
+npx shadcn-ui@latest add dropdown-menu
+npx shadcn-ui@latest add form
+npx shadcn-ui@latest add toast
+npx shadcn-ui@latest add badge
+npx shadcn-ui@latest add avatar
+npx shadcn-ui@latest add calendar
+npx shadcn-ui@latest add date-picker
+npx shadcn-ui@latest add select
+npx shadcn-ui@latest add textarea
+npx shadcn-ui@latest add checkbox
+npx shadcn-ui@latest add radio-group
+npx shadcn-ui@latest add switch
+npx shadcn-ui@latest add slider
+npx shadcn-ui@latest add progress
+npx shadcn-ui@latest add skeleton
+npx shadcn-ui@latest add alert
+npx shadcn-ui@latest add tabs
+npx shadcn-ui@latest add accordion
+npx shadcn-ui@latest add sheet
+npx shadcn-ui@latest add popover
+```
+
+## Common Commands
+```bash
+# Frontend
+npm run dev          # Start dev server
+npm run build        # Build for production
+npm run type-check   # TypeScript check
+npm run lint         # ESLint check
+
+# Backend  
+npm run start:dev    # Start dev server
+npm run build        # Build for production
+npm run start:prod   # Start production server
+npx prisma migrate   # Run migrations
+npx prisma generate  # Generate Prisma client
+npx prisma studio    # Open Prisma Studio
+npx prisma seed      # Run database seeders
+
+# Database
+npx prisma migrate dev --name init    # Create migration
+npx prisma migrate reset             # Reset database
+npx prisma db push                   # Push schema changes
+```
+
+## Component Usage Guidelines
+
+### shadcn/ui Components
+```typescript
+// Import từ assets/shadcn-ui/components
+import { Button } from '@/assets/shadcn-ui/components/button'
+import { Input } from '@/assets/shadcn-ui/components/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/assets/shadcn-ui/components/card'
+
+// Usage example
+<Card>
+  <CardHeader>
+    <CardTitle>Title</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <Input placeholder="Enter text..." />
+    <Button>Submit</Button>
+  </CardContent>
+</Card>
+```
+
+### Custom Components
+```typescript
+// Import từ components/
+import { AuthGuard } from '@/components/Auth/AuthGuard'
+import { DataTable } from '@/components/common/Table/DataTable'
+import { LoadingPage } from '@/components/Loading/LoadingPage'
+```
+
+### Layout Usage
+```typescript
+// Import từ layouts/
+import { DefaultLayout } from '@/layouts/DefaultLayout/DefaultLayout'
+import { AuthLayout } from '@/layouts/AuthLayout/AuthLayout'
+```
+
+### Service Usage
+```typescript
+// Import từ services/
+import { teacherService } from '@/services/teacher'
+import { studentService } from '@/services/student'
+import { centerOwnerService } from '@/services/center-owner'
+```
+
+### Hook Usage
+```typescript
+// Import từ hooks/
+import { usePermission } from '@/hooks/use-permission'
+import { usePagination } from '@/hooks/usePagination'
+import { useTracking } from '@/hooks/useTracking'
+```
+
+## File Organization Rules
+
+### Component Files
+- **Location**: `client/src/components/[Category]/`
+- **Naming**: PascalCase cho component name, kebab-case cho file name
+- **Structure**: Mỗi component có folder riêng với `.tsx` và `.scss` files
+
+### Page Files  
+- **Location**: `client/src/pages/[Role]/`
+- **Naming**: PascalCase cho page name, kebab-case cho file name
+- **Structure**: Mỗi page có folder riêng với các sub-components
+
+### Service Files
+- **Location**: `client/src/services/[Module]/`
+- **Naming**: camelCase cho service name, kebab-case cho file name
+- **Structure**: Mỗi module có folder riêng với các service files
+
+### Type Files
+- **Location**: `client/src/types/`
+- **Naming**: camelCase cho type name, kebab-case cho file name
+- **Structure**: Group theo module hoặc functionality
+
+## Notes
+- Luôn check linter errors trước khi commit
+- Sử dụng meaningful variable names
+- Comment complex business logic
+- Keep components small and focused
+- Reuse components khi có thể
+- Follow DRY principle
+- Import components từ đúng path theo cấu trúc thư mục
+- Sử dụng TypeScript types cho tất cả props và state
+- Test components với React Testing Library
+- Optimize performance với React.memo và useMemo khi cần
