@@ -45,7 +45,7 @@ export function StudentCommitmentTab({ studentId, studentName, parentId }: Stude
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [statusFilter, setStatusFilter] = useState<"all" | "active"| "expired">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all")
   const [fileNameQuery, setFileNameQuery] = useState("")
   const [noteQuery, setNoteQuery] = useState("")
 
@@ -255,6 +255,40 @@ export function StudentCommitmentTab({ studentId, studentName, parentId }: Stude
         />
       </div>
 
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Tổng hợp đồng</p>
+              <p className="text-3xl font-bold">{statistics.total}</p>
+            </div>
+            <FileText className="w-12 h-12 text-gray-400" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Đang hoạt động</p>
+              <p className="text-3xl font-bold text-green-600">{statistics.active}</p>
+            </div>
+            <FileText className="w-12 h-12 text-green-400" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Đã hết hạn</p>
+              <p className="text-3xl font-bold text-red-600">{statistics.expired}</p>
+            </div>
+            <FileText className="w-12 h-12 text-red-400" />
+          </CardContent>
+        </Card>
+      </div>
+
+
       {/* Filters row outside the table */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
         <div className="flex-1 flex flex-col md:flex-row gap-3">
@@ -325,39 +359,6 @@ export function StudentCommitmentTab({ studentId, studentName, parentId }: Stude
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Tổng hợp đồng</p>
-              <p className="text-3xl font-bold">{statistics.total}</p>
-            </div>
-            <FileText className="w-12 h-12 text-gray-400" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Đang hoạt động</p>
-              <p className="text-3xl font-bold text-green-600">{statistics.active}</p>
-            </div>
-            <FileText className="w-12 h-12 text-green-400" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Đã hết hạn</p>
-              <p className="text-3xl font-bold text-red-600">{statistics.expired}</p>
-            </div>
-            <FileText className="w-12 h-12 text-red-400" />
-          </CardContent>
-        </Card>
-      </div>
-
       <DataTable
         data={paginatedData}
         columns={columns}
@@ -365,7 +366,7 @@ export function StudentCommitmentTab({ studentId, studentName, parentId }: Stude
         emptyMessage="Chưa có đơn xin học nào được tải lên"
         rowKey="id"
         hoverable
-  enableSearch={false}
+        enableSearch={false}
         enableSort
         className="[&_td]:py-4"
         pagination={{
