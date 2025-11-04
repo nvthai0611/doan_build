@@ -3,6 +3,7 @@ import { PrismaService } from 'src/db/prisma.service';
 import { generateQNCode } from 'src/utils/function.util';
 import hash from 'src/utils/hasing.util';
 import { checkId } from 'src/utils/validate.util';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 
 interface CreateStudentDto {
   fullName: string;
@@ -15,6 +16,8 @@ interface CreateStudentDto {
   parentId?: string;
   schoolId: string;
   password?: string;
+  applicationFile?: Express.Multer.File; // File đơn xin học
+  subjectIds?: string[]; // Các môn học được chọn
 }
 
 interface UpdateStudentDto {
@@ -66,7 +69,10 @@ const SCHOOL_SELECT = {
 
 @Injectable()
 export class StudentManagementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   private formatStudentResponse(student: any) {
     return {
@@ -177,7 +183,7 @@ export class StudentManagementService {
           }
         });
 
-        return prisma.student.create({
+        const student = await prisma.student.create({
           data: {
             userId: newUser.id,
             studentCode,
@@ -192,6 +198,53 @@ export class StudentManagementService {
             school: { select: SCHOOL_SELECT }
           }
         });
+
+        // Upload application file to ContractUpload if provided
+        if (createStudentData.applicationFile) {
+          const file = createStudentData.applicationFile;
+          
+          // Upload to Cloudinary
+          const uploadResult = await this.cloudinaryService.uploadDocument(
+            file,
+            'student-applications' // Folder name in Cloudinary
+          );
+
+          // Parse subjectIds from string if needed
+          let subjectIds: string[] = [];
+          if (createStudentData.subjectIds) {
+            if (Array.isArray(createStudentData.subjectIds)) {
+              subjectIds = createStudentData.subjectIds;
+            } else if (typeof createStudentData.subjectIds === 'string') {
+              try {
+                subjectIds = JSON.parse(createStudentData.subjectIds);
+              } catch (e) {
+                subjectIds = [];
+              }
+            }
+          }
+
+          // Calculate expiredAt: May 31 of next year
+          const now = new Date();
+          const nextYear = now.getFullYear() + 1;
+          const expiredAt = new Date(nextYear, 4, 31, 23, 59, 59); // Month is 0-indexed, so 4 = May
+
+          await prisma.contractUpload.create({
+            data: {
+              studentId: student.id,
+              parentId: createStudentData.parentId || null,
+              contractType: 'student_commitment', // Loại: Đơn xin học
+              subjectIds: subjectIds, // Mảng các môn học
+              uploadedImageUrl: uploadResult.secure_url, // Cloudinary URL
+              uploadedImageName: file.originalname,
+              uploadedAt: new Date(),
+              expiredAt: expiredAt, // Ngày 31/5 năm sau
+              note: `Đơn xin học thêm cho học sinh ${student.user.fullName} (${studentCode})${subjectIds.length > 0 ? ` - ${subjectIds.length} môn học` : ''}`,
+              status: 'active'
+            }
+          });
+        }
+
+        return student;
       });
 
       return {
