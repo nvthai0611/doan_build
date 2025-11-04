@@ -147,6 +147,7 @@ export class FinancialService {
                 date: payment.paidAt,
                 amount: Number(payment.amount),
                 paidAmount: Number(payment.paidAmount),
+                returnMoney: Number(payment.returnMoney || 0), // thêm tiền trả lại
                 orderDate: payment.createdAt,
                 method: payment.method || 'bank_transfer',
                 status: payment.status,
@@ -156,7 +157,7 @@ export class FinancialService {
                 expirationDate: payment.expirationDate,
                 allocations: (payment.feeRecordPayments || []).map((frp: any) => ({
                     feeRecordPaymentId: frp.id,
-                    amount: Number(frp.feeRecord.amount),
+                    amount: Number(frp.feeRecord.totalAmount ?? frp.feeRecord.amount), // ưu tiên totalAmount
                     feeRecordId: frp.feeRecordId,
                     studentId: frp.feeRecord?.studentId,
                     studentName: frp.feeRecord?.student?.user?.fullName,
