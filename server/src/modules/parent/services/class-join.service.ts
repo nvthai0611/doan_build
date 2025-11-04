@@ -303,22 +303,78 @@ export class ClassJoinService {
       );
     }
 
-    // Bắt buộc phải có ảnh cam kết (file upload)
-    if (!file) {
+    // Bắt buộc phải có contractUploadId
+    if (!dto.contractUploadId) {
       throw new HttpException(
-        { success: false, message: 'Vui lòng upload ảnh/bản scan cam kết học tập' },
+        { success: false, message: 'Vui lòng chọn hợp đồng cam kết học tập' },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    // Upload file lên Cloudinary
-    let commitmentImageUrl: string | undefined;
-    try {
-      const result = await this.cloudinaryService.uploadImage(file, 'contracts');
-      commitmentImageUrl = result?.secure_url;
-    } catch (e) {
+    // Validate contractUploadId: kiểm tra hợp đồng có tồn tại, thuộc về student, có môn học của lớp và chưa hết hạn
+    const contractUpload = await this.prisma.contractUpload.findUnique({
+      where: { id: dto.contractUploadId },
+      include: {
+        student: {
+          select: {
+            id: true,
+            parentId: true,
+          },
+        },
+      },
+    });
+
+    if (!contractUpload) {
       throw new HttpException(
-        { success: false, message: 'Không thể upload ảnh cam kết. Vui lòng thử lại' },
+        { success: false, message: 'Không tìm thấy hợp đồng cam kết' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Kiểm tra hợp đồng thuộc về student này
+    if (contractUpload.studentId !== dto.studentId) {
+      throw new HttpException(
+        { success: false, message: 'Hợp đồng không thuộc về học sinh này' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Kiểm tra hợp đồng thuộc về parent này
+    if (contractUpload.student?.parentId !== parent.id) {
+      throw new HttpException(
+        { success: false, message: 'Bạn không có quyền sử dụng hợp đồng này' },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Lấy subject của lớp
+    const classSubject = await this.prisma.class.findUnique({
+      where: { id: dto.classId },
+      select: {
+        subjectId: true,
+      },
+    });
+
+    if (!classSubject?.subjectId) {
+      throw new HttpException(
+        { success: false, message: 'Lớp học không có môn học' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Kiểm tra hợp đồng có môn học của lớp không
+    if (!contractUpload.subjectIds || !contractUpload.subjectIds.includes(classSubject.subjectId)) {
+      throw new HttpException(
+        { success: false, message: 'Hợp đồng cam kết không bao gồm môn học của lớp này' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Kiểm tra hợp đồng chưa hết hạn
+    const now = new Date();
+    if (contractUpload.expiredAt && contractUpload.expiredAt < now) {
+      throw new HttpException(
+        { success: false, message: 'Hợp đồng cam kết đã hết hạn. Vui lòng upload hợp đồng mới' },
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -355,15 +411,14 @@ export class ClassJoinService {
       );
     }
 
-    console.log(commitmentImageUrl);
-    
-    // Tạo request
+    // Tạo request - lưu cả commitmentImageUrl để backward compatible với code cũ
     const request = await this.prisma.studentClassRequest.create({
       data: {
         studentId: dto.studentId,
         classId: dto.classId,
         message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
-        commitmentImageUrl,
+        contractUploadId: dto.contractUploadId,
+        commitmentImageUrl: contractUpload.uploadedImageUrl, // Lưu URL ảnh hợp đồng để hiển thị
         status: 'pending',
       },
       include: {
