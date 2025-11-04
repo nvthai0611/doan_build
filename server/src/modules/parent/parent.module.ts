@@ -23,6 +23,8 @@ import { ChildTeacherFeedbackController } from './controllers/child-teacher-feed
 import { ChildTeacherFeedbackService } from './services/child-teacher-feedback.service';
 import { ParentOverviewController } from './controllers/parent-overview.controller';
 import { ParentOverviewService } from './services/parent-overview.service';
+import { CommitmentsController } from './controllers/commitments.controller';
+import { CommitmentsService } from './services/commitments.service';
 import { AdminCenterModule } from '../admin-center/admin-center.module';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
@@ -48,6 +50,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     ClassJoinController,
   ChildTeacherFeedbackController,
     ParentOverviewController,
+    CommitmentsController,
   ],
   providers: [
     PrismaService,
@@ -61,6 +64,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     ClassJoinService,
     ChildTeacherFeedbackService,
       ParentOverviewService,
+    CommitmentsService,
     CloudinaryService,
   ],
 })

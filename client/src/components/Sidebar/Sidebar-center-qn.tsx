@@ -35,7 +35,8 @@ import {
     FileText,
     Briefcase,
     CircleDollarSign,
-    ChartArea
+    ChartArea,
+    FileCheck
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -324,6 +325,11 @@ const parentMenuItems = [
         title: "Đơn nghỉ học",
         icon: FileText,
         href: "/parent/student-leave-requests",
+    },
+    {
+        title: "Cam kết học tập",
+        icon: FileCheck,
+        href: "/parent/commitments",
     },
 
 ]

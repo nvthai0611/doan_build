@@ -10,8 +10,8 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { UseInterceptors, UploadedFile } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { UseInterceptors } from '@nestjs/common';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { ClassJoinService } from '../services/class-join.service';
 import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-class.dto';
@@ -52,11 +52,11 @@ export class ClassJoinController {
   }
 
   @Post('request-join')
+  @UseInterceptors(AnyFilesInterceptor()) // Enable multipart/form-data parsing
   @ApiOperation({ summary: 'Gửi yêu cầu tham gia lớp học cho con' })
   @ApiResponse({ status: 201, description: 'Gửi yêu cầu thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học hoặc học sinh' })
   @ApiResponse({ status: 400, description: 'Lớp học đã đầy hoặc đã có yêu cầu pending' })
-  @UseInterceptors(FileInterceptor('commitmentFile'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -64,14 +64,15 @@ export class ClassJoinController {
       properties: {
         classId: { type: 'string', format: 'uuid' },
         studentId: { type: 'string', format: 'uuid' },
+        contractUploadId: { type: 'string', format: 'uuid', description: 'ID của hợp đồng đã upload (BẮT BUỘC)' },
         password: { type: 'string' },
         message: { type: 'string' },
-        commitmentFile: { type: 'string', format: 'binary' },
       },
-      required: ['classId', 'studentId', 'commitmentFile']
+      required: ['classId', 'studentId', 'contractUploadId']
     },
   })
-  async requestJoinClass(@Req() req: any, @Body() dto: RequestJoinClassDto, @UploadedFile() file: Express.Multer.File) {
+  async requestJoinClass(@Req() req: any, @Body() dto: RequestJoinClassDto) {
+    
     try {
       const userId = req.user?.userId;
       if (!userId) {
@@ -80,7 +81,7 @@ export class ClassJoinController {
           HttpStatus.UNAUTHORIZED,
         );
       }
-      return await this.classJoinService.requestJoinClass(userId, dto, file);
+      return await this.classJoinService.requestJoinClass(userId, dto);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

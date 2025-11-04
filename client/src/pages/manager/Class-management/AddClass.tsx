@@ -172,6 +172,16 @@ export const CreateClass = () => {
     // Validate start date
     if (!validateRequired(formData.expectedStartDate)) {
       newErrors.expectedStartDate = 'Ngày khai giảng là bắt buộc';
+    } else {
+      // Kiểm tra ngày không được là quá khứ
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time để so sánh chỉ ngày
+      const selectedDate = new Date(formData.expectedStartDate);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        newErrors.expectedStartDate = 'Ngày khai giảng không được là ngày trong quá khứ';
+      }
     }
 
     // // Validate room
@@ -255,8 +265,31 @@ export const CreateClass = () => {
       [field]: value
     }));
 
-    // Clear error khi user nhập
-    if (errors[field]) {
+    // Validate ngày khai giảng real-time
+    if (field === 'expectedStartDate' && value) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time để so sánh chỉ ngày
+      const selectedDate = new Date(value);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        setErrors(prev => ({
+          ...prev,
+          [field]: 'Ngày khai giảng không được là ngày trong quá khứ'
+        }));
+      } else {
+        // Clear error nếu ngày hợp lệ
+        if (errors[field]) {
+          setErrors(prev => ({
+            ...prev,
+            [field]: ''
+          }));
+        }
+      }
+    }
+
+    // Clear error khi user nhập (cho các field khác)
+    if (field !== 'expectedStartDate' && errors[field]) {
       setErrors(prev => ({
         ...prev,
         [field]: ''

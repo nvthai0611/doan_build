@@ -55,6 +55,7 @@ import ContractsManageme from "../pages/Teacher/TeacherContracts/ContractsManage
 import FinancialPage from "../pages/Parent/Financial/Financial-Home";
 import { ChildrenClasses } from "../pages/Parent/Dashboard/ChildClass/ChildrenClasses";
 import RecruitingClasses from "../pages/Parent/Dashboard/RecruitingClasses/RecruitingClasses";
+import { CommitmentsManagement } from "../pages/Parent/Dashboard/Commitments/CommitmentsManagement";
 import { FeedbackTeacher } from "../pages/manager/TeacherFeedback-management/TeacherFeedback";
 import StudentClassRequestsPage from "../pages/manager/StudentClassRequests/StudentClassRequestsPage";
 import { AlertsPage } from "../pages/manager/Alerts/AlertsPage";
@@ -169,6 +170,7 @@ export const privateRoutes = (
         <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />
         <Route path="student-leave-requests/create" element={<StudentLeaveRequestForm />} />
         <Route path="student-leave-requests/edit/:id" element={<StudentLeaveRequestForm />} />
+        <Route path="commitments" element={<CommitmentsManagement />} />
         <Route path="financial" element={<FinancialPage />} />
       </Route>
 
