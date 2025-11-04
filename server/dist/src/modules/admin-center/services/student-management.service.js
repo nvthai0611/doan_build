@@ -15,6 +15,7 @@ const prisma_service_1 = require("../../../db/prisma.service");
 const function_util_1 = require("../../../utils/function.util");
 const hasing_util_1 = require("../../../utils/hasing.util");
 const validate_util_1 = require("../../../utils/validate.util");
+const cloudinary_service_1 = require("../../cloudinary/cloudinary.service");
 const STUDENT_USER_SELECT = {
     id: true,
     email: true,
@@ -45,8 +46,9 @@ const SCHOOL_SELECT = {
     phone: true
 };
 let StudentManagementService = class StudentManagementService {
-    constructor(prisma) {
+    constructor(prisma, cloudinaryService) {
         this.prisma = prisma;
+        this.cloudinaryService = cloudinaryService;
     }
     formatStudentResponse(student) {
         return {
@@ -122,7 +124,7 @@ let StudentManagementService = class StudentManagementService {
                         role: 'student'
                     }
                 });
-                return prisma.student.create({
+                const student = await prisma.student.create({
                     data: {
                         userId: newUser.id,
                         studentCode,
@@ -137,6 +139,42 @@ let StudentManagementService = class StudentManagementService {
                         school: { select: SCHOOL_SELECT }
                     }
                 });
+                if (createStudentData.applicationFile) {
+                    const file = createStudentData.applicationFile;
+                    const uploadResult = await this.cloudinaryService.uploadDocument(file, 'student-applications');
+                    let subjectIds = [];
+                    if (createStudentData.subjectIds) {
+                        if (Array.isArray(createStudentData.subjectIds)) {
+                            subjectIds = createStudentData.subjectIds;
+                        }
+                        else if (typeof createStudentData.subjectIds === 'string') {
+                            try {
+                                subjectIds = JSON.parse(createStudentData.subjectIds);
+                            }
+                            catch (e) {
+                                subjectIds = [];
+                            }
+                        }
+                    }
+                    const now = new Date();
+                    const nextYear = now.getFullYear() + 1;
+                    const expiredAt = new Date(nextYear, 4, 31, 23, 59, 59);
+                    await prisma.contractUpload.create({
+                        data: {
+                            studentId: student.id,
+                            parentId: createStudentData.parentId || null,
+                            contractType: 'student_commitment',
+                            subjectIds: subjectIds,
+                            uploadedImageUrl: uploadResult.secure_url,
+                            uploadedImageName: file.originalname,
+                            uploadedAt: new Date(),
+                            expiredAt: expiredAt,
+                            note: `Đơn xin học thêm cho học sinh ${student.user.fullName} (${studentCode})${subjectIds.length > 0 ? ` - ${subjectIds.length} môn học` : ''}`,
+                            status: 'active'
+                        }
+                    });
+                }
+                return student;
             });
             return {
                 data: this.formatStudentResponse(newStudent),
@@ -771,6 +809,7 @@ let StudentManagementService = class StudentManagementService {
 exports.StudentManagementService = StudentManagementService;
 exports.StudentManagementService = StudentManagementService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        cloudinary_service_1.CloudinaryService])
 ], StudentManagementService);
 //# sourceMappingURL=student-management.service.js.map

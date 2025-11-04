@@ -17,6 +17,7 @@ const openapi = require("@nestjs/swagger");
 const student_management_service_1 = require("../services/student-management.service");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const platform_express_1 = require("@nestjs/platform-express");
 let StudentManagementController = class StudentManagementController {
     constructor(studentManagementService) {
         this.studentManagementService = studentManagementService;
@@ -27,7 +28,7 @@ let StudentManagementController = class StudentManagementController {
     async countByStatus() {
         return this.studentManagementService.getCountByStatus();
     }
-    async createStudent(createStudentDto) {
+    async createStudent(createStudentDto, applicationFile) {
         try {
             if (!createStudentDto.fullName) {
                 throw new common_1.HttpException('Họ tên là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
@@ -41,6 +42,18 @@ let StudentManagementController = class StudentManagementController {
             const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
             if (!usernameRegex.test(createStudentDto.username)) {
                 throw new common_1.HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (applicationFile) {
+                createStudentDto.applicationFile = applicationFile;
+            }
+            if (createStudentDto.subjectIds) {
+                if (typeof createStudentDto.subjectIds === 'string') {
+                    try {
+                        createStudentDto.subjectIds = JSON.parse(createStudentDto.subjectIds);
+                    }
+                    catch (e) {
+                    }
+                }
             }
             return await this.studentManagementService.createStudent(createStudentDto);
         }
@@ -271,10 +284,25 @@ __decorate([
         }
     }),
     (0, common_1.Post)(),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('applicationFile', {
+        limits: {
+            fileSize: 5 * 1024 * 1024
+        },
+        fileFilter: (req, file, cb) => {
+            const allowedMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (allowedMimes.includes(file.mimetype)) {
+                cb(null, true);
+            }
+            else {
+                cb(new common_1.HttpException('Chỉ chấp nhận file PDF, JPG hoặc PNG', common_1.HttpStatus.BAD_REQUEST), false);
+            }
+        }
+    })),
     openapi.ApiResponse({ status: 201, type: Object }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], StudentManagementController.prototype, "createStudent", null);
 __decorate([

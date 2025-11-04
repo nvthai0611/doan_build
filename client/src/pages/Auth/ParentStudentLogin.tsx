@@ -194,23 +194,25 @@ export function ParentStudentLogin() {
           </div>
           </form>
 
-          {/* Demo Accounts */}
-          <div className="mt-8 p-5 bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-slate-800/50 dark:to-slate-700/50 rounded-2xl border border-gray-200/50 dark:border-slate-600/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3 flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-              Tài khoản demo
-            </p>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("parent"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👨‍👩‍👧 Phụ huynh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">parent</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("student"); setPassword("123456") }}>
-                <span className="font-medium text-gray-700 dark:text-gray-300">👨‍🎓 Học sinh</span>
-                <span className="text-gray-500 dark:text-gray-400 text-[10px]">student</span>
+          {/* Demo Accounts - Only show in development */}
+          {import.meta.env.VITE_PROD === 'development' && (
+            <div className="mt-8 p-5 bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-slate-800/50 dark:to-slate-700/50 rounded-2xl border border-gray-200/50 dark:border-slate-600/50">
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3 flex items-center">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                Tài khoản demo
+              </p>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("parent"); setPassword("123456") }}>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">👨‍👩‍👧 Phụ huynh</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">parent</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer" onClick={() => { setIdentifier("student"); setPassword("123456") }}>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">👨‍🎓 Học sinh</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">student</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -1,4 +1,5 @@
 import { PrismaService } from 'src/db/prisma.service';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 interface CreateStudentDto {
     fullName: string;
     username: string;
@@ -10,6 +11,8 @@ interface CreateStudentDto {
     parentId?: string;
     schoolId: string;
     password?: string;
+    applicationFile?: Express.Multer.File;
+    subjectIds?: string[];
 }
 interface UpdateStudentDto {
     fullName?: string;
@@ -26,7 +29,8 @@ export interface StudentResponse {
 }
 export declare class StudentManagementService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly cloudinaryService;
+    constructor(prisma: PrismaService, cloudinaryService: CloudinaryService);
     private formatStudentResponse;
     createStudent(createStudentData: CreateStudentDto): Promise<StudentResponse>;
     findParentByEmail(email: string): Promise<StudentResponse>;
