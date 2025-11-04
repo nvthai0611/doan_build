@@ -1,7 +1,8 @@
 import { query } from 'express';
 import { StudentManagementService, StudentResponse } from '../services/student-management.service';
-import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put } from "@nestjs/common";
-import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put, UseInterceptors, UploadedFile } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Injectable()
 @ApiTags('Admin Center -Student Management')
@@ -115,7 +116,23 @@ export class StudentManagementController {
         }
     })
     @Post()
-    async createStudent(@Body() createStudentDto: any) {
+    @UseInterceptors(FileInterceptor('applicationFile', {
+        limits: {
+            fileSize: 5 * 1024 * 1024 // 5MB
+        },
+        fileFilter: (req, file, cb) => {
+            const allowedMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (allowedMimes.includes(file.mimetype)) {
+                cb(null, true);
+            } else {
+                cb(new HttpException('Chỉ chấp nhận file PDF, JPG hoặc PNG', HttpStatus.BAD_REQUEST), false);
+            }
+        }
+    }))
+    async createStudent(
+        @Body() createStudentDto: any,
+        @UploadedFile() applicationFile: Express.Multer.File
+    ) {
         try {
             // Validate required fields
             if (!createStudentDto.fullName) {
@@ -132,6 +149,22 @@ export class StudentManagementController {
             const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
             if (!usernameRegex.test(createStudentDto.username)) {
                 throw new HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', HttpStatus.BAD_REQUEST);
+            }
+
+            // Add file to dto if uploaded
+            if (applicationFile) {
+                createStudentDto.applicationFile = applicationFile;
+            }
+
+            // Parse subjectIds if provided
+            if (createStudentDto.subjectIds) {
+                if (typeof createStudentDto.subjectIds === 'string') {
+                    try {
+                        createStudentDto.subjectIds = JSON.parse(createStudentDto.subjectIds);
+                    } catch (e) {
+                        // Keep as string, will be parsed in service
+                    }
+                }
             }
 
             return await this.studentManagementService.createStudent(createStudentDto);
