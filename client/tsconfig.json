@@ -15,7 +15,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/assets/shadcn-ui/*"],
+      "@/*": ["./src/*"],
+      "@/components/ui/*": ["./src/assets/shadcn-ui/components/ui/*"]
     }
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts"]
