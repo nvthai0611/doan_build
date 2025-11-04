@@ -10,7 +10,7 @@ on:
 # !!! HÃY SỬA LẠI 2 GIÁ TRỊ DƯỚI ĐÂY THEO TÊN CỦA BẠN !!!
 env:
   AZURE_APP_NAME: "nestjs-sep490-kkk"      # (Tên App Service của bạn)
-  AZURE_RESOURCE_GROUP: "nestjis-rg"         # (Tên Resource Group của bạn)
+  AZURE_RESOURCE_GROUP: "nestjs-rg"         # (Tên Resource Group của bạn - đã sửa từ nestjis-rg)
   NODE_VERSION: "18.x"                   # (Phiên bản Node.js bạn dùng)
 
 # Các công việc (jobs) cần chạy
