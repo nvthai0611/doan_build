@@ -134,9 +134,9 @@ export const privateRoutes = (
           element={<AttendanceTable />}
         />
         <Route path="session-details/:sessionId" element={<SessionDetails />} />
-        <Route path="schedule/leave" element={<LeaveRequestPage />} />
-        <Route path="schedule/my-requests" element={<MyRequests />} />
-        <Route path="student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
+        <Route path="requests/leave" element={<LeaveRequestPage />} />
+        <Route path="requests/my-requests" element={<MyRequests />} />
+        <Route path="requests/student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
         <Route path="contracts" element={<ContractsManageme />} />
       </Route>
 
