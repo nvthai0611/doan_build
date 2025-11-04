@@ -1018,6 +1018,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         classData={classData}
         onSubmit={handleScheduleUpdate}
         isLoading={isScheduleLoading}
+        expectedStartDate={
+          isEditing && editData.expectedStartDate 
+            ? editData.expectedStartDate 
+            : classData?.expectedStartDate
+        }
       />
 
       {/* Change Status Dialog */}

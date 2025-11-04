@@ -1,19 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Clock, GraduationCap, User, Calendar, AlertCircle, Upload, Download, X } from 'lucide-react';
+import { Clock, GraduationCap, User, Calendar, AlertCircle, Download } from 'lucide-react';
 import { useToast } from '../../../../../hooks/use-toast';
 import { parentClassJoinService } from '../../../../../services/parent/class-join/class-join.service';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parentStudentsService } from '../../../../../services/parent/students/students.service';
 import { RecruitingClass } from '../../../../../services/common/public-classes.service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClassStatus, CLASS_STATUS_LABELS } from '../../../../../lib/constants';
 import { parentCommitmentsService } from '../../../../../services/parent/commitments/commitments.service';
+import { UploadCommitmentDialog } from '../../Commitments/components/UploadCommitmentDialog';
 
 interface RequestJoinClassSheetProps {
   open: boolean;
@@ -30,10 +31,6 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState('');
-  const [contractFile, setContractFile] = useState<File | null>(null);
-  const [contractPreviewUrl, setContractPreviewUrl] = useState<string>('');
-  const [contractMimeType, setContractMimeType] = useState<string>('');
-  const [isUploadingCommitment, setIsUploadingCommitment] = useState(false);
   
   // Link mẫu form cam kết học tập
   const COMMITMENT_FORM_URL = 'https://res.cloudinary.com/dgqkmqkdz/raw/upload/v1761971845/ban-cam-ket-cua-hoc-sinh-so-2_1603112518_wtpcg3.docx';
@@ -56,13 +53,30 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
 
   const allCommitments = commitmentsResponse?.data || [];
   
-  // Filter hợp đồng có môn học của lớp và chưa hết hạn
-  const validCommitments = allCommitments.filter((commitment: any) => {
-    if (!classData?.subject?.id) return false;
-    const hasSubject = commitment.subjectIds?.includes(classData.subject.id);
-    const isNotExpired = !commitment.expiredAt || new Date(commitment.expiredAt) > new Date();
-    return hasSubject && isNotExpired;
-  });
+  // Filter hợp đồng có môn học của lớp và chưa hết hạn (memoize để tránh re-render)
+  const validCommitments = useMemo(() => {
+    if (!classData?.subject?.id) return [];
+    const subjectId = classData.subject.id;
+    return allCommitments.filter((commitment: any) => {
+      const hasSubject = commitment.subjectIds?.includes(subjectId);
+      const isNotExpired = !commitment.expiredAt || new Date(commitment.expiredAt) > new Date();
+      return hasSubject && isNotExpired;
+    });
+  }, [allCommitments, classData?.subject?.id]);
+
+  // Tự động chọn hợp đồng hợp lệ đầu tiên (nếu có)
+  useEffect(() => {
+    if (validCommitments.length > 0 && !selectedContractId) {
+      setSelectedContractId(validCommitments[0].id);
+    } else if (validCommitments.length === 0 && selectedContractId) {
+      // Nếu hợp đồng đã chọn không còn hợp lệ (không có môn học hoặc hết hạn)
+      setSelectedContractId('');
+    }
+  }, [validCommitments, selectedContractId]);
+
+  // Kiểm tra hợp đồng đã chọn có hợp lệ không
+  const selectedCommitment = validCommitments.find((c: any) => c.id === selectedContractId);
+  const hasValidCommitment = !!selectedCommitment;
 
   // Reset when close
   useEffect(() => {
@@ -72,10 +86,6 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       setSelectedStudentId('');
       setShowPasswordInput(false);
       setSelectedContractId('');
-      setContractFile(null);
-      if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
-      setContractPreviewUrl('');
-      setContractMimeType('');
     }
   }, [open]);
 
@@ -109,18 +119,8 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       return;
     }
 
-    // Nếu không có hợp đồng hợp lệ, cần upload file mới
-    if (validCommitments.length === 0 && !contractFile) {
-      toast({
-        title: "Lỗi",
-        description: "Chưa có hợp đồng hợp lệ. Vui lòng upload hợp đồng mới hoặc tạo hợp đồng cho môn học này trước.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Nếu có hợp đồng nhưng chưa chọn, hoặc không có hợp đồng nhưng chưa upload file
-    if (validCommitments.length > 0 && !selectedContractId) {
+    // Validate: Phải có hợp đồng
+    if (!selectedContractId || selectedContractId.trim() === '') {
       toast({
         title: "Lỗi",
         description: "Vui lòng chọn hợp đồng cam kết học tập",
@@ -129,33 +129,14 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       return;
     }
 
-    // Nếu upload file mới, cần upload trước để tạo hợp đồng
-    let finalContractId = selectedContractId;
-    if (contractFile && !selectedContractId) {
-      setIsUploadingCommitment(true);
-      try {
-        // Upload hợp đồng mới với môn học của lớp
-        const uploadResponse = await parentCommitmentsService.uploadCommitment({
-          studentId: selectedStudentId,
-          file: contractFile,
-          subjectIds: [classData.subject?.id || ''], // Chỉ upload cho môn học của lớp này
-          note: `Hợp đồng được tạo khi đăng ký lớp ${classData.name}`,
-        });
-        finalContractId = uploadResponse.data.id;
-        toast({
-          title: "Thành công",
-          description: "Đã tạo hợp đồng mới",
-        });
-      } catch (error: any) {
-        setIsUploadingCommitment(false);
-        toast({
-          title: "Lỗi",
-          description: error.response?.data?.message || "Không thể upload hợp đồng. Vui lòng thử lại.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setIsUploadingCommitment(false);
+    // Validate: Đảm bảo các field có giá trị
+    if (!classData.id || !selectedStudentId || !selectedContractId) {
+      toast({
+        title: "Lỗi",
+        description: "Thiếu thông tin cần thiết. Vui lòng kiểm tra lại.",
+        variant: "destructive",
+      });
+      return;
     }
 
     // Nếu lớp yêu cầu password nhưng chưa nhập
@@ -174,7 +155,7 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       await parentClassJoinService.requestJoinClassForm({
         classId: classData.id,
         studentId: selectedStudentId,
-        contractUploadId: finalContractId,
+        contractUploadId: selectedContractId,
         password: password || undefined,
         message: message || `Phụ huynh đăng ký lớp học cho con`,
       });
@@ -186,23 +167,51 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       
       onOpenChange(false);
     } catch (error: any) {
-      const errorData = error.response?.message;
+      const errorData = error.response?.data || error.response?.message || error;
       
-      // Nếu lỗi do password, hiện input password
-      if (errorData?.requirePassword) {
-        setShowPasswordInput(true);
-        toast({
-          title: "Lỗi mật khẩu",
-          description: errorData.message || "Mật khẩu không chính xác",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Lỗi",
-          description: errorData?.message || error.message || "Có lỗi xảy ra khi gửi yêu cầu",
-          variant: "destructive",
-        });
+      // Xử lý validation errors từ backend (array of objects)
+      let errorMessage = "Có lỗi xảy ra khi gửi yêu cầu";
+      
+      if (errorData && typeof errorData === 'object') {
+        // Nếu là array validation errors
+        if (Array.isArray(errorData.message)) {
+          const validationMessages = errorData.message
+            .map((item: any) => {
+              if (typeof item === 'object') {
+                return Object.values(item).join(', ');
+              }
+              return String(item);
+            })
+            .filter(Boolean);
+          errorMessage = validationMessages.length > 0 
+            ? validationMessages.join('. ') 
+            : "Vui lòng kiểm tra lại thông tin đã nhập";
+        } 
+        // Nếu là string message
+        else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+        // Nếu có requirePassword
+        else if (errorData.requirePassword) {
+          setShowPasswordInput(true);
+          toast({
+            title: "Lỗi mật khẩu",
+            description: typeof errorData.message === 'string' ? errorData.message : "Mật khẩu không chính xác",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -260,8 +269,9 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
   const needsInPersonTest = requiresInPersonTest();
   const pastSessionsCount = classData.completedSessionsCount || 0;
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
-      <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
         <SheetHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl font-semibold">Đăng ký tham gia lớp học</SheetTitle>
@@ -473,200 +483,87 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
               </p>
             </div>
 
-            {/* Chọn hợp đồng cam kết hoặc upload mới */}
+            {/* Hợp đồng cam kết - Tự động chọn */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Bản cam kết học tập <span className="text-red-500">*</span>
-                </Label>
-                {validCommitments.length === 0 && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-primary"
-                    onClick={() => {
-                      window.open(COMMITMENT_FORM_URL, '_blank');
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-1" />
-                    Tải mẫu cam kết
-                  </Button>
-                )}
-              </div>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Bản cam kết học tập <span className="text-red-500">*</span>
+              </Label>
               {selectedStudentId ? (
-                <div className="space-y-3 mt-2">
-                  {validCommitments.length > 0 ? (
-                    <>
-                      <select
-                        value={selectedContractId}
-                        onChange={(e) => {
-                          setSelectedContractId(e.target.value);
-                          // Reset file khi chọn hợp đồng có sẵn
-                          if (e.target.value) {
-                            setContractFile(null);
-                            if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
-                            setContractPreviewUrl('');
-                            setContractMimeType('');
-                          }
-                        }}
-                        className="w-full px-3 py-2 border rounded-md bg-background"
-                      >
-                        <option value="">-- Chọn hợp đồng có sẵn --</option>
-                        {validCommitments.map((commitment: any) => (
-                          <option key={commitment.id} value={commitment.id}>
-                            Hợp đồng {new Date(commitment.uploadedAt).toLocaleDateString('vi-VN')} - 
-                            Hết hạn: {commitment.expiredAt 
-                              ? new Date(commitment.expiredAt).toLocaleDateString('vi-VN')
-                              : 'Không hết hạn'}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="text-xs text-muted-foreground text-center py-1">
-                        hoặc
-                      </div>
-                    </>
-                  ) : (
-                    <div className="p-3 border border-amber-300 rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                            Chưa có hợp đồng hợp lệ
-                          </p>
-                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                            {allCommitments.length === 0
-                              ? `Học sinh này chưa có hợp đồng nào cho môn "${classData.subject?.name || ''}". Vui lòng upload hợp đồng bên dưới.`
-                              : `Không có hợp đồng nào cho môn "${classData.subject?.name || ''}" hoặc hợp đồng đã hết hạn. Vui lòng upload hợp đồng mới.`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Upload file mới (nếu chưa chọn hợp đồng có sẵn) */}
-                  {!selectedContractId && (
-                    <div className={`border-2 border-dashed rounded-lg p-4 hover:border-primary/50 transition-colors ${!contractFile ? 'border-red-300' : ''}`}>
-                      <input
-                        type="file"
-                        id="contract-upload"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // Validate file size (max 5MB)
-                            if (file.size > 5 * 1024 * 1024) {
-                              toast({
-                                title: "Lỗi",
-                                description: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setContractFile(file);
-                            setContractMimeType(file.type || '');
-                            try {
-                              const url = URL.createObjectURL(file);
-                              setContractPreviewUrl(url);
-                            } catch (_) {
-                              setContractPreviewUrl('');
-                            }
-                          }
-                        }}
-                        className="hidden"
-                        disabled={isUploadingCommitment}
-                      />
-                      
-                      {!contractFile ? (
-                        <label
-                          htmlFor="contract-upload"
-                          className="flex flex-col items-center gap-2 cursor-pointer"
-                        >
-                          <Upload className="w-8 h-8 text-muted-foreground" />
-                          <div className="text-center">
-                            <p className="text-sm font-medium">
-                              Click để upload hợp đồng mới
+                <div className="mt-2">
+                  {hasValidCommitment && selectedCommitment ? (
+                    <div className="space-y-2">
+                      <div className="p-3 border rounded-lg bg-green-50 dark:bg-green-950/20">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                              Đã tự động chọn hợp đồng hợp lệ
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Hỗ trợ: JPG, PNG, PDF (tối đa 5MB)
+                            <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                              Hợp đồng {new Date(selectedCommitment.uploadedAt).toLocaleDateString('vi-VN')} - 
+                              Hết hạn: {selectedCommitment.expiredAt 
+                                ? new Date(selectedCommitment.expiredAt).toLocaleDateString('vi-VN')
+                                : 'Không hết hạn'}
                             </p>
-                          </div>
-                        </label>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
-                                <Upload className="w-5 h-5 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium truncate max-w-[200px]">
-                                  {contractFile.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {(contractFile.size / 1024).toFixed(1)} KB
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {contractPreviewUrl && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const a = document.createElement('a');
-                                    a.href = contractPreviewUrl;
-                                    a.target = '_blank';
-                                    a.rel = 'noopener noreferrer';
-                                    a.click();
-                                  }}
-                                >
-                                  Xem file
-                                </Button>
-                              )}
-                              <Button
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                              Để upload hoặc cập nhật hợp đồng, vui lòng đến{' '}
+                              <button
                                 type="button"
-                                variant="ghost"
-                                size="sm"
                                 onClick={() => {
-                                  setContractFile(null);
-                                  if (contractPreviewUrl) URL.revokeObjectURL(contractPreviewUrl);
-                                  setContractPreviewUrl('');
-                                  setContractMimeType('');
+                                  onOpenChange(false);
+                                  navigate('/parent/commitments');
                                 }}
-                                disabled={isUploadingCommitment}
+                                className="underline font-medium hover:text-green-900 dark:hover:text-green-200"
                               >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
+                                trang quản lý hợp đồng
+                              </button>
+                            </p>
                           </div>
-
-                          {/* Inline preview */}
-                          {contractPreviewUrl && (
-                            contractMimeType.startsWith('image/') ? (
-                              <img
-                                src={contractPreviewUrl}
-                                alt="Xem trước bản cam kết"
-                                className="max-h-64 rounded border"
-                              />
-                            ) : (
-                              <div className="text-xs text-muted-foreground">
-                                File tài liệu (PDF). Bấm "Xem file" để mở trong tab mới.
-                              </div>
-                            )
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            Hợp đồng này sẽ được tạo cho môn "{classData.subject?.name || ''}" khi gửi yêu cầu
-                          </p>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  )}
-                  
-                  {validCommitments.length > 0 && selectedContractId && (
-                    <div className="text-xs text-muted-foreground">
-                      Hợp đồng này bao gồm môn học của lớp và chưa hết hạn
+                  ) : (
+                    <div className="p-3 border border-red-300 rounded-lg bg-red-50 dark:bg-red-950/20">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                            {allCommitments.length === 0 
+                              ? 'Chưa có hợp đồng hợp lệ'
+                              : 'Hợp đồng chưa có môn học bạn đăng ký'}
+                          </p>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                            {allCommitments.length === 0
+                              ? `Học sinh này chưa có hợp đồng nào cho môn "${classData.subject?.name || ''}". Vui lòng đến trang quản lý hợp đồng để upload hợp đồng trước.`
+                              : `Hợp đồng hiện tại không bao gồm môn "${classData.subject?.name || ''}" hoặc hợp đồng đã hết hạn. Vui lòng cập nhật bản cam kết mới có môn học này.`}
+                          </p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                onOpenChange(false);
+                                navigate('/parent/commitments');
+                              }}
+                            >
+                              Đến trang quản lý hợp đồng
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-primary"
+                              onClick={() => {
+                                window.open(COMMITMENT_FORM_URL, '_blank');
+                              }}
+                            >
+                              <Download className="w-4 h-4 mr-1" />
+                              Tải mẫu cam kết
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -675,28 +572,22 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
                   Vui lòng chọn học sinh trước
                 </p>
               )}
-              {!selectedContractId && !contractFile && selectedStudentId && (
-                <p className="text-xs text-red-500 mt-1">Bắt buộc phải chọn hợp đồng hoặc upload hợp đồng mới</p>
-              )}
             </div>
 
             {/* Nút gửi yêu cầu */}
             <Button
               onClick={handleRequestJoin}
-              disabled={isLoading || isUploadingCommitment || !selectedStudentId || (!selectedContractId && !contractFile)}
+              disabled={isLoading || !selectedStudentId || !selectedContractId}
               className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
             >
-              {isUploadingCommitment 
-                ? 'Đang tạo hợp đồng...' 
-                : isLoading 
-                ? 'Đang gửi yêu cầu...' 
-                : 'Gửi yêu cầu tham gia'}
+              {isLoading ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu tham gia'}
             </Button>
           </div>
           )}
         </div>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+    </>
   );
 };
 

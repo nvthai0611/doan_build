@@ -19,6 +19,11 @@ export class RequestJoinClassDto {
   @IsNotEmpty({ message: 'Student ID không được để trống' })
   studentId: string;
 
+  @ApiProperty({ description: 'Contract Upload ID (ID của hợp đồng đã upload trước) - BẮT BUỘC' })
+  @IsUUID('4', { message: 'Contract Upload ID không hợp lệ' })
+  @IsNotEmpty({ message: 'Contract Upload ID không được để trống' })
+  contractUploadId: string;
+
   @ApiProperty({ description: 'Mật khẩu lớp học (nếu có)', required: false })
   @IsOptional()
   @IsString()
@@ -29,7 +34,7 @@ export class RequestJoinClassDto {
   @IsString()
   message?: string;
 
-  @ApiProperty({ description: 'URL ảnh cam kết học tập', required: false })
+  @ApiProperty({ description: 'URL ảnh cam kết học tập (DEPRECATED - dùng contractUploadId)', required: false })
   @IsOptional()
   @IsString()
   commitmentImageUrl?: string;
