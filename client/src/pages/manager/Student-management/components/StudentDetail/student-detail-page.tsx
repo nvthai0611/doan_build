@@ -15,7 +15,8 @@ import {
   StudentScheduleTab,
   StudentAttendanceTab,
   StudentGradesTab,
-  StudentTuitionTab
+  StudentTuitionTab,
+  StudentCommitmentTab
 } from "./components"
 import Loading from "../../../../../components/Loading/LoadingPage"
 
@@ -168,6 +169,13 @@ export function StudentDetailPage() {
             >
               Điểm danh
             </TabsTrigger>
+
+            <TabsTrigger
+              value="commitment"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            >
+              Cam kết học tập
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="mt-0">
@@ -235,6 +243,14 @@ export function StudentDetailPage() {
 
           <TabsContent value="attendance">
             <StudentAttendanceTab student={student} />
+          </TabsContent>
+
+          <TabsContent value="commitment">
+            <StudentCommitmentTab 
+              studentId={student.id} 
+              studentName={student.user.fullName}
+              parentId={student.parent?.id}
+            />
           </TabsContent>
         </Tabs>
       </div>
