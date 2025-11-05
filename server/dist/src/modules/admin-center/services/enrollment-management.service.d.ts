@@ -8,23 +8,6 @@ export declare class EnrollmentManagementService {
         success: boolean;
         message: string;
         data: {
-            student: {
-                user: {
-                    email: string;
-                    fullName: string;
-                };
-            } & {
-                grade: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                id: string;
-                userId: string;
-                studentCode: string | null;
-                address: string | null;
-                schoolId: string;
-                parentId: string | null;
-                scholarshipId: string | null;
-            };
             class: {
                 subject: {
                     id: string;
@@ -33,35 +16,52 @@ export declare class EnrollmentManagementService {
                     code: string;
                 };
             } & {
-                academicYear: string | null;
-                password: string | null;
-                createdAt: Date;
-                updatedAt: Date;
                 id: string;
+                status: string;
+                createdAt: Date;
+                password: string | null;
+                updatedAt: Date;
                 name: string;
-                description: string | null;
-                subjectId: string;
-                gradeId: string | null;
-                maxStudents: number | null;
                 roomId: string | null;
                 teacherId: string | null;
-                status: string;
+                classCode: string | null;
+                description: string | null;
+                feeStructureId: string | null;
+                gradeId: string | null;
+                maxStudents: number | null;
+                subjectId: string;
                 recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+                academicYear: string | null;
                 expectedStartDate: Date | null;
                 actualStartDate: Date | null;
                 actualEndDate: Date | null;
-                feeStructureId: string | null;
-                classCode: string | null;
                 feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                 feePeriod: string | null;
                 feeCurrency: string | null;
                 feeLockedAt: Date | null;
             };
+            student: {
+                user: {
+                    email: string;
+                    fullName: string;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                userId: string;
+                studentCode: string | null;
+                address: string | null;
+                grade: string | null;
+                schoolId: string;
+                parentId: string | null;
+                scholarshipId: string | null;
+            };
         } & {
             id: bigint;
-            status: string;
             studentId: string;
             classId: string;
+            status: string;
             enrolledAt: Date;
             semester: string | null;
             completedAt: Date | null;
@@ -82,70 +82,70 @@ export declare class EnrollmentManagementService {
         success: boolean;
         message: string;
         data: ({
-            student: {
-                user: {
-                    email: string;
-                    fullName: string;
-                    phone: string;
-                    id: string;
-                };
-            } & {
-                grade: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                id: string;
-                userId: string;
-                studentCode: string | null;
-                address: string | null;
-                schoolId: string;
-                parentId: string | null;
-                scholarshipId: string | null;
-            };
             class: {
+                room: {
+                    id: string;
+                    createdAt: Date;
+                    isActive: boolean;
+                    name: string;
+                    capacity: number | null;
+                    equipment: import("@prisma/client/runtime/library").JsonValue | null;
+                };
                 subject: {
                     id: string;
                     name: string;
                     description: string | null;
                     code: string;
                 };
-                room: {
-                    createdAt: Date;
-                    isActive: boolean;
-                    id: string;
-                    name: string;
-                    capacity: number | null;
-                    equipment: import("@prisma/client/runtime/library").JsonValue | null;
-                };
             } & {
-                academicYear: string | null;
-                password: string | null;
-                createdAt: Date;
-                updatedAt: Date;
                 id: string;
+                status: string;
+                createdAt: Date;
+                password: string | null;
+                updatedAt: Date;
                 name: string;
-                description: string | null;
-                subjectId: string;
-                gradeId: string | null;
-                maxStudents: number | null;
                 roomId: string | null;
                 teacherId: string | null;
-                status: string;
+                classCode: string | null;
+                description: string | null;
+                feeStructureId: string | null;
+                gradeId: string | null;
+                maxStudents: number | null;
+                subjectId: string;
                 recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+                academicYear: string | null;
                 expectedStartDate: Date | null;
                 actualStartDate: Date | null;
                 actualEndDate: Date | null;
-                feeStructureId: string | null;
-                classCode: string | null;
                 feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                 feePeriod: string | null;
                 feeCurrency: string | null;
                 feeLockedAt: Date | null;
             };
+            student: {
+                user: {
+                    id: string;
+                    email: string;
+                    fullName: string;
+                    phone: string;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                userId: string;
+                studentCode: string | null;
+                address: string | null;
+                grade: string | null;
+                schoolId: string;
+                parentId: string | null;
+                scholarshipId: string | null;
+            };
         } & {
             id: bigint;
-            status: string;
             studentId: string;
             classId: string;
+            status: string;
             enrolledAt: Date;
             semester: string | null;
             completedAt: Date | null;
@@ -167,54 +167,54 @@ export declare class EnrollmentManagementService {
             classesRegistered: number;
             classesAttended: number;
             student: {
-                parent: {
-                    user: {
-                        role: string;
-                        email: string | null;
-                        password: string;
-                        createdAt: Date;
-                        fullName: string | null;
-                        isActive: boolean;
-                        avatar: string | null;
-                        phone: string | null;
-                        roleId: string | null;
-                        updatedAt: Date;
-                        username: string;
-                        id: string;
-                        gender: import(".prisma/client").$Enums.Gender | null;
-                        birthDate: Date | null;
-                    };
-                } & {
-                    createdAt: Date;
-                    updatedAt: Date;
-                    id: string;
-                    userId: string;
-                    relationshipType: string | null;
-                };
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     isActive: boolean;
                     avatar: string;
                     phone: string;
+                };
+                parent: {
+                    user: {
+                        id: string;
+                        createdAt: Date;
+                        email: string | null;
+                        password: string;
+                        fullName: string | null;
+                        isActive: boolean;
+                        avatar: string | null;
+                        phone: string | null;
+                        role: string;
+                        roleId: string | null;
+                        updatedAt: Date;
+                        username: string;
+                        gender: import(".prisma/client").$Enums.Gender | null;
+                        birthDate: Date | null;
+                    };
+                } & {
                     id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    userId: string;
+                    relationshipType: string | null;
                 };
             } & {
-                grade: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
+                grade: string | null;
                 schoolId: string;
                 parentId: string | null;
                 scholarshipId: string | null;
             };
             id: bigint;
-            status: string;
             studentId: string;
             classId: string;
+            status: string;
             enrolledAt: Date;
             semester: string | null;
             completedAt: Date | null;
@@ -234,40 +234,40 @@ export declare class EnrollmentManagementService {
         message: string;
         data: ({
             class: {
+                room: {
+                    id: string;
+                    createdAt: Date;
+                    isActive: boolean;
+                    name: string;
+                    capacity: number | null;
+                    equipment: import("@prisma/client/runtime/library").JsonValue | null;
+                };
                 subject: {
                     id: string;
                     name: string;
                     description: string | null;
                     code: string;
                 };
-                room: {
-                    createdAt: Date;
-                    isActive: boolean;
-                    id: string;
-                    name: string;
-                    capacity: number | null;
-                    equipment: import("@prisma/client/runtime/library").JsonValue | null;
-                };
             } & {
-                academicYear: string | null;
-                password: string | null;
-                createdAt: Date;
-                updatedAt: Date;
                 id: string;
+                status: string;
+                createdAt: Date;
+                password: string | null;
+                updatedAt: Date;
                 name: string;
-                description: string | null;
-                subjectId: string;
-                gradeId: string | null;
-                maxStudents: number | null;
                 roomId: string | null;
                 teacherId: string | null;
-                status: string;
+                classCode: string | null;
+                description: string | null;
+                feeStructureId: string | null;
+                gradeId: string | null;
+                maxStudents: number | null;
+                subjectId: string;
                 recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+                academicYear: string | null;
                 expectedStartDate: Date | null;
                 actualStartDate: Date | null;
                 actualEndDate: Date | null;
-                feeStructureId: string | null;
-                classCode: string | null;
                 feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                 feePeriod: string | null;
                 feeCurrency: string | null;
@@ -275,9 +275,9 @@ export declare class EnrollmentManagementService {
             };
         } & {
             id: bigint;
-            status: string;
             studentId: string;
             classId: string;
+            status: string;
             enrolledAt: Date;
             semester: string | null;
             completedAt: Date | null;
@@ -291,9 +291,9 @@ export declare class EnrollmentManagementService {
         message: string;
         data: {
             id: bigint;
-            status: string;
             studentId: string;
             classId: string;
+            status: string;
             enrolledAt: Date;
             semester: string | null;
             completedAt: Date | null;
@@ -308,25 +308,25 @@ export declare class EnrollmentManagementService {
         data: {
             oldEnrollment: {
                 class: {
-                    academicYear: string | null;
-                    password: string | null;
-                    createdAt: Date;
-                    updatedAt: Date;
                     id: string;
+                    status: string;
+                    createdAt: Date;
+                    password: string | null;
+                    updatedAt: Date;
                     name: string;
-                    description: string | null;
-                    subjectId: string;
-                    gradeId: string | null;
-                    maxStudents: number | null;
                     roomId: string | null;
                     teacherId: string | null;
-                    status: string;
+                    classCode: string | null;
+                    description: string | null;
+                    feeStructureId: string | null;
+                    gradeId: string | null;
+                    maxStudents: number | null;
+                    subjectId: string;
                     recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+                    academicYear: string | null;
                     expectedStartDate: Date | null;
                     actualStartDate: Date | null;
                     actualEndDate: Date | null;
-                    feeStructureId: string | null;
-                    classCode: string | null;
                     feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                     feePeriod: string | null;
                     feeCurrency: string | null;
@@ -334,9 +334,9 @@ export declare class EnrollmentManagementService {
                 };
             } & {
                 id: bigint;
-                status: string;
                 studentId: string;
                 classId: string;
+                status: string;
                 enrolledAt: Date;
                 semester: string | null;
                 completedAt: Date | null;
@@ -346,9 +346,9 @@ export declare class EnrollmentManagementService {
             };
             newEnrollment: {
                 id: bigint;
-                status: string;
                 studentId: string;
                 classId: string;
+                status: string;
                 enrolledAt: Date;
                 semester: string | null;
                 completedAt: Date | null;
@@ -376,6 +376,14 @@ export declare class EnrollmentManagementService {
         success: boolean;
         message: string;
         data: ({
+            user: {
+                id: string;
+                email: string;
+                fullName: string;
+                isActive: boolean;
+                avatar: string;
+                phone: string;
+            };
             parent: {
                 user: {
                     email: string;
@@ -383,28 +391,20 @@ export declare class EnrollmentManagementService {
                     phone: string;
                 };
             } & {
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 relationshipType: string | null;
             };
-            user: {
-                email: string;
-                fullName: string;
-                isActive: boolean;
-                avatar: string;
-                phone: string;
-                id: string;
-            };
         } & {
-            grade: string | null;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
-            id: string;
             userId: string;
             studentCode: string | null;
             address: string | null;
+            grade: string | null;
             schoolId: string;
             parentId: string | null;
             scholarshipId: string | null;

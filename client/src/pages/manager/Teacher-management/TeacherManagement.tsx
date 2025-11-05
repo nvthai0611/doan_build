@@ -81,7 +81,7 @@ export default function TeacherQnmsManagement() {
     queryKey: ['teachers', debouncedSearchTerm, selectedRole, activeTab, pagination.currentPage, pagination.itemsPerPage, filterState],
     queryFn: async () => {
       const result = await centerOwnerTeacherService.getTeachers({
-        search: debouncedSearchTerm || undefined,
+        search: debouncedSearchTerm.trim() || undefined,
         role: selectedRole !== "Nhóm quyền" ? (roleMap[selectedRole] as "teacher" | "admin" | "center_owner") : undefined,
         status: statusMap[activeTab] as "active" | "inactive" | "all",
         page: pagination.currentPage,
@@ -125,9 +125,9 @@ export default function TeacherQnmsManagement() {
   // Debounce search term để giảm số lần gọi API
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
+      setDebouncedSearchTerm(searchTerm.trim())
       // Reset về trang 1 khi search thay đổi
-      if (searchTerm !== debouncedSearchTerm) {
+      if (searchTerm.trim() !== debouncedSearchTerm) {
         pagination.setCurrentPage(1)
       }
     }, 500) // Delay 500ms
@@ -145,10 +145,8 @@ export default function TeacherQnmsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       toast.success("Cập nhật trạng thái giáo viên thành công")
-      console.log("Teacher status toggled successfully");
     },
     onError: (error) => {
-      console.error("Error toggling teacher status:", error)
       alert("Có lỗi xảy ra khi cập nhật trạng thái giáo viên")
     }
   })

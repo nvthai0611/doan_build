@@ -6,7 +6,7 @@ import { QueryClassDto } from '../dto/class/query-class.dto';
 import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 import { generateQNCode } from '../../../utils/function.util';
-import { DEFAULT_STATUS, ClassStatus, EnrollmentStatus } from '../../../common/constants';
+import { DEFAULT_STATUS, ClassStatus, EnrollmentStatus, SessionStatus } from '../../../common/constants';
 import { DataTransformer } from '../../../../core/transformer';
 
 @Injectable()
@@ -87,8 +87,8 @@ export class ClassManagementService {
         equals: name,
         mode: 'insensitive',
       },
-      academicYear: academicYear,
-      status: { not: 'deleted' },
+      academicYear: academicYear,   
+      status: { notIn: ['deleted', 'cancelled'] },
     };
 
     // Nếu đang update, loại trừ chính nó
@@ -118,10 +118,12 @@ export class ClassManagementService {
         gradeId,
         subjectId,
         roomId,
+        teacherId,
         search,
         dayOfWeek,
         shift,
-        academicYear,
+        startDate,
+        endDate,
         page = 1,
         limit = 10,
         sortBy = 'createdAt',
@@ -151,44 +153,173 @@ export class ClassManagementService {
 
       if (status && status !== 'all') where.status = status;
 
-      // Filter by gradeId instead of grade string
+      // Filter by gradeId or grade level
       if (gradeId) {
-        where.gradeId = gradeId;
+        const gradeValues = gradeId.split(',').map((id: string) => id.trim()).filter((id: string) => id);
+        
+        // Check if values are UUIDs or grade levels (numbers)
+        const isUUID = (value: string) => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          return uuidRegex.test(value);
+        };
+        
+        const allAreUUIDs = gradeValues.every((val) => isUUID(val));
+        
+        if (allAreUUIDs) {
+          // Filter by gradeId (UUID)
+          if (gradeValues.length === 1) {
+            where.gradeId = gradeValues[0];
+          } else if (gradeValues.length > 1) {
+            where.gradeId = { in: gradeValues };
+          }
+        } else {
+          // Filter by grade level (numbers like 6, 7, 8, 9)
+          const gradeLevels = gradeValues.map((val) => parseInt(val)).filter((val) => !isNaN(val));
+          if (gradeLevels.length === 1) {
+            where.grade = { level: gradeLevels[0] };
+          } else if (gradeLevels.length > 1) {
+            where.grade = { level: { in: gradeLevels } };
+          }
+        }
       }
 
-      if (subjectId) where.subjectId = subjectId;
-      if (roomId) where.roomId = roomId;
-      if (academicYear) where.academicYear = academicYear;
+      // Helper function to validate UUID
+      const isValidUUID = (value: string): boolean => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(value);
+      };
 
-      // Enhanced search - search in name, classCode, description, subject name, teacher name
+      // Filter by subjectId (must be valid UUID)
+      if (subjectId && subjectId !== 'all' && isValidUUID(subjectId)) {
+        where.subjectId = subjectId;
+      }
+
+      // Filter by roomId (must be valid UUID)
+      if (roomId && roomId !== 'all' && isValidUUID(roomId)) {
+        where.roomId = roomId;
+      }
+
+      // Filter by teacherId (must be valid UUID)
+      if (teacherId && teacherId !== 'all' && isValidUUID(teacherId)) {
+        where.teacherId = teacherId;
+      }
+
+      // Filter by date range (if provided)
+      // Logic: Tìm lớp có khoảng thời gian giao với khoảng startDate - endDate
+      // Lớp giao với khoảng [startDate, endDate] nếu:
+      // - Lớp bắt đầu <= endDate VÀ lớp kết thúc >= startDate
+      if (startDate || endDate) {
+        where.AND = where.AND || [];
+        
+        if (startDate && endDate) {
+          // Có cả startDate và endDate: tìm lớp có khoảng thời gian giao với khoảng này
+          const startDateObj = new Date(startDate + 'T00:00:00.000Z');
+          const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+          
+          // Lớp bắt đầu <= endDate (sử dụng actualStartDate hoặc expectedStartDate)
+          // VÀ lớp kết thúc >= startDate (sử dụng actualEndDate hoặc ước tính)
+          where.AND.push({
+            AND: [
+              // Lớp bắt đầu <= endDate
+              {
+                OR: [
+                  { actualStartDate: { lte: endDateObj } },
+                  { expectedStartDate: { lte: endDateObj } },
+                ],
+              },
+              // Lớp kết thúc >= startDate
+              {
+                OR: [
+                  { actualEndDate: { gte: startDateObj } },
+                  // Nếu không có actualEndDate, kiểm tra actualStartDate hoặc expectedStartDate
+                  {
+                    AND: [
+                      { actualEndDate: null },
+                      {
+                        OR: [
+                          { actualStartDate: { gte: startDateObj } },
+                          { expectedStartDate: { gte: startDateObj } },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+        } else if (startDate) {
+          // Chỉ có startDate: tìm lớp có ngày bắt đầu >= startDate
+          const startDateObj = new Date(startDate + 'T00:00:00.000Z');
+          where.AND.push({
+            OR: [
+              { actualStartDate: { gte: startDateObj } },
+              { expectedStartDate: { gte: startDateObj } },
+            ],
+          });
+        } else if (endDate) {
+          // Chỉ có endDate: tìm lớp có ngày kết thúc <= endDate hoặc chưa có ngày kết thúc nhưng bắt đầu <= endDate
+          const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+          where.AND.push({
+            OR: [
+              { actualEndDate: { lte: endDateObj } },
+              {
+                AND: [
+                  { actualEndDate: null },
+                  {
+                    OR: [
+                      { actualStartDate: { lte: endDateObj } },
+                      { expectedStartDate: { lte: endDateObj } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+        }
+      }
+
+      // Enhanced search - search in name, classCode, description, subject name, teacher name, email, phone
       if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { classCode: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          {
-            subject: {
-              name: { contains: search, mode: 'insensitive' },
-            },
-          },
-          {
-            teacher: {
-              user: {
-                fullName: { contains: search, mode: 'insensitive' },
+        const searchConditions = {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { classCode: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            {
+              subject: {
+                name: { contains: search, mode: 'insensitive' },
               },
             },
-          },
-          {
-            room: {
-              name: { contains: search, mode: 'insensitive' },
+            {
+              teacher: {
+                user: {
+                  OR: [
+                    { fullName: { contains: search, mode: 'insensitive' } },
+                    { email: { contains: search, mode: 'insensitive' } },
+                    { phone: { contains: search, mode: 'insensitive' } },
+                  ],
+                },
+              },
             },
-          },
-          {
-            grade: {
-              name: { contains: search, mode: 'insensitive' },
+            {
+              room: {
+                name: { contains: search, mode: 'insensitive' },
+              },
             },
-          },
-        ];
+            {
+              grade: {
+                name: { contains: search, mode: 'insensitive' },
+              },
+            },
+          ],
+        };
+        
+        // Combine search with other conditions
+        if (where.AND) {
+          where.AND.push(searchConditions);
+        } else {
+          where.AND = [searchConditions];
+        }
       }
 
       const totalBeforeFilter = await this.prisma.class.count({ where });
@@ -208,6 +339,7 @@ export class ClassManagementService {
           subject: true,
           room: true,
           grade: true,
+          
           teacher: {
             select: {
               id: true,
@@ -223,11 +355,39 @@ export class ClassManagementService {
               },
             },
           },
+          enrollments: {
+            where: {
+              status: {
+                not: 'withdrawn', // Loại bỏ enrollments đã chuyển lớp
+              },
+            },
+            select: {
+              id: true, // Chỉ cần id để count
+            },
+          },
           _count: {
-            select: { enrollments: true },
+            select: { sessions: true },
           },
         },
       });
+
+      // Get sessions ended count for all classes in a single query
+      const classIds = classes.map((cls) => cls.id);
+      const sessionsEndedResults = await this.prisma.classSession.groupBy({
+        by: ['classId'],
+        where: {
+          classId: { in: classIds },
+          status: 'end',
+        },
+        _count: {
+          id: true,
+        },
+      });
+
+      // Create a map for quick lookup
+      const sessionsEndedMap = new Map(
+        sessionsEndedResults.map((item) => [item.classId, item._count.id]),
+      );
 
       // Transform data
       let transformedClasses = classes.map((cls) => ({
@@ -241,7 +401,7 @@ export class ClassManagementService {
         gradeLevel: cls.grade?.level || null,
         status: cls.status,
         maxStudents: cls.maxStudents,
-        currentStudents: cls._count.enrollments,
+        currentStudents: cls.enrollments.length, // Count từ enrollments array đã được filter
         roomId: cls.roomId,
         roomName: cls.room?.name || '-',
         description: cls.description,
@@ -260,6 +420,8 @@ export class ClassManagementService {
               avatar: cls.teacher.user.avatar,
             }
           : null,
+        sessions: cls._count.sessions,
+        sessionsEnd: sessionsEndedMap.get(cls.id) || 0,
         createdAt: cls.createdAt,
         updatedAt: cls.updatedAt,
       }));
@@ -305,18 +467,18 @@ export class ClassManagementService {
         }
       }
 
-      const sortedClasses = transformedClasses.sort((a, b) => {
-        const aIsCurrentYear = a.academicYear === currentAcademicYear;
-        const bIsCurrentYear = b.academicYear === currentAcademicYear;
-        if (aIsCurrentYear && !bIsCurrentYear) return -1;
-        if (!aIsCurrentYear && bIsCurrentYear) return 1;
-        return 0;
-      });
+      // const sortedClasses = transformedClasses.sort((a, b) => {
+      //   const aIsCurrentYear = a.academicYear === currentAcademicYear;
+      //   const bIsCurrentYear = b.academicYear === currentAcademicYear;
+      //   if (aIsCurrentYear && !bIsCurrentYear) return -1;
+      //   if (!aIsCurrentYear && bIsCurrentYear) return 1;
+      //   return 0;
+      // });
 
       return {
         success: true,
         message: 'Lấy danh sách lớp học thành công',
-        data: sortedClasses,
+        data: transformedClasses,
         meta: {
           total: totalBeforeFilter,
           page: page,
@@ -590,6 +752,55 @@ export class ClassManagementService {
       // Xác định maxStudents: ưu tiên giá trị truyền vào, nếu không có thì dùng capacity của phòng
       const maxStudents = createClassDto.maxStudents ?? roomCapacity;
 
+      // Tìm hoặc tạo FeeStructure cho lớp nếu có gradeId và subjectId
+      let feeStructureId: string | null = null;
+      let feeAmount: number | null = null;
+      let feePeriod: string | null = null;
+      let feeCurrency: string = 'VND';
+      
+      if (createClassDto.gradeId && createClassDto.subjectId) {
+        // Lấy thông tin grade và subject để tạo tên
+        const grade = await this.prisma.grade.findUnique({
+          where: { id: createClassDto.gradeId },
+        });
+        const subject = await this.prisma.subject.findUnique({
+          where: { id: createClassDto.subjectId },
+        });
+
+        if (grade && subject) {
+          // Tìm FeeStructure hiện có
+          let feeStructure = await this.prisma.feeStructure.findUnique({
+            where: {
+              gradeId_subjectId: {
+                gradeId: createClassDto.gradeId,
+                subjectId: createClassDto.subjectId,
+              },
+            },
+          });
+
+          // Nếu chưa có, tạo mới
+          if (!feeStructure) {
+            feeStructure = await this.prisma.feeStructure.create({
+              data: {
+                name: `Học phí ${subject.name} ${grade.name}`,
+                amount: 0, // Mặc định 0, có thể cập nhật sau
+                period: 'per_session', // Mặc định theo buổi
+                description: `Học phí cho môn ${subject.name} khối ${grade.name}`,
+                gradeId: createClassDto.gradeId,
+                subjectId: createClassDto.subjectId,
+                isActive: true,
+              },
+            });
+          }
+
+          feeStructureId = feeStructure.id;
+          // Copy giá trị từ FeeStructure vào các field của Class
+          feeAmount = feeStructure.amount ? Number(feeStructure.amount) : null;
+          feePeriod = feeStructure.period || null;
+          feeCurrency = 'VND'; // Mặc định VND
+        }
+      }
+
       const newClass = await this.prisma.class.create({
         data: {
           name: createClassDto.name,
@@ -603,6 +814,10 @@ export class ClassManagementService {
           status: DEFAULT_STATUS.CLASS,
           recurringSchedule: createClassDto.recurringSchedule || null,
           academicYear: academicYear,
+          feeStructureId: feeStructureId,
+          feeAmount: feeAmount,
+          feePeriod: feePeriod,
+          feeCurrency: feeCurrency,
           expectedStartDate: createClassDto.expectedStartDate
             ? new Date(createClassDto.expectedStartDate)
             : null,
@@ -617,6 +832,7 @@ export class ClassManagementService {
           subject: true,
           room: true,
           grade: true,
+          feeStructure: true,
           teacher: {
             include: {
               user: {
@@ -985,10 +1201,18 @@ export class ClassManagementService {
 
       // Thực hiện update trong transaction
       const result = await this.prisma.$transaction(async (tx) => {
-        // Update class status
+        // Chuẩn bị data để update
+        const updateData: any = { status };
+        
+        // Nếu chuyển sang 'active' và feeLockedAt chưa được set, thì khóa học phí
+        if (status === 'active' && !existingClass.feeLockedAt) {
+          updateData.feeLockedAt = new Date();
+        }
+        
+        // Update class status và feeLockedAt nếu cần
         const updatedClass = await tx.class.update({
           where: { id },
-          data: { status },
+          data: updateData,
         });
 
         // Nếu chuyển từ active sang completed, update enrollments và sessions
@@ -996,7 +1220,7 @@ export class ClassManagementService {
         let updatedSessionsCount = 0;
         if (existingClass.status === 'active' && status === 'completed') {
           // Update tất cả enrollments có status là studying hoặc not_been_updated
-          // nhưng không update những ai đã withdrawn hoặc stopped
+          // nhưng không update những ai đã stopped
           const updateResult = await tx.enrollment.updateMany({
             where: {
               classId: id,
@@ -1026,6 +1250,41 @@ export class ClassManagementService {
           updatedSessionsCount = sessionsUpdateResult.count;
         }
 
+        // Nếu chuyển sang cancelled, update tất cả enrollments sang stopped
+        if (status === 'cancelled') {
+          console.log(status);
+          
+          // Update tất cả enrollments có status là studying hoặc not_been_updated
+          // sang stopped (ngưng học)
+          const updateResult = await tx.enrollment.updateMany({
+            where: {
+              classId: id,
+              status: {
+                in: ['studying', 'not_been_updated'],
+              },
+            },
+            data: {
+              status: EnrollmentStatus.STOPPED,
+              completionNotes: 'Lớp học đã bị hủy',
+            },
+          });
+          updatedEnrollmentsCount = updateResult.count;
+
+          // Update tất cả buổi học về status 'cancelled'
+          const sessionsUpdateResult = await tx.classSession.updateMany({
+            where: {
+              classId: id,
+              status: {
+                notIn: ['end', 'cancelled', 'day_off'], // Chỉ update những session chưa end/cancelled
+              },
+            },
+            data: {
+              status: 'cancelled', 
+            },
+          });
+          updatedSessionsCount = sessionsUpdateResult.count;
+        }
+        
         return {
           class: updatedClass,
           updatedEnrollmentsCount,
@@ -2224,6 +2483,15 @@ export class ClassManagementService {
           {
             success: false,
             message: 'Không thể xóa lớp học có học sinh đang học',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if(existingClass.status === 'completed') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không thể xóa lớp học đã hoàn thành',
           },
           HttpStatus.BAD_REQUEST,
         );

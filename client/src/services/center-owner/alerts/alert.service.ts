@@ -1,4 +1,4 @@
-import { apiClient } from '../common/api/api-client';
+import { apiClient } from '../../common/api/api-client';
 
 export interface Alert {
   id: string;
@@ -42,7 +42,12 @@ export class AlertService {
         params
       );
       return response as any;
-    } catch (error) {
+    } catch (error: any) {
+      // Nếu là lỗi 401, 403 (không có quyền), trả về empty data thay vì throw
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return { data: [], meta: { unreadCount: 0, total: 0, page: 1, limit: 20, totalPages: 0 } };
+      }
+      // Các lỗi khác vẫn throw để có thể xử lý
       console.error('Error fetching alerts:', error);
       throw error;
     }
@@ -53,8 +58,13 @@ export class AlertService {
       const response = await apiClient.get<UnreadCountResponse>(
         `${this.BASE_URL}/unread-count`
       );
-      return response as any;
-    } catch (error) {
+      return response;
+    } catch (error: any) {
+      // Nếu là lỗi 401, 403 (không có quyền), trả về 0 thay vì throw
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return { data: { count: 0 }, message: '' };
+      }
+      // Các lỗi khác vẫn throw để có thể xử lý
       console.error('Error fetching unread count:', error);
       throw error;
     }

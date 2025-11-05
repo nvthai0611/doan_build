@@ -6,15 +6,15 @@ export declare class AlertController {
     getAlerts(query: GetAlertsDto): Promise<{
         data: {
             id: bigint;
-            title: string;
-            alertType: string;
             message: string;
-            severity: number;
-            payload: import("@prisma/client/runtime/library").JsonValue | null;
-            isRead: boolean;
-            processed: boolean;
-            triggeredAt: Date;
             processedAt: Date | null;
+            alertType: string;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            triggeredAt: Date;
+            processed: boolean;
+            severity: number;
+            title: string;
+            isRead: boolean;
         }[];
         meta: {
             total: number;
@@ -34,15 +34,15 @@ export declare class AlertController {
     createAlert(createAlertDto: CreateAlertDto): Promise<{
         data: {
             id: bigint;
-            title: string;
-            alertType: string;
             message: string;
-            severity: number;
-            payload: import("@prisma/client/runtime/library").JsonValue | null;
-            isRead: boolean;
-            processed: boolean;
-            triggeredAt: Date;
             processedAt: Date | null;
+            alertType: string;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            triggeredAt: Date;
+            processed: boolean;
+            severity: number;
+            title: string;
+            isRead: boolean;
         };
         message: string;
     }>;
@@ -55,15 +55,15 @@ export declare class AlertController {
     updateAlert(id: string, updateAlertDto: UpdateAlertDto): Promise<{
         data: {
             id: bigint;
-            title: string;
-            alertType: string;
             message: string;
-            severity: number;
-            payload: import("@prisma/client/runtime/library").JsonValue | null;
-            isRead: boolean;
-            processed: boolean;
-            triggeredAt: Date;
             processedAt: Date | null;
+            alertType: string;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            triggeredAt: Date;
+            processed: boolean;
+            severity: number;
+            title: string;
+            isRead: boolean;
         };
         message: string;
     }>;

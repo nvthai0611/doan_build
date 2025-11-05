@@ -192,6 +192,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF],
         className: SESSION_STATUS_COLORS[SessionStatus.DAY_OFF],
         icon: CalendarOff
+      },
+      [SessionStatus.CANCELLED]: {
+        variant: 'destructive', 
+        label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED],
+        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED],
+        icon: XCircle
       }
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];
@@ -433,13 +439,13 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           <div className="flex gap-2">
             <Sheet open={isAddLessonOpen} onOpenChange={setIsAddLessonOpen}>
               <SheetTrigger asChild>
-                <Button 
+                {/* <Button 
                   disabled={classData?.status === ClassStatus.COMPLETED || classData?.status === ClassStatus.CANCELLED || allSessions.length > 0}
                   title={classData?.status === ClassStatus.COMPLETED || classData?.status === ClassStatus.CANCELLED || allSessions.length > 0 ? `Không thể tạo buổi học khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                   >
                   <Plus className="h-4 w-4 mr-2" />
                   Tự động tạo buổi học
-                </Button>
+                </Button> */}
               </SheetTrigger>
               <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
                 <SheetHeader>

@@ -23,7 +23,7 @@ class QueryClassDto {
         this.sortOrder = 'desc';
     }
     static _OPENAPI_METADATA_FACTORY() {
-        return { search: { required: false, type: () => String }, status: { required: false, type: () => String, default: "all" }, gradeId: { required: false, type: () => String }, subjectId: { required: false, type: () => String }, roomId: { required: false, type: () => String }, teacherId: { required: false, type: () => String }, feeStructureId: { required: false, type: () => String }, dayOfWeek: { required: false, type: () => String }, shift: { required: false, type: () => String, default: "all" }, academicYear: { required: false, type: () => String }, page: { required: false, type: () => Number, default: 1, minimum: 1 }, limit: { required: false, type: () => Number, default: 10, minimum: 1, maximum: 100 }, sortBy: { required: false, type: () => String, default: "createdAt" }, sortOrder: { required: false, type: () => Object, default: "desc" } };
+        return { search: { required: false, type: () => String }, status: { required: false, type: () => String, default: "all" }, gradeId: { required: false, type: () => String }, subjectId: { required: false, type: () => String }, roomId: { required: false, type: () => String }, teacherId: { required: false, type: () => String }, feeStructureId: { required: false, type: () => String }, dayOfWeek: { required: false, type: () => String }, shift: { required: false, type: () => String, default: "all" }, startDate: { required: false, type: () => String }, endDate: { required: false, type: () => String }, page: { required: false, type: () => Number, default: 1, minimum: 1 }, limit: { required: false, type: () => Number, default: 10, minimum: 1, maximum: 100 }, sortBy: { required: false, type: () => String, default: "createdAt" }, sortOrder: { required: false, type: () => Object, default: "desc" } };
     }
 }
 exports.QueryClassDto = QueryClassDto;
@@ -76,7 +76,12 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], QueryClassDto.prototype, "academicYear", void 0);
+], QueryClassDto.prototype, "startDate", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], QueryClassDto.prototype, "endDate", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => parseInt(value)),

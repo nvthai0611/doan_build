@@ -16,11 +16,11 @@ const template_enrollment_1 = require("../template-email/template-enrollment");
 let EnrollmentEmailProcessor = class EnrollmentEmailProcessor {
     async handleSendEnrollmentEmail(job) {
         const startTime = Date.now();
-        console.log(`[Job ${job.id}] Bắt đầu xử lý email đăng ký lớp\n` +
+        console.log(`[Job ${job.id}] Bắt đầu xử lý email ${job.data.isTransfer ? 'chuyển lớp' : 'đăng ký lớp'}\n` +
             `   - Học sinh: ${job.data.studentName}\n` +
             `   - Lớp: ${job.data.className}\n` +
             `   - Email: ${job.data.to}`);
-        const { to, studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus, studentId, classId, } = job.data;
+        const { to, studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus, studentId, classId, isTransfer, oldClassName, transferReason, } = job.data;
         try {
             if (!to || !to.includes('@')) {
                 throw new Error('Email phụ huynh không hợp lệ');
@@ -34,11 +34,16 @@ let EnrollmentEmailProcessor = class EnrollmentEmailProcessor {
                 startDate,
                 schedule,
                 enrollmentStatus,
+                isTransfer,
+                oldClassName,
+                transferReason,
             });
-            const emailSubject = `Thông báo đăng ký lớp - ${studentName} - ${className}`;
+            const emailSubject = isTransfer
+                ? `Thông báo chuyển lớp - ${studentName} - ${className}`
+                : `Thông báo đăng ký lớp - ${studentName} - ${className}`;
             await (0, email_util_1.default)(to, emailSubject, emailHtml);
             const duration = Date.now() - startTime;
-            console.log(`[Job ${job.id}] Email đăng ký lớp đã gửi thành công trong ${duration}ms\n` +
+            console.log(`[Job ${job.id}] Email ${isTransfer ? 'chuyển lớp' : 'đăng ký lớp'} đã gửi thành công trong ${duration}ms\n` +
                 `   - Học sinh: ${studentName}\n` +
                 `   - Email phụ huynh: ${to}\n` +
                 `   - ClassId: ${classId}\n` +

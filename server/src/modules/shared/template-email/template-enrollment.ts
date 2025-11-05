@@ -1,7 +1,7 @@
 import { formatSchedule } from '../../../utils/function.util';
 
 /**
- * Template email thông báo đăng ký lớp học cho phụ huynh
+ * Template email thông báo đăng ký lớp học hoặc chuyển lớp cho phụ huynh
  */
 export const enrollmentNotificationEmailTemplate = (data: {
   studentName: string;
@@ -12,12 +12,29 @@ export const enrollmentNotificationEmailTemplate = (data: {
   startDate?: string;
   schedule?: any;
   enrollmentStatus: string;
+  isTransfer?: boolean;
+  oldClassName?: string;
+  transferReason?: string;
 }): string => {
-  const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus } = data;
+  const { 
+    studentName, 
+    parentName, 
+    className, 
+    subjectName, 
+    teacherName, 
+    startDate, 
+    schedule, 
+    enrollmentStatus,
+    isTransfer,
+    oldClassName,
+    transferReason
+  } = data;
   
   const statusMessage = enrollmentStatus === 'studying' 
     ? 'Lớp đã có lịch học, học sinh có thể xem lịch ngay.'
     : 'Lớp đang chuẩn bị lịch học, chúng tôi sẽ thông báo khi có lịch.';
+  
+  const isChuyểnLớp = isTransfer === true;
 
   return `
 <!DOCTYPE html>
@@ -98,21 +115,35 @@ export const enrollmentNotificationEmailTemplate = (data: {
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>✅ Đăng Ký Lớp Học Thành Công</h1>
+    <div class="header" style="background-color: ${isChuyểnLớp ? '#2196F3' : '#4CAF50'};">
+      <h1>${isChuyểnLớp ? '🔄 Thông Báo Chuyển Lớp' : '✅ Đăng Ký Lớp Học Thành Công'}</h1>
     </div>
     
     <div class="content">
       <p>Kính gửi <strong>${parentName}</strong>,</p>
       
-      <p>Chúng tôi xin thông báo học sinh <strong>${studentName}</strong> đã được đăng ký thành công vào lớp học.</p>
+      <p>Chúng tôi xin thông báo học sinh <strong>${studentName}</strong> ${isChuyểnLớp ? 'đã được chuyển lớp học' : 'đã được đăng ký thành công vào lớp học'}.</p>
       
-      <div class="info-box">
+      ${isChuyểnLớp && oldClassName ? `
+      <div class="info-box" style="background-color: #ffebee; border-left: 4px solid #f44336;">
+        <p style="margin: 0 0 10px 0;"><strong>📚 Lớp cũ:</strong></p>
+        <div class="info-row">
+          <span class="label">🏫 Tên lớp:</span> ${oldClassName}
+        </div>
+      </div>
+      
+      <div style="text-align: center; font-size: 24px; color: #2196F3; margin: 10px 0;">
+        ⬇️
+      </div>
+      ` : ''}
+      
+      <div class="info-box" style="border-left-color: ${isChuyểnLớp ? '#2196F3' : '#4CAF50'}; background-color: ${isChuyểnLớp ? '#e8f5e9' : '#f9f9f9'};">
         <div class="info-row">
           <span class="label">👨‍🎓 Học sinh:</span> ${studentName}
         </div>
+        ${isChuyểnLớp ? '<p style="margin: 0 0 10px 0;"><strong>📚 Lớp mới:</strong></p>' : ''}
         <div class="info-row">
-          <span class="label">🏫 Lớp học:</span> ${className}
+          <span class="label">🏫 ${isChuyểnLớp ? 'Tên lớp:' : 'Lớp học:'}</span> ${className}
         </div>
         <div class="info-row">
           <span class="label">📚 Môn học:</span> ${subjectName}
@@ -133,6 +164,13 @@ export const enrollmentNotificationEmailTemplate = (data: {
       <div style="background-color: #e0f2fe; padding: 15px; border-radius: 5px; margin: 15px 0;">
         <p style="margin: 0 0 10px 0;"><strong>📅 Lịch học:</strong></p>
         <p style="margin: 5px 0; font-size: 14px;">${formatSchedule(schedule)}</p>
+      </div>
+      ` : ''}
+      
+      ${transferReason ? `
+      <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 4px;">
+        <p style="margin: 0 0 10px 0;"><strong>📝 Lý do chuyển lớp:</strong></p>
+        <p style="margin: 5px 0;">${transferReason}</p>
       </div>
       ` : ''}
       

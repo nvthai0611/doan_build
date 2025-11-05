@@ -7,6 +7,7 @@ export declare class PublicClassesService {
         limit: number;
         subjectId?: string;
         gradeId?: string;
+        teacherId?: string;
     }): Promise<{
         success: boolean;
         data: {

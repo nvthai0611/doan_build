@@ -49,12 +49,16 @@ export function SessionDetailModal({
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'scheduled':
-        return 'Đã lên lịch';
-      case 'completed':
-        return 'Đã hoàn thành';
+      case 'has_not_happened':
+        return 'Chưa diễn ra';
+      case 'happening':
+        return 'Đang diễn ra';
+      case 'end':
+        return 'Đã kết thúc';
       case 'cancelled':
         return 'Đã hủy';
+      case 'day_off':
+        return 'Nghỉ';
       default:
         return 'Không xác định';
     }
@@ -64,12 +68,16 @@ export function SessionDetailModal({
     status: string,
   ): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
-      case 'scheduled':
+      case 'has_not_happened':
         return 'default';
-      case 'completed':
+      case 'happening':
         return 'secondary';
-      case 'cancelled':
+      case 'end':
         return 'destructive';
+      case 'cancelled':
+        return 'outline';
+      case 'day_off':
+        return 'outline';
       default:
         return 'outline';
     }

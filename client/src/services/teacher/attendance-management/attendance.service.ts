@@ -1,75 +1,173 @@
-import { apiClient } from "../../../utils/clientAxios"
+import { apiClient } from '../../../utils/clientAxios'
 
-const getListStudentsByRecordId = async (recordId: any): Promise<any> => {
-    try {
-    const response = await apiClient.get(`/teacher/attendances/${recordId}`);
-    
-    if (response.status !== 200) {
-      throw new Error('Lấy danh sách học sinh thất bại');
+interface AttendanceRecord {
+  studentId: string
+  status: 'present' | 'absent' | 'excused' | 'late'
+  note?: string
+}
+
+interface LeaveRequest {
+  id: string
+  studentId: string
+  status: string
+  startDate: string
+  endDate: string
+  student: {
+    id: string
+    user: {
+      fullName: string
     }
-    
-    return response.data;
+  }
+  createdByUser: {
+    fullName: string
+  }
+}
+
+interface AttendanceResponse {
+  data: any
+  message: string
+}
+
+const getListStudentsByRecordId = async (recordId: string): Promise<any> => {
+  try {
+    const response = await apiClient.get(`/teacher/attendances/${recordId}`)
+
+    if (response.status !== 200) {
+      throw new Error('Lấy danh sách học sinh thất bại')
+    }
+
+    return response.data
   } catch (error: any) {
-    // Xử lý các loại error khác nhau
     if (error.response) {
-      // Server trả về error response
-      throw new Error(error.response.data?.message || 'Lấy danh sách học sinh thất bại');
+      throw new Error(error.response.data?.message || 'Lấy danh sách học sinh thất bại')
     } else if (error.request) {
-      // Request được gửi nhưng không nhận được response
-      throw new Error('Không thể kết nối đến server');
+      throw new Error('Không thể kết nối đến server')
     } else {
-      // Các lỗi khác
-      throw new Error(error.message || 'Đã có lỗi xảy ra');
+      throw new Error(error.message || 'Đã có lỗi xảy ra')
     }
   }
 }
 
 const getListStudentBySessionId = async (sessionId: string): Promise<any> => {
-  const response = await apiClient.get(`/teacher/attendances/${sessionId}/students`);
-  return response.data;
-}
-const updateAttendanceStudent = async (sessionId: string, records: any[]): Promise<any> => {
   try {
-    const response = await apiClient.put(`/teacher/attendances/${sessionId}`,  records );
-    return response.data;
+    const response = await apiClient.get(`/teacher/attendances/${sessionId}/students`)
+    return response.data
   } catch (error: any) {
-    // Xu ly cac loai error khac nhau
     if (error.response) {
-      // Server tra ve error response
-      throw new Error(error.response.data?.message || 'Cập nhật điểm danh thất bại');
+      throw new Error(error.response.data?.message || 'Lấy danh sách học sinh thất bại')
     } else if (error.request) {
-      // Request dc gui nhung khong nhan dc response
-      throw new Error('Không thể kết nối đến server');
+      throw new Error('Không thể kết nối đến server')
     } else {
-      // Cac loi khac
-      throw new Error(error.message || 'Đã có lỗi xảy ra');
+      throw new Error(error.message || 'Đã có lỗi xảy ra')
     }
   }
 }
 
-const sendEmailNotificationAbsence = async (sessionId: any, studentIds: string[]): Promise<any> => {
+/**
+ * Lấy danh sách đơn xin nghỉ trong ngày học
+ * @param sessionId - ID của buổi học
+ * @returns Danh sách đơn xin nghỉ pending
+ */
+const getLeaveRequestsBySessionId = async (sessionId: string): Promise<any[]> => {
   try {
-    const response = await apiClient.post(`/teacher/attendances/${sessionId}/send-absent-notifications`, { studentIds });
-    return response.data;
+    const response = await apiClient.get(`/teacher/attendances/${sessionId}/leave-requests`)
+    return response.data as any[]
   } catch (error: any) {
-    // Xu ly cac loai error khac nhau
     if (error.response) {
-      // Server tra ve error response
-      throw new Error(error.response.data?.message || 'Gửi thông báo vắng mặt thất bại');
+      throw new Error(error.response.data?.message || 'Lấy danh sách đơn xin nghỉ thất bại')
     } else if (error.request) {
-      // Request dc gui nhung khong nhan dc response
-      throw new Error('Không thể kết nối đến server');
+      throw new Error('Không thể kết nối đến server')
     } else {
-      // Cac loi khac
-      throw new Error(error.message || 'Đã có lỗi xảy ra');
+      throw new Error(error.message || 'Đã có lỗi xảy ra')
+    }
+  }
+}
+
+/**
+ * Cập nhật điểm danh học sinh
+ * Nếu status là 'excused', đơn xin nghỉ sẽ được tự động duyệt
+ * @param sessionId - ID của buổi học
+ * @param records - Danh sách bản ghi điểm danh
+ * @returns Kết quả cập nhật
+ */
+const updateAttendanceStudent = async (
+  sessionId: string,
+  records: AttendanceRecord[]
+): Promise<any> => {
+  try {
+    const response = await apiClient.put(
+      `/teacher/attendances/${sessionId}`,
+      { records }
+    )
+    
+    console.log('API Response:', response)
+    
+    // Backend trả về { data: {...}, message: '...' }
+    // Axios tự động wrap trong response.data
+    return response.data
+  } catch (error: any) {
+    console.error('Update attendance error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      error: error,
+    })
+    
+    // Xử lý error từ server
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message)
+    } 
+    
+    // Xử lý network error
+    if (error.request && !error.response) {
+      throw new Error('Không thể kết nối đến server')
+    }
+    
+    // Xử lý error khác
+    if (error.message) {
+      throw new Error(error.message)
+    }
+    
+    // Fallback error
+    throw new Error('Đã có lỗi xảy ra khi cập nhật điểm danh')
+  }
+}
+
+/**
+ * Gửi email thông báo vắng mặt cho phụ huynh
+ * @param sessionId - ID của buổi học
+ * @param studentIds - Danh sách ID học sinh vắng mặt
+ * @returns Kết quả gửi email
+ */
+const sendEmailNotificationAbsence = async (
+  sessionId: string,
+  studentIds: string[]
+): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      `/teacher/attendances/${sessionId}/send-absent-notifications`,
+      { studentIds }
+    )
+    return response.data
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data?.message || 'Gửi thông báo vắng mặt thất bại')
+    } else if (error.request) {
+      throw new Error('Không thể kết nối đến server')
+    } else {
+      throw new Error(error.message || 'Đã có lỗi xảy ra')
     }
   }
 }
 
 export {
-    getListStudentsByRecordId,
-    updateAttendanceStudent,
-    getListStudentBySessionId,
-    sendEmailNotificationAbsence
+  getListStudentsByRecordId,
+  updateAttendanceStudent,
+  getListStudentBySessionId,
+  getLeaveRequestsBySessionId,
+  sendEmailNotificationAbsence,
+  type AttendanceRecord,
+  type LeaveRequest,
+  type AttendanceResponse,
 }
 

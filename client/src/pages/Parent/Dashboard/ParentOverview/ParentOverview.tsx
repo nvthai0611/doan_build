@@ -37,8 +37,8 @@ export function ParentOverview() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["parent-overview", selectedTimeFilter],
     queryFn: () => parentOverviewService.getOverview(getDateFromFilter(selectedTimeFilter)),
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   const parentName = data?.parentName || "Phụ huynh"

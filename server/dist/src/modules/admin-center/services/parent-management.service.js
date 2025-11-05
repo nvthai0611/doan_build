@@ -23,7 +23,7 @@ let ParentManagementService = class ParentManagementService {
     }
     async createParentWithStudents(createParentData) {
         const existingParentUsername = await this.prisma.user.findUnique({
-            where: { username: createParentData.username + '@qne.edu.vn' },
+            where: { username: createParentData.username },
         });
         if (existingParentUsername) {
             throw new common_1.HttpException('Username phụ huynh đã được sử dụng', common_1.HttpStatus.CONFLICT);
@@ -44,52 +44,19 @@ let ParentManagementService = class ParentManagementService {
         }
         if (createParentData.students && createParentData.students.length > 0) {
             for (let i = 0; i < createParentData.students.length; i++) {
-                const student = createParentData.students[i];
-                if (!student.fullName || !student.username || !student.schoolId) {
-                    throw new common_1.HttpException(`Thông tin học sinh ${i + 1} không đầy đủ (cần: fullName, username, schoolId)`, common_1.HttpStatus.BAD_REQUEST);
+                const s = createParentData.students[i];
+                if (!s.fullName || !s.fullName.trim()) {
+                    throw new common_1.HttpException(`Họ và tên học sinh ${i + 1} không được để trống`, common_1.HttpStatus.BAD_REQUEST);
                 }
-                const studentUsername = student.username;
-                const existingStudentUsername = await this.prisma.user.findUnique({
-                    where: { username: studentUsername },
-                });
-                if (existingStudentUsername) {
-                    throw new common_1.HttpException(`Username học sinh "${student.username}" đã được sử dụng`, common_1.HttpStatus.CONFLICT);
+                if (!s.gender || !['MALE', 'FEMALE', 'OTHER'].includes(s.gender)) {
+                    throw new common_1.HttpException(`Giới tính học sinh ${i + 1} không hợp lệ`, common_1.HttpStatus.BAD_REQUEST);
                 }
-                if (student.email) {
-                    const existingStudentEmail = await this.prisma.user.findUnique({
-                        where: { email: student.email },
-                    });
-                    if (existingStudentEmail) {
-                        throw new common_1.HttpException(`Email học sinh ${student.email} đã được sử dụng`, common_1.HttpStatus.CONFLICT);
-                    }
+                if (!s.birthDate || isNaN(Date.parse(s.birthDate))) {
+                    throw new common_1.HttpException(`Ngày sinh học sinh ${i + 1} không hợp lệ`, common_1.HttpStatus.BAD_REQUEST);
                 }
-                if (student.phone) {
-                    const existingStudentPhone = await this.prisma.user.findFirst({
-                        where: { phone: student.phone },
-                    });
-                    if (existingStudentPhone) {
-                        throw new common_1.HttpException(`Số điện thoại ${student.phone} đã được sử dụng`, common_1.HttpStatus.CONFLICT);
-                    }
+                if (!s.schoolId) {
+                    throw new common_1.HttpException(`Trường học cho học sinh ${i + 1} không được để trống`, common_1.HttpStatus.BAD_REQUEST);
                 }
-            }
-            const studentUsernames = createParentData.students.map((s) => s.username);
-            const duplicateUsernames = studentUsernames.filter((username, index) => studentUsernames.indexOf(username) !== index);
-            if (duplicateUsernames.length > 0) {
-                throw new common_1.HttpException(`Username học sinh "${duplicateUsernames[0]}" bị trùng lặp trong danh sách`, common_1.HttpStatus.BAD_REQUEST);
-            }
-            const studentEmails = createParentData.students
-                .filter((s) => s.email)
-                .map((s) => s.email);
-            const duplicateEmails = studentEmails.filter((email, index) => studentEmails.indexOf(email) !== index);
-            if (duplicateEmails.length > 0) {
-                throw new common_1.HttpException(`Email học sinh "${duplicateEmails[0]}" bị trùng lặp trong danh sách`, common_1.HttpStatus.BAD_REQUEST);
-            }
-            const studentPhones = createParentData.students
-                .filter((s) => s.phone)
-                .map((s) => s.phone);
-            const duplicatePhones = studentPhones.filter((phone, index) => studentPhones.indexOf(phone) !== index);
-            if (duplicatePhones.length > 0) {
-                throw new common_1.HttpException(`Số điện thoại "${duplicatePhones[0]}" bị trùng lặp trong danh sách`, common_1.HttpStatus.BAD_REQUEST);
             }
         }
         const defaultPassword = createParentData.password || '123456';
@@ -105,144 +72,164 @@ let ParentManagementService = class ParentManagementService {
                 break;
             }
         }
-        try {
-            const result = await this.prisma.$transaction(async (tx) => {
-                const newParentUser = await tx.user.create({
-                    data: {
-                        email: createParentData.email,
-                        username: createParentData.username + '@qne.edu.vn',
-                        fullName: createParentData.fullName,
-                        phone: createParentData.phone || null,
-                        gender: createParentData.gender || 'OTHER',
-                        birthDate: createParentData.birthDate
-                            ? new Date(createParentData.birthDate)
-                            : null,
-                        password: hasing_util_1.default.make(defaultPassword),
-                        isActive: true,
-                        role: 'parent',
-                    },
-                });
-                const newParent = await tx.parent.create({
-                    data: {
-                        userId: newParentUser.id,
-                    },
-                });
-                const createdStudents = [];
-                if (createParentData.students && createParentData.students.length > 0) {
-                    for (const studentData of createParentData.students) {
-                        const studentUsername = studentData.username;
-                        const studentEmail = studentData.email;
-                        const studentUser = await tx.user.create({
-                            data: {
-                                email: studentEmail,
-                                username: studentUsername,
-                                fullName: studentData.fullName,
-                                phone: studentData.phone || null,
-                                gender: studentData.gender || 'OTHER',
-                                birthDate: studentData.birthDate
-                                    ? new Date(studentData.birthDate)
-                                    : null,
-                                password: hasing_util_1.default.make(defaultPassword),
-                                isActive: true,
-                                role: 'student',
-                            },
-                        });
-                        const newStudent = await tx.student.create({
-                            data: {
-                                userId: studentUser.id,
-                                parentId: newParent.id,
-                                studentCode: studentCode,
-                                address: studentData.address || null,
-                                grade: studentData.grade || null,
-                                schoolId: studentData.schoolId,
-                            },
-                            include: {
-                                user: {
-                                    select: {
-                                        id: true,
-                                        fullName: true,
-                                        email: true,
-                                        username: true,
-                                        phone: true,
-                                        avatar: true,
-                                    },
+        const parentRole = await this.prisma.role.findUnique({
+            where: { name: 'parent' },
+        });
+        if (!parentRole) {
+            throw new common_1.HttpException('Không tìm thấy vai trò phụ huynh trong hệ thống', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        const studentRole = await this.prisma.role.findUnique({
+            where: { name: 'student' },
+        });
+        if (!studentRole) {
+            throw new common_1.HttpException('Không tìm thấy vai trò học sinh trong hệ thống', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        const result = await this.prisma.$transaction(async (tx) => {
+            const newParentUser = await tx.user.create({
+                data: {
+                    email: createParentData.email,
+                    username: createParentData.username,
+                    fullName: createParentData.fullName,
+                    phone: createParentData.phone || null,
+                    gender: 'OTHER',
+                    password: hasing_util_1.default.make(defaultPassword),
+                    isActive: true,
+                    roleId: parentRole.id,
+                    role: 'parent',
+                },
+            });
+            const newParent = await tx.parent.create({
+                data: {
+                    userId: newParentUser.id,
+                    relationshipType: createParentData.relationshipType,
+                },
+            });
+            const base = createParentData.username;
+            let nextIndex = 1;
+            const generateNextStudentUsername = async () => {
+                while (true) {
+                    const candidate = `${base}_${nextIndex}`;
+                    const exists = await tx.user.findUnique({
+                        where: { username: candidate },
+                    });
+                    if (!exists) {
+                        nextIndex++;
+                        return candidate;
+                    }
+                    nextIndex++;
+                }
+            };
+            const createdStudents = [];
+            if (createParentData.students && createParentData.students.length > 0) {
+                for (const s of createParentData.students) {
+                    const studentUsername = await generateNextStudentUsername();
+                    const studentUser = await tx.user.create({
+                        data: {
+                            email: `${studentUsername}@student.qne.edu.vn`,
+                            username: studentUsername,
+                            fullName: s.fullName,
+                            phone: null,
+                            gender: s.gender || 'OTHER',
+                            birthDate: s.birthDate ? new Date(s.birthDate) : null,
+                            password: hasing_util_1.default.make(defaultPassword),
+                            isActive: true,
+                            roleId: studentRole.id,
+                            role: 'student',
+                        },
+                    });
+                    const newStudent = await tx.student.create({
+                        data: {
+                            userId: studentUser.id,
+                            parentId: newParent.id,
+                            studentCode: studentCode,
+                            address: null,
+                            grade: null,
+                            schoolId: s.schoolId,
+                        },
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    email: true,
+                                    username: true,
+                                    phone: true,
+                                    avatar: true,
                                 },
                             },
-                        });
-                        createdStudents.push({
-                            id: newStudent.id,
-                            studentCode: newStudent.studentCode,
-                            grade: newStudent.grade,
-                            address: newStudent.address,
-                            user: {
-                                ...newStudent.user,
-                                password: defaultPassword,
-                            },
-                        });
-                    }
-                }
-                const parentWithStudents = await tx.parent.findUnique({
-                    where: { id: newParent.id },
-                    include: {
+                        },
+                    });
+                    createdStudents.push({
+                        id: newStudent.id,
+                        studentCode: newStudent.studentCode,
+                        grade: newStudent.grade,
+                        address: newStudent.address,
                         user: {
-                            select: {
-                                id: true,
-                                email: true,
-                                username: true,
-                                fullName: true,
-                                phone: true,
-                                avatar: true,
-                                isActive: true,
-                                gender: true,
-                                birthDate: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
+                            ...newStudent.user,
+                            password: defaultPassword,
+                        },
+                    });
+                }
+            }
+            const parentWithStudents = await tx.parent.findUnique({
+                where: { id: newParent.id },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            username: true,
+                            fullName: true,
+                            phone: true,
+                            avatar: true,
+                            isActive: true,
+                            gender: true,
+                            birthDate: true,
+                            createdAt: true,
+                            updatedAt: true,
                         },
                     },
-                });
-                return {
-                    parent: parentWithStudents,
-                    students: createdStudents,
-                };
+                },
             });
-            if (result.parent.user.email) {
-                const parentInfo = {
-                    fullName: result.parent.user.fullName,
-                    username: result.parent.user.username,
-                    email: result.parent.user.email,
-                    password: defaultPassword,
-                };
-                const studentsInfo = result.students.map((s) => ({
-                    fullName: s.user.fullName,
-                    username: s.user.username,
-                    email: s.user.email,
-                    password: s.user.password,
-                }));
+            return {
+                parent: parentWithStudents,
+                students: createdStudents,
+            };
+        });
+        if (result.parent.user.email) {
+            const parentInfo = {
+                fullName: result.parent.user.fullName,
+                username: result.parent.user.username,
+                email: result.parent.user.email,
+                password: defaultPassword,
+            };
+            const studentsInfo = result.students.map((s) => ({
+                fullName: s.user.fullName,
+                username: s.user.username,
+                email: s.user.email,
+                password: s.user.password,
+            }));
+            try {
                 await (0, email_util_1.default)(result.parent.user.email, 'Thông tin tài khoản phụ huynh và học sinh QNE', (0, template_parent_student_account_1.templateParentStudentAccount)(parentInfo, studentsInfo));
             }
-            return {
-                data: {
-                    id: result.parent.id,
-                    createdAt: result.parent.createdAt,
-                    updatedAt: result.parent.updatedAt,
-                    user: {
-                        ...result.parent.user,
-                        password: defaultPassword,
-                    },
-                    students: result.students,
-                    studentCount: result.students.length,
-                },
-                message: `Tạo tài khoản phụ huynh và ${result.students.length} học sinh thành công`,
-            };
-        }
-        catch (error) {
-            console.error('Error creating parent with students:', error);
-            if (error instanceof common_1.HttpException) {
-                throw error;
+            catch (emailError) {
+                console.error('Failed to send email:', emailError);
             }
-            throw new common_1.HttpException(`Lỗi khi tạo tài khoản: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        return {
+            data: {
+                id: result.parent.id,
+                createdAt: result.parent.createdAt,
+                updatedAt: result.parent.updatedAt,
+                user: {
+                    ...result.parent.user,
+                    password: defaultPassword,
+                },
+                students: result.students,
+                studentCount: result.students.length,
+            },
+            message: `Tạo tài khoản phụ huynh và ${result.students.length} học sinh thành công`,
+        };
     }
     async addStudentToParent(parentId, studentData) {
         const parent = await this.prisma.parent.findUnique({
@@ -255,54 +242,55 @@ let ParentManagementService = class ParentManagementService {
         if (!parent.user.isActive) {
             throw new common_1.HttpException('Tài khoản phụ huynh đã bị vô hiệu hóa', common_1.HttpStatus.BAD_REQUEST);
         }
-        if (!studentData.fullName ||
-            !studentData.username ||
-            !studentData.schoolId) {
-            throw new common_1.HttpException('Thông tin học sinh không đầy đủ (cần: fullName, username, schoolId)', common_1.HttpStatus.BAD_REQUEST);
+        if (!studentData.fullName || !studentData.fullName.trim()) {
+            throw new common_1.HttpException('Họ và tên học sinh không được để trống', common_1.HttpStatus.BAD_REQUEST);
         }
-        const studentUsername = studentData.username;
-        const existingUsername = await this.prisma.user.findUnique({
-            where: { username: studentUsername },
-        });
-        if (existingUsername) {
-            throw new common_1.HttpException('Username học sinh đã được sử dụng', common_1.HttpStatus.CONFLICT);
+        if (!studentData.schoolId) {
+            throw new common_1.HttpException('Trường học không được để trống', common_1.HttpStatus.BAD_REQUEST);
         }
-        if (studentData.email) {
-            const existingEmail = await this.prisma.user.findUnique({
-                where: { email: studentData.email },
-            });
-            if (existingEmail) {
-                throw new common_1.HttpException('Email học sinh đã được sử dụng', common_1.HttpStatus.CONFLICT);
-            }
+        if (!studentData.gender) {
+            throw new common_1.HttpException('Giới tính không được để trống', common_1.HttpStatus.BAD_REQUEST);
         }
-        if (studentData.phone) {
-            const existingPhone = await this.prisma.user.findFirst({
-                where: { phone: studentData.phone },
-            });
-            if (existingPhone) {
-                throw new common_1.HttpException('Số điện thoại đã được sử dụng', common_1.HttpStatus.CONFLICT);
-            }
+        if (!studentData.birthDate || isNaN(Date.parse(studentData.birthDate))) {
+            throw new common_1.HttpException('Ngày sinh không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
         }
         let studentCode = (0, function_util_1.generateQNCode)('student');
         while (true) {
             const existingCode = await this.prisma.student.findUnique({
                 where: { studentCode: studentCode },
             });
-            if (!existingCode) {
+            if (!existingCode)
                 break;
-            }
             studentCode = (0, function_util_1.generateQNCode)('student');
         }
         const defaultPassword = studentData.password || '123456';
-        const studentEmail = studentData.email || studentData.username;
+        const parentUsername = parent.user.username || '';
+        const base = parentUsername.includes('@')
+            ? parentUsername.split('@')[0]
+            : parentUsername;
         try {
             const result = await this.prisma.$transaction(async (tx) => {
+                let nextIndex = (await tx.student.count({ where: { parentId } })) + 1;
+                const generateNextStudentUsername = async () => {
+                    while (true) {
+                        const candidate = `${base}_${nextIndex}`;
+                        const exists = await tx.user.findUnique({
+                            where: { username: candidate },
+                        });
+                        if (!exists) {
+                            nextIndex++;
+                            return candidate;
+                        }
+                        nextIndex++;
+                    }
+                };
+                const studentUsername = await generateNextStudentUsername();
                 const studentUser = await tx.user.create({
                     data: {
-                        email: studentEmail,
+                        email: null,
                         username: studentUsername,
                         fullName: studentData.fullName,
-                        phone: studentData.phone || null,
+                        phone: null,
                         gender: studentData.gender || 'OTHER',
                         birthDate: studentData.birthDate
                             ? new Date(studentData.birthDate)
@@ -317,8 +305,8 @@ let ParentManagementService = class ParentManagementService {
                         userId: studentUser.id,
                         parentId: parentId,
                         studentCode: studentCode,
-                        address: studentData.address || null,
-                        grade: studentData.grade || null,
+                        address: null,
+                        grade: null,
                         schoolId: studentData.schoolId,
                     },
                     include: {
@@ -402,7 +390,7 @@ let ParentManagementService = class ParentManagementService {
     }
     async createParent(createParentData) {
         const existingUsername = await this.prisma.user.findUnique({
-            where: { username: createParentData.username + '@qne.edu.vn' },
+            where: { username: createParentData.username },
         });
         if (existingUsername) {
             throw new common_1.HttpException('Username đã được sử dụng', common_1.HttpStatus.CONFLICT);
@@ -425,7 +413,7 @@ let ParentManagementService = class ParentManagementService {
         const newUser = await this.prisma.user.create({
             data: {
                 email: createParentData.email,
-                username: createParentData.username + '@qne.edu.vn',
+                username: createParentData.username,
                 fullName: createParentData.fullName,
                 phone: createParentData.phone,
                 gender: createParentData.gender || 'OTHER',
@@ -851,91 +839,112 @@ let ParentManagementService = class ParentManagementService {
         }
     }
     async updateParent(parentId, updateParentData) {
-        try {
-            const existingParent = await this.prisma.parent.findUnique({
-                where: { id: parentId },
-                include: {
-                    user: true,
+        const existingParent = await this.prisma.parent.findUnique({
+            where: { id: parentId },
+            include: {
+                user: true,
+            },
+        });
+        if (!existingParent) {
+            throw new common_1.HttpException('Phụ huynh không tồn tại', common_1.HttpStatus.NOT_FOUND);
+        }
+        if (updateParentData.email !== undefined) {
+            const existingEmail = await this.prisma.user.findUnique({
+                where: { email: updateParentData.email },
+            });
+            if (existingEmail && existingEmail.id !== existingParent.userId) {
+                throw new common_1.HttpException('Email đã được sử dụng bởi tài khoản khác', common_1.HttpStatus.CONFLICT);
+            }
+        }
+        if (updateParentData.phone !== undefined && updateParentData.phone) {
+            const existingPhone = await this.prisma.user.findFirst({
+                where: {
+                    phone: updateParentData.phone,
+                    id: { not: existingParent.userId }
                 },
             });
-            if (!existingParent) {
-                throw new Error('Phụ huynh không tồn tại');
+            if (existingPhone) {
+                throw new common_1.HttpException('Số điện thoại đã được sử dụng bởi tài khoản khác', common_1.HttpStatus.CONFLICT);
             }
-            const userUpdateData = {};
-            if (updateParentData.fullName !== undefined) {
-                userUpdateData.fullName = updateParentData.fullName;
-            }
-            if (updateParentData.phone !== undefined) {
-                userUpdateData.phone = updateParentData.phone;
-            }
-            if (updateParentData.gender !== undefined) {
-                userUpdateData.gender = updateParentData.gender;
-            }
-            if (updateParentData.birthDate !== undefined) {
-                userUpdateData.birthDate = updateParentData.birthDate
-                    ? new Date(updateParentData.birthDate)
-                    : null;
-            }
-            if (Object.keys(userUpdateData).length > 0) {
-                await this.prisma.user.update({
-                    where: { id: existingParent.userId },
-                    data: {
-                        ...userUpdateData,
-                        updatedAt: new Date(),
-                    },
-                });
-            }
-            const updatedParent = await this.prisma.parent.findUnique({
+        }
+        const userUpdateData = {};
+        if (updateParentData.fullName !== undefined) {
+            userUpdateData.fullName = updateParentData.fullName.trim();
+        }
+        if (updateParentData.email !== undefined) {
+            userUpdateData.email = updateParentData.email.trim();
+        }
+        if (updateParentData.phone !== undefined) {
+            userUpdateData.phone = updateParentData.phone.trim() || null;
+        }
+        const parentUpdateData = {};
+        if (updateParentData.relationshipType !== undefined) {
+            parentUpdateData.relationshipType = updateParentData.relationshipType;
+        }
+        if (Object.keys(userUpdateData).length > 0) {
+            await this.prisma.user.update({
+                where: { id: existingParent.userId },
+                data: {
+                    ...userUpdateData,
+                    updatedAt: new Date(),
+                },
+            });
+        }
+        if (Object.keys(parentUpdateData).length > 0) {
+            await this.prisma.parent.update({
                 where: { id: parentId },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            email: true,
-                            username: true,
-                            fullName: true,
-                            phone: true,
-                            avatar: true,
-                            isActive: true,
-                            gender: true,
-                            birthDate: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
+                data: {
+                    ...parentUpdateData,
+                    updatedAt: new Date(),
+                },
+            });
+        }
+        const updatedParent = await this.prisma.parent.findUnique({
+            where: { id: parentId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        username: true,
+                        fullName: true,
+                        phone: true,
+                        avatar: true,
+                        isActive: true,
+                        createdAt: true,
+                        updatedAt: true,
                     },
-                    students: {
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    fullName: true,
-                                    email: true,
-                                    phone: true,
-                                },
+                },
+                students: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phone: true,
                             },
                         },
                     },
                 },
-            });
-            return {
-                data: {
-                    id: updatedParent.id,
-                    createdAt: updatedParent.createdAt,
-                    updatedAt: updatedParent.updatedAt,
-                    user: updatedParent.user,
-                    students: updatedParent.students.map((student) => ({
-                        id: student.id,
-                        studentCode: student.studentCode,
-                        user: student.user,
-                    })),
-                },
-                message: 'Cập nhật thông tin phụ huynh thành công',
-            };
-        }
-        catch (error) {
-            console.error('Error updating parent:', error);
-            throw new Error(`Error updating parent: ${error.message}`);
-        }
+            },
+        });
+        return {
+            data: {
+                id: updatedParent.id,
+                createdAt: updatedParent.createdAt,
+                updatedAt: updatedParent.updatedAt,
+                relationshipType: updatedParent.relationshipType,
+                user: updatedParent.user,
+                students: updatedParent.students.map((student) => ({
+                    id: student.id,
+                    studentCode: student.studentCode,
+                    user: student.user,
+                })),
+                studentCount: updatedParent.students.length,
+            },
+            message: 'Cập nhật thông tin phụ huynh thành công',
+        };
     }
     async findStudentByCode(studentCode) {
         try {
@@ -1334,7 +1343,7 @@ let ParentManagementService = class ParentManagementService {
             throw new common_1.HttpException(`Lỗi khi tạo hóa đơn: ${error?.message || error}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async updateStatusPayment(paymentId, status) {
+    async updateStatusPayment(paymentId, status, customNotes) {
         try {
             (0, validate_util_1.checkId)(paymentId);
             const existingPayment = await this.prisma.payment.findUnique({
@@ -1355,7 +1364,10 @@ let ParentManagementService = class ParentManagementService {
                 throw new common_1.HttpException('Trạng thái thanh toán không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
             }
             let note = existingPayment.notes || "";
-            if (existingPayment.status == "partially_paid") {
+            if (customNotes && customNotes.trim()) {
+                note = customNotes.trim();
+            }
+            else if (existingPayment.status === "partially_paid" && status === "completed") {
                 note += " => Phụ huynh đã thanh toán phần còn lại của hóa đơn.";
             }
             const result = await this.prisma.$transaction(async (tx) => {

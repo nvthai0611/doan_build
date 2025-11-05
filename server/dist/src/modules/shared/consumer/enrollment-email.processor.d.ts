@@ -11,6 +11,9 @@ interface EnrollmentEmailData {
     enrollmentStatus: string;
     studentId: string;
     classId: string;
+    isTransfer?: boolean;
+    oldClassName?: string;
+    transferReason?: string;
 }
 export declare class EnrollmentEmailProcessor {
     handleSendEnrollmentEmail(job: Job<EnrollmentEmailData>): Promise<{

@@ -7,26 +7,27 @@ export declare class AttendanceService {
             enrollments: ({
                 student: {
                     user: {
+                        id: string;
                         fullName: string;
                         avatar: string;
                     };
                 } & {
-                    grade: string | null;
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
+                    grade: string | null;
                     schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
                 };
             } & {
                 id: bigint;
-                status: string;
                 studentId: string;
                 classId: string;
+                status: string;
                 enrolledAt: Date;
                 semester: string | null;
                 completedAt: Date | null;
@@ -35,38 +36,38 @@ export declare class AttendanceService {
                 completionNotes: string | null;
             })[];
         } & {
-            academicYear: string | null;
-            password: string | null;
-            createdAt: Date;
-            updatedAt: Date;
             id: string;
+            status: string;
+            createdAt: Date;
+            password: string | null;
+            updatedAt: Date;
             name: string;
-            description: string | null;
-            subjectId: string;
-            gradeId: string | null;
-            maxStudents: number | null;
             roomId: string | null;
             teacherId: string | null;
-            status: string;
+            classCode: string | null;
+            description: string | null;
+            feeStructureId: string | null;
+            gradeId: string | null;
+            maxStudents: number | null;
+            subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+            academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
-            feeStructureId: string | null;
-            classCode: string | null;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
         };
     } & {
-        academicYear: string;
-        createdAt: Date;
         id: string;
+        classId: string;
+        status: string;
+        createdAt: Date;
         roomId: string | null;
         teacherId: string | null;
-        status: string;
-        classId: string;
+        academicYear: string;
         substituteTeacherId: string | null;
         substituteEndDate: Date | null;
         sessionDate: Date;
@@ -78,33 +79,35 @@ export declare class AttendanceService {
     getAttendanceBySessionId(sessionId: string): Promise<({
         student: {
             user: {
+                id: string;
                 fullName: string;
                 avatar: string;
             };
         } & {
-            grade: string | null;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
-            id: string;
             userId: string;
             studentCode: string | null;
             address: string | null;
+            grade: string | null;
             schoolId: string;
             parentId: string | null;
             scholarshipId: string | null;
         };
         session: {
             class: {
+                id: string;
                 name: string;
             };
         } & {
-            academicYear: string;
-            createdAt: Date;
             id: string;
+            classId: string;
+            status: string;
+            createdAt: Date;
             roomId: string | null;
             teacherId: string | null;
-            status: string;
-            classId: string;
+            academicYear: string;
             substituteTeacherId: string | null;
             substituteEndDate: Date | null;
             sessionDate: Date;
@@ -115,20 +118,66 @@ export declare class AttendanceService {
         };
     } & {
         id: bigint;
-        sessionId: string;
-        status: string;
         studentId: string;
+        status: string;
         note: string | null;
+        sessionId: string;
         recordedBy: string;
         recordedAt: Date;
         isSent: boolean;
         sentAt: Date | null;
     })[]>;
-    attendanceStudentBySessionId(sessionId: string, records: any[], teacherId: string): Promise<{
-        data: {
-            updated: number;
-            total: number;
+    getLeaveRequestsBySessionId(sessionId: string): Promise<({
+        leaveRequest: {
+            student: {
+                user: {
+                    id: string;
+                    fullName: string;
+                    avatar: string;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                userId: string;
+                studentCode: string | null;
+                address: string | null;
+                grade: string | null;
+                schoolId: string;
+                parentId: string | null;
+                scholarshipId: string | null;
+            };
+            createdByUser: {
+                id: string;
+                fullName: string;
+            };
+        } & {
+            id: string;
+            studentId: string | null;
+            status: string;
+            createdAt: Date;
+            teacherId: string | null;
+            startDate: Date;
+            notes: string | null;
+            reason: string;
+            approvedBy: string | null;
+            approvedAt: Date | null;
+            endDate: Date;
+            requestType: string;
+            createdBy: string;
+            imageUrl: string | null;
         };
-        message: string;
-    }>;
+    } & {
+        id: string;
+        createdAt: Date;
+        notes: string | null;
+        replacementTeacherId: string | null;
+        sessionId: string;
+        leaveRequestId: string;
+    })[]>;
+    attendanceStudentBySessionId(sessionId: string, records: any[], teacherId: string, userId: string): Promise<any>;
+    private approveLeaveRequestsForStudents;
+    private validateAttendanceTime;
+    private getDateStart;
+    private getDateEnd;
 }

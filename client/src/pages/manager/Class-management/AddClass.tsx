@@ -843,22 +843,6 @@ export const CreateClass = () => {
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Use Template Switch */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="useTemplate"
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  Sử dụng chương trình học theo khoá học mẫu
-                </Label>
-                <Switch
-                  id="useTemplate"
-                  checked={useTemplate}
-                  onCheckedChange={setUseTemplate}
-                />
-              </div>
-            </div>
 
             {/* Mô tả */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">

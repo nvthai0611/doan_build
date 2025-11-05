@@ -7,4 +7,7 @@ export declare const enrollmentNotificationEmailTemplate: (data: {
     startDate?: string;
     schedule?: any;
     enrollmentStatus: string;
+    isTransfer?: boolean;
+    oldClassName?: string;
+    transferReason?: string;
 }) => string;

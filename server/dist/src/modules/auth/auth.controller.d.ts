@@ -26,21 +26,21 @@ export declare class AuthController {
                 phone: string;
                 isActive: boolean;
                 student: {
-                    grade: string | null;
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
+                    grade: string | null;
                     schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
                 };
                 parent: {
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     relationshipType: string | null;
                 };
@@ -79,21 +79,21 @@ export declare class AuthController {
             createdAt: Date;
             updatedAt: Date;
             student: {
-                grade: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
+                grade: string | null;
                 schoolId: string;
                 parentId: string | null;
                 scholarshipId: string | null;
             };
             parent: {
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 relationshipType: string | null;
             };
@@ -101,30 +101,30 @@ export declare class AuthController {
             roleData: {
                 rolePermissions: ({
                     permission: {
+                        id: string;
                         createdAt: Date;
                         isActive: boolean;
                         updatedAt: Date;
-                        id: string;
                         name: string;
-                        displayName: string;
                         description: string | null;
+                        displayName: string;
                         module: string;
                         action: string;
                     };
                 } & {
+                    id: string;
                     createdAt: Date;
                     roleId: string;
-                    id: string;
                     permissionId: string;
                 })[];
             } & {
+                id: string;
                 createdAt: Date;
                 isActive: boolean;
                 updatedAt: Date;
-                id: string;
                 name: string;
-                displayName: string;
                 description: string | null;
+                displayName: string;
             };
         };
     }>;
@@ -146,21 +146,21 @@ export declare class AuthController {
                 phone: string;
                 isActive: boolean;
                 student: {
-                    grade: string | null;
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
+                    grade: string | null;
                     schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
                 };
                 parent: {
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     relationshipType: string | null;
                 };
@@ -185,21 +185,21 @@ export declare class AuthController {
             birthDate: Date;
             isActive: boolean;
             student: {
-                grade: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
+                grade: string | null;
                 schoolId: string;
                 parentId: string | null;
                 scholarshipId: string | null;
             };
             parent: {
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 relationshipType: string | null;
             };
@@ -209,8 +209,8 @@ export declare class AuthController {
         success: boolean;
         message: string;
         data: {
-            createdAt: Date;
             id: string;
+            createdAt: Date;
             expiresAt: Date;
         }[];
     }>;

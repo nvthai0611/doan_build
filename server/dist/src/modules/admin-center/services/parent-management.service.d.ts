@@ -7,18 +7,12 @@ export declare class ParentManagementService {
         username: string;
         email: string;
         phone?: string;
-        gender?: 'MALE' | 'FEMALE' | 'OTHER';
-        birthDate?: string;
+        relationshipType: 'FATHER' | 'MOTHER' | 'OTHER';
         password?: string;
         students?: Array<{
             fullName: string;
-            username: string;
-            email?: string;
-            phone?: string;
-            gender?: 'MALE' | 'FEMALE' | 'OTHER';
-            birthDate?: string;
-            address?: string;
-            grade?: string;
+            gender: 'MALE' | 'FEMALE' | 'OTHER';
+            birthDate: string;
             schoolId: string;
         }>;
     }): Promise<{
@@ -28,15 +22,15 @@ export declare class ParentManagementService {
             updatedAt: Date;
             user: {
                 password: string;
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
@@ -47,7 +41,6 @@ export declare class ParentManagementService {
     }>;
     addStudentToParent(parentId: string, studentData: {
         fullName: string;
-        username: string;
         email?: string;
         phone?: string;
         gender?: 'MALE' | 'FEMALE' | 'OTHER';
@@ -60,13 +53,13 @@ export declare class ParentManagementService {
         data: {
             id: string;
             user: {
+                id: string;
                 email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
@@ -77,11 +70,11 @@ export declare class ParentManagementService {
                 address: string;
                 user: {
                     password: string;
+                    id: string;
                     email: string;
                     fullName: string;
                     phone: string;
                     username: string;
-                    id: string;
                 };
             }[];
             studentCount: number;
@@ -103,15 +96,15 @@ export declare class ParentManagementService {
             updatedAt: Date;
             user: {
                 password: string;
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
@@ -119,10 +112,10 @@ export declare class ParentManagementService {
                 id: string;
                 studentCode: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     phone: string;
-                    id: string;
                 };
             }[];
             studentCount: number;
@@ -135,15 +128,15 @@ export declare class ParentManagementService {
             createdAt: Date;
             updatedAt: Date;
             user: {
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
@@ -151,9 +144,9 @@ export declare class ParentManagementService {
                 id: string;
                 studentCode: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
-                    id: string;
                 };
             }[];
             studentCount: number;
@@ -203,67 +196,62 @@ export declare class ParentManagementService {
                         fullName: string;
                     };
                 } & {
-                    grade: string | null;
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
+                    grade: string | null;
                     schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
                 };
                 feeStructure: {
+                    id: string;
                     createdAt: Date;
                     isActive: boolean;
-                    id: string;
                     name: string;
                     description: string | null;
-                    subjectId: string | null;
                     gradeId: string | null;
+                    subjectId: string | null;
                     amount: import("@prisma/client/runtime/library").Decimal;
                     period: string;
                 };
             } & {
-                scholarship: import("@prisma/client/runtime/library").Decimal | null;
-                createdAt: Date;
                 id: string;
-                status: string;
-                feeStructureId: string;
                 studentId: string;
                 classId: string | null;
-                notes: string | null;
+                status: string;
+                createdAt: Date;
+                scholarship: import("@prisma/client/runtime/library").Decimal | null;
+                feeStructureId: string;
                 amount: import("@prisma/client/runtime/library").Decimal;
+                notes: string | null;
                 dueDate: Date;
                 totalAmount: import("@prisma/client/runtime/library").Decimal | null;
             })[];
             user: {
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
             students: ({
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     isActive: boolean;
                     avatar: string;
                     phone: string;
-                    id: string;
-                };
-                school: {
-                    id: string;
-                    name: string;
-                    address: string;
                 };
                 enrollments: ({
                     class: {
@@ -274,25 +262,25 @@ export declare class ParentManagementService {
                             code: string;
                         };
                     } & {
-                        academicYear: string | null;
-                        password: string | null;
-                        createdAt: Date;
-                        updatedAt: Date;
                         id: string;
+                        status: string;
+                        createdAt: Date;
+                        password: string | null;
+                        updatedAt: Date;
                         name: string;
-                        description: string | null;
-                        subjectId: string;
-                        gradeId: string | null;
-                        maxStudents: number | null;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        classCode: string | null;
+                        description: string | null;
+                        feeStructureId: string | null;
+                        gradeId: string | null;
+                        maxStudents: number | null;
+                        subjectId: string;
                         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
+                        academicYear: string | null;
                         expectedStartDate: Date | null;
                         actualStartDate: Date | null;
                         actualEndDate: Date | null;
-                        feeStructureId: string | null;
-                        classCode: string | null;
                         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                         feePeriod: string | null;
                         feeCurrency: string | null;
@@ -300,9 +288,9 @@ export declare class ParentManagementService {
                     };
                 } & {
                     id: bigint;
-                    status: string;
                     studentId: string;
                     classId: string;
+                    status: string;
                     enrolledAt: Date;
                     semester: string | null;
                     completedAt: Date | null;
@@ -310,21 +298,26 @@ export declare class ParentManagementService {
                     completionStatus: string | null;
                     completionNotes: string | null;
                 })[];
+                school: {
+                    id: string;
+                    name: string;
+                    address: string;
+                };
             } & {
-                grade: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
+                grade: string | null;
                 schoolId: string;
                 parentId: string | null;
                 scholarshipId: string | null;
             })[];
+            id: string;
             createdAt: Date;
             updatedAt: Date;
-            id: string;
             userId: string;
             relationshipType: string | null;
         };
@@ -341,40 +334,40 @@ export declare class ParentManagementService {
     toggleParentStatus(parentId: string): Promise<{
         data: {
             user: {
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
             students: ({
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
-                    id: string;
                 };
             } & {
-                grade: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
+                grade: string | null;
                 schoolId: string;
                 parentId: string | null;
                 scholarshipId: string | null;
             })[];
         } & {
+            id: string;
             createdAt: Date;
             updatedAt: Date;
-            id: string;
             userId: string;
             relationshipType: string | null;
         };
@@ -382,37 +375,37 @@ export declare class ParentManagementService {
     }>;
     updateParent(parentId: string, updateParentData: {
         fullName?: string;
+        email?: string;
         phone?: string;
-        gender?: 'MALE' | 'FEMALE' | 'OTHER';
-        birthDate?: string;
+        relationshipType?: 'FATHER' | 'MOTHER' | 'OTHER';
     }): Promise<{
         data: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            relationshipType: string;
             user: {
-                email: string;
+                id: string;
                 createdAt: Date;
+                email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 updatedAt: Date;
                 username: string;
-                id: string;
-                gender: import(".prisma/client").$Enums.Gender;
-                birthDate: Date;
             };
             students: {
                 id: string;
                 studentCode: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     phone: string;
-                    id: string;
                 };
             }[];
+            studentCount: number;
         };
         message: string;
     }>;
@@ -423,22 +416,22 @@ export declare class ParentManagementService {
             grade: string;
             address: string;
             user: {
+                id: string;
                 email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
             parent: {
                 id: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     phone: string;
-                    id: string;
                 };
             };
             school: {
@@ -452,13 +445,13 @@ export declare class ParentManagementService {
         data: {
             id: string;
             user: {
+                id: string;
                 email: string;
                 fullName: string;
                 isActive: boolean;
                 avatar: string;
                 phone: string;
                 username: string;
-                id: string;
                 gender: import(".prisma/client").$Enums.Gender;
                 birthDate: Date;
             };
@@ -466,10 +459,10 @@ export declare class ParentManagementService {
                 id: string;
                 studentCode: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     phone: string;
-                    id: string;
                 };
             }[];
         };
@@ -482,25 +475,25 @@ export declare class ParentManagementService {
     getPaymentDetails(paymentId: string, parentId: string): Promise<{
         feeRecordPayments: ({
             feeRecord: {
+                class: {
+                    name: string;
+                    classCode: string;
+                };
                 student: {
                     user: {
                         fullName: string;
                     };
                 } & {
-                    grade: string | null;
+                    id: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    id: string;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
+                    grade: string | null;
                     schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
-                };
-                class: {
-                    name: string;
-                    classCode: string;
                 };
                 feeStructure: {
                     name: string;
@@ -508,41 +501,41 @@ export declare class ParentManagementService {
                     period: string;
                 };
             } & {
-                scholarship: import("@prisma/client/runtime/library").Decimal | null;
-                createdAt: Date;
                 id: string;
-                status: string;
-                feeStructureId: string;
                 studentId: string;
                 classId: string | null;
-                notes: string | null;
+                status: string;
+                createdAt: Date;
+                scholarship: import("@prisma/client/runtime/library").Decimal | null;
+                feeStructureId: string;
                 amount: import("@prisma/client/runtime/library").Decimal;
+                notes: string | null;
                 dueDate: Date;
                 totalAmount: import("@prisma/client/runtime/library").Decimal | null;
             };
         } & {
+            id: string;
             createdAt: Date | null;
             updatedAt: Date | null;
-            id: string;
             notes: string | null;
             paymentId: string | null;
             feeRecordId: string | null;
         })[];
     } & {
+        id: string;
+        status: string;
         createdAt: Date | null;
         updatedAt: Date | null;
-        id: string;
         parentId: string | null;
-        status: string;
-        notes: string | null;
+        method: import(".prisma/client").$Enums.PaymentMethod | null;
         amount: import("@prisma/client/runtime/library").Decimal;
+        notes: string | null;
         paidAmount: import("@prisma/client/runtime/library").Decimal | null;
         returnMoney: import("@prisma/client/runtime/library").Decimal | null;
         expirationDate: Date | null;
         reference: string | null;
         paidAt: Date | null;
         transactionCode: string | null;
-        method: import(".prisma/client").$Enums.PaymentMethod | null;
     }>;
     createBillForParent(parentId: string, feeRecordIds: string[], options?: {
         expirationDate?: string;
@@ -559,100 +552,100 @@ export declare class ParentManagementService {
                     fullName: string;
                 };
             } & {
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                id: string;
                 userId: string;
                 relationshipType: string | null;
             };
             feeRecordPayments: ({
                 feeRecord: {
+                    class: {
+                        name: string;
+                        classCode: string;
+                    };
                     student: {
                         user: {
                             fullName: string;
                         };
                     } & {
-                        grade: string | null;
+                        id: string;
                         createdAt: Date;
                         updatedAt: Date;
-                        id: string;
                         userId: string;
                         studentCode: string | null;
                         address: string | null;
+                        grade: string | null;
                         schoolId: string;
                         parentId: string | null;
                         scholarshipId: string | null;
                     };
-                    class: {
-                        name: string;
-                        classCode: string;
-                    };
                     feeStructure: {
+                        id: string;
                         createdAt: Date;
                         isActive: boolean;
-                        id: string;
                         name: string;
                         description: string | null;
-                        subjectId: string | null;
                         gradeId: string | null;
+                        subjectId: string | null;
                         amount: import("@prisma/client/runtime/library").Decimal;
                         period: string;
                     };
                 } & {
-                    scholarship: import("@prisma/client/runtime/library").Decimal | null;
-                    createdAt: Date;
                     id: string;
-                    status: string;
-                    feeStructureId: string;
                     studentId: string;
                     classId: string | null;
-                    notes: string | null;
+                    status: string;
+                    createdAt: Date;
+                    scholarship: import("@prisma/client/runtime/library").Decimal | null;
+                    feeStructureId: string;
                     amount: import("@prisma/client/runtime/library").Decimal;
+                    notes: string | null;
                     dueDate: Date;
                     totalAmount: import("@prisma/client/runtime/library").Decimal | null;
                 };
             } & {
+                id: string;
                 createdAt: Date | null;
                 updatedAt: Date | null;
-                id: string;
                 notes: string | null;
                 paymentId: string | null;
                 feeRecordId: string | null;
             })[];
         } & {
+            id: string;
+            status: string;
             createdAt: Date | null;
             updatedAt: Date | null;
-            id: string;
             parentId: string | null;
-            status: string;
-            notes: string | null;
+            method: import(".prisma/client").$Enums.PaymentMethod | null;
             amount: import("@prisma/client/runtime/library").Decimal;
+            notes: string | null;
             paidAmount: import("@prisma/client/runtime/library").Decimal | null;
             returnMoney: import("@prisma/client/runtime/library").Decimal | null;
             expirationDate: Date | null;
             reference: string | null;
             paidAt: Date | null;
             transactionCode: string | null;
-            method: import(".prisma/client").$Enums.PaymentMethod | null;
         };
         message: string;
     }>;
-    updateStatusPayment(paymentId: string, status: string): Promise<{
+    updateStatusPayment(paymentId: string, status: string, customNotes?: string): Promise<{
         data: {
+            id: string;
+            status: string;
             createdAt: Date | null;
             updatedAt: Date | null;
-            id: string;
             parentId: string | null;
-            status: string;
-            notes: string | null;
+            method: import(".prisma/client").$Enums.PaymentMethod | null;
             amount: import("@prisma/client/runtime/library").Decimal;
+            notes: string | null;
             paidAmount: import("@prisma/client/runtime/library").Decimal | null;
             returnMoney: import("@prisma/client/runtime/library").Decimal | null;
             expirationDate: Date | null;
             reference: string | null;
             paidAt: Date | null;
             transactionCode: string | null;
-            method: import(".prisma/client").$Enums.PaymentMethod | null;
         };
         message: string;
     }>;

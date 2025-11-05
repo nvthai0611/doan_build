@@ -28,6 +28,8 @@ const public_classes_controller_1 = require("./controllers/public-classes.contro
 const public_classes_service_1 = require("./services/public-classes.service");
 const public_showcases_controller_1 = require("./controllers/public-showcases.controller");
 const public_showcases_service_1 = require("./services/public-showcases.service");
+const public_teachers_controller_1 = require("./controllers/public-teachers.controller");
+const public_teachers_service_1 = require("./services/public-teachers.service");
 const DEFAULT_BULL_JOB_OPTIONS = {
     removeOnComplete: 10,
     removeOnFail: 5,
@@ -82,7 +84,8 @@ exports.SharedModule = SharedModule = __decorate([
             students_controller_1.StudentsSharedController,
             grades_controller_1.GradesController,
             public_classes_controller_1.PublicClassesController,
-            public_showcases_controller_1.PublicShowcasesController
+            public_showcases_controller_1.PublicShowcasesController,
+            public_teachers_controller_1.PublicTeachersController
         ],
         providers: [
             prisma_service_1.PrismaService,
@@ -90,6 +93,7 @@ exports.SharedModule = SharedModule = __decorate([
             grade_service_1.GradeService,
             public_classes_service_1.PublicClassesService,
             public_showcases_service_1.PublicShowcasesService,
+            public_teachers_service_1.PublicTeachersService,
             email_queue_service_1.EmailQueueService,
             email_processor_service_1.EmailProcessor,
             email_notification_service_1.EmailNotificationService,

@@ -26,7 +26,7 @@ export const CodeDisplay = ({
 
   return (
     <div className={`flex items-center gap-1 ${className}`}>
-      <span className="text-xs text-gray-400">{displayCode}</span>
+      <span className="text-xs text-gray-400">{code}</span>
       {showCopyButton && (
         <Copy
           className="w-3 h-3 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"

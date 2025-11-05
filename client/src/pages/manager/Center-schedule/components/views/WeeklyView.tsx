@@ -1,6 +1,5 @@
 'use client';
 import type { ViewType } from '../../CenterSchedulePage';
-import { getSessionDisplayName } from '../../utils';
 import { AlertTriangle } from 'lucide-react';
 import { ClassSessions } from '../../../Teacher-management/types/session';
 
@@ -17,6 +16,22 @@ export function WeeklyView({
   onSessionClick,
   sessions,
 }: WeeklyViewProps) {
+  const getClassSessionStatusColor = (status: string) => {
+    switch (status) {
+      case 'day_off':
+        return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm';
+      case 'happening':
+        return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm';
+      case 'end':
+        return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+      case 'has_not_happened':
+        return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm';
+      case 'cancelled':
+        return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+      default:
+        return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm';
+    }
+  };
   // Get start of week (Sunday)
   const startOfWeek = new Date(currentDate);
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -88,24 +103,36 @@ export function WeeklyView({
               {timeSlot}
             </div>
             {weekDays.map((day, dayIndex) => {
-              const sessions = getSessionsForDateTime(day, timeSlot);
+              const slotSessions = getSessionsForDateTime(day, timeSlot);
 
               return (
                 <div
                   key={dayIndex}
-                  className="p-2 min-h-16 border-r border-border last:border-r-0"
+                  className="p-2 min-h-16 border-r border-border last:border-r-0 relative bg-white hover:bg-gray-50 transition-colors"
                 >
-                  {sessions.map((session) => (
+                  {slotSessions.map((session, si) => (
                     <div
                       key={session.id}
+                      className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(session.status)}`}
+                      title={`${session.subjectName} - ${session.name} - ${session.roomName}`}
                       onClick={() => onSessionClick(session)}
-                      className="bg-blue-500 text-white text-xs p-2 rounded mb-1 flex items-center justify-between cursor-pointer hover:bg-blue-600 transition-colors"
+                      style={{ top: `${si * 20}px`, height: '58px', fontSize: '10px' }}
                     >
-                      <span className="truncate">
-                        {getSessionDisplayName(session, viewType)}
-                      </span>
-                      {session.hasAlert && (
-                        <AlertTriangle className="h-3 w-3 text-yellow-300 ml-1 flex-shrink-0" />
+                      <div className="truncate font-medium flex items-center justify-between">
+                        <span className="truncate">{session.name} - {session.roomName}</span>
+                        {session.hasAlert && (
+                          <AlertTriangle className="h-3 w-3 text-yellow-600 ml-1 flex-shrink-0" />
+                        )}
+                      </div>
+                      <div className="truncate opacity-90">{session.startTime}-{session.endTime}</div>
+                      {session.status === 'day_off' ? (
+                        <span style={{ fontSize: '10px' }}>(Nghỉ)</span>
+                      ) : session.status === 'end' ? (
+                        <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span>
+                      ) : session.status === 'cancelled' ? (
+                        <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                      ) : (
+                        <div style={{ fontSize: '10px' }}>(Chưa diễn ra)</div>
                       )}
                     </div>
                   ))}

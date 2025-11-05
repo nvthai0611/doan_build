@@ -85,20 +85,20 @@ export const ClassManagement = () => {
 
 
 
-    // Build complete filters object
+    // Build complete filters object - filter ở BE
     const completeFilters = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        search: debouncedSearchTerm.trim(),
+        search: debouncedSearchTerm.trim() || undefined,
         status: selectedStatus !== 'all' ? selectedStatus : undefined,
-        // Add other filters as needed
         dayOfWeek: selectedDay !== 'all' ? selectedDay : undefined,
         shift: selectedShift !== 'all' ? selectedShift : undefined,
         gradeId: selectedGrades && selectedGrades.length > 0 ? selectedGrades.join(',') : undefined,
         teacherId: filterTeacher || undefined,
         subjectId: filterCourse || undefined,
         roomId: filterRoom || undefined,
-        academicYear: filterStartDate || undefined,
+        startDate: filterStartDate || undefined,
+        endDate: filterEndDate || undefined,
     };
 
     // Queries - optimized with caching
@@ -130,26 +130,49 @@ export const ClassManagement = () => {
         queryKey: ['teachers'],
         queryFn: async () => {
             const response = await apiClient.get('/admin-center/teachers', {
-                params: { limit: 100 }
+                limit: 100 
             });
             return response;
         },
-        staleTime: 0, // Cache for 5 minutes
-        enabled: filterOpen // Only fetch when filter is open
+        staleTime: 0, 
+        enabled: filterOpen 
     });
 
+    
     // Mutations
     const { createClass, updateClass, deleteClass, assignTeacher } = useClassMutations();
     const { bulkEnroll } = useEnrollmentMutations();
     
     // Data 
-    const classes = (classesData as any)?.data || [];
+    const classesRaw = (classesData as any)?.data || [];
     const meta = (classesData as any)?.meta || { total: 0, page: 1, limit: 10, totalPages: 0 };
     const subjects = (subjectsData as any)?.data || [];
     const rooms = (roomsData as any)?.data || [];
     const teachers = (teachersData as any)?.data || [];
     const totalCount = (classesData as any)?.meta?.total || 0;
     const totalPages = (classesData as any)?.meta?.totalPages || 1;
+
+    // Sắp xếp classes theo thứ tự: draft → ready → active → suspended → completed → cancelled
+    const statusOrder: Record<string, number> = {
+      [ClassStatus.DRAFT]: 1,      // Chưa cập nhật
+      [ClassStatus.READY]: 2,      // Đang tuyển sinh
+      [ClassStatus.ACTIVE]: 3,     // Đang hoạt động
+      [ClassStatus.SUSPENDED]: 4,  // Tạm dừng
+      [ClassStatus.COMPLETED]: 5,  // Đã kết thúc
+      [ClassStatus.CANCELLED]: 6,  // Đã hủy
+    };
+
+    const classes = [...classesRaw].sort((a: any, b: any) => {
+      const orderA = statusOrder[a.status] || 999;
+      const orderB = statusOrder[b.status] || 999;
+      if (orderA !== orderB) {
+        return orderA - orderB; // Sort asc: draft → ready → active → ...
+      }
+      // If same status, sort by createdAt desc (mới nhất trước)
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
     // Stats
     const stats = {
         totalClasses: meta.total,
@@ -200,7 +223,7 @@ export const ClassManagement = () => {
 
     const handleEditSchedule = (classItem: any) => {
         // Kiểm tra status trước khi cho phép chỉnh sửa
-        if (classItem.status === ClassStatus.ACTIVE) {
+        if (classItem.status === ClassStatus.ACTIVE || classItem.status === ClassStatus.COMPLETED) {
             toast.error('Không thể chỉnh sửa lịch học cho lớp đang hoạt động. Vui lòng chuyển lớp sang trạng thái khác trước.');
             return;
         }
@@ -497,6 +520,34 @@ export const ClassManagement = () => {
             render: (item: any) => item.roomName || '-'
         },
         {
+            key: 'maxStudents',
+            header: 'Sĩ số',
+            render: (item: any) => {
+                return (
+                    <div className="flex items-center gap-2">
+                          <span className="text-sm">{item.currentStudents}</span>
+                        <span className="text-sm">/</span>
+                        <span className="text-sm ">{item.maxStudents}</span>
+                    </div>
+                )
+            }
+        },
+        {
+            key: 'sessions',
+            header: 'Số buổi học',
+            render: (item: any) => {
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm">{item.sessionsEnd ? item.sessionsEnd : "-"}</span>
+                        <span className="text-sm">/</span>
+
+                          <span className="text-sm">{item.sessions ? item.sessions : "-"}</span>
+                          
+                    </div>
+                )
+            }
+        },
+        {
             key: 'status',
             header: 'Trạng thái',
             sortable: true,
@@ -723,22 +774,6 @@ export const ClassManagement = () => {
                                                 </SelectContent>
                                             </Select>
                                         </div>
-
-                                        {/* Khoá học */}
-                                        <div>
-                                            <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Khoá học</label>
-                                            <Select value={filterCourse} onValueChange={setFilterCourse}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Chọn khoá học" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">Tất cả</SelectItem>
-                                                    <SelectItem value="2024-1">Học kỳ 1 (2024-2025)</SelectItem>
-                                                    <SelectItem value="2024-2">Học kỳ 2 (2024-2025)</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
                                         {/* Phòng học */}
                                         <div>
                                             <label className="text-sm text-gray-600 dark:text-gray-300 mb-1 block">Phòng học</label>

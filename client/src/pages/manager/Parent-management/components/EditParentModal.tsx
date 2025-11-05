@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { ParentService } from "../../../../services/center-owner/parent-management/parent.service"
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Search, X, Link, Unlink } from "lucide-react"
 import { isValidEmail, isValidPhone, sanitizeString } from "../../../../services/common/utils/validation.utils"
 
@@ -27,11 +27,10 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
   
   // Form state
   const [formData, setFormData] = useState({
-    email: "",
     fullName: "",
+    email: "",
     phone: "",
-    gender: "OTHER" as "MALE" | "FEMALE" | "OTHER",
-    birthDate: ""
+    relationshipType: "OTHER" as "FATHER" | "MOTHER" | "OTHER"
   })
 
   // Student search state
@@ -45,11 +44,10 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
   useEffect(() => {
     if (isOpen && parentData) {
       setFormData({
-        email: parentData.user?.email || "",
         fullName: parentData.user?.fullName || "",
+        email: parentData.user?.email || "",
         phone: parentData.user?.phone || "",
-        gender: parentData.user?.gender || "OTHER",
-        birthDate: parentData.user?.birthDate ? new Date(parentData.user.birthDate).toISOString().split('T')[0] : ""
+        relationshipType: parentData.relationshipType || "OTHER"
       })
     }
   }, [isOpen, parentData])
@@ -59,6 +57,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
     mutationFn: (data: any) => ParentService.updateParent(parentId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parent-detail"] })
+      queryClient.invalidateQueries({ queryKey: ["parents"] })
       toast.success("Cập nhật thông tin phụ huynh thành công!")
       handleClose()
     },
@@ -73,6 +72,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
     mutationFn: (studentId: string) => ParentService.linkStudentToParent(parentId!, studentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parents"] })
+      queryClient.invalidateQueries({ queryKey: ["parent-detail"] })
       toast.success("Liên kết học sinh thành công!")
       setStudentCode("")
       setSearchedStudent(null)
@@ -88,6 +88,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
     mutationFn: (studentId: string) => ParentService.unlinkStudentFromParent(parentId!, studentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parents"] })
+      queryClient.invalidateQueries({ queryKey: ["parent-detail"] })
       toast.success("Hủy liên kết học sinh thành công!")
     },
     onError: (error: any) => {
@@ -99,12 +100,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    // Email validation (if provided)
-    if (formData.email && !isValidEmail(formData.email)) {
-      newErrors.email = "Email không hợp lệ"
-    }
-
-    // FullName validation (if provided)
+    // FullName validation
     if (formData.fullName) {
       const sanitizedFullName = sanitizeString(formData.fullName)
       if (!sanitizedFullName) {
@@ -114,9 +110,21 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
       }
     }
 
-    // Phone validation (if provided)
+    // Email validation
+    if (formData.email) {
+      if (!isValidEmail(formData.email)) {
+        newErrors.email = "Email không hợp lệ (VD: example@gmail.com)"
+      }
+    }
+
+    // Phone validation
     if (formData.phone && !isValidPhone(formData.phone)) {
       newErrors.phone = "Số điện thoại không hợp lệ (VD: 0912345678)"
+    }
+
+    // RelationshipType validation
+    if (!formData.relationshipType || !["FATHER", "MOTHER", "OTHER"].includes(formData.relationshipType)) {
+      newErrors.relationshipType = "Mối quan hệ không hợp lệ"
     }
 
     setErrors(newErrors)
@@ -132,11 +140,10 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
     }
 
     const submitData = {
-      email: formData.email ? formData.email.trim() : undefined,
       fullName: formData.fullName ? sanitizeString(formData.fullName) : undefined,
+      email: formData.email ? formData.email.trim() : undefined,
       phone: formData.phone ? formData.phone.trim() : undefined,
-      gender: formData.gender,
-      birthDate: formData.birthDate || undefined
+      relationshipType: formData.relationshipType
     }
 
     updateMutation.mutate(submitData)
@@ -172,11 +179,10 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
 
   const handleClose = () => {
     setFormData({
-      email: "",
       fullName: "",
+      email: "",
       phone: "",
-      gender: "OTHER",
-      birthDate: ""
+      relationshipType: "OTHER"
     })
     setErrors({})
     setStudentCode("")
@@ -213,29 +219,10 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
           {/* Tab 1: Basic Info */}
           <TabsContent value="info" className="space-y-4 mt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  disabled ={true}
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="parent@example.com"
-                  className={errors.email ? "border-red-500" : ""}
-                />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email}</p>
-                )}
-              </div>
-
               {/* Full Name */}
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="text-sm font-medium">
-                  Họ và tên
+                  Họ và tên <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="fullName"
@@ -246,6 +233,24 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
                 />
                 {errors.fullName && (
                   <p className="text-sm text-red-500">{errors.fullName}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="example@gmail.com"
+                  className={errors.email ? "border-red-500" : ""}
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email}</p>
                 )}
               </div>
 
@@ -266,42 +271,30 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
                 )}
               </div>
 
-              {/* Gender & Birth Date Row */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Gender */}
-                <div className="space-y-2">
-                  <Label htmlFor="gender" className="text-sm font-medium">
-                    Giới tính
-                  </Label>
-                  <Select
-                    value={formData.gender}
-                    onValueChange={(value: "MALE" | "FEMALE" | "OTHER") => 
-                      handleInputChange("gender", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MALE">Nam</SelectItem>
-                      <SelectItem value="FEMALE">Nữ</SelectItem>
-                      <SelectItem value="OTHER">Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {/* Birth Date */}
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate" className="text-sm font-medium">
-                    Ngày sinh
-                  </Label>
-                  <Input
-                    id="birthDate"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                  />
-                </div>
+              {/* Relationship Type */}
+              <div className="space-y-2">
+                <Label htmlFor="relationshipType" className="text-sm font-medium">
+                  Mối quan hệ <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.relationshipType}
+                  onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") => 
+                    handleInputChange("relationshipType", value)
+                  }
+                >
+                  <SelectTrigger className={errors.relationshipType ? "border-red-500" : ""}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FATHER">Bố</SelectItem>
+                    <SelectItem value="MOTHER">Mẹ</SelectItem>
+                    <SelectItem value="OTHER">Khác</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.relationshipType && (
+                  <p className="text-sm text-red-500">{errors.relationshipType}</p>
+                )}
               </div>
 
               {/* Action Buttons */}

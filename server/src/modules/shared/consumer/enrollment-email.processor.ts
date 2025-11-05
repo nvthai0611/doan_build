@@ -15,6 +15,9 @@ interface EnrollmentEmailData {
   enrollmentStatus: string;
   studentId: string;
   classId: string;
+  isTransfer?: boolean;
+  oldClassName?: string;
+  transferReason?: string;
 }
 
 @Processor('enrollment_email')
@@ -26,7 +29,7 @@ export class EnrollmentEmailProcessor {
   async handleSendEnrollmentEmail(job: Job<EnrollmentEmailData>) {
     const startTime = Date.now();
     console.log(
-      `[Job ${job.id}] Bắt đầu xử lý email đăng ký lớp\n` +
+      `[Job ${job.id}] Bắt đầu xử lý email ${job.data.isTransfer ? 'chuyển lớp' : 'đăng ký lớp'}\n` +
       `   - Học sinh: ${job.data.studentName}\n` +
       `   - Lớp: ${job.data.className}\n` +
       `   - Email: ${job.data.to}`
@@ -44,6 +47,9 @@ export class EnrollmentEmailProcessor {
       enrollmentStatus,
       studentId,
       classId,
+      isTransfer,
+      oldClassName,
+      transferReason,
     } = job.data;
 
     try {
@@ -62,17 +68,22 @@ export class EnrollmentEmailProcessor {
         startDate,
         schedule,
         enrollmentStatus,
+        isTransfer,
+        oldClassName,
+        transferReason,
       });
 
       // Subject cho email
-      const emailSubject = `Thông báo đăng ký lớp - ${studentName} - ${className}`;
+      const emailSubject = isTransfer 
+        ? `Thông báo chuyển lớp - ${studentName} - ${className}`
+        : `Thông báo đăng ký lớp - ${studentName} - ${className}`;
 
       // Gửi email
       await emailUtil(to, emailSubject, emailHtml);
       
       const duration = Date.now() - startTime;
       console.log(
-        `[Job ${job.id}] Email đăng ký lớp đã gửi thành công trong ${duration}ms\n` +
+        `[Job ${job.id}] Email ${isTransfer ? 'chuyển lớp' : 'đăng ký lớp'} đã gửi thành công trong ${duration}ms\n` +
         `   - Học sinh: ${studentName}\n` +
         `   - Email phụ huynh: ${to}\n` +
         `   - ClassId: ${classId}\n` +

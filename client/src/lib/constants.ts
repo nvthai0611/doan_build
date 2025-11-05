@@ -24,6 +24,7 @@ export enum StudentStatus {
   RESERVED = 'reserved', // Bảo lưu
   STOPPED = 'stopped', // Dừng học
   GRADUATED = 'graduated', // Tốt nghiệp
+  WITHDRAWN = 'withdrawn', // Rút học
   ALL = 'all', // Tất cả (dùng cho filter)
 }
 
@@ -35,6 +36,7 @@ export const STUDENT_STATUS_LABELS: Record<StudentStatus, string> = {
   [StudentStatus.RESERVED]: 'Bảo lưu',
   [StudentStatus.STOPPED]: 'Dừng học',
   [StudentStatus.GRADUATED]: 'Tốt nghiệp',
+  [StudentStatus.WITHDRAWN]: 'Đổi lớp',
 };
 
 export const STUDENT_STATUS_COLORS: Record<StudentStatus, string> = {
@@ -46,6 +48,7 @@ export const STUDENT_STATUS_COLORS: Record<StudentStatus, string> = {
   [StudentStatus.STOPPED]: 'border-red-500 text-red-700 bg-red-50',
   [StudentStatus.GRADUATED]:
     'border-emerald-500 text-emerald-700 bg-emerald-50',
+  [StudentStatus.WITHDRAWN]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
 };
 
 export const STUDENT_STATUS_COUNT_COLORS: Record<StudentStatus, string> = {
@@ -56,6 +59,7 @@ export const STUDENT_STATUS_COUNT_COLORS: Record<StudentStatus, string> = {
   [StudentStatus.RESERVED]: 'bg-yellow-100 text-yellow-800',
   [StudentStatus.STOPPED]: 'bg-red-100 text-red-800',
   [StudentStatus.GRADUATED]: 'bg-emerald-100 text-emerald-800',
+  [StudentStatus.WITHDRAWN]: 'bg-yellow-100 text-yellow-800',
 };
 
 // Mapping từ status tiếng Việt sang enum
@@ -67,6 +71,7 @@ export const STUDENT_STATUS_MAPPING: Record<string, StudentStatus> = {
   'Dừng học': StudentStatus.STOPPED,
   'Tốt nghiệp': StudentStatus.GRADUATED,
   'Chưa cập nhật lịch học': StudentStatus.PENDING,
+  'Đổi lớp': StudentStatus.WITHDRAWN,
 };
 
 // ==================== CLASS STATUS ====================
@@ -127,7 +132,7 @@ export const CLASS_STATUS_TRANSITIONS: Record<ClassStatus, ClassStatus[]> = {
   [ClassStatus.ACTIVE]: [
     ClassStatus.COMPLETED, // Kết thúc lớp học
     ClassStatus.SUSPENDED, // Tạm dừng lớp học
-    ClassStatus.CANCELLED, // Hủy lớp đang hoạt động
+    // Không thể hủy lớp đang hoạt động
   ],
   [ClassStatus.COMPLETED]: [
     // Không thể chuyển sang trạng thái khác từ completed
@@ -180,6 +185,7 @@ export enum SessionStatus {
   END = 'end', // Đã hoàn thành
   HAS_NOT_HAPPENED = 'has_not_happened', // Chưa diễn ra
   DAY_OFF = 'day_off', // Nghỉ lễ
+  CANCELLED = 'cancelled', // Đã hủy
 }
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
@@ -187,6 +193,7 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.END]: 'Đã kết thúc',
   [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
   [SessionStatus.DAY_OFF]: 'Nghỉ',
+  [SessionStatus.CANCELLED]: 'Đã hủy',
 };
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
@@ -194,6 +201,7 @@ export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
   [SessionStatus.END]: 'border-red-500 text-red-700 bg-red-50',
   [SessionStatus.HAS_NOT_HAPPENED]: 'border-blue-500 text-blue-700 bg-blue-50',
   [SessionStatus.DAY_OFF]: 'border-orange-500 text-orange-700 bg-orange-50',
+  [SessionStatus.CANCELLED]: 'border-red-500 text-red-700 bg-red-50',
 };
 
 // ==================== SESSION TYPE ====================
@@ -237,6 +245,7 @@ export enum EnrollmentStatus {
   STUDYING = 'studying', // Đang học
   STOPPED = 'stopped', // Dừng học
   GRADUATED = 'graduated', // Tốt nghiệp
+  WITHDRAWN = 'withdrawn', // Rút học
 }
 
 export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
@@ -245,6 +254,7 @@ export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
   [EnrollmentStatus.STUDYING]: 'Đang học',
   [EnrollmentStatus.STOPPED]: 'Dừng học',
   [EnrollmentStatus.GRADUATED]: 'Tốt nghiệp',
+  [EnrollmentStatus.WITHDRAWN]: 'Chuyển lớp',
 };
 
 export const ENROLLMENT_STATUS_COLORS: Record<EnrollmentStatus, string> = {
@@ -254,6 +264,8 @@ export const ENROLLMENT_STATUS_COLORS: Record<EnrollmentStatus, string> = {
   [EnrollmentStatus.STUDYING]: 'border-green-500 text-green-700 bg-green-50',
   [EnrollmentStatus.STOPPED]: 'border-purple-500 text-purple-700 bg-purple-50',
   [EnrollmentStatus.GRADUATED]: 'border-red-500 text-red-700 bg-red-50',
+  [EnrollmentStatus.WITHDRAWN]: 'border-yellow-500 text-yellow-700 bg-yellow-50',
+
 };
 
 // ==================== REQUEST STATUS ====================

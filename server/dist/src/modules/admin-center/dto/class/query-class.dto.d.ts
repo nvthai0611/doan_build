@@ -8,7 +8,8 @@ export declare class QueryClassDto {
     feeStructureId?: string;
     dayOfWeek?: string;
     shift?: string;
-    academicYear?: string;
+    startDate?: string;
+    endDate?: string;
     page?: number;
     limit?: number;
     sortBy?: string;

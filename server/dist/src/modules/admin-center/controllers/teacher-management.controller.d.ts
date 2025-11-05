@@ -158,7 +158,7 @@ export declare class TeacherManagementController {
                 id: string;
                 name: string;
                 avatar: any;
-                status: "absent" | "present" | "excused";
+                status: "present" | "excused" | "absent";
             }[];
             attendanceWarnings: string[];
             description: string;

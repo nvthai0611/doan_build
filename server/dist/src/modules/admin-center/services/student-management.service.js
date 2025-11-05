@@ -169,7 +169,7 @@ let StudentManagementService = class StudentManagementService {
                             uploadedImageName: file.originalname,
                             uploadedAt: new Date(),
                             expiredAt: expiredAt,
-                            note: `Đơn xin học thêm cho học sinh ${student.user.fullName} (${studentCode})${subjectIds.length > 0 ? ` - ${subjectIds.length} môn học` : ''}`,
+                            note: `Đơn xin học thêm (${student.user.fullName}) ${subjectIds.length > 0 ? ` - (${subjectIds.length} môn học)` : ''}`,
                             status: 'active'
                         }
                     });

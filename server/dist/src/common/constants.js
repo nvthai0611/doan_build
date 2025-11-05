@@ -116,14 +116,18 @@ exports.ACTIVE_TO_COMPLETED_CONDITIONS = {
 var SessionStatus;
 (function (SessionStatus) {
     SessionStatus["HAPPENING"] = "happening";
-    SessionStatus["COMPLETED"] = "completed";
+    SessionStatus["HAS_NOT_HAPPENED"] = "has_not_happened";
+    SessionStatus["END"] = "end";
+    SessionStatus["DAY_OFF"] = "day_off";
     SessionStatus["CANCELLED"] = "cancelled";
     SessionStatus["ALL"] = "all";
 })(SessionStatus || (exports.SessionStatus = SessionStatus = {}));
 exports.SESSION_STATUS_LABELS = {
     [SessionStatus.ALL]: 'Tất cả',
     [SessionStatus.HAPPENING]: 'Đang diễn ra',
-    [SessionStatus.COMPLETED]: 'Đã hoàn thành',
+    [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
+    [SessionStatus.END]: 'Đã hoàn thành',
+    [SessionStatus.DAY_OFF]: 'Nghỉ lễ',
     [SessionStatus.CANCELLED]: 'Đã hủy'
 };
 var SessionType;

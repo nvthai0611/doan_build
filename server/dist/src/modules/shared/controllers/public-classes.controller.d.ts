@@ -2,7 +2,7 @@ import { PublicClassesService } from '../services/public-classes.service';
 export declare class PublicClassesController {
     private readonly publicClassesService;
     constructor(publicClassesService: PublicClassesService);
-    getRecruitingClasses(page?: number, limit?: number, subjectId?: string, gradeId?: string): Promise<{
+    getRecruitingClasses(page?: number, limit?: number, subjectId?: string, gradeId?: string, teacherId?: string): Promise<{
         success: boolean;
         data: {
             id: string;

@@ -54,6 +54,14 @@ const showcase_management_controller_1 = require("./controllers/showcase-managem
 const showcase_management_service_1 = require("./services/showcase-management.service");
 const center_owner_middleware_1 = require("../../common/middleware/center-owner/center-owner.middleware");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
+const class_notification_cron_service_1 = require("./crons/class-notification-cron.service");
+const class_notification_service_1 = require("./services/class-notification.service");
+const contract_upload_controller_1 = require("./controllers/contract-upload.controller");
+const contract_upload_service_1 = require("./services/contract-upload.service");
+const rooms_management_controller_1 = require("./controllers/rooms-management.controller");
+const rooms_management_service_1 = require("./services/rooms-management.service");
+const subject_management_controller_1 = require("./controllers/subject-management.controller");
+const subject_management_service_1 = require("./services/subject-management.service");
 let AdminCenterModule = class AdminCenterModule {
     configure(consumer) {
         consumer
@@ -95,6 +103,9 @@ exports.AdminCenterModule = AdminCenterModule = __decorate([
             teacher_feedback_controller_1.TeacherFeedbackController,
             teacher_feedback_monitoring_controller_1.TeacherFeedbackMonitoringController,
             showcase_management_controller_1.ShowcaseManagementController,
+            contract_upload_controller_1.ContractUploadController,
+            rooms_management_controller_1.RoomsManagementController,
+            subject_management_controller_1.SubjectManagementController,
         ],
         providers: [
             prisma_service_1.PrismaService,
@@ -119,6 +130,11 @@ exports.AdminCenterModule = AdminCenterModule = __decorate([
             teacher_feedback_monitoring_service_1.TeacherFeedbackMonitoringService,
             showcase_management_service_1.ShowcaseManagementService,
             cloudinary_service_1.CloudinaryService,
+            contract_upload_service_1.ContractUploadService,
+            rooms_management_service_1.RoomsManagementService,
+            subject_management_service_1.SubjectManagementService,
+            class_notification_service_1.ClassNotificationService,
+            class_notification_cron_service_1.ClassNotificationCronService,
         ],
         exports: [alert_service_1.AlertService, holidays_setting_service_1.HolidaysSettingService],
     })

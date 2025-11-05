@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { alertService, Alert } from '../../services/center-owner/alert.service';
+import { alertService, Alert } from '../../services/center-owner/alerts/alert.service';
 import { useToast } from '../../hooks/use-toast';
 
 export const CenterOwnerHomePage = () => {
@@ -29,7 +29,7 @@ export const CenterOwnerHomePage = () => {
   const { data: allAlertsData } = useQuery({
     queryKey: ['all-alerts'],
     queryFn: () => alertService.getAlerts({ limit: 1000 }),
-    refetchInterval: 3000,
+    refetchInterval: 5000,
     refetchOnWindowFocus: true,
   });
 
@@ -42,7 +42,7 @@ export const CenterOwnerHomePage = () => {
   const pendingTasks = allAlerts.filter((a: any) => !a.processed);
   const pendingCount = pendingTasks.length;
 
-  const notificationAlerts = allAlerts.slice(0, 100000); // Dùng cho cả 2 thẻ
+  const notificationAlerts = allAlerts.slice(0, 100000).filter((a: any) => !a.isRead); // Dùng cho cả 2 thẻ
   
   const unreadCount = allAlerts.filter((a: any) => !a.isRead).length;
 

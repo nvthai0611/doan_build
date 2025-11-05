@@ -8,7 +8,7 @@ export interface ScheduleData {
   className: string
   room: string
   studentCount: number
-  status: "scheduled" | "completed" | "cancelled"
+  status: "day_off" | "happening" | "end" | "has_not_happened" | "cancelled"
   notes?: string
   type: "regular" | "exam" | "makeup"
   teacherId: string
@@ -36,10 +36,14 @@ export const formatTime = (timeString: string): string => {
 
 export const getStatusBadgeClass = (status: string): string => {
   switch (status) {
-    case "scheduled":
-      return "bg-blue-100 text-blue-800"
-    case "completed":
+    case "day_off":
+      return "bg-orange-100 text-orange-800"
+    case "happening":
       return "bg-green-100 text-green-800"
+    case "end":
+      return "bg-red-100 text-red-800"
+    case "has_not_happened":
+      return "bg-blue-100 text-blue-800"
     case "cancelled":
       return "bg-red-100 text-red-800"
     default:

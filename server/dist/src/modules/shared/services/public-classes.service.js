@@ -17,11 +17,11 @@ let PublicClassesService = class PublicClassesService {
         this.prisma = prisma;
     }
     async getRecruitingClasses(query) {
-        const { page, limit, subjectId, gradeId } = query;
+        const { page, limit, subjectId, gradeId, teacherId } = query;
         const skip = (page - 1) * limit;
         const where = {
             status: { in: ['ready', 'active'] },
-            teacherId: { not: null },
+            teacherId: teacherId ? { equals: teacherId } : { not: null },
         };
         if (subjectId) {
             where.subjectId = subjectId;

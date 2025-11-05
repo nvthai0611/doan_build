@@ -47,7 +47,10 @@ export declare class EmailNotificationService {
         classId: string;
         email: string;
     }>;
-    sendBulkEnrollmentEmail(studentIds: string[], classId: string): Promise<{
+    sendBulkEnrollmentEmail(studentIds: string[], classId: string, transferInfo?: {
+        oldClassId: string;
+        reason?: string;
+    }): Promise<{
         success: boolean;
         sentCount: number;
         failCount: number;
@@ -108,5 +111,54 @@ export declare class EmailNotificationService {
         message?: undefined;
         parentEmail?: undefined;
         requestId?: undefined;
+    }>;
+    sendClassStartingNotificationEmail(to: string, data: {
+        className: string;
+        classCode?: string;
+        subjectName: string;
+        gradeName: string;
+        daysRemaining: number;
+        startDate: string;
+        teacherName: string;
+        roomName: string;
+        scheduleText: string;
+        currentStudents: number;
+        maxStudents: number | string;
+        hasTeacher: boolean;
+        hasRoom: boolean;
+        hasStudents: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        to: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        message?: undefined;
+        to?: undefined;
+    }>;
+    sendClassEndingNotificationEmail(to: string, data: {
+        className: string;
+        classCode?: string;
+        subjectName: string;
+        gradeName: string;
+        daysRemaining: number;
+        endDate: string;
+        teacherName: string;
+        roomName: string;
+        scheduleText: string;
+        currentStudents: number;
+        maxStudents: number | string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        to: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        message?: undefined;
+        to?: undefined;
     }>;
 }

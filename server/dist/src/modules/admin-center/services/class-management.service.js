@@ -71,7 +71,7 @@ let ClassManagementService = class ClassManagementService {
                 mode: 'insensitive',
             },
             academicYear: academicYear,
-            status: { not: 'deleted' },
+            status: { notIn: ['deleted', 'cancelled'] },
         };
         if (excludeId) {
             whereCondition.id = { not: excludeId };
@@ -90,7 +90,7 @@ let ClassManagementService = class ClassManagementService {
     }
     async findAll(queryDto) {
         try {
-            const { status, gradeId, subjectId, roomId, search, dayOfWeek, shift, academicYear, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', } = queryDto;
+            const { status, gradeId, subjectId, roomId, teacherId, search, dayOfWeek, shift, startDate, endDate, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', } = queryDto;
             const skip = (page - 1) * limit;
             const take = limit;
             const currentYear = new Date().getFullYear();
@@ -108,42 +108,144 @@ let ClassManagementService = class ClassManagementService {
             if (status && status !== 'all')
                 where.status = status;
             if (gradeId) {
-                where.gradeId = gradeId;
+                const gradeValues = gradeId.split(',').map((id) => id.trim()).filter((id) => id);
+                const isUUID = (value) => {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    return uuidRegex.test(value);
+                };
+                const allAreUUIDs = gradeValues.every((val) => isUUID(val));
+                if (allAreUUIDs) {
+                    if (gradeValues.length === 1) {
+                        where.gradeId = gradeValues[0];
+                    }
+                    else if (gradeValues.length > 1) {
+                        where.gradeId = { in: gradeValues };
+                    }
+                }
+                else {
+                    const gradeLevels = gradeValues.map((val) => parseInt(val)).filter((val) => !isNaN(val));
+                    if (gradeLevels.length === 1) {
+                        where.grade = { level: gradeLevels[0] };
+                    }
+                    else if (gradeLevels.length > 1) {
+                        where.grade = { level: { in: gradeLevels } };
+                    }
+                }
             }
-            if (subjectId)
+            const isValidUUID = (value) => {
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                return uuidRegex.test(value);
+            };
+            if (subjectId && subjectId !== 'all' && isValidUUID(subjectId)) {
                 where.subjectId = subjectId;
-            if (roomId)
+            }
+            if (roomId && roomId !== 'all' && isValidUUID(roomId)) {
                 where.roomId = roomId;
-            if (academicYear)
-                where.academicYear = academicYear;
+            }
+            if (teacherId && teacherId !== 'all' && isValidUUID(teacherId)) {
+                where.teacherId = teacherId;
+            }
+            if (startDate || endDate) {
+                where.AND = where.AND || [];
+                if (startDate && endDate) {
+                    const startDateObj = new Date(startDate + 'T00:00:00.000Z');
+                    const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+                    where.AND.push({
+                        AND: [
+                            {
+                                OR: [
+                                    { actualStartDate: { lte: endDateObj } },
+                                    { expectedStartDate: { lte: endDateObj } },
+                                ],
+                            },
+                            {
+                                OR: [
+                                    { actualEndDate: { gte: startDateObj } },
+                                    {
+                                        AND: [
+                                            { actualEndDate: null },
+                                            {
+                                                OR: [
+                                                    { actualStartDate: { gte: startDateObj } },
+                                                    { expectedStartDate: { gte: startDateObj } },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    });
+                }
+                else if (startDate) {
+                    const startDateObj = new Date(startDate + 'T00:00:00.000Z');
+                    where.AND.push({
+                        OR: [
+                            { actualStartDate: { gte: startDateObj } },
+                            { expectedStartDate: { gte: startDateObj } },
+                        ],
+                    });
+                }
+                else if (endDate) {
+                    const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+                    where.AND.push({
+                        OR: [
+                            { actualEndDate: { lte: endDateObj } },
+                            {
+                                AND: [
+                                    { actualEndDate: null },
+                                    {
+                                        OR: [
+                                            { actualStartDate: { lte: endDateObj } },
+                                            { expectedStartDate: { lte: endDateObj } },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    });
+                }
+            }
             if (search) {
-                where.OR = [
-                    { name: { contains: search, mode: 'insensitive' } },
-                    { classCode: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
-                    {
-                        subject: {
-                            name: { contains: search, mode: 'insensitive' },
-                        },
-                    },
-                    {
-                        teacher: {
-                            user: {
-                                fullName: { contains: search, mode: 'insensitive' },
+                const searchConditions = {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        { classCode: { contains: search, mode: 'insensitive' } },
+                        { description: { contains: search, mode: 'insensitive' } },
+                        {
+                            subject: {
+                                name: { contains: search, mode: 'insensitive' },
                             },
                         },
-                    },
-                    {
-                        room: {
-                            name: { contains: search, mode: 'insensitive' },
+                        {
+                            teacher: {
+                                user: {
+                                    OR: [
+                                        { fullName: { contains: search, mode: 'insensitive' } },
+                                        { email: { contains: search, mode: 'insensitive' } },
+                                        { phone: { contains: search, mode: 'insensitive' } },
+                                    ],
+                                },
+                            },
                         },
-                    },
-                    {
-                        grade: {
-                            name: { contains: search, mode: 'insensitive' },
+                        {
+                            room: {
+                                name: { contains: search, mode: 'insensitive' },
+                            },
                         },
-                    },
-                ];
+                        {
+                            grade: {
+                                name: { contains: search, mode: 'insensitive' },
+                            },
+                        },
+                    ],
+                };
+                if (where.AND) {
+                    where.AND.push(searchConditions);
+                }
+                else {
+                    where.AND = [searchConditions];
+                }
             }
             const totalBeforeFilter = await this.prisma.class.count({ where });
             const orderBy = {};
@@ -177,11 +279,33 @@ let ClassManagementService = class ClassManagementService {
                             },
                         },
                     },
+                    enrollments: {
+                        where: {
+                            status: {
+                                not: 'withdrawn',
+                            },
+                        },
+                        select: {
+                            id: true,
+                        },
+                    },
                     _count: {
-                        select: { enrollments: true },
+                        select: { sessions: true },
                     },
                 },
             });
+            const classIds = classes.map((cls) => cls.id);
+            const sessionsEndedResults = await this.prisma.classSession.groupBy({
+                by: ['classId'],
+                where: {
+                    classId: { in: classIds },
+                    status: 'end',
+                },
+                _count: {
+                    id: true,
+                },
+            });
+            const sessionsEndedMap = new Map(sessionsEndedResults.map((item) => [item.classId, item._count.id]));
             let transformedClasses = classes.map((cls) => ({
                 id: cls.id,
                 name: cls.name,
@@ -193,7 +317,7 @@ let ClassManagementService = class ClassManagementService {
                 gradeLevel: cls.grade?.level || null,
                 status: cls.status,
                 maxStudents: cls.maxStudents,
-                currentStudents: cls._count.enrollments,
+                currentStudents: cls.enrollments.length,
                 roomId: cls.roomId,
                 roomName: cls.room?.name || '-',
                 description: cls.description,
@@ -212,6 +336,8 @@ let ClassManagementService = class ClassManagementService {
                         avatar: cls.teacher.user.avatar,
                     }
                     : null,
+                sessions: cls._count.sessions,
+                sessionsEnd: sessionsEndedMap.get(cls.id) || 0,
                 createdAt: cls.createdAt,
                 updatedAt: cls.updatedAt,
             }));
@@ -242,19 +368,10 @@ let ClassManagementService = class ClassManagementService {
                     });
                 }
             }
-            const sortedClasses = transformedClasses.sort((a, b) => {
-                const aIsCurrentYear = a.academicYear === currentAcademicYear;
-                const bIsCurrentYear = b.academicYear === currentAcademicYear;
-                if (aIsCurrentYear && !bIsCurrentYear)
-                    return -1;
-                if (!aIsCurrentYear && bIsCurrentYear)
-                    return 1;
-                return 0;
-            });
             return {
                 success: true,
                 message: 'Lấy danh sách lớp học thành công',
-                data: sortedClasses,
+                data: transformedClasses,
                 meta: {
                     total: totalBeforeFilter,
                     page: page,
@@ -456,6 +573,45 @@ let ClassManagementService = class ClassManagementService {
                 }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
             }
             const maxStudents = createClassDto.maxStudents ?? roomCapacity;
+            let feeStructureId = null;
+            let feeAmount = null;
+            let feePeriod = null;
+            let feeCurrency = 'VND';
+            if (createClassDto.gradeId && createClassDto.subjectId) {
+                const grade = await this.prisma.grade.findUnique({
+                    where: { id: createClassDto.gradeId },
+                });
+                const subject = await this.prisma.subject.findUnique({
+                    where: { id: createClassDto.subjectId },
+                });
+                if (grade && subject) {
+                    let feeStructure = await this.prisma.feeStructure.findUnique({
+                        where: {
+                            gradeId_subjectId: {
+                                gradeId: createClassDto.gradeId,
+                                subjectId: createClassDto.subjectId,
+                            },
+                        },
+                    });
+                    if (!feeStructure) {
+                        feeStructure = await this.prisma.feeStructure.create({
+                            data: {
+                                name: `Học phí ${subject.name} ${grade.name}`,
+                                amount: 0,
+                                period: 'per_session',
+                                description: `Học phí cho môn ${subject.name} khối ${grade.name}`,
+                                gradeId: createClassDto.gradeId,
+                                subjectId: createClassDto.subjectId,
+                                isActive: true,
+                            },
+                        });
+                    }
+                    feeStructureId = feeStructure.id;
+                    feeAmount = feeStructure.amount ? Number(feeStructure.amount) : null;
+                    feePeriod = feeStructure.period || null;
+                    feeCurrency = 'VND';
+                }
+            }
             const newClass = await this.prisma.class.create({
                 data: {
                     name: createClassDto.name,
@@ -469,6 +625,10 @@ let ClassManagementService = class ClassManagementService {
                     status: constants_1.DEFAULT_STATUS.CLASS,
                     recurringSchedule: createClassDto.recurringSchedule || null,
                     academicYear: academicYear,
+                    feeStructureId: feeStructureId,
+                    feeAmount: feeAmount,
+                    feePeriod: feePeriod,
+                    feeCurrency: feeCurrency,
                     expectedStartDate: createClassDto.expectedStartDate
                         ? new Date(createClassDto.expectedStartDate)
                         : null,
@@ -483,6 +643,7 @@ let ClassManagementService = class ClassManagementService {
                     subject: true,
                     room: true,
                     grade: true,
+                    feeStructure: true,
                     teacher: {
                         include: {
                             user: {
@@ -754,9 +915,13 @@ let ClassManagementService = class ClassManagementService {
                 }, common_1.HttpStatus.NOT_FOUND);
             }
             const result = await this.prisma.$transaction(async (tx) => {
+                const updateData = { status };
+                if (status === 'active' && !existingClass.feeLockedAt) {
+                    updateData.feeLockedAt = new Date();
+                }
                 const updatedClass = await tx.class.update({
                     where: { id },
-                    data: { status },
+                    data: updateData,
                 });
                 let updatedEnrollmentsCount = 0;
                 let updatedSessionsCount = 0;
@@ -783,6 +948,34 @@ let ClassManagementService = class ClassManagementService {
                         },
                         data: {
                             status: 'end',
+                        },
+                    });
+                    updatedSessionsCount = sessionsUpdateResult.count;
+                }
+                if (status === 'cancelled') {
+                    console.log(status);
+                    const updateResult = await tx.enrollment.updateMany({
+                        where: {
+                            classId: id,
+                            status: {
+                                in: ['studying', 'not_been_updated'],
+                            },
+                        },
+                        data: {
+                            status: constants_1.EnrollmentStatus.STOPPED,
+                            completionNotes: 'Lớp học đã bị hủy',
+                        },
+                    });
+                    updatedEnrollmentsCount = updateResult.count;
+                    const sessionsUpdateResult = await tx.classSession.updateMany({
+                        where: {
+                            classId: id,
+                            status: {
+                                notIn: ['end', 'cancelled', 'day_off'],
+                            },
+                        },
+                        data: {
+                            status: 'cancelled',
                         },
                     });
                     updatedSessionsCount = sessionsUpdateResult.count;
@@ -1645,6 +1838,12 @@ let ClassManagementService = class ClassManagementService {
                 throw new common_1.HttpException({
                     success: false,
                     message: 'Không thể xóa lớp học có học sinh đang học',
+                }, common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (existingClass.status === 'completed') {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'Không thể xóa lớp học đã hoàn thành',
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
             await this.prisma.class.update({
