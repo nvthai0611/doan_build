@@ -48,6 +48,8 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
 import { ContractUploadController } from './controllers/contract-upload.controller';
 import { ContractUploadService } from './services/contract-upload.service';
+import { RoomsManagementController } from './controllers/rooms-management.controller';
+import { RoomsManagementService } from './services/rooms-management.service';
 
 @Module({
   imports: [
@@ -83,6 +85,7 @@ import { ContractUploadService } from './services/contract-upload.service';
     TeacherFeedbackMonitoringController,
     ShowcaseManagementController,
     ContractUploadController,
+    RoomsManagementController,
   ],
   providers: [
     PrismaService,
@@ -108,6 +111,7 @@ import { ContractUploadService } from './services/contract-upload.service';
     ShowcaseManagementService,
     CloudinaryService,
     ContractUploadService,
+    RoomsManagementService,
     // SessionSchedulerService, // Cron jobs service
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
