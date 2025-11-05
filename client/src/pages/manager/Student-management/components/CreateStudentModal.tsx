@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { X, Search, Check, AlertCircle, User, Mail, Phone, Calendar, MapPin, GraduationCap } from "lucide-react"
+import { X, Search, Check, AlertCircle, User, Mail, Phone, Calendar, MapPin, GraduationCap, FileText, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { centerOwnerStudentService } from "../../../../services/center-owner/student-management/student.service"
+import { ApiService } from "../../../../services/common"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 
 interface CreateStudentModalProps {
@@ -31,6 +32,8 @@ interface CreateStudentFormData {
   parentEmail: string  // Keep this for form input (search field)
   schoolId: string
   password: string
+  applicationFile: File | null  // Đơn xin học thêm
+  subjectIds: string[]  // Các môn học được chọn
 }
 
 interface ParentInfo {
@@ -63,6 +66,17 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     refetchOnWindowFocus: false
   })
 
+  // Fetch subjects list
+  const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const response = await ApiService.get('/shared/public/classes/subjects')
+      return response.data || []
+    },
+    staleTime: 300000, // Cache for 5 minutes
+    refetchOnWindowFocus: false
+  })
+
   const [formData, setFormData] = useState<CreateStudentFormData>({
     fullName: "",
     username: "",
@@ -73,7 +87,9 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     grade: "",
     parentEmail: "",
     schoolId: "",
-    password: ""
+    password: "",
+    applicationFile: null,
+    subjectIds: []
   })
 
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null)
@@ -174,19 +190,33 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       return
     }
 
-    // Prepare data for API
-    const submitData = {
-      ...formData,
-      gender: formData.gender || undefined,
-      phone: formData.phone || undefined,
-      birthDate: formData.birthDate || undefined,
-      address: formData.address || undefined,
-      grade: formData.grade || undefined,
-      parentId: parentInfo?.id || undefined, // Use parentId instead of parentEmail
-      password: formData.password || undefined
+    // Prepare FormData for file upload
+    const formDataToSend = new FormData()
+    
+    // Add all fields
+    formDataToSend.append('fullName', formData.fullName)
+    formDataToSend.append('username', formData.username)
+    formDataToSend.append('schoolId', formData.schoolId)
+    
+    if (formData.gender) formDataToSend.append('gender', formData.gender)
+    if (formData.phone) formDataToSend.append('phone', formData.phone)
+    if (formData.birthDate) formDataToSend.append('birthDate', formData.birthDate)
+    if (formData.address) formDataToSend.append('address', formData.address)
+    if (formData.grade) formDataToSend.append('grade', formData.grade)
+    if (formData.password) formDataToSend.append('password', formData.password)
+    if (parentInfo?.id) formDataToSend.append('parentId', parentInfo.id)
+    
+    // Add subjectIds as JSON array
+    if (formData.subjectIds.length > 0) {
+      formDataToSend.append('subjectIds', JSON.stringify(formData.subjectIds))
+    }
+    
+    // Add application file if exists
+    if (formData.applicationFile) {
+      formDataToSend.append('applicationFile', formData.applicationFile)
     }
 
-    createStudentMutation.mutate(submitData)
+    createStudentMutation.mutate(formDataToSend)
   }
 
   // Reset form
@@ -201,7 +231,9 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       grade: "",
       parentEmail: "",
       schoolId: "",
-      password: ""
+      password: "",
+      applicationFile: null,
+      subjectIds: []
     })
     setParentInfo(null)
     setParentSearched(false)
@@ -216,6 +248,43 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: undefined }))
     }
+  }
+
+  // Handle file change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Kích thước file không được vượt quá 5MB")
+        return
+      }
+      
+      // Validate file type (PDF, JPG, PNG)
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Chỉ chấp nhận file PDF, JPG hoặc PNG")
+        return
+      }
+      
+      setFormData(prev => ({ ...prev, applicationFile: file }))
+      toast.success("Đã chọn file: " + file.name)
+    }
+  }
+
+  // Remove file
+  const handleRemoveFile = () => {
+    setFormData(prev => ({ ...prev, applicationFile: null }))
+  }
+
+  // Handle subject selection
+  const handleSubjectToggle = (subjectId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subjectIds: prev.subjectIds.includes(subjectId)
+        ? prev.subjectIds.filter(id => id !== subjectId)
+        : [...prev.subjectIds, subjectId]
+    }))
   }
 
   // Handle parent email change with debounce
@@ -477,6 +546,118 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
                 )}
               </div>
             )}
+          </div>
+
+          <Separator />
+
+          {/* Application File Upload & Subject Selection */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Đơn xin học thêm (tùy chọn)
+            </h3>
+
+            {/* Subject Selection */}
+            <div className="space-y-2">
+              <Label>Các môn học muốn đăng ký</Label>
+              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                {subjectsLoading ? (
+                  <p className="text-sm text-muted-foreground">Đang tải danh sách môn học...</p>
+                ) : subjectsData && subjectsData.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {subjectsData.map((subject: any) => (
+                      <div
+                        key={subject.id}
+                        onClick={() => handleSubjectToggle(subject.id)}
+                        className={`
+                          flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all
+                          ${formData.subjectIds.includes(subject.id)
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                          }
+                        `}
+                      >
+                        <div className={`
+                          w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0
+                          ${formData.subjectIds.includes(subject.id)
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                          }
+                        `}>
+                          {formData.subjectIds.includes(subject.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{subject.name}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Không có môn học nào</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Chọn các môn học mà học sinh muốn đăng ký
+              </p>
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="applicationFile">Tải lên đơn xin học</Label>
+              <div className="space-y-3">
+                {!formData.applicationFile ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <Input
+                      id="applicationFile"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="applicationFile"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <Upload className="w-8 h-8 text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          Nhấn để chọn file
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PDF, JPG, PNG (tối đa 5MB)
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-green-50 border-green-200">
+                    <FileText className="w-8 h-8 text-green-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-green-900 truncate">
+                        {formData.applicationFile.name}
+                      </p>
+                      <p className="text-xs text-green-700">
+                        {(formData.applicationFile.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                      className="flex-shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Tải lên đơn xin học thêm của học sinh (nếu có). File sẽ được lưu vào hệ thống cùng với các môn học đã chọn.
+              </p>
+            </div>
           </div>
 
           {/* Form Actions */}

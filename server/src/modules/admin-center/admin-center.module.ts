@@ -48,6 +48,8 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
 import { ClassNotificationCronService } from './crons/class-notification-cron.service';
 import { ClassNotificationService } from './services/class-notification.service';
+import { ContractUploadController } from './controllers/contract-upload.controller';
+import { ContractUploadService } from './services/contract-upload.service';
 
 @Module({
   imports: [
@@ -82,6 +84,7 @@ import { ClassNotificationService } from './services/class-notification.service'
     TeacherFeedbackController,
     TeacherFeedbackMonitoringController,
     ShowcaseManagementController,
+    ContractUploadController,
   ],
   providers: [
     PrismaService,
@@ -106,6 +109,7 @@ import { ClassNotificationService } from './services/class-notification.service'
     TeacherFeedbackMonitoringService,
     ShowcaseManagementService,
     CloudinaryService,
+    ContractUploadService,
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học

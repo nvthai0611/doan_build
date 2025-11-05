@@ -1,8 +1,9 @@
 'use client';
 import type { ViewType } from '../../CenterSchedulePage';
-import { getDateString, getSessionDisplayName } from '../../utils';
+import { getDateString } from '../../utils';
 import { AlertTriangle } from 'lucide-react';
 import { ClassSessions } from '../../../Teacher-management/types/session';
+import { useState, useMemo } from 'react';
 
 interface MonthlyViewProps {
   currentDate: Date;
@@ -19,6 +20,14 @@ export function MonthlyView({
   onDayClick,
   sessions : classSessions,
 }: MonthlyViewProps) {
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const toggleDateExpand = (dateKey: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(dateKey)) next.delete(dateKey); else next.add(dateKey);
+      return next;
+    });
+  };
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -61,6 +70,23 @@ export function MonthlyView({
     return date.toDateString() === today.toDateString();
   };
 
+  const getClassSessionStatusColor = (status: string) => {
+    switch (status) {
+      case 'day_off':
+        return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm';
+      case 'happening':
+        return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm';
+      case 'end':
+        return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+      case 'has_not_happened':
+        return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm';
+      case 'cancelled':
+        return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+      default:
+        return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm';
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-border">
       {/* Header with weekdays */}
@@ -81,6 +107,8 @@ export function MonthlyView({
           const sessions = getSessionsForDate(date, classSessions);
           const isCurrentMonthDate = isCurrentMonth(date);
           const isTodayDate = isToday(date);
+          const dateKey = getDateString(date);
+          const isExpanded = expandedDates.has(dateKey);
 
           return (
             <div
@@ -101,29 +129,54 @@ export function MonthlyView({
                 {date.getDate()}
               </div>
 
-              <div className="space-y-1">
-                {sessions.slice(0, 3).map((session) => (
+              <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-22 overflow-y-auto'}`}>
+                {(isExpanded ? sessions : sessions.slice(0, 1)).map((session) => (
                   <div
                     key={session.id}
+                    className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(session.status)}`}
+                    title={`${session.subjectName} - ${session.name} - ${session.roomName}`}
                     onClick={() => onSessionClick(session)}
-                    className="bg-indigo-500 text-white text-xs px-2 py-1 rounded flex items-center justify-between cursor-pointer hover:bg-indigo-600 transition-colors"
                   >
-                    <span className="truncate">
-                      {getSessionDisplayName(session, viewType)}
-                    </span>
-                    {session.hasAlert && (
-                      <AlertTriangle className="h-3 w-3 text-yellow-300" />
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium truncate">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium truncate">{session.name} - {session.roomName}</span>
+                        </div>
+                        <div className="text-xs opacity-90 truncate">{session.startTime}-{session.endTime}</div>
+                        {session.status === 'day_off' ? (
+                          <span style={{ fontSize: '10px' }}>(Nghỉ)</span>
+                        ) : session.status === 'end' ? (
+                          <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span>
+                        ) : session.status === 'cancelled' ? (
+                          <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                        ) : (
+                          <div style={{ fontSize: '10px' }}>(Chưa diễn ra)</div>
+                        )}
+                      </span>
+                      {session.hasAlert && (
+                        <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                      )}
+                    </div>
                   </div>
                 ))}
 
-                {sessions.length > 3 && (
-                  <div
-                    onClick={() => onDayClick?.(date, sessions)}
-                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors bg-white dark:bg-gray-800-500 border border-white-500 rounded w-fit px-2 py-0.5 rounded-md"
+                {sessions.length > 1 && !isExpanded && (
+                  <button
+                    type="button"
+                    className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
+                    onClick={() => toggleDateExpand(dateKey)}
                   >
-                    +{sessions.length - 3} lớp
-                  </div>
+                    +{sessions.length - 1} buổi khác
+                  </button>
+                )}
+                {sessions.length > 1 && isExpanded && (
+                  <button
+                    type="button"
+                    className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
+                    onClick={() => toggleDateExpand(dateKey)}
+                  >
+                    Thu gọn
+                  </button>
                 )}
               </div>
             </div>

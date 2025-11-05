@@ -10,14 +10,15 @@ export class PublicClassesService {
     limit: number;
     subjectId?: string;
     gradeId?: string;
+    teacherId?: string;
   }) {
-    const { page, limit, subjectId, gradeId } = query;
+    const { page, limit, subjectId, gradeId, teacherId } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {
       status: { in: ['ready', 'active'] }, // Lớp sẵn sàng hoặc đang học
       // Chỉ hiển thị lớp có thông tin đầy đủ
-      teacherId: { not: null },
+      teacherId: teacherId ? { equals: teacherId } : { not: null },
       // subjectId is required in schema, no need to filter
     };
 

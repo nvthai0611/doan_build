@@ -183,81 +183,80 @@ const centerOwnerMenuItems = [
 ];
 
 const teacherMenuItems = [
-    {
-        title: "Tổng quan",
-        icon: Home,
-        href: "/teacher/profile",
-    },
-    {
-        title: "Quản lý lớp học",
-        icon: Users,
-        href: "/teacher/classes",
-        children: [
-            { title: "Lớp được phân công", href: "/teacher/classes" },
-            { title: "Thống kê tiến độ", href: "/teacher/classes/progress" },
-        ],
-    },
-    // {
-    //     title: "Điểm danh",
-    //     icon: UserCheck,
-    //     href: "/teacher/attendance",
-    // },
-    {
-        title: "Quản lý điểm",
-        icon: Target,
-        href: "/teacher/grades",
-        children: [
-            { title: "Nhập điểm kiểm tra", href: "/teacher/grades/input" },
-            { title: "Xem điểm học sinh", href: "/teacher/grades/view" },
-            { title: "Đánh giá học sinh", href: "/teacher/grades/evaluation" },
-            { title: "Nhận xét định kỳ", href: "/teacher/grades/comments" },
-        ],
-    },
-    {
-        title: "Tài liệu",
-        icon: Upload,
-        href: "/teacher/documents",
-        children: [
-            { title: "Upload tài liệu", href: "/teacher/documents/upload" },
-            { title: "Quản lý files", href: "/teacher/documents/manage" },
-        ],
-    },
-    {
-        title: "Lịch dạy cá nhân",
-        icon: Calendar,
-        href: "/teacher/schedule",
-        children: [
-            { title: "Xem lịch dạy", href: "/teacher/schedule" },
-            // { title: "Đổi ca dạy", href: "/teacher/schedule/change" },
-            { title: "Đơn xin nghỉ", href: "/teacher/schedule/leave" },
-            { title: "Đơn của tôi", href: "/teacher/schedule/my-requests" },
-        ],
-    },
-    {
-        title: "Đơn nghỉ học sinh",
-        icon: FileText,
-        href: "/teacher/student-leave-requests",
-    },
-    {
-        title: "Báo cáo sự cố",
-        icon: AlertTriangle,
-        href: "/teacher/incidents",
-        children: [
-            { title: "Báo cáo sự cố mới", href: "/teacher/incidents/report" },
-            { title: "Quản lý báo cáo", href: "/teacher/incidents/manage" },
-        ],
-    },
-    {
-        title: "Quản lý hợp đồng",
-        icon: Briefcase,
-        href: "/teacher/contracts",
-    },
-    {
-        title: "Thông tin cá nhân",
-        icon: Settings,
-        href: "/teacher/profile",
-    },
-]
+  {
+    title: 'Tổng quan',
+    icon: Home,
+    href: '/teacher/profile',
+  },
+  {
+    title: 'Quản lý lớp học',
+    icon: Users,
+    href: '/teacher/classes',
+    children: [
+      { title: 'Lớp được phân công', href: '/teacher/classes' },
+      { title: 'Thống kê tiến độ', href: '/teacher/classes/progress' },
+    ],
+  },
+  // {
+  //     title: "Điểm danh",
+  //     icon: UserCheck,
+  //     href: "/teacher/attendance",
+  // },
+  {
+    title: 'Quản lý điểm',
+    icon: Target,
+    href: '/teacher/grades',
+    children: [
+      { title: 'Nhập điểm kiểm tra', href: '/teacher/grades/input' },
+      { title: 'Xem điểm học sinh', href: '/teacher/grades/view' },
+      { title: 'Đánh giá học sinh', href: '/teacher/grades/evaluation' },
+      { title: 'Nhận xét định kỳ', href: '/teacher/grades/comments' },
+    ],
+  },
+  {
+    title: 'Tài liệu',
+    icon: Upload,
+    href: '/teacher/documents',
+    children: [
+      { title: 'Upload tài liệu', href: '/teacher/documents/upload' },
+      { title: 'Quản lý files', href: '/teacher/documents/manage' },
+    ],
+  },
+  {
+    title: 'Lịch dạy cá nhân',
+    icon: Calendar,
+    href: '/teacher/schedule',
+  },
+  {
+    title: 'Quản lý yêu cầu',
+    icon: FileText,
+    href: '/teacher/requests',
+    children: [
+      { title: 'Đơn xin nghỉ', href: '/teacher/requests/leave' },
+      { title: 'Đơn của tôi', href: '/teacher/requests/my-requests' },
+      { title: 'Đơn nghỉ học sinh', href: '/teacher/requests/student-leave-requests' },
+    ],
+  },
+  {
+    title: 'Báo cáo sự cố',
+    icon: AlertTriangle,
+    href: '/teacher/incidents',
+    children: [
+      { title: 'Báo cáo sự cố mới', href: '/teacher/incidents/report' },
+      { title: 'Quản lý báo cáo', href: '/teacher/incidents/manage' },
+    ],
+  },
+  {
+    title: 'Quản lý hợp đồng',
+    icon: Briefcase,
+    href: '/teacher/contracts',
+  },
+  {
+    title: 'Thông tin cá nhân',
+    icon: Settings,
+    href: '/teacher/profile',
+  },
+];
 const studentMenuItems = [
     {
         title: "Tổng quan",
