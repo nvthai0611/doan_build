@@ -138,8 +138,8 @@ export function ListChildren() {
     const { data: grades, isLoading } = useQuery({
       queryKey: ["parent-child-grades-summary", childId],
       queryFn: () => parentChildService.getChildGrades(childId),
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
+      staleTime: 3000,
+      refetchOnWindowFocus: true,
       enabled: !!childId,
     })
 

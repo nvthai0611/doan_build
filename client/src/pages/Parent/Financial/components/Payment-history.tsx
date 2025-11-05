@@ -1,15 +1,17 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import { User, Calendar, CreditCard, FileText, Wallet } from "lucide-react"
+import { User, Calendar, CreditCard, FileText, Wallet, Search, X } from "lucide-react"
 import financialService from "../../../../services/parent/financial-management/financial-parent.service"
 
 interface AllocationItem {
@@ -64,6 +66,9 @@ function groupPaymentsBySchoolYear(payments: PaymentHistoryItem[]): YearGroup[] 
 export function PaymentHistory() {
   const [expandedYear, setExpandedYear] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<PaymentHistoryItem | null>(null)
+  const [searchMonth, setSearchMonth] = useState("")
+  const [searchYear, setSearchYear] = useState("")
+  const [filteredHistory, setFilteredHistory] = useState<PaymentHistoryItem[]>([])
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['payment-history'],
@@ -72,7 +77,38 @@ export function PaymentHistory() {
     refetchOnWindowFocus: false
   })
 
-  const grouped = groupPaymentsBySchoolYear(history as PaymentHistoryItem[])
+  // Debounce filter với delay 500ms
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!searchMonth && !searchYear) {
+        setFilteredHistory(history as PaymentHistoryItem[])
+        return
+      }
+
+      const filtered = (history as PaymentHistoryItem[]).filter((item) => {
+        const d = item.date ? new Date(item.date) : new Date()
+        const month = d.getMonth() + 1
+        const year = d.getFullYear()
+
+        const matchMonth = searchMonth ? month === Number(searchMonth) : true
+        const matchYear = searchYear ? year === Number(searchYear) : true
+
+        return matchMonth && matchYear
+      })
+
+      setFilteredHistory(filtered)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchMonth, searchYear, history])
+
+  const grouped = groupPaymentsBySchoolYear(filteredHistory)
+
+  // Reset bộ lọc
+  const handleClearFilter = () => {
+    setSearchMonth("")
+    setSearchYear("")
+  }
 
   const handleExpandYear = (year: string) => {
     setExpandedYear(expandedYear === year ? null : year)
@@ -102,8 +138,77 @@ export function PaymentHistory() {
           <CardTitle className="text-base">Lịch sử thanh toán theo năm học</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Bộ lọc tìm kiếm */}
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Search className="h-4 w-4" />
+              <span>Tìm kiếm theo tháng, năm</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="search-month" className="text-xs">Tháng</Label>
+                <Input
+                  id="search-month"
+                  type="number"
+                  min="1"
+                  max="12"
+                  placeholder="Nhập tháng (1-12)"
+                  value={searchMonth}
+                  onChange={(e) => setSearchMonth(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="search-year" className="text-xs">Năm</Label>
+                <Input
+                  id="search-year"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  placeholder="Nhập năm"
+                  value={searchYear}
+                  onChange={(e) => setSearchYear(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearFilter}
+                  disabled={!searchMonth && !searchYear}
+                  className="h-9 w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            </div>
+
+            {/* Hiển thị kết quả tìm kiếm */}
+            {(searchMonth || searchYear) && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Tìm thấy <strong>{filteredHistory.length}</strong> giao dịch</span>
+                {searchMonth && <Badge variant="secondary">Tháng {searchMonth}</Badge>}
+                {searchYear && <Badge variant="secondary">Năm {searchYear}</Badge>}
+              </div>
+            )}
+          </div>
+
+          <Separator className="mb-6" />
+
+          {/* Danh sách thanh toán */}
           {grouped.length === 0 ? (
-            <div className="text-muted-foreground text-sm">Chưa có lịch sử thanh toán</div>
+            <div className="text-center py-8">
+              <div className="text-muted-foreground text-sm">
+                {(searchMonth || searchYear) 
+                  ? "Không tìm thấy giao dịch nào phù hợp" 
+                  : "Chưa có lịch sử thanh toán"}
+              </div>
+            </div>
           ) : (
             <div className="space-y-6">
               {grouped.map((group) => (

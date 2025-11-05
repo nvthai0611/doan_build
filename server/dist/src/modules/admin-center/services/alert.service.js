@@ -43,7 +43,7 @@ let AlertService = class AlertService {
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async getAlerts(params) {
+    async getAlerts(params, userId, userRole) {
         try {
             const page = params.page || 1;
             const limit = params.limit || 20;
@@ -61,8 +61,8 @@ let AlertService = class AlertService {
             if (params.processed !== undefined) {
                 where.processed = params.processed;
             }
-            const total = await this.prisma.alert.count({ where });
-            const alerts = await this.prisma.alert.findMany({
+            let total = await this.prisma.alert.count({ where });
+            let alerts = await this.prisma.alert.findMany({
                 where,
                 orderBy: [
                     { processed: 'asc' },
@@ -73,9 +73,45 @@ let AlertService = class AlertService {
                 skip,
                 take: limit,
             });
-            const unreadCount = await this.prisma.alert.count({
-                where: { isRead: false },
+            const filterUserId = params.userId || userId;
+            const filterRole = params.role || userRole;
+            if (filterUserId || filterRole) {
+                alerts = alerts.filter((alert) => {
+                    const payload = alert.payload || {};
+                    if (filterUserId && payload.targetUserId && payload.targetUserId !== filterUserId) {
+                        return false;
+                    }
+                    if (filterRole && payload.targetRole && payload.targetRole !== filterRole) {
+                        return false;
+                    }
+                    if (filterRole && !payload.targetRole && !['center_owner', 'admin'].includes(filterRole)) {
+                        return false;
+                    }
+                    return true;
+                });
+                total = alerts.length;
+            }
+            let unreadCount = await this.prisma.alert.count({
+                where: { ...where, isRead: false },
             });
+            if (filterUserId || filterRole) {
+                const allUnreadAlerts = await this.prisma.alert.findMany({
+                    where: { ...where, isRead: false },
+                });
+                unreadCount = allUnreadAlerts.filter((alert) => {
+                    const payload = alert.payload || {};
+                    if (filterUserId && payload.targetUserId && payload.targetUserId !== filterUserId) {
+                        return false;
+                    }
+                    if (filterRole && payload.targetRole && payload.targetRole !== filterRole) {
+                        return false;
+                    }
+                    if (filterRole && !payload.targetRole && !['center_owner', 'admin'].includes(filterRole)) {
+                        return false;
+                    }
+                    return true;
+                }).length;
+            }
             return {
                 data: alerts,
                 meta: {
@@ -96,13 +132,28 @@ let AlertService = class AlertService {
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async getUnreadCount() {
+    async getUnreadCount(userId, userRole) {
         try {
-            const count = await this.prisma.alert.count({
+            let alerts = await this.prisma.alert.findMany({
                 where: { isRead: false },
             });
+            if (userId || userRole) {
+                alerts = alerts.filter((alert) => {
+                    const payload = alert.payload || {};
+                    if (userId && payload.targetUserId && payload.targetUserId !== userId) {
+                        return false;
+                    }
+                    if (userRole && payload.targetRole && payload.targetRole !== userRole) {
+                        return false;
+                    }
+                    if (userRole && !payload.targetRole && !['center_owner', 'admin'].includes(userRole)) {
+                        return false;
+                    }
+                    return true;
+                });
+            }
             return {
-                data: { count },
+                data: { count: alerts.length },
                 message: 'Lấy số lượng cảnh báo chưa đọc thành công',
             };
         }

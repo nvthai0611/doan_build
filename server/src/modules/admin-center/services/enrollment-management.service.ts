@@ -407,22 +407,30 @@ export class EnrollmentManagementService {
             const skip = (parseInt(page) - 1) * parseInt(limit);
             const take = parseInt(limit);
 
-            const where: any = { classId };
+            const where: any = { 
+                classId,
+                // Loại bỏ enrollments đã chuyển lớp (withdrawn)
+                status: {
+                    not: 'withdrawn'
+                }
+            };
 
             // Search đầy đủ: tên, email, SĐT học viên, mã học viên, thông tin phụ huynh
-            if (search) where.student = {
-                OR: [
-                    // Thông tin học viên
-                    { user: { fullName: { contains: search, mode: 'insensitive' } } },
-                    { user: { email: { contains: search, mode: 'insensitive' } } },
-                    { user: { phone: { contains: search, mode: 'insensitive' } } },
-                    { studentCode: { contains: search, mode: 'insensitive' } },
-                    // Thông tin phụ huynh
-                    { parent: { user: { fullName: { contains: search, mode: 'insensitive' } } } },
-                    { parent: { user: { email: { contains: search, mode: 'insensitive' } } } },
-                    { parent: { user: { phone: { contains: search, mode: 'insensitive' } } } }
-                ]
-            };
+            if (search) {
+                where.student = {
+                    OR: [
+                        // Thông tin học viên
+                        { user: { fullName: { contains: search, mode: 'insensitive' } } },
+                        { user: { email: { contains: search, mode: 'insensitive' } } },
+                        { user: { phone: { contains: search, mode: 'insensitive' } } },
+                        { studentCode: { contains: search, mode: 'insensitive' } },
+                        // Thông tin phụ huynh
+                        { parent: { user: { fullName: { contains: search, mode: 'insensitive' } } } },
+                        { parent: { user: { email: { contains: search, mode: 'insensitive' } } } },
+                        { parent: { user: { phone: { contains: search, mode: 'insensitive' } } } }
+                    ]
+                };
+            }
 
             const total = await this.prisma.enrollment.count({ where });
 
@@ -620,16 +628,16 @@ export class EnrollmentManagementService {
             }
 
             // Validation: Cannot change status if class is cancelled or completed
-            if (enrollment.class.status === 'cancelled') {
+            if (enrollment.class.status === 'cancelled' || enrollment.class.status === 'withdrawn') {
                 throw new HttpException(
                     {
                         success: false,
-                        message: 'Không thể thay đổi trạng thái học sinh trong lớp đã hủy'
+                        message: 'Không thể thay đổi trạng thái học sinh trong lớp đã hủy hoặc đã chuyển lớp'
                     },
                     HttpStatus.BAD_REQUEST
                 );
             }
-
+            
             // Validation: Cannot change to studying if class doesn't have teacher
             if (body.status === 'studying' && !enrollment.class.teacherId) {
                 throw new HttpException(
@@ -810,6 +818,18 @@ export class EnrollmentManagementService {
                     semester: body.semester || enrollment.semester,
                     status: newEnrollmentStatus
                 }
+            });
+
+            // Gửi email thông báo chuyển lớp cho phụ huynh (non-blocking)
+            this.emailNotificationService.sendBulkEnrollmentEmail(
+                [enrollment.studentId],
+                body.newClassId,
+                {
+                    oldClassId: enrollment.classId,
+                    reason: body.reason || 'Chuyển lớp'
+                }
+            ).catch(error => {
+                console.error('❌ Lỗi khi gửi email thông báo chuyển lớp:', error.message);
             });
 
             // Note: currentStudents count is now managed through _count.enrollments in Class model

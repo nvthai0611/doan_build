@@ -67,6 +67,12 @@ export const ChangeStatusDialog = ({
   const [pendingEndDate, setPendingEndDate] = useState('');
   // Tạo lịch học là bắt buộc, không cho phép thay đổi
   const wantToGenerateSessions = true;
+  // Session stats khi chuyển sang COMPLETED
+  const [sessionStats, setSessionStats] = useState<{
+    total: number;
+    ended: number;
+    pending: number;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -149,10 +155,90 @@ export const ChangeStatusDialog = ({
         } finally {
           setIsCheckingSessions(false);
         }
+      } 
+      // Check sessions khi chuyển sang COMPLETED từ ACTIVE
+      else if (
+        selectedStatus === ClassStatus.COMPLETED &&
+        currentStatus === ClassStatus.ACTIVE
+      ) {
+        setIsCheckingSessions(true);
+        try {
+          // Lấy tất cả sessions để đếm
+          // Lấy page đầu tiên để xem có bao nhiêu sessions
+          const response = (await classService.getClassSessions(classData.id, {
+            limit: 500,
+            page: 1,
+          })) as any;
+          
+          const sessions = Array.isArray(response?.data) ? response.data : [];
+          const total = response?.meta?.total || sessions.length || 0;
+          
+          // Đếm số sessions đã ended trong page đầu tiên
+          const endedInPage = sessions.filter((s: any) => s.status === 'end').length;
+          
+          // Nếu có nhiều hơn 1000 sessions, cần fetch thêm để đếm chính xác
+          // Nhưng để đơn giản, giả sử tỷ lệ ended trong page đầu tiên đại diện cho toàn bộ
+          let ended = 0;
+          let pending = 0;
+          
+          if (total <= sessions.length) {
+            // Tất cả sessions đã nằm trong page đầu
+            ended = endedInPage;
+            pending = total - ended;
+          } else {
+            // Nếu có nhiều hơn 1000 sessions, estimate dựa trên tỷ lệ
+            // Hoặc fetch thêm để đếm chính xác hơn
+            // Tạm thời dùng cách đơn giản: fetch tất cả bằng cách lặp qua các pages
+            let allEnded = 0;
+            let page = 1;
+            let hasMore = true;
+            
+            while (hasMore && page <= 10) { // Giới hạn tối đa 10 pages để tránh quá nhiều requests
+              const pageResponse = (await classService.getClassSessions(classData.id, {
+                limit: 1000,
+                page,
+              })) as any;
+              
+              const pageSessions = Array.isArray(pageResponse?.data) ? pageResponse.data : [];
+              allEnded += pageSessions.filter((s: any) => s.status === 'end').length;
+              
+              // Kiểm tra xem còn page nào không
+              const pageTotal = pageResponse?.meta?.total || 0;
+              const loadedSoFar = page * 1000;
+              hasMore = loadedSoFar < pageTotal && pageSessions.length === 1000;
+              
+              if (!hasMore || pageSessions.length < 1000) {
+                break;
+              }
+              
+              page++;
+            }
+            
+            ended = allEnded;
+            pending = total - ended;
+          }
+          
+          setSessionStats({
+            total,
+            ended,
+            pending,
+          });
+        } catch (error) {
+          console.error('Error checking sessions:', error);
+          // Nếu lỗi, set default values
+          setSessionStats({
+            total: 0,
+            ended: 0,
+            pending: 0,
+          });
+        } finally {
+          setIsCheckingSessions(false);
+        }
       } else {
         setShowDateForm(false);
         setShowDeleteSessionsWarning(false);
         setHasExistingSessions(false);
+        setSessionStats(null);
       }
     };
 
@@ -176,6 +262,8 @@ export const ChangeStatusDialog = ({
       setPendingStatus('');
       setPendingStartDate('');
       setPendingEndDate('');
+      // Reset session stats
+      setSessionStats(null);
     }
   }, [open, showConfirmWarning, showDeleteSessionsWarning]);
 
@@ -185,10 +273,31 @@ export const ChangeStatusDialog = ({
       currentStatus === ClassStatus.DRAFT &&
       targetStatus === ClassStatus.READY
     ) {
+      // Kiểm tra điều kiện để chuyển sang ready
+      const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+      const hasSchedule = Boolean(classData?.recurringSchedule && 
+        classData.recurringSchedule.schedules && 
+        classData.recurringSchedule.schedules.length > 0);
+      
+      const warnings = [];
+      if (!hasTeacher) {
+        warnings.push('chưa có giáo viên');
+      }
+      if (!hasSchedule) {
+        warnings.push('chưa có lịch học');
+      }
+      
+      if (warnings.length > 0) {
+        return {
+          type: 'warning' as const,
+          message: `Cảnh báo: Lớp ${warnings.join(' và ')}. Bạn vẫn có thể chuyển trạng thái, nhưng nên bổ sung đầy đủ thông tin trước khi mở tuyển sinh.`,
+        };
+      }
+      
       return {
         type: 'info' as const,
         message:
-          'Lớp cần có giáo viên, phòng học, và lịch học trước khi mở tuyển sinh.',
+          'Lớp đã đủ điều kiện để mở tuyển sinh (có giáo viên, phòng học, và lịch học).',
       };
     }
 
@@ -215,10 +324,11 @@ export const ChangeStatusDialog = ({
       currentStatus === ClassStatus.ACTIVE &&
       targetStatus === ClassStatus.COMPLETED
     ) {
+      // Message sẽ được hiển thị trong dialog warning với thông tin chi tiết về sessions
       return {
-        type: 'info' as const,
+        type: 'warning' as const,
         message:
-          'Lớp sẽ được đánh dấu là đã hoàn thành. Tất cả học sinh sẽ được cập nhật trạng thái.',
+          'Hệ thống đang kiểm tra thông tin buổi học. Vui lòng đợi...',
       };
     }
 
@@ -245,6 +355,59 @@ export const ChangeStatusDialog = ({
   // === FIX 1: THAY ĐỔI LOGIC MỞ DIALOG XÁC NHẬN ===
   const handleChangeStatus = async () => {
     if (!selectedStatus) return;
+
+    // Nếu chuyển từ draft sang ready, kiểm tra và hiển thị warning nếu thiếu thông tin
+    if (
+      currentStatus === ClassStatus.DRAFT &&
+      selectedStatus === ClassStatus.READY
+    ) {
+      const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+      const hasSchedule = Boolean(classData?.recurringSchedule && 
+        classData.recurringSchedule.schedules && 
+        classData.recurringSchedule.schedules.length > 0);
+      
+      if (!hasTeacher || !hasSchedule) {
+        const warnings = [];
+        if (!hasTeacher) warnings.push('giáo viên');
+        if (!hasSchedule) warnings.push('lịch học');
+        
+        const message = `Bạn sắp chuyển lớp "${classData?.name}" từ trạng thái "Lớp nháp" sang "Sẵn sàng". ` +
+          `Lưu ý: Lớp hiện ${warnings.join(' và ')}. ` +
+          `Bạn vẫn có thể chuyển trạng thái, nhưng nên bổ sung đầy đủ thông tin trước khi mở tuyển sinh. ` +
+          `Bạn có chắc chắn muốn tiếp tục không?`;
+        
+        setWarningMessage(message);
+        setPendingStatus(selectedStatus);
+        setShowConfirmWarning(true);
+        return;
+      }
+    }
+
+    // Nếu chuyển sang COMPLETED từ ACTIVE
+    if (
+      selectedStatus === ClassStatus.COMPLETED &&
+      currentStatus === ClassStatus.ACTIVE
+    ) {
+      // Hiển thị warning với thông tin sessions
+      if (sessionStats) {
+        const message = `Bạn sắp chuyển lớp "${classData?.name}" từ trạng thái "Đang hoạt động" sang "Đã hoàn thành". ` +
+          `Lớp hiện có ${sessionStats.ended}/${sessionStats.total} buổi học đã hoàn thành ` +
+          `${sessionStats.pending > 0 ? `và còn ${sessionStats.pending} buổi học chưa hoàn thành` : 'và tất cả buổi học đã hoàn thành'}. ` +
+          `Bạn có chắc chắn muốn tiếp tục không?`;
+        
+        setWarningMessage(message);
+        setPendingStatus(selectedStatus);
+        setShowConfirmWarning(true);
+        return;
+      } else {
+        // Nếu chưa có session stats, đợi load xong
+        toast({
+          title: 'Đang tải...',
+          description: 'Đang kiểm tra thông tin buổi học...',
+        });
+        return;
+      }
+    }
 
     // Nếu chuyển sang active từ ready hoặc suspended
     if (
@@ -450,9 +613,20 @@ export const ChangeStatusDialog = ({
     }
   };
 
-  const validationMessage = selectedStatus
+  // Get validation message, nhưng override cho COMPLETED nếu đã có sessionStats
+  const baseValidationMessage = selectedStatus
     ? getValidationMessage(selectedStatus as ClassStatus)
     : null;
+  
+  const validationMessage = 
+    selectedStatus === ClassStatus.COMPLETED &&
+    currentStatus === ClassStatus.ACTIVE &&
+    sessionStats
+      ? {
+          type: 'warning' as const,
+          message: `Lớp hiện có ${sessionStats.ended}/${sessionStats.total} buổi học đã hoàn thành${sessionStats.pending > 0 ? ` và còn ${sessionStats.pending} buổi học chưa hoàn thành` : ''}. Bạn có muốn tiếp tục chuyển trạng thái không?`,
+        }
+      : baseValidationMessage;
 
   const handleConfirmWarning = async () => {
     // Các trường hợp thì tiếp tục update
@@ -699,6 +873,41 @@ export const ChangeStatusDialog = ({
                 </div>
               )}
 
+            {/* Session Stats Info for Completed Status */}
+            {selectedStatus === ClassStatus.COMPLETED &&
+              currentStatus === ClassStatus.ACTIVE &&
+              sessionStats && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
+                    <div className="text-sm text-yellow-800 space-y-2 flex-1">
+                      <p className="font-medium">
+                        Thông tin buổi học:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>
+                          <strong>Tổng số buổi học:</strong> {sessionStats.total} buổi
+                        </li>
+                        <li>
+                          <strong>Đã hoàn thành:</strong> {sessionStats.ended} buổi
+                        </li>
+                        {sessionStats.pending > 0 && (
+                          <li className="text-yellow-900 font-semibold">
+                            <strong>Còn chưa hoàn thành:</strong> {sessionStats.pending} buổi
+                          </li>
+                        )}
+                      </ul>
+                      {sessionStats.pending > 0 && (
+                        <p className="text-xs mt-2 italic">
+                          Lưu ý: Lớp vẫn còn {sessionStats.pending} buổi học chưa hoàn thành. 
+                          Bạn có chắc chắn muốn đánh dấu lớp là "Đã hoàn thành" không?
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
             {/* Date Form - Hiển thị khi chuyển sang active và không có sessions hoặc đã xóa */}
             {showDateForm &&
               selectedStatus === ClassStatus.ACTIVE &&
@@ -762,7 +971,9 @@ export const ChangeStatusDialog = ({
             {/* Loading indicator khi đang check sessions */}
             {isCheckingSessions && (
               <div className="text-sm text-gray-500 text-center py-2">
-                Đang kiểm tra buổi học hiện có...
+                {selectedStatus === ClassStatus.COMPLETED 
+                  ? 'Đang kiểm tra thông tin buổi học...'
+                  : 'Đang kiểm tra buổi học hiện có...'}
               </div>
             )}
           </div>
@@ -793,6 +1004,10 @@ export const ChangeStatusDialog = ({
                   (!startDate ||
                     !endDate ||
                     new Date(startDate) >= new Date(endDate))) ||
+                // Nếu chuyển sang COMPLETED từ ACTIVE → đợi load session stats
+                (selectedStatus === ClassStatus.COMPLETED &&
+                  currentStatus === ClassStatus.ACTIVE &&
+                  sessionStats === null) ||
                 isCheckingSessions
                 // Không còn cần disabled vì showDeleteSessionsWarning nữa
                 // (nếu đã có sessions thì không có warning này, cho phép chuyển luôn)

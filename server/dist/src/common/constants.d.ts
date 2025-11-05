@@ -45,7 +45,9 @@ export declare const ACTIVE_TO_COMPLETED_CONDITIONS: {
 };
 export declare enum SessionStatus {
     HAPPENING = "happening",
-    COMPLETED = "completed",
+    HAS_NOT_HAPPENED = "has_not_happened",
+    END = "end",
+    DAY_OFF = "day_off",
     CANCELLED = "cancelled",
     ALL = "all"
 }

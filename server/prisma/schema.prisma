@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Thêm "debian-openssl-1.1.x" vào đây
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -85,29 +87,29 @@ model Teacher {
 }
 
 model Student {
-  id             String                     @id @default(uuid()) @db.Uuid
-  userId         String                     @unique @map("user_id") @db.Uuid
-  studentCode    String?                    @unique @map("student_code")
-  address        String?
-  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  grade          String?
-  schoolId       String                     @map("school_id") @db.Uuid
-  parentId       String?                    @map("parent_id") @db.Uuid
-  scholarshipId  String?                    @map("scholarship_id") @db.Uuid
-  enrollments    Enrollment[]
-  feeRecords     FeeRecord[]
-  leaveRequests  LeaveRequest[]
-  grades         StudentAssessmentGrade[]
-  classRequests  StudentClassRequest[]
-  studentReports StudentReport[]
-  attendances    StudentSessionAttendance[]
+  id              String                     @id @default(uuid()) @db.Uuid
+  userId          String                     @unique @map("user_id") @db.Uuid
+  studentCode     String?                    @unique @map("student_code")
+  address         String?
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  grade           String?
+  schoolId        String                     @map("school_id") @db.Uuid
+  parentId        String?                    @map("parent_id") @db.Uuid
+  scholarshipId   String?                    @map("scholarship_id") @db.Uuid
+  enrollments     Enrollment[]
+  feeRecords      FeeRecord[]
+  leaveRequests   LeaveRequest[]
+  grades          StudentAssessmentGrade[]
+  classRequests   StudentClassRequest[]
+  studentReports  StudentReport[]
+  attendances     StudentSessionAttendance[]
   contractUploads ContractUpload[] // MỚI: Nhiều cam kết của học sinh
-  parent         Parent?                    @relation(fields: [parentId], references: [id])
-  school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feedbacks      TeacherFeedback[]
-  scholarship    Scholarship?               @relation(fields: [scholarshipId], references: [id])
+  parent          Parent?                    @relation(fields: [parentId], references: [id])
+  school          School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedbacks       TeacherFeedback[]
+  scholarship     Scholarship?               @relation(fields: [scholarshipId], references: [id])
 
   @@index([scholarshipId], map: "idx_student_scholarship")
   @@map("students")
@@ -206,7 +208,7 @@ model ClassSession {
   startTime                    String                        @map("start_time")
   endTime                      String                        @map("end_time")
   roomId                       String?                       @map("room_id") @db.Uuid
-  status                       String                        @default("happening") // happening, has_not_happened, end, day_off
+  status                       String                        @default("happening") // happening, has_not_happened, end, day_off, cancelled
   createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   notes                        String?
   cancellationReason           String?                       @map("cancellation_reason")
@@ -266,11 +268,11 @@ model StudentClassRequest {
   status             String    @default("pending") // pending, under_review, approved, rejected, cancelled, expired
   processedAt        DateTime? @map("processed_at") @db.Timestamptz(6)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  
+
   // Relations
-  class              Class     @relation(fields: [classId], references: [id])
-  student            Student   @relation(fields: [studentId], references: [id])
-  contractUpload     ContractUpload? @relation(fields: [contractUploadId], references: [id])
+  class          Class           @relation(fields: [classId], references: [id])
+  student        Student         @relation(fields: [studentId], references: [id])
+  contractUpload ContractUpload? @relation(fields: [contractUploadId], references: [id])
 
   @@map("student_class_requests")
 }
@@ -674,10 +676,10 @@ model ContractUpload {
   status    String?   @default("active") @map("status") // active, expiring_soon, expired
 
   // Relations
-  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade) // DEPRECATED
-  student    Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade) // MỚI
-  parent     Parent?     @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  teacher    Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollment    Enrollment?           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade) // DEPRECATED
+  student       Student?              @relation(fields: [studentId], references: [id], onDelete: Cascade) // MỚI
+  parent        Parent?               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacher       Teacher?              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   classRequests StudentClassRequest[] // MỚI: Nhiều request dùng chung 1 cam kết
 
   @@index([studentId], map: "idx_contract_upload_student")

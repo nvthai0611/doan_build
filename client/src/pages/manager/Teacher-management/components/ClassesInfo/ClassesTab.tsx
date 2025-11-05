@@ -87,6 +87,8 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         return <Badge className="bg-orange-100 text-orange-800">Tạm dừng</Badge>
       case 'deleted':
         return <Badge className="bg-red-100 text-red-800">Đã xóa</Badge>
+      case 'cancelled':
+        return <Badge className="bg-red-100 text-red-800">Đã hủy</Badge>
       default:
         return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
     }
@@ -125,6 +127,28 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         item.room?.toLowerCase().includes(searchLower)
       )
     }
+
+    // Sort by status với custom order: draft → ready → active → suspended → completed → cancelled
+    const statusOrder: Record<string, number> = {
+      [ClassStatus.DRAFT]: 1,      // Chưa cập nhật
+      [ClassStatus.READY]: 2,      // Đang tuyển sinh
+      [ClassStatus.ACTIVE]: 3,     // Đang hoạt động
+      [ClassStatus.SUSPENDED]: 4,  // Tạm dừng
+      [ClassStatus.COMPLETED]: 5,  // Đã kết thúc
+      [ClassStatus.CANCELLED]: 6,  // Đã hủy
+    };
+
+    data = [...data].sort((a: any, b: any) => {
+      const orderA = statusOrder[a.status] || 999;
+      const orderB = statusOrder[b.status] || 999;
+      if (orderA !== orderB) {
+        return orderA - orderB; // Sort asc: draft → ready → active → ...
+      }
+      // If same status, sort by createdAt desc (mới nhất trước)
+      const dateA = new Date(a.createdAt || a.startDate || 0).getTime();
+      const dateB = new Date(b.createdAt || b.startDate || 0).getTime();
+      return dateB - dateA;
+    });
     
     return data
   }, [teacherClassesData, activeTab, debouncedSearch])

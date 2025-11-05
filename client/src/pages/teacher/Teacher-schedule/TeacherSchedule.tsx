@@ -31,6 +31,7 @@ export default function TeacherSchedule() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<ScheduleData | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -63,7 +64,7 @@ export default function TeacherSchedule() {
       }
     }
     fetchSchedules()
-  }, [currentDate])
+  }, [currentDate, viewType])
 
   const getDateKey = (d: Date) => {
     const yyyy = d.getFullYear()
@@ -89,6 +90,17 @@ export default function TeacherSchedule() {
       case "exam": return "bg-blue-500 text-white"
       case "makeup": return "bg-green-500 text-white"
       default: return "bg-gray-500 text-white"
+    }
+  }
+
+  const getClassSessionStatusColor = (status: string) => {
+    switch (status) {
+      case "day_off": return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm';
+      case "happening": return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm';
+      case "end": return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+      case "has_not_happened": return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm';
+      case "cancelled": return "bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm";
+      default: return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm';
     }
   }
 
@@ -136,6 +148,18 @@ export default function TeacherSchedule() {
   const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth])
   const emptyDays = useMemo(() => Array.from({ length: firstDay }, (_, i) => i), [firstDay])
 
+  const toggleDateExpand = (dateKey: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev)
+      if (next.has(dateKey)) {
+        next.delete(dateKey)
+      } else {
+        next.add(dateKey)
+      }
+      return next
+    })
+  }
+
   const renderMonthView = () => (
     <Card>
       <CardContent>
@@ -154,33 +178,82 @@ export default function TeacherSchedule() {
             const dayList = schedulesByDate.get(dateKey) ?? []
             const isToday = new Date().toDateString() === date.toDateString()
             const hasMultiple = dayList.length > 1
+            const isExpanded = expandedDates.has(dateKey)
 
             return (
-              <div key={day} className={`p-2 min-h-[120px] border border-gray-200 ${isToday ? "bg-blue-50 border-blue-300" : "bg-white hover:bg-gray-50"}`}>
+              <div
+                key={day}
+                className={`p-2 min-h-[120px] border border-gray-200 ${
+                  isToday
+                    ? 'bg-blue-50 border-blue-300'
+                    : 'bg-white hover:bg-gray-50'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-medium ${isToday ? "text-blue-600 bg-blue-100 px-2 py-1 rounded-full" : "text-gray-900"}`}>{day}</span>
+                  <span
+                    className={`text-sm font-medium ${
+                      isToday
+                        ? 'text-blue-600 bg-blue-100 px-2 py-1 rounded-full'
+                        : 'text-gray-900'
+                    }`}
+                  >
+                    {day}
+                  </span>
                   <div className="flex items-center space-x-1">
                     {hasMultiple && (
-                      <Badge variant="secondary" className="text-xs px-1 py-0">{dayList.length}</Badge>
+                      <Badge variant="secondary" className="text-xs px-1 py-0">
+                        {dayList.length}
+                      </Badge>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-1 max-h-20 overflow-y-auto">
-                  {dayList.slice(0, 3).map((s) => (
-                    <div key={s.id} className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getEventColor(s.type)}`} title={`${s.subject} - ${s.className} - ${s.room}`} onClick={() => openDetail(s)}>
+                <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-22 overflow-y-auto'}`}>
+                  {(isExpanded ? dayList : dayList.slice(0, 1)).map((s) => (
+                    <div
+                      key={s.id}
+                      className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(
+                        s.status,
+                      )}`}
+                      title={`${s.subject} - ${s.className} - ${s.room}`}
+                      onClick={() => openDetail(s)}
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">{s.className}</span>
+                        <span className="font-medium truncate">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium truncate">{s.className} - {s.room}</span>
+                            </div>
+                            <div className="text-xs opacity-90 truncate">{s.startTime}-{s.endTime}</div>
+                            {s.status === "day_off" ? <span style={{ fontSize: '10px' }}>(Nghỉ)</span> 
+                            : s.status === "end" ? <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span> 
+                            : s.status === "cancelled" ? <span style={{ fontSize: '10px' }}>(Đã hủy)</span> 
+                            : <div style={{ fontSize: '10px' }}>(Chưa diễn ra)
+                            </div>}
+                        </span>
                       </div>
-                      <div className="text-xs opacity-90 truncate">{s.startTime}-{s.endTime}</div>
                     </div>
                   ))}
-                  {dayList.length > 3 && (
-                    <div className="text-xs text-gray-500 text-center py-1">+{dayList.length - 3} buổi khác</div>
+                  {dayList.length > 1 && !isExpanded && (
+                    <button
+                      type="button"
+                      className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
+                      onClick={(e) => { e.stopPropagation(); toggleDateExpand(dateKey) }}
+                    >
+                      +{dayList.length - 1} buổi khác
+                    </button>
+                  )}
+                  {dayList.length > 1 && isExpanded && (
+                    <button
+                      type="button"
+                      className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
+                      onClick={(e) => { e.stopPropagation(); toggleDateExpand(dateKey) }}
+                    >
+                      Thu gọn
+                    </button>
                   )}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </CardContent>
@@ -218,9 +291,15 @@ export default function TeacherSchedule() {
                 return (
                   <div key={`${hour}-${dayIdx}`} className="min-h-[60px] border-b border-r bg-white hover:bg-gray-50 transition-colors relative">
                     {list.map((s, si) => (
-                      <div key={s.id} className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getEventColor(s.type)}`} title={`${s.subject} - ${s.className} - ${s.room}`} onClick={() => openDetail(s)} style={{ top: `${si * 20}px`, height: '36px', fontSize: '12px' }}>
-                        <div className="truncate font-medium">{s.className}</div>
+                      <div key={s.id} className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(s.status)}`} 
+                      title={`${s.subject} - ${s.className} - ${s.room}`} onClick={() => openDetail(s)} style={{ top: `${si * 20}px`, height: '58px', fontSize: '10px' }}>
+                        <div className="truncate font-medium">{s.className} - {s.room}</div>
                         <div className="truncate opacity-90">{s.startTime}-{s.endTime}</div>
+                        {s.status === "day_off" ? <span style={{ fontSize: '10px' }}>(Nghỉ)</span> 
+                        : s.status === "end" ? <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span> 
+                        : s.status === "cancelled" ? <span style={{ fontSize: '10px' }}>(Đã hủy)</span> 
+                        : <div style={{ fontSize: '10px' }}>(Chưa diễn ra)
+                        </div>}
                       </div>
                     ))}
                   </div>
@@ -259,8 +338,13 @@ export default function TeacherSchedule() {
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <span className="text-sm font-medium">{new Date(s.date).toLocaleDateString("vi-VN")}</span>
                       </div>
-                      <Badge className={`${getEventColor(s.type)} px-2 py-1`}>{s.subject}</Badge>
-                      <span className="text-sm font-medium">{s.className}</span>
+                      <Badge className={`${getClassSessionStatusColor(s.status)} px-2 py-1`}>{s.subject}</Badge>
+                      <span className="text-sm font-medium">{s.className} - 
+                        {s.status === "day_off" ? <span className="text-xs"> (Nghỉ)</span> 
+                        : s.status === "end" ? <span className="text-xs"> (Đã kết thúc)</span> 
+                        : s.status === "cancelled" ? <span className="text-xs"> (Đã hủy)</span> 
+                        : <span className="text-xs"> (Chưa diễn ra)
+                        </span>}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="text-right">
@@ -329,7 +413,7 @@ export default function TeacherSchedule() {
               <DialogHeader>
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-xl font-bold">{selected.className}</DialogTitle>
-                  <Badge className={`${getEventColor(selected.type)} px-3 py-1`}>{selected.subject}</Badge>
+                  <Badge className={`${getClassSessionStatusColor(selected.status)} px-3 py-1`}>{selected.subject}</Badge>
                 </div>
                 <div className="text-sm text-gray-600">{selected.room}</div>
               </DialogHeader>

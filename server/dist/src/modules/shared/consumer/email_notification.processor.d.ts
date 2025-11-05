@@ -27,5 +27,19 @@ export declare class EmailNotificationProcessor {
         failed: any[];
         total: number;
     }>;
+    handleSendClassStartingNotification(job: Job<any>): Promise<{
+        success: boolean;
+        message: string;
+        className: any;
+        sentTo: any;
+        duration: number;
+    }>;
+    handleSendClassEndingNotification(job: Job<any>): Promise<{
+        success: boolean;
+        message: string;
+        className: any;
+        sentTo: any;
+        duration: number;
+    }>;
 }
 export {};

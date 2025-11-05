@@ -312,8 +312,13 @@ let EnrollmentManagementService = class EnrollmentManagementService {
             const { search, page = 1, limit = 50 } = query;
             const skip = (parseInt(page) - 1) * parseInt(limit);
             const take = parseInt(limit);
-            const where = { classId };
-            if (search)
+            const where = {
+                classId,
+                status: {
+                    not: 'withdrawn'
+                }
+            };
+            if (search) {
                 where.student = {
                     OR: [
                         { user: { fullName: { contains: search, mode: 'insensitive' } } },
@@ -325,6 +330,7 @@ let EnrollmentManagementService = class EnrollmentManagementService {
                         { parent: { user: { phone: { contains: search, mode: 'insensitive' } } } }
                     ]
                 };
+            }
             const total = await this.prisma.enrollment.count({ where });
             const classInfo = await this.prisma.class.findUnique({
                 where: { id: classId },
@@ -482,10 +488,10 @@ let EnrollmentManagementService = class EnrollmentManagementService {
                     message: 'Lớp học không tồn tại'
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
-            if (enrollment.class.status === 'cancelled') {
+            if (enrollment.class.status === 'cancelled' || enrollment.class.status === 'withdrawn') {
                 throw new common_1.HttpException({
                     success: false,
-                    message: 'Không thể thay đổi trạng thái học sinh trong lớp đã hủy'
+                    message: 'Không thể thay đổi trạng thái học sinh trong lớp đã hủy hoặc đã chuyển lớp'
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
             if (body.status === 'studying' && !enrollment.class.teacherId) {
@@ -610,6 +616,12 @@ let EnrollmentManagementService = class EnrollmentManagementService {
                     semester: body.semester || enrollment.semester,
                     status: newEnrollmentStatus
                 }
+            });
+            this.emailNotificationService.sendBulkEnrollmentEmail([enrollment.studentId], body.newClassId, {
+                oldClassId: enrollment.classId,
+                reason: body.reason || 'Chuyển lớp'
+            }).catch(error => {
+                console.error('❌ Lỗi khi gửi email thông báo chuyển lớp:', error.message);
             });
             return {
                 success: true,

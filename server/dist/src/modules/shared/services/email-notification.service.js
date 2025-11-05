@@ -349,9 +349,8 @@ let EmailNotificationService = class EmailNotificationService {
             throw new common_1.HttpException(`Không thể gửi email hủy phân công lớp: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async sendBulkEnrollmentEmail(studentIds, classId) {
+    async sendBulkEnrollmentEmail(studentIds, classId, transferInfo) {
         try {
-            console.log(`🚀 Bắt đầu xử lý gửi email đăng ký cho ${studentIds.length} học sinh`);
             const classData = await this.prisma.class.findUnique({
                 where: { id: classId },
                 include: {
@@ -387,6 +386,14 @@ let EmailNotificationService = class EmailNotificationService {
             if (students.length === 0) {
                 throw new common_1.HttpException('Không tìm thấy học sinh nào', common_1.HttpStatus.NOT_FOUND);
             }
+            let oldClassName;
+            if (transferInfo) {
+                const oldClass = await this.prisma.class.findUnique({
+                    where: { id: transferInfo.oldClassId },
+                    select: { name: true }
+                });
+                oldClassName = oldClass?.name || 'N/A';
+            }
             const className = classData.name || 'N/A';
             const subjectName = classData.subject?.name || 'N/A';
             const teacherName = classData.teacher?.user?.fullName || undefined;
@@ -394,12 +401,6 @@ let EmailNotificationService = class EmailNotificationService {
                 ? new Date(classData.actualStartDate).toLocaleDateString('vi-VN')
                 : undefined;
             const schedule = classData.recurringSchedule || undefined;
-            console.log(`Thông tin lớp học:\n` +
-                `   - Tên lớp: ${className}\n` +
-                `   - Môn học: ${subjectName}\n` +
-                `   - Giáo viên: ${teacherName || 'Chưa có'}\n` +
-                `   - Ngày bắt đầu: ${startDate || 'Chưa có'}\n` +
-                `   - Có lịch học: ${schedule ? 'Có' : 'Chưa có'}`);
             const emailResults = [];
             const jobPromises = [];
             for (const student of students) {
@@ -427,7 +428,10 @@ let EmailNotificationService = class EmailNotificationService {
                         schedule,
                         enrollmentStatus,
                         studentId: student.id,
-                        classId
+                        classId,
+                        isTransfer: !!transferInfo,
+                        oldClassName: transferInfo ? oldClassName : undefined,
+                        transferReason: transferInfo?.reason
                     }, {
                         priority: 2,
                         delay: 1000,
@@ -440,7 +444,7 @@ let EmailNotificationService = class EmailNotificationService {
                         removeOnFail: 5
                     });
                     jobPromises.push(jobPromise);
-                    console.log(`📨 Đã thêm job gửi email đăng ký cho ${student.user?.fullName} vào queue`);
+                    console.log(`Đã thêm job gửi email ${transferInfo ? 'chuyển lớp' : 'đăng ký'} cho ${student.user?.fullName} vào queue`);
                     emailResults.push({
                         studentId: student.id,
                         studentName: student.user?.fullName,
@@ -449,7 +453,7 @@ let EmailNotificationService = class EmailNotificationService {
                     });
                 }
                 catch (error) {
-                    console.error(`❌ Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`);
+                    console.error(`Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`);
                     emailResults.push({
                         studentId: student.id,
                         studentName: student.user?.fullName,
@@ -461,7 +465,7 @@ let EmailNotificationService = class EmailNotificationService {
             await Promise.all(jobPromises);
             const successCount = emailResults.filter(r => r.success).length;
             const failCount = emailResults.filter(r => !r.success).length;
-            console.log(`✅ Đã thêm ${successCount}/${studentIds.length} email vào queue thành công\n` +
+            console.log(`Đã thêm ${successCount}/${studentIds.length} email vào queue thành công\n` +
                 `   - Thành công: ${successCount}\n` +
                 `   - Thất bại: ${failCount}`);
             return {
@@ -470,11 +474,11 @@ let EmailNotificationService = class EmailNotificationService {
                 failCount,
                 totalStudents: studentIds.length,
                 details: emailResults,
-                message: `Đã thêm ${successCount} email thông báo đăng ký vào hàng đợi.`
+                message: `Đã thêm ${successCount} email thông báo ${transferInfo ? 'chuyển lớp' : 'đăng ký'} vào hàng đợi.`
             };
         }
         catch (error) {
-            console.error('❌ Lỗi khi xử lý gửi email đăng ký:', error);
+            console.error('Lỗi khi xử lý gửi email đăng ký:', error);
             throw new common_1.HttpException(error.message || 'Lỗi khi gửi email thông báo đăng ký', error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -738,6 +742,68 @@ let EmailNotificationService = class EmailNotificationService {
             return {
                 success: false,
                 error: error.message
+            };
+        }
+    }
+    async sendClassStartingNotificationEmail(to, data) {
+        try {
+            console.log(`📧 Thêm job gửi email thông báo lớp sắp bắt đầu cho: ${to}`);
+            await this.emailNotificationQueue.add('send_class_starting_notification', {
+                to,
+                ...data,
+            }, {
+                priority: 2,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 2000,
+                },
+                removeOnComplete: 10,
+                removeOnFail: 5,
+            });
+            console.log(`✅ Đã thêm job email thông báo lớp sắp bắt đầu vào queue cho: ${to}`);
+            return {
+                success: true,
+                message: 'Email job đã được thêm vào queue',
+                to,
+            };
+        }
+        catch (error) {
+            console.error(`❌ Lỗi khi thêm job email thông báo lớp sắp bắt đầu: ${error.message}`);
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    }
+    async sendClassEndingNotificationEmail(to, data) {
+        try {
+            console.log(`📧 Thêm job gửi email thông báo lớp sắp kết thúc cho: ${to}`);
+            await this.emailNotificationQueue.add('send_class_ending_notification', {
+                to,
+                ...data,
+            }, {
+                priority: 2,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 2000,
+                },
+                removeOnComplete: 10,
+                removeOnFail: 5,
+            });
+            console.log(`✅ Đã thêm job email thông báo lớp sắp kết thúc vào queue cho: ${to}`);
+            return {
+                success: true,
+                message: 'Email job đã được thêm vào queue',
+                to,
+            };
+        }
+        catch (error) {
+            console.error(`❌ Lỗi khi thêm job email thông báo lớp sắp kết thúc: ${error.message}`);
+            return {
+                success: false,
+                error: error.message,
             };
         }
     }

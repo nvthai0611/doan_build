@@ -61,6 +61,7 @@ class PublicClassesService {
     limit?: number;
     subjectId?: string;
     gradeId?: string;
+    teacherId?: string;
   }): Promise<any> {
     try {
       const queryParams = {
@@ -68,6 +69,7 @@ class PublicClassesService {
         limit: params?.limit || 10,
         ...(params?.subjectId && { subjectId: params.subjectId }),
         ...(params?.gradeId && { gradeId: params.gradeId }),
+        ...(params?.teacherId && { teacherId: params.teacherId }),
       };
       
       const response = await apiClient.get('/shared/public/classes/recruiting', queryParams);

@@ -61,7 +61,7 @@ export const TransferTeacherSheet = ({
     queryFn: async () => {
       const params: any = {
         status: 'active',
-        limit: 50,
+        limit: 1000,
       };
 
       if (debouncedSearch?.trim()) {
@@ -72,11 +72,11 @@ export const TransferTeacherSheet = ({
         params.subject = classData.subject.name;
       }
 
-      const response = await apiClient.get('/admin-center/teachers', { params });
+      const response = await apiClient.get('/admin-center/teachers',  params );
       return response;
     },
     enabled: open && !!classData,
-    staleTime: 2000,
+    staleTime: 0,
   });
 
   const teachers: any[] = (teachersData as any)?.data || [];

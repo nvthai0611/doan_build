@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router-dom"
 import { publicClassesService, type RecruitingClass } from "../../services/common/public-classes.service"
 import { publicShowcasesService, type Showcase } from "../../services/common/public-showcases.service"
+import { publicTeacherService } from "../../services/common/public-teacher.service"
 import { useAuth } from "../../lib/auth"
 import { formatScheduleArray } from "../../utils/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,21 +33,6 @@ import { BlogSection } from "./components/blog-section"
 // import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
-
-const teachers = [
-  { id: 1, name: "Thầy Nguyễn Minh Tuấn", subject: "Toán", experience: 15, students: 250, rating: 4.9, avatar: "👨‍🏫" },
-  {
-    id: 2,
-    name: "Cô Trần Hương Giang",
-    subject: "Tiếng Anh",
-    experience: 12,
-    students: 180,
-    rating: 4.8,
-    avatar: "👩‍🏫",
-  },
-  { id: 3, name: "Thầy Lê Quốc Huy", subject: "Hóa học", experience: 10, students: 150, rating: 4.9, avatar: "👨‍🏫" },
-  { id: 4, name: "Cô Phạm Linh Chi", subject: "Vật lý", experience: 8, students: 120, rating: 4.7, avatar: "👩‍🏫" },
-]
 
 const news = [
   {
@@ -101,17 +87,19 @@ export const LandingPage = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<string>("all")
   const [selectedGrade, setSelectedGrade] = useState<string>("all")
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
 
   // Fetch recruiting classes
   const { data: classesData, isLoading: isLoadingClasses } = useQuery({
-    queryKey: ["recruiting-classes", currentPage, selectedSubject, selectedGrade],
+    queryKey: ["recruiting-classes", currentPage, selectedSubject, selectedGrade, selectedTeacherId],
     queryFn: () =>
       publicClassesService.getRecruitingClasses({
         page: currentPage,
         limit: 12,
         subjectId: selectedSubject !== "all" ? selectedSubject : undefined,
         gradeId: selectedGrade !== "all" ? selectedGrade : undefined,
+        teacherId: selectedTeacherId !== "all" ? selectedTeacherId : undefined,
       }),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -137,18 +125,52 @@ export const LandingPage = () => {
     refetchOnMount: true,
   })
 
+  // Fetch teachers
+  const { data: teachersData } = useQuery({
+    queryKey: ["public-teachers"],
+    queryFn: () => publicTeacherService.getTeachers(),
+  })
+
   const classes = classesData?.data || []
   const subjects = subjectsData?.data || []
   const grades = gradesData?.data || []
   const meta = classesData?.meta
   const showcases = showcasesData?.data || []
+  const teachers = teachersData?.data || []
 
   // Filter by search term
   const filteredClasses = classes.filter(
     (c: any) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.classCode?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  );
+
+  // Map subjectId -> subjectName để hiển thị
+  const subjectNameById = useMemo(() => {
+    try {
+      return new Map<string, string>(subjects.map((s: any) => [s.id, s.name]))
+    } catch {
+      return new Map<string, string>()
+    }
+  }, [subjects])
+
+  const getInitials = (fullName?: string) =>
+    (fullName || 'GV')
+      .split(' ')
+      .filter(Boolean)
+      .slice(-2)
+      .map((p) => p[0]?.toUpperCase())
+      .join('')
+
+  const displaySubject = (t: any) => {
+    if (t?.subject && typeof t.subject === 'string') return subjectNameById.get(t.subject) || t.subject
+    if (Array.isArray(t?.subjects)) {
+      if (t.subjects.length === 1) return subjectNameById.get(t.subjects[0]) || t.subjects[0]
+      if (t.subjects.length > 1) return 'Đa môn'
+    }
+    return 'Giáo viên'
+  }
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -157,16 +179,23 @@ export const LandingPage = () => {
 
       {/* Hero Banner */}
       <HeroBanner />
-    {/* Classes Section */}
-    <section id="classes" className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
+      {/* Classes Section */}
+      <section
+        id="classes"
+        className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft"
+      >
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="text-center mb-12">
             <div className="section-badge">
               <BookOpen className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Danh Sách Lớp Học</span>
+              <span className="text-sm font-medium gradient-text">
+                Danh Sách Lớp Học
+              </span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Lớp Học Đang Tuyển Sinh</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Lớp Học Đang Tuyển Sinh
+            </h2>
             <p className="text-muted-foreground text-lg">
               Khám phá các lớp học chất lượng với giáo viên giàu kinh nghiệm
             </p>
@@ -186,8 +215,31 @@ export const LandingPage = () => {
                 />
               </div>
 
+              {/* Teacher Filter */}
+              <Select
+                value={selectedTeacherId}
+                onValueChange={setSelectedTeacherId}
+              >
+                <SelectTrigger className="w-full md:w-[200px] border-2 border-border select-focus">
+                  <SelectValue placeholder="Giáo viên" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả giáo viên</SelectItem>
+                  {teachers.map((teacher: any) => (
+                    teacher.classesStatus.toString().includes('active') && (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.name}
+                      </SelectItem>
+                    )
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Subject Filter */}
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+              <Select
+                value={selectedSubject}
+                onValueChange={setSelectedSubject}
+              >
                 <SelectTrigger className="w-full md:w-[200px] border-2 border-border select-focus">
                   <SelectValue placeholder="Môn học" />
                 </SelectTrigger>
@@ -217,13 +269,17 @@ export const LandingPage = () => {
               </Select>
 
               {/* Clear Filters */}
-              {(selectedSubject !== "all" || selectedGrade !== "all" || searchTerm) && (
+              {(selectedSubject !== 'all' ||
+                selectedGrade !== 'all' ||
+                selectedTeacherId !== 'all' ||
+                searchTerm) && (
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setSelectedSubject("all")
-                    setSelectedGrade("all")
-                    setSearchTerm("")
+                    setSelectedSubject('all');
+                    setSelectedGrade('all');
+                    setSelectedTeacherId('all');
+                    setSearchTerm('');
                   }}
                   className="border-2 filter-btn-hover"
                 >
@@ -245,8 +301,12 @@ export const LandingPage = () => {
           {!isLoadingClasses && filteredClasses.length === 0 && (
             <div className="text-center py-20">
               <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">Không tìm thấy lớp học</h3>
-              <p className="text-muted-foreground">Thử thay đổi bộ lọc hoặc tìm kiếm với từ khóa khác</p>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Không tìm thấy lớp học
+              </h3>
+              <p className="text-muted-foreground">
+                Thử thay đổi bộ lọc hoặc tìm kiếm với từ khóa khác
+              </p>
             </div>
           )}
 
@@ -255,14 +315,22 @@ export const LandingPage = () => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {filteredClasses.map((classItem: any) => (
-                  <ClassCard key={classItem.id} classItem={classItem} isAuthenticated={!!user} />
+                  <ClassCard
+                    key={classItem.id}
+                    classItem={classItem}
+                    isAuthenticated={!!user}
+                  />
                 ))}
               </div>
 
               {/* Pagination */}
               {meta && meta.totalPages > 1 && (
                 <div className="flex justify-center gap-2">
-                  <Button variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
                     Trang trước
                   </Button>
                   <div className="flex items-center gap-2 px-4">
@@ -288,13 +356,22 @@ export const LandingPage = () => {
           <div className="text-center mb-8">
             <div className="section-badge">
               <Star className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Học Sinh Tiêu Biểu</span>
+              <span className="text-sm font-medium gradient-text">
+                Học Sinh Tiêu Biểu
+              </span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Học Sinh Tiêu Biểu & Xuất Sắc</h2>
-            <p className="text-muted-foreground">Hành trình thành công của những học sinh tại trung tâm</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
+              Học Sinh Tiêu Biểu & Xuất Sắc
+            </h2>
+            <p className="text-muted-foreground">
+              Hành trình thành công của những học sinh tại trung tâm
+            </p>
           </div>
 
-          <StudentShowcaseSection data={showcases} isLoading={isLoadingShowcases} />
+          <StudentShowcaseSection
+            data={showcases}
+            isLoading={isLoadingShowcases}
+          />
         </div>
       </section>
 
@@ -303,51 +380,110 @@ export const LandingPage = () => {
           <div className="section-header">
             <div className="section-badge">
               <Users className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Đội Ngũ Giáo Viên</span>
+              <span className="text-sm font-medium gradient-text">
+                Đội Ngũ Giáo Viên
+              </span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Giáo Viên Giàu Kinh Nghiệm</h2>
-            <p className="text-muted-foreground text-lg">Đội ngũ giáo viên tài năng, tận tâm với học sinh</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Giáo Viên Giàu Kinh Nghiệm
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Đội ngũ giáo viên tài năng, tận tâm với học sinh
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((teacher) => (
-              <div key={teacher.id} className="teacher-card">
-                <div className="teacher-avatar">{teacher.avatar}</div>
-                <div className="p-4">
-                  <h3 className="font-bold text-lg mb-1">{teacher.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{teacher.subject}</p>
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Kinh nghiệm:</span>
-                      <span className="font-semibold">{teacher.experience} năm</span>
+            {teachers
+              .filter((t: any) => Array.isArray(t?.assignedClasses) && t.assignedClasses.length > 0)
+              .slice()
+              .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0) || (b.students || 0) - (a.students || 0))
+              .map((t: any) => {
+                const name = t?.name || 'Giáo viên'
+                const subjectIds: string[] = Array.isArray((t as any).subjects) ? (t as any).subjects : []
+                const allSubjectNames = subjectIds.map((id) => subjectNameById.get(id) || id).filter(Boolean)
+                const subjectShort = allSubjectNames.length > 0
+                  ? `${allSubjectNames.join(', ')}${allSubjectNames.length > 2 ? `` : ''}`
+                  : displaySubject(t)
+                const displayExp = typeof t?.experience === 'number' && t.experience >= 1 ? `${t.experience} năm` : undefined
+                const students = typeof t?.students === 'number' && t.students > 0 ? `${t.students}+` : '—'
+                const rating = typeof t?.rating === 'number' && t.rating > 0 ? t.rating.toFixed(1) : ''
+                const isFeatured = (t?.rating || 0) >= 4.5 || (t?.students || 0) >= 100
+                const activeNames: string[] = Array.isArray(t?.assignedClasses)
+                  ? t.assignedClasses.filter((c: any) => c?.status === 'active' || c?.status === 'ready').map((c: any) => c?.className).filter(Boolean)
+                  : []
+                const activeNamesLabel = activeNames.length > 0
+                  ? `${activeNames.join(', ')}${activeNames.length > 2 ? `` : ''}`
+                  : ''
+
+                return (
+                  <div key={t.id} className="teacher-card">
+                    <div className="teacher-avatar relative overflow-hidden">
+                      {t?.avatar ? (
+                        <img src={t.avatar} alt={name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted text-foreground">
+                          {getInitials(name)}
+                        </div>
+                      )}
+                      {isFeatured && (
+                        <span className="absolute left-3 top-3 rounded-full bg-yellow-400 px-2.5 py-0.5 text-xs font-semibold text-black shadow">
+                          Nổi bật
+                        </span>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Học sinh:</span>
-                      <span className="font-semibold">{teacher.students}+</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Đánh giá:</span>
-                      <span className="font-semibold text-orange-500">⭐ {teacher.rating}</span>
+                    <div className="p-4">
+                      <h3 className="font-bold text-lg mb-1 line-clamp-1">{name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-1" title={allSubjectNames.join(', ')}>
+                        {subjectShort}
+                      </p>
+                      <div className="space-y-2 text-sm mb-4">
+                        {displayExp && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Kinh nghiệm:</span>
+                            <span className="font-semibold">{displayExp}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Học sinh:</span>
+                          <span className="font-semibold">{students}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Đánh giá:</span>
+                          <span className="font-semibold text-orange-500">{rating ? `⭐ ${rating}` : 'Chưa có'}</span>
+                        </div>
+                        {activeNamesLabel && (
+                          <div className="line-clamp-1 tooltip" title={activeNamesLabel}>
+                            <span className="text-muted-foreground">Đang dạy:</span>{' '}
+                            <span className="font-semibold">{activeNamesLabel}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        className="w-full btn-gradient text-sm"
+                        onClick={() => document.getElementById('classes')?.scrollIntoView({ behavior: 'smooth' })}
+                      >
+                        Xem lớp đang tuyển
+                      </Button>
                     </div>
                   </div>
-                  <Button className="w-full btn-gradient text-sm">Xem chi tiết</Button>
-                </div>
-              </div>
-            ))}
+                )
+              })}
           </div>
         </div>
       </section>
-
-  
 
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="section-header">
             <div className="section-badge">
               <Award className="w-4 h-4 gradient-text" />
-              <span className="text-sm font-medium gradient-text">Vinh Danh & Thành Tích</span>
+              <span className="text-sm font-medium gradient-text">
+                Vinh Danh & Thành Tích
+              </span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Những Thành Tích Nổi Bật</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Những Thành Tích Nổi Bật
+            </h2>
             <p className="text-muted-foreground text-lg">
               Những dự án, thành tích và vinh danh của học sinh và giáo viên
             </p>
@@ -358,8 +494,12 @@ export const LandingPage = () => {
               <div key={item.id} className="showcase-item">
                 <div className="showcase-image">{item.icon}</div>
                 <div className="p-4">
-                  <Badge className="mb-3 badge-gradient text-xs">{item.category}</Badge>
-                  <h3 className="font-bold text-sm line-clamp-2">{item.title}</h3>
+                  <Badge className="mb-3 badge-gradient text-xs">
+                    {item.category}
+                  </Badge>
+                  <h3 className="font-bold text-sm line-clamp-2">
+                    {item.title}
+                  </h3>
                 </div>
               </div>
             ))}
@@ -409,7 +549,9 @@ export const LandingPage = () => {
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 text-white">Sẵn sàng bắt đầu hành trình học tập?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 text-white">
+            Sẵn sàng bắt đầu hành trình học tập?
+          </h2>
           <p className="text-lg text-muted-foreground mb-8 text-white">
             Đăng ký tài khoản ngay hôm nay để tham gia các lớp học chất lượng
           </p>
@@ -425,7 +567,7 @@ export const LandingPage = () => {
       {/* Footer */}
       <Footer />
     </div>
-  )
+  );
 }
 
 // Class Card Component

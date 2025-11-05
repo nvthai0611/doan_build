@@ -141,6 +141,9 @@ export default function ScheduleTab({
   // State để force re-render mỗi phút (để cập nhật status "Đã kết thúc X giờ/phút trước")
   const [, setCurrentTime] = useState<Date>(new Date())
   
+  // State quản lý các ngày đã được mở rộng (expand) để hiển thị tất cả sessions
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
+  
   // Effect để cập nhật currentTime mỗi phút
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -229,6 +232,41 @@ export default function ScheduleTab({
   const handleSessionClick = (session: TeachingSession) => {
     setSelectedSession(session);
     setIsDialogOpen(true)
+  }
+
+  /**
+   * Tạo key duy nhất cho một ngày để dùng trong expandedDates
+   * 
+   * @param {number} day - Ngày trong tháng (1-31)
+   * @param {number} year - Năm
+   * @param {number} month - Tháng (0-11, JavaScript month)
+   * @returns {string} Date key dạng "YYYY-MM-DD"
+   */
+  const getDateKey = (day: number, year: number, month: number): string => {
+    const yyyy = year
+    const mm = String(month + 1).padStart(2, '0')
+    const dd = String(day).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  /**
+   * Toggle expand/collapse cho một ngày cụ thể
+   * 
+   * @param {string} dateKey - Date key dạng "YYYY-MM-DD"
+   * @returns void
+   * 
+   * Action: Thêm/xóa dateKey vào expandedDates Set
+   */
+  const toggleDateExpand = (dateKey: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev)
+      if (next.has(dateKey)) {
+        next.delete(dateKey)
+      } else {
+        next.add(dateKey)
+      }
+      return next
+    })
   }
 
   /**
@@ -422,6 +460,8 @@ export default function ScheduleTab({
             const isCurrentDay = isToday(day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
             const hasMultipleSessions = daySessions.length > 1
             const hasHoliday = daySessions.some(s => s.status === 'day_off')
+            const dateKey = getDateKey(day, Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
+            const isExpanded = expandedDates.has(dateKey)
 
             return (
               <div
@@ -459,8 +499,8 @@ export default function ScheduleTab({
                   </div>
                 </div>
 
-                <div className="space-y-1 max-h-20 overflow-y-auto">
-                  {daySessions.slice(0, 3).map((session) => {
+                <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-20 overflow-y-auto'}`}>
+                  {(isExpanded ? daySessions : daySessions.slice(0, 1)).map((session) => {
                     const isDayOff = session.status === 'day_off';
                     const statusText = getSessionStatusText(session);
                     // isEnded: status = "end" hoặc text chứa "Đã kết thúc"
@@ -498,8 +538,29 @@ export default function ScheduleTab({
                       </div>
                     );
                   })}
-                  {daySessions.length > 3 && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">+{daySessions.length - 3} buổi khác</div>
+                  {hasMultipleSessions && !isExpanded && (
+                    <button
+                      type="button"
+                      className="text-xs text-purple-600 dark:text-purple-400 text-center py-1 w-full hover:text-purple-800 dark:hover:text-purple-300 transition-colors"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        toggleDateExpand(dateKey) 
+                      }}
+                    >
+                      +{daySessions.length - 1} buổi khác
+                    </button>
+                  )}
+                  {hasMultipleSessions && isExpanded && (
+                    <button
+                      type="button"
+                      className="text-xs text-purple-600 dark:text-purple-400 text-center py-1 w-full hover:text-purple-800 dark:hover:text-purple-300 transition-colors"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        toggleDateExpand(dateKey) 
+                      }}
+                    >
+                      Thu gọn
+                    </button>
                   )}
                 </div>
               </div>

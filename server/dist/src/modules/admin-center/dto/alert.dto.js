@@ -22,6 +22,8 @@ var AlertType;
     AlertType["ENROLLMENT"] = "enrollment";
     AlertType["PAYMENT"] = "payment";
     AlertType["STUDENT_CLASS_REQUEST"] = "student_class_request";
+    AlertType["CLASS_STARTING_SOON"] = "class_starting_soon";
+    AlertType["CLASS_ENDING_SOON"] = "class_ending_soon";
     AlertType["OTHER"] = "other";
 })(AlertType || (exports.AlertType = AlertType = {}));
 var AlertSeverity;
@@ -89,7 +91,7 @@ __decorate([
 ], UpdateAlertDto.prototype, "processed", void 0);
 class GetAlertsDto {
     static _OPENAPI_METADATA_FACTORY() {
-        return { page: { required: false, type: () => Number }, limit: { required: false, type: () => Number }, alertType: { required: false, type: () => String }, severity: { required: false, type: () => String }, isRead: { required: false, type: () => Boolean }, processed: { required: false, type: () => Boolean } };
+        return { page: { required: false, type: () => Number }, limit: { required: false, type: () => Number }, alertType: { required: false, type: () => String }, severity: { required: false, type: () => String }, isRead: { required: false, type: () => Boolean }, processed: { required: false, type: () => Boolean }, userId: { required: false, type: () => String }, role: { required: false, type: () => String } };
     }
 }
 exports.GetAlertsDto = GetAlertsDto;
@@ -127,4 +129,14 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], GetAlertsDto.prototype, "processed", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Lọc theo userId', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], GetAlertsDto.prototype, "userId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Lọc theo role', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], GetAlertsDto.prototype, "role", void 0);
 //# sourceMappingURL=alert.dto.js.map

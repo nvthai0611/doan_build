@@ -331,9 +331,9 @@ export function CommitmentsManagement() {
       {/* Filters and Actions */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-end">
             {/* Student Selector */}
-            <div className="flex-1 w-full md:w-auto">
+            <div className="md:col-span-3">
               <label className="text-sm font-medium mb-2 block">Chọn học sinh</label>
               <select
                 value={selectedStudentId}
@@ -350,7 +350,8 @@ export function CommitmentsManagement() {
             </div>
 
             {/* Search */}
-            <div className="flex-1 w-full md:w-auto">
+            <div className="md:col-span-3">
+              <label className="sr-only">Tìm kiếm</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -363,7 +364,7 @@ export function CommitmentsManagement() {
             </div>
 
             {/* Status Filter */}
-            <div className="w-full md:w-auto">
+            <div className="md:col-span-2">
               <label className="text-sm font-medium mb-2 block">Lọc theo trạng thái</label>
               <select
                 value={statusFilter}
@@ -378,20 +379,20 @@ export function CommitmentsManagement() {
             </div>
 
             {/* Actions */}
-            <div className="w-full md:w-auto flex gap-2">
+            <div className="md:col-span-4 flex flex-col sm:flex-row gap-3 justify-end">
               <Button
                 variant="outline"
                 onClick={() => {
                   window.open(COMMITMENT_FORM_URL, '_blank');
                 }}
-                className="w-full md:w-auto"
+                className="w-full sm:w-auto"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Tải mẫu cam kết
               </Button>
               <Button
                 onClick={() => setIsUploadDialogOpen(true)}
-                className="w-full md:w-auto"
+                className="w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Upload hợp đồng mới
@@ -467,4 +468,3 @@ export function CommitmentsManagement() {
     </div>
   );
 }
-
