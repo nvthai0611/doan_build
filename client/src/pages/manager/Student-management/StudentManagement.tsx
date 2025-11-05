@@ -769,32 +769,6 @@ export default function StudentManagement() {
               currentFilters={advancedFilters}
               onClearAll={handleClearAllFilters} // Pass hàm clear all
             />
-
-            {/* <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="gap-2" onClick={handleDownloadTemplate}>
-                  <Download className="w-4 h-4" />
-                  Tải mẫu
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" onClick={handleUploadFile}>
-                  <Upload className="w-4 h-4" />
-                  Tải lên
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" onClick={handleRefreshPage}>
-                  <RefreshCw className="w-4 h-4" />
-                  Tải lại trang
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" onClick={handleDownloadAll}>
-                  <Download className="w-4 h-4" />
-                  Tải tất cả
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
           </div>
         </div>
       </div>

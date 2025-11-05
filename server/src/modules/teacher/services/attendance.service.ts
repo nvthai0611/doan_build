@@ -6,7 +6,7 @@ import { checkId } from 'src/utils/validate.util';
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
-  //Lấy danh sách học sinh theo ID buổi học
+  // Lấy danh sách học sinh theo ID buổi học
   async getListStudentBySessionId(sessionId: string) {
     try {
       if (!checkId(sessionId)) {
@@ -20,32 +20,32 @@ export class AttendanceService {
       const checkExistSession = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
         include: {
-        class: true,
-      },
+          class: true,
+        },
       });
 
       if (!checkExistSession) {
         throw new HttpException(
           {
-            mesage: 'Buổi học không tồn tại',
+            message: 'Buổi học không tồn tại',
           },
           HttpStatus.NOT_FOUND,
         );
       }
-      // Nếu lớp học chưa có ngày bắt đầu thực tế, sử dụng ngày hiện tại
-    const classStartDate = checkExistSession.class.actualStartDate || new Date();
-      //get list student in class session
+
+      const classStartDate = checkExistSession.class.actualStartDate || new Date();
+
       const result = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
         include: {
           class: {
             include: {
               enrollments: {
-                where:{
+                where: {
                   status: 'studying',
                   enrolledAt: {
-                    lte: classStartDate
-                  }
+                    lte: classStartDate,
+                  },
                 },
                 include: {
                   student: {
@@ -112,14 +112,73 @@ export class AttendanceService {
     return result;
   }
 
-  //Điểm danh học sinh theo buổi học
+  // Lấy danh sách đơn xin nghỉ của học sinh trong ngày học
+  async getLeaveRequestsBySessionId(sessionId: string) {
+    try {
+      if (!checkId(sessionId)) {
+        throw new HttpException('Invalid session ID', HttpStatus.BAD_REQUEST);
+      }
+
+      const session = await this.prisma.classSession.findUnique({
+        where: { id: sessionId },
+        select: { sessionDate: true },
+      });
+
+      if (!session) {
+        throw new HttpException('Session không tồn tại', HttpStatus.NOT_FOUND);
+      }
+
+      const sessionDate = new Date(session.sessionDate);
+      const sessionDateStart = new Date(sessionDate.toDateString());
+      const sessionDateEnd = new Date(sessionDateStart);
+      sessionDateEnd.setDate(sessionDateEnd.getDate() + 1);
+
+      // Lấy các đơn xin nghỉ chưa approve trong ngày học
+      const leaveRequests = await this.prisma.leaveRequest.findMany({
+        where: {
+          studentId: { not: null },
+          status: 'pending',
+          startDate: { gte: sessionDateStart },
+          endDate: { lt: sessionDateEnd },
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
+          createdByUser: {
+            select: {
+              fullName: true,
+            },
+          },
+        },
+      });
+
+      return leaveRequests;
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Lỗi khi lấy danh sách đơn xin nghỉ',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Điểm danh học sinh theo buổi học
   // Chỉ update status cho các học sinh đã có
   async attendanceStudentBySessionId(
     sessionId: string,
     records: any[],
     teacherId: string,
   ) {
-    
     if (!checkId(sessionId) || !checkId(teacherId)) {
       throw new HttpException('Invalid session or teacher ID', HttpStatus.BAD_REQUEST);
     }
@@ -135,7 +194,6 @@ export class AttendanceService {
     const sessionDate = new Date(findSession.sessionDate);
     const currentDate = new Date();
 
-    // Lấy ngày hiện tại và ngày học (không tính giờ)
     const sessionDateOnly = new Date(sessionDate.toDateString());
     const currentDateOnly = new Date(currentDate.toDateString());
 
@@ -157,23 +215,31 @@ export class AttendanceService {
 
     // 3. Đúng ngày học - kiểm tra giờ
     if (currentDateOnly.getTime() === sessionDateOnly.getTime()) {
-      // Chưa đến giờ bắt đầu lớp
       if (currentDate < sessionDate) {
         throw new HttpException(
           'Chưa đến giờ bắt đầu lớp, không thể điểm danh',
           HttpStatus.BAD_REQUEST,
         );
       }
-      // Đã đến giờ hoặc sau giờ học (nhưng vẫn trong ngày) -> cho phép điểm danh
     }
 
     try {
       const result = await this.prisma.$transaction(async (prisma) => {
-        const upsertPromises = records.map((record) => {
+        const upsertPromises = records.map(async (record) => {
           if (!checkId(record.studentId)) {
             throw new HttpException(`Invalid student ID: ${record.studentId}`, HttpStatus.BAD_REQUEST);
           }
-          
+
+          // Nếu status là "excused", duyệt đơn xin nghỉ
+          if (record.status === 'excused') {
+            await this.approveLeaveRequestForStudent(
+              record.studentId,
+              sessionId,
+              teacherId,
+              prisma,
+            );
+          }
+
           return prisma.studentSessionAttendance.upsert({
             where: {
               sessionId_studentId: {
@@ -186,21 +252,21 @@ export class AttendanceService {
               note: record.note || '',
               recordedAt: new Date(),
               recordedByTeacher: {
-                connect: { id: teacherId }
-              }
+                connect: { id: teacherId },
+              },
             },
             create: {
               status: record.status,
               note: record.note || '',
               recordedAt: new Date(),
-              session: { 
-                connect: { id: sessionId } 
+              session: {
+                connect: { id: sessionId },
               },
-              student: { 
-                connect: { id: record.studentId } 
+              student: {
+                connect: { id: record.studentId },
               },
-              recordedByTeacher: { 
-                connect: { id: teacherId } 
+              recordedByTeacher: {
+                connect: { id: teacherId },
               },
             },
           });
@@ -208,8 +274,8 @@ export class AttendanceService {
 
         return Promise.all(upsertPromises);
       }, {
-        maxWait: 10000, // chờ tối đa 10s để bắt đầu
-        timeout: 20000, // 20 seconds
+        maxWait: 10000,
+        timeout: 20000,
       });
 
       return {
@@ -225,6 +291,59 @@ export class AttendanceService {
         'Lỗi khi cập nhật điểm danh',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  // Helper method: Duyệt đơn xin nghỉ của học sinh trong ngày
+  private async approveLeaveRequestForStudent(
+    studentId: string,
+    sessionId: string,
+    teacherId: string,
+    prisma: any,
+  ) {
+    try {
+      const session = await prisma.classSession.findUnique({
+        where: { id: sessionId },
+        select: { sessionDate: true },
+      });
+
+      if (!session) return;
+
+      const sessionDate = new Date(session.sessionDate);
+      const sessionDateStart = new Date(sessionDate.toDateString());
+      const sessionDateEnd = new Date(sessionDateStart);
+      sessionDateEnd.setDate(sessionDateEnd.getDate() + 1);
+
+      // Tìm đơn xin nghỉ pending trong ngày
+      const leaveRequest = await prisma.leaveRequest.findFirst({
+        where: {
+          studentId,
+          status: 'pending',
+          startDate: { gte: sessionDateStart },
+          endDate: { lt: sessionDateEnd },
+        },
+      });
+
+      if (leaveRequest) {
+        // Duyệt đơn xin nghỉ
+        await prisma.leaveRequest.update({
+          where: { id: leaveRequest.id },
+          data: {
+            status: 'approved',
+            approvedBy: teacherId,
+            approvedAt: new Date(),
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error approving leave request:', error);
+      // Không throw error, chỉ log để không ảnh hưởng đến điểm danh
+    }
+  }
+
+  async getRequestAttendance() {
+    try {
+    } catch (error) {
     }
   }
 }

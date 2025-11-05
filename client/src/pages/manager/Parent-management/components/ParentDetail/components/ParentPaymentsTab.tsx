@@ -73,6 +73,8 @@ export const ParentPaymentsTab: React.FC<ParentPaymentsTabProps> = ({ parentData
   // State for status update
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  // Thêm state cho notes
+  const [customNotes, setCustomNotes] = useState<string>('')
 
   const formatDate = (date: string | Date) => {
     if (!date) return '-'
@@ -99,7 +101,7 @@ const getStatusBadge = (status: string) => {
     </Badge>
   )
 }
-
+  
   const getMethodBadge = (method: string) => {
     const methodConfig: Record<string, { label: string; color: string }> = {
       cash: { 
@@ -161,13 +163,14 @@ const getStatusBadge = (status: string) => {
           notes: frp.notes ?? frp.note ?? null,
         })) ?? []
 
-      const unifiedDetail = {
-        ...data,
-        allocations: mappedAllocations,
-      }
-      
-      setPaymentDetail(unifiedDetail)
-      setSelectedStatus(data.status || 'pending')
+    const unifiedDetail = {
+      ...data,
+      allocations: mappedAllocations,
+    }
+    
+    setPaymentDetail(unifiedDetail)
+    setSelectedStatus(data.status || 'pending')
+    setCustomNotes(data.notes || '') // Load notes hiện tại vào textarea
     } catch (err: any) {
       console.error('Error fetching payment detail:', err)
       setDetailError(err?.message || 'Lỗi khi lấy chi tiết')
@@ -183,6 +186,7 @@ const getStatusBadge = (status: string) => {
     setDetailError(null)
     setDetailLoading(false)
     setSelectedStatus('')
+    setCustomNotes('') // Reset notes
   }
 
   const handleUpdateStatus = async () => {
@@ -191,8 +195,12 @@ const getStatusBadge = (status: string) => {
       return
     }
 
-    if (!selectedStatus || selectedStatus === paymentDetail.status) {
-      toast.warning('Vui lòng chọn trạng thái khác với trạng thái hiện tại')
+    // Kiểm tra xem có thay đổi gì không
+    const hasStatusChange = selectedStatus && selectedStatus !== paymentDetail.status
+    const hasNotesChange = customNotes.trim() !== (paymentDetail.notes || '').trim()
+
+    if (!hasStatusChange && !hasNotesChange) {
+      toast.warning('Vui lòng thay đổi trạng thái hoặc ghi chú trước khi cập nhật')
       return
     }
 
@@ -200,20 +208,20 @@ const getStatusBadge = (status: string) => {
     try {
       const result = await ParentService.updatePaymentStatus(
         paymentDetail.id,
-        selectedStatus
+        selectedStatus || paymentDetail.status, // Dùng status hiện tại nếu không đổi
+        customNotes.trim() || undefined
       )
 
-      toast.success(result.message || 'Cập nhật trạng thái thành công')
+      toast.success(result.message || 'Cập nhật thành công')
       
-      // Invalidate queries để reload dữ liệu
       await queryClient.invalidateQueries({
         queryKey: ['parent-detail', parentData.id],
       })
       
       closeDetail()
     } catch (err: any) {
-      console.error('Error updating payment status:', err)
-      toast.error(err?.message || 'Lỗi khi cập nhật trạng thái')
+      console.error('Error updating payment:', err)
+      toast.error(err?.message || 'Lỗi khi cập nhật')
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -454,7 +462,7 @@ const getStatusBadge = (status: string) => {
                     <div className="text-xs text-muted-foreground">Hạn thanh toán</div>
                     <div className="font-medium">{formatDate(paymentDetail.expirationDate)}</div>
                   </div>             
-                  {paymentDetail.status == 'completed' && (
+                  {paymentDetail.status === 'completed' && (
                     <div className="space-y-1">
                       <div className="text-xs text-muted-foreground">Ngày thanh toán</div>
                       <div className="font-medium">{formatDate(paymentDetail.paidAt || paymentDetail.completedAt)}</div>
@@ -465,30 +473,6 @@ const getStatusBadge = (status: string) => {
                 <div>
                   <div className="text-xs text-muted-foreground mb-2">Ghi chú</div>
                   <div className="p-3 rounded-md bg-muted text-sm">{paymentDetail.notes || '-'}</div>
-                </div>
-
-                {/* Status Update Section */}
-                <div className="border-t pt-4">
-                  <div className="text-sm font-semibold mb-3">Cập nhật trạng thái thanh toán</div>
-                  <div className="flex items-center gap-3">
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger className="w-[250px]">
-                        <SelectValue placeholder="Chọn trạng thái" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Chưa thanh toán</SelectItem>
-                        <SelectItem value="partially_paid">Thanh toán một phần</SelectItem>
-                        <SelectItem value="completed">Hoàn thành</SelectItem>
-                        <SelectItem value="cancelled">Đã hủy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      onClick={handleUpdateStatus}
-                      disabled={isUpdatingStatus || selectedStatus === paymentDetail.status}
-                    >
-                      {isUpdatingStatus ? 'Đang cập nhật...' : 'Cập nhật'}
-                    </Button>
-                  </div>
                 </div>
 
                 {/* Allocations */}
@@ -515,6 +499,58 @@ const getStatusBadge = (status: string) => {
                     )}
                   </div>
                 </div>
+
+                {/* Status Update Section */}
+                <div className="border-t pt-4 space-y-4">
+                  <div className="text-sm font-semibold">Cập nhật trạng thái thanh toán</div>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Trạng thái</label>
+                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Chọn trạng thái" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Chưa thanh toán</SelectItem>
+                          <SelectItem value="partially_paid">Thanh toán một phần</SelectItem>
+                          <SelectItem value="completed">Hoàn thành</SelectItem>
+                          <SelectItem value="cancelled">Đã hủy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Ghi chú (tùy chọn)</label>
+                      <textarea
+                        value={customNotes}
+                        onChange={(e) => setCustomNotes(e.target.value)}
+                        placeholder="Nhập ghi chú về việc cập nhật trạng thái..."
+                        className="w-full min-h-[80px] p-3 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isUpdatingStatus}
+                        maxLength={500}
+                      />
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-muted-foreground">
+                          Nếu không nhập, hệ thống sẽ tự động tạo ghi chú mặc định
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {customNotes.length}/500
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={handleUpdateStatus}
+                      disabled={isUpdatingStatus || !selectedStatus}
+                      className="w-full"
+                    >
+                      {isUpdatingStatus ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
+                    </Button>
+                  </div>
+                </div>
+
+                
               </div>
             )}
           </div>

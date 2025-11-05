@@ -3,19 +3,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Save, AlertCircle, Mail } from 'lucide-react';
+import { Check, X, Save, AlertCircle, Mail, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getListStudentBySessionId,
   getListStudentsByRecordId,
+  getLeaveRequestsBySessionId,
   sendEmailNotificationAbsence,
   updateAttendanceStudent,
 } from '../../../services/teacher/attendance-management/attendance.service';
 import Loading from '../../../components/Loading/LoadingPage';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 type AttendanceStatus = 'present' | 'absent' | 'excused';
 
@@ -27,6 +35,24 @@ interface AttendanceRecord {
   sentAt?: string;
 }
 
+// Interface cho đơn xin nghỉ
+interface LeaveRequest {
+  id: string;
+  studentId: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  student: {
+    id: string;
+    user: {
+      fullName: string;
+    };
+  };
+  createdByUser: {
+    fullName: string;
+  };
+}
+
 export default function AttendanceTable() {
   const [localAttendance, setLocalAttendance] = useState<
     Record<string, AttendanceStatus | null>
@@ -34,6 +60,7 @@ export default function AttendanceTable() {
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [showLeaveRequests, setShowLeaveRequests] = useState(false);
 
   const navigate = useNavigate();
   const { classSessionId } = useParams();
@@ -55,6 +82,7 @@ export default function AttendanceTable() {
     refetchOnWindowFocus: false,
   });
 
+  // Fetch student list data
   const {
     data: studentListData,
     isLoading: isLoadingStudentList,
@@ -69,6 +97,31 @@ export default function AttendanceTable() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
+
+  // Fetch leave requests data
+  const {
+    data: leaveRequestsData,
+    isLoading: isLoadingLeaveRequests,
+  } = useQuery({
+    queryKey: ['leave-requests', classSessionId],
+    queryFn: async () => {
+      const response = await getLeaveRequestsBySessionId(classSessionId!);
+      return response;
+    },
+    enabled: !!classSessionId,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Kiểm tra xem học sinh có đơn xin nghỉ pending trong ngày
+  const getLeaveRequestForStudent = useCallback(
+    (studentId: string): LeaveRequest | undefined => {
+      return leaveRequestsData?.find(
+        (lr: LeaveRequest) => lr.student?.id === studentId || lr.studentId === studentId
+      );
+    },
+    [leaveRequestsData]
+  );
 
   // Di chuyển helper function LÊN TRƯỚC useMemo - sử dụng useCallback để memoize
   const getStudentCurrentStatus = useCallback((
@@ -426,6 +479,58 @@ const checkDate =
                   Có thay đổi chưa lưu
                 </Badge>
               )}
+      {/* Dialog hiển thị danh sách đơn xin nghỉ */}
+      <Dialog open={showLeaveRequests} onOpenChange={setShowLeaveRequests}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Danh sách đơn xin nghỉ trong ngày
+            </DialogTitle>
+            <DialogDescription>
+              Những đơn xin nghỉ chưa được duyệt sẽ tự động duyệt khi bạn chọn "Có phép" cho học sinh
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {leaveRequestsData && leaveRequestsData.length > 0 ? (
+              leaveRequestsData.map((leaveRequest: LeaveRequest) => (
+                <div
+                  key={leaveRequest.id}
+                  className="p-4 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-slate-900 mb-1">
+                        {leaveRequest.student?.user?.fullName || 'Chưa có tên'}
+                      </h4>
+                      <div className="space-y-1 text-sm text-slate-600">
+                        <p>
+                          <span className="font-medium">Từ:</span> {new Date(leaveRequest.startDate).toLocaleDateString('vi-VN')} {new Date(leaveRequest.startDate).toLocaleTimeString('vi-VN')}
+                        </p>
+                        <p>
+                          <span className="font-medium">Đến:</span> {new Date(leaveRequest.endDate).toLocaleDateString('vi-VN')} {new Date(leaveRequest.endDate).toLocaleTimeString('vi-VN')}
+                        </p>
+                        <p>
+                          <span className="font-medium">Người tạo:</span> {leaveRequest.createdByUser?.fullName || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex-shrink-0">
+                      {leaveRequest.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                Không có đơn xin nghỉ trong ngày hôm nay
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card className="shadow-xl border-slate-200">
         <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -438,15 +543,15 @@ const checkDate =
                   {studentListData?.sessionDate
                     ? new Date(
                         studentListData?.sessionDate,
-                      ).toLocaleDateString()
+                      ).toLocaleDateString('vi-VN')
                     : 'N/A'}{' '}
                   | Thời gian: {studentListData?.startTime || 'N/A'} -{' '}
                   {studentListData?.endTime || 'N/A'} | Tổng số học sinh:{' '}
                   {studentListData?.class?.enrollments?.length || 0}
                 </span>
               </CardTitle>
-              
             </div>
+
             <div className="flex gap-3 flex-wrap">
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
                 <Check className="h-4 w-4 mr-1" />
@@ -460,26 +565,38 @@ const checkDate =
                 <Check className="h-4 w-4 mr-1" />
                 Có phép: {getStatusCount('excused')}
               </Badge>
-              
-              {/* Di chuyển phần thông báo vắng học vào đây */}
+
+              {/* Button hiển thị danh sách đơn xin nghỉ */}
+              {leaveRequestsData && leaveRequestsData.length > 0 && (
+                <Button
+                  onClick={() => setShowLeaveRequests(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Đơn xin nghỉ ({leaveRequestsData.length})
+                </Button>
+              )}
+
               {absentStudents.length > 0 && (
                 <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex items-center gap-2 ml-2">
                   <div>
                     {checkDate && (
                       <div>
-                      <Checkbox 
-                        id="select-all-absent"
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                        className="mr-1 h-4 w-4"
-                      />
-                      <label 
-                        htmlFor="select-all-absent" 
-                        className="text-xs font-medium text-amber-800 cursor-pointer"
-                      >
-                        Chọn {absentStudents.length} học sinh vắng
-                      </label>
-                    </div>
+                        <Checkbox 
+                          id="select-all-absent"
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
+                          className="mr-1 h-4 w-4"
+                        />
+                        <label 
+                          htmlFor="select-all-absent" 
+                          className="text-xs font-medium text-amber-800 cursor-pointer"
+                        >
+                          Chọn {absentStudents.length} học sinh vắng
+                        </label>
+                      </div>
                     )}
                     <Button
                       onClick={sendAbsentEmails}
@@ -500,8 +617,8 @@ const checkDate =
             </div>
           </div>
         </CardHeader>
+
         <CardContent className="p-6 relative">
-          {/* Xóa phần thông báo vắng học ở đây vì đã di chuyển lên trên */}
           <div className="space-y-3">
             <div className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
               <div>Học sinh</div>
@@ -516,6 +633,7 @@ const checkDate =
                 const currentStatus = getStudentCurrentStatus(studentId);
                 const isAbsent = currentStatus === 'absent';
                 const emailSent = isEmailSent(studentId);
+                const leaveRequest = getLeaveRequestForStudent(studentId);
                 
                 return (
                   <div
@@ -549,7 +667,7 @@ const checkDate =
                         </Avatar>
                         
                         <div className="flex flex-col min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-semibold text-slate-900 text-base truncate">
                               {record.student?.user?.fullName || 'Chưa có tên'}
                             </span>
@@ -561,7 +679,18 @@ const checkDate =
                                 className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-2 py-0.5 flex-shrink-0 shadow-sm"
                               >
                                 <Mail className="h-3 w-3 mr-1" />
-                                Đã gửi email
+                                Đã gửi
+                              </Badge>
+                            )}
+
+                            {leaveRequest && (
+                              <Badge 
+                                variant="outline" 
+                                className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-0.5 flex-shrink-0 shadow-sm cursor-pointer"
+                                onClick={() => setShowLeaveRequests(true)}
+                              >
+                                <FileText className="h-3 w-3 mr-1" />
+                                Có đơn xin nghỉ
                               </Badge>
                             )}
                           </div>
