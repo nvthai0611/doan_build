@@ -121,7 +121,7 @@ export function ChildGeneralInfo({ child }: ChildGeneralInfoProps) {
       queryKey: ['class-ranking', child.id, enrollment.class.id],
       queryFn: () => getClassRanking(child.id, enrollment.class.id),
       enabled: !!child.id && !!enrollment.class.id && stats.gpa !== null,
-      staleTime: 60_000,
+      staleTime: 3000,
     })
 
     return (
