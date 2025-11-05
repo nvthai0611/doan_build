@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { X, Search, Check, AlertCircle, User, Mail, Phone, Calendar, MapPin, GraduationCap, FileText, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { centerOwnerStudentService } from "../../../../services/center-owner/student-management/student.service"
+import { ApiService } from "../../../../services/common"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 
 interface CreateStudentModalProps {
@@ -69,10 +70,8 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
   const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
-      const response = await fetch('/api/shared/public/classes/subjects')
-      if (!response.ok) throw new Error('Failed to fetch subjects')
-      const data = await response.json()
-      return data.data || []
+      const response = await ApiService.get('/shared/public/classes/subjects')
+      return response.data || []
     },
     staleTime: 300000, // Cache for 5 minutes
     refetchOnWindowFocus: false

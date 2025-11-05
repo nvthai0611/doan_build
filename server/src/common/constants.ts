@@ -145,7 +145,9 @@ export const ACTIVE_TO_COMPLETED_CONDITIONS = {
 // ==================== SESSION STATUS ====================
 export enum SessionStatus {
   HAPPENING = 'happening',    // Đang diễn ra
-  COMPLETED = 'completed',    // Đã hoàn thành
+  HAS_NOT_HAPPENED = 'has_not_happened',    // Chưa diễn ra
+  END = 'end',    // Đã hoàn thành
+  DAY_OFF = 'day_off',    // Nghỉ lễ
   CANCELLED = 'cancelled',    // Đã hủy
   ALL = 'all'                // Tất cả (dùng cho filter)
 }
@@ -153,7 +155,9 @@ export enum SessionStatus {
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.ALL]: 'Tất cả',
   [SessionStatus.HAPPENING]: 'Đang diễn ra',
-  [SessionStatus.COMPLETED]: 'Đã hoàn thành',
+  [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
+  [SessionStatus.END]: 'Đã hoàn thành',
+  [SessionStatus.DAY_OFF]: 'Nghỉ lễ',
   [SessionStatus.CANCELLED]: 'Đã hủy'
 }
 

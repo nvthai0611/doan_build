@@ -149,7 +149,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(response.user as User)
       return { user: response.user as User }
     } catch (error: any) {
-      const errorMessage = error.message || error.response?.data?.message || "Email/Tên đăng nhập hoặc mật khẩu không đúng"
+      // Extract error message and ensure it's always a string
+      let errorMessage = "Email/Tên đăng nhập hoặc mật khẩu không đúng"
+      
+      // Try to get message from various error formats
+      const rawMessage = error.message || error.response?.data?.message || error.response?.message
+      
+      if (rawMessage) {
+        if (typeof rawMessage === 'string') {
+          errorMessage = rawMessage
+        } else if (Array.isArray(rawMessage)) {
+          // Handle array of validation errors: [{password: "..."}, {email: "..."}]
+          const messages = rawMessage.map((item: any): string => {
+            if (typeof item === 'string') return item
+            if (typeof item === 'object' && item !== null) {
+              // Extract first value from object like {password: "Password is required"}
+              const value = Object.values(item)[0]
+              return typeof value === 'string' ? value : ''
+            }
+            return ''
+          }).filter((msg: string): msg is string => Boolean(msg))
+          errorMessage = messages.length > 0 ? messages.join(', ') : errorMessage
+        } else if (typeof rawMessage === 'object' && rawMessage !== null) {
+          // Handle object validation errors: {password: "Password is required"}
+          const messages = Object.values(rawMessage).filter((msg: any): msg is string => typeof msg === 'string' && Boolean(msg))
+          errorMessage = messages.length > 0 ? messages.join(', ') : errorMessage
+        }
+      }
+      
       toast.error(errorMessage)
       setError(errorMessage)
       throw new Error(errorMessage)

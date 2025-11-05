@@ -1004,4 +1004,119 @@ export class EmailNotificationService {
       };
     }
   }
+
+  /**
+   * Gửi email thông báo lớp sắp bắt đầu cho center owner
+   */
+  async sendClassStartingNotificationEmail(
+    to: string,
+    data: {
+      className: string;
+      classCode?: string;
+      subjectName: string;
+      gradeName: string;
+      daysRemaining: number;
+      startDate: string;
+      teacherName: string;
+      roomName: string;
+      scheduleText: string;
+      currentStudents: number;
+      maxStudents: number | string;
+      hasTeacher: boolean;
+      hasRoom: boolean;
+      hasStudents: boolean;
+    },
+  ) {
+    try {
+      console.log(`📧 Thêm job gửi email thông báo lớp sắp bắt đầu cho: ${to}`);
+
+      await this.emailNotificationQueue.add(
+        'send_class_starting_notification',
+        {
+          to,
+          ...data,
+        },
+        {
+          priority: 2,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
+      );
+
+      console.log(`✅ Đã thêm job email thông báo lớp sắp bắt đầu vào queue cho: ${to}`);
+
+      return {
+        success: true,
+        message: 'Email job đã được thêm vào queue',
+        to,
+      };
+    } catch (error: any) {
+      console.error(`❌ Lỗi khi thêm job email thông báo lớp sắp bắt đầu: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Gửi email thông báo lớp sắp kết thúc cho center owner
+   */
+  async sendClassEndingNotificationEmail(
+    to: string,
+    data: {
+      className: string;
+      classCode?: string;
+      subjectName: string;
+      gradeName: string;
+      daysRemaining: number;
+      endDate: string;
+      teacherName: string;
+      roomName: string;
+      scheduleText: string;
+      currentStudents: number;
+      maxStudents: number | string;
+    },
+  ) {
+    try {
+      console.log(`📧 Thêm job gửi email thông báo lớp sắp kết thúc cho: ${to}`);
+
+      await this.emailNotificationQueue.add(
+        'send_class_ending_notification',
+        {
+          to,
+          ...data,
+        },
+        {
+          priority: 2,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
+      );
+
+      console.log(`✅ Đã thêm job email thông báo lớp sắp kết thúc vào queue cho: ${to}`);
+
+      return {
+        success: true,
+        message: 'Email job đã được thêm vào queue',
+        to,
+      };
+    } catch (error: any) {
+      console.error(`❌ Lỗi khi thêm job email thông báo lớp sắp kết thúc: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }

@@ -180,6 +180,7 @@ export enum SessionStatus {
   END = 'end', // Đã hoàn thành
   HAS_NOT_HAPPENED = 'has_not_happened', // Chưa diễn ra
   DAY_OFF = 'day_off', // Nghỉ lễ
+  CANCELLED = 'cancelled', // Đã hủy
 }
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
@@ -187,6 +188,7 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.END]: 'Đã kết thúc',
   [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
   [SessionStatus.DAY_OFF]: 'Nghỉ',
+  [SessionStatus.CANCELLED]: 'Đã hủy',
 };
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
@@ -194,6 +196,7 @@ export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {
   [SessionStatus.END]: 'border-red-500 text-red-700 bg-red-50',
   [SessionStatus.HAS_NOT_HAPPENED]: 'border-blue-500 text-blue-700 bg-blue-50',
   [SessionStatus.DAY_OFF]: 'border-orange-500 text-orange-700 bg-orange-50',
+  [SessionStatus.CANCELLED]: 'border-red-500 text-red-700 bg-red-50',
 };
 
 // ==================== SESSION TYPE ====================

@@ -556,7 +556,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     variant="outline" 
                     size="sm" 
                     onClick={handleSave}
-                    disabled={isLoading}
+                    disabled={isLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED }
                   >
                     {isLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -753,9 +753,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">
                         Ngày khai giảng dự kiến
-                        <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                          {CLASS_STATUS_LABELS[classData.status as ClassStatus]}
-                        </span>
                       </label>
                       {isEditing && canEditExpectedDates ? (
                         <Input

@@ -162,7 +162,7 @@ export default function CenterSchedulePage() {
           onCalendarViewChange={setCalendarView}
         />
 
-        <ScheduleFilters viewType={viewType} onViewTypeChange={setViewType} />
+        {/* <ScheduleFilters viewType={viewType} onViewTypeChange={setViewType} /> */}
 
         <div className="mt-6">{renderView()}</div>
 
