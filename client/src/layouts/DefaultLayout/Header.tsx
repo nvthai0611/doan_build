@@ -35,20 +35,37 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { alertService } from "../../services/center-owner/alerts/alert.service";
 import { AlertList } from "../../components/Alerts/AlertList";
+import { useAuth } from "../../lib/auth";
 
 // Notification Dropdown Component
 const NotificationDropdown = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // Chỉ các role center_owner, admin, teacher mới có quyền xem alerts
+  const hasAlertAccess = user?.role === 'center_owner' || user?.role === 'admin' || user?.role === 'teacher';
+  
   const { data: unreadCountData, refetch } = useQuery({
     queryKey: ['alerts', 'unread-count'],
     queryFn: async () => {
-      const response = await alertService.getUnreadCount();
-      return response.data.count;
+      try {
+        const response = await alertService.getUnreadCount();
+        return response.data.count;
+      } catch (error) {
+        // Không báo lỗi, chỉ return 0
+        return 0;
+      }
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: hasAlertAccess, // Chỉ gọi API khi có quyền
+    refetchInterval: hasAlertAccess ? 30000 : false, // Refetch every 30 seconds nếu có quyền
   });
 
   const unreadCount = unreadCountData || 0;
+  
+  // Nếu không có quyền, không hiển thị notification dropdown
+  if (!hasAlertAccess) {
+    return null;
+  }
 
   return (
     <DropdownMenu
@@ -93,6 +110,7 @@ const Header = () => {
   const [preset, setPreset] = useState("default");
   const [font, setFont] = useState("inter");
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
   // Reset settings to default
   const resetSettings = () => {
     toggleDarkMode(); // Reset to light mode
@@ -327,7 +345,18 @@ const Header = () => {
                 Cài đặt
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  await logout();
+                  // center-owner, teacher, admin → /auth/login
+                  // parent, student → /
+                  if (user?.role === 'center_owner' || user?.role === 'teacher' || user?.role === 'admin') {
+                    navigate('/auth/login');
+                  } else {
+                    navigate('/');
+                  }
+                }}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Đăng xuất
               </DropdownMenuItem>

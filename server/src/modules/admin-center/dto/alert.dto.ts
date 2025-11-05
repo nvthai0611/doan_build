@@ -96,4 +96,12 @@ export class GetAlertsDto {
   @ApiProperty({ description: 'Lọc đã xử lý/chưa xử lý', required: false })
   @IsOptional()
   processed?: boolean;
+
+  @ApiProperty({ description: 'Lọc theo userId', required: false })
+  @IsOptional()
+  userId?: string;
+
+  @ApiProperty({ description: 'Lọc theo role', required: false })
+  @IsOptional()
+  role?: string;
 }

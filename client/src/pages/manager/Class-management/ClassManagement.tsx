@@ -520,6 +520,34 @@ export const ClassManagement = () => {
             render: (item: any) => item.roomName || '-'
         },
         {
+            key: 'maxStudents',
+            header: 'Sĩ số',
+            render: (item: any) => {
+                return (
+                    <div className="flex items-center gap-2">
+                          <span className="text-sm">{item.currentStudents}</span>
+                        <span className="text-sm">/</span>
+                        <span className="text-sm ">{item.maxStudents}</span>
+                    </div>
+                )
+            }
+        },
+        {
+            key: 'sessions',
+            header: 'Số buổi học',
+            render: (item: any) => {
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm">{item.sessionsEnd ? item.sessionsEnd : "-"}</span>
+                        <span className="text-sm">/</span>
+
+                          <span className="text-sm">{item.sessions ? item.sessions : "-"}</span>
+                          
+                    </div>
+                )
+            }
+        },
+        {
             key: 'status',
             header: 'Trạng thái',
             sortable: true,

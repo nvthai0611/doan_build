@@ -6,6 +6,7 @@ import { Button } from '../../assets/shadcn-ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../assets/shadcn-ui/components/ui/select';
 import { Bell, CheckCheck, Filter } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../lib/auth';
 
 interface AlertListProps {
   onUpdate?: () => void;
@@ -15,15 +16,25 @@ export const AlertList = ({ onUpdate }: AlertListProps) => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('unread');
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Chỉ các role center_owner, admin, teacher mới có quyền xem alerts
+  const hasAlertAccess = user?.role === 'center_owner' || user?.role === 'admin' || user?.role === 'teacher';
 
   // Fetch tất cả alerts (không filter ở backend)
   const { data: alertsData, isLoading } = useQuery({
     queryKey: ['alerts', 'all'],
     queryFn: async () => {
-      const response = await alertService.getAlerts({ page: 1, limit: 1000 });
-      return response;
+      try {
+        const response = await alertService.getAlerts({ page: 1, limit: 1000 });
+        return response;
+      } catch (error) {
+        // Không báo lỗi, chỉ return empty data
+        return { data: [], meta: { unreadCount: 0 } };
+      }
     },
-    refetchInterval: 5000, // Refetch every 5 seconds
+    enabled: hasAlertAccess, // Chỉ gọi API khi có quyền
+    refetchInterval: hasAlertAccess ? 5000 : false, // Refetch every 5 seconds nếu có quyền
   });
 
   // Mark as read mutation

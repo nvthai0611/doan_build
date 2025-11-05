@@ -339,6 +339,7 @@ export class ClassManagementService {
           subject: true,
           room: true,
           grade: true,
+          
           teacher: {
             select: {
               id: true,
@@ -354,11 +355,39 @@ export class ClassManagementService {
               },
             },
           },
+          enrollments: {
+            where: {
+              status: {
+                not: 'withdrawn', // Loại bỏ enrollments đã chuyển lớp
+              },
+            },
+            select: {
+              id: true, // Chỉ cần id để count
+            },
+          },
           _count: {
-            select: { enrollments: true },
+            select: { sessions: true },
           },
         },
       });
+
+      // Get sessions ended count for all classes in a single query
+      const classIds = classes.map((cls) => cls.id);
+      const sessionsEndedResults = await this.prisma.classSession.groupBy({
+        by: ['classId'],
+        where: {
+          classId: { in: classIds },
+          status: 'end',
+        },
+        _count: {
+          id: true,
+        },
+      });
+
+      // Create a map for quick lookup
+      const sessionsEndedMap = new Map(
+        sessionsEndedResults.map((item) => [item.classId, item._count.id]),
+      );
 
       // Transform data
       let transformedClasses = classes.map((cls) => ({
@@ -372,7 +401,7 @@ export class ClassManagementService {
         gradeLevel: cls.grade?.level || null,
         status: cls.status,
         maxStudents: cls.maxStudents,
-        currentStudents: cls._count.enrollments,
+        currentStudents: cls.enrollments.length, // Count từ enrollments array đã được filter
         roomId: cls.roomId,
         roomName: cls.room?.name || '-',
         description: cls.description,
@@ -391,6 +420,8 @@ export class ClassManagementService {
               avatar: cls.teacher.user.avatar,
             }
           : null,
+        sessions: cls._count.sessions,
+        sessionsEnd: sessionsEndedMap.get(cls.id) || 0,
         createdAt: cls.createdAt,
         updatedAt: cls.updatedAt,
       }));
@@ -721,6 +752,55 @@ export class ClassManagementService {
       // Xác định maxStudents: ưu tiên giá trị truyền vào, nếu không có thì dùng capacity của phòng
       const maxStudents = createClassDto.maxStudents ?? roomCapacity;
 
+      // Tìm hoặc tạo FeeStructure cho lớp nếu có gradeId và subjectId
+      let feeStructureId: string | null = null;
+      let feeAmount: number | null = null;
+      let feePeriod: string | null = null;
+      let feeCurrency: string = 'VND';
+      
+      if (createClassDto.gradeId && createClassDto.subjectId) {
+        // Lấy thông tin grade và subject để tạo tên
+        const grade = await this.prisma.grade.findUnique({
+          where: { id: createClassDto.gradeId },
+        });
+        const subject = await this.prisma.subject.findUnique({
+          where: { id: createClassDto.subjectId },
+        });
+
+        if (grade && subject) {
+          // Tìm FeeStructure hiện có
+          let feeStructure = await this.prisma.feeStructure.findUnique({
+            where: {
+              gradeId_subjectId: {
+                gradeId: createClassDto.gradeId,
+                subjectId: createClassDto.subjectId,
+              },
+            },
+          });
+
+          // Nếu chưa có, tạo mới
+          if (!feeStructure) {
+            feeStructure = await this.prisma.feeStructure.create({
+              data: {
+                name: `Học phí ${subject.name} ${grade.name}`,
+                amount: 0, // Mặc định 0, có thể cập nhật sau
+                period: 'per_session', // Mặc định theo buổi
+                description: `Học phí cho môn ${subject.name} khối ${grade.name}`,
+                gradeId: createClassDto.gradeId,
+                subjectId: createClassDto.subjectId,
+                isActive: true,
+              },
+            });
+          }
+
+          feeStructureId = feeStructure.id;
+          // Copy giá trị từ FeeStructure vào các field của Class
+          feeAmount = feeStructure.amount ? Number(feeStructure.amount) : null;
+          feePeriod = feeStructure.period || null;
+          feeCurrency = 'VND'; // Mặc định VND
+        }
+      }
+
       const newClass = await this.prisma.class.create({
         data: {
           name: createClassDto.name,
@@ -734,6 +814,10 @@ export class ClassManagementService {
           status: DEFAULT_STATUS.CLASS,
           recurringSchedule: createClassDto.recurringSchedule || null,
           academicYear: academicYear,
+          feeStructureId: feeStructureId,
+          feeAmount: feeAmount,
+          feePeriod: feePeriod,
+          feeCurrency: feeCurrency,
           expectedStartDate: createClassDto.expectedStartDate
             ? new Date(createClassDto.expectedStartDate)
             : null,
@@ -748,6 +832,7 @@ export class ClassManagementService {
           subject: true,
           room: true,
           grade: true,
+          feeStructure: true,
           teacher: {
             include: {
               user: {
@@ -1116,10 +1201,18 @@ export class ClassManagementService {
 
       // Thực hiện update trong transaction
       const result = await this.prisma.$transaction(async (tx) => {
-        // Update class status
+        // Chuẩn bị data để update
+        const updateData: any = { status };
+        
+        // Nếu chuyển sang 'active' và feeLockedAt chưa được set, thì khóa học phí
+        if (status === 'active' && !existingClass.feeLockedAt) {
+          updateData.feeLockedAt = new Date();
+        }
+        
+        // Update class status và feeLockedAt nếu cần
         const updatedClass = await tx.class.update({
           where: { id },
-          data: { status },
+          data: updateData,
         });
 
         // Nếu chuyển từ active sang completed, update enrollments và sessions
@@ -2390,6 +2483,15 @@ export class ClassManagementService {
           {
             success: false,
             message: 'Không thể xóa lớp học có học sinh đang học',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if(existingClass.status === 'completed') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không thể xóa lớp học đã hoàn thành',
           },
           HttpStatus.BAD_REQUEST,
         );

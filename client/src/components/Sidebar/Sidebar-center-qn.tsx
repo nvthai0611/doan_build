@@ -36,7 +36,8 @@ import {
     Briefcase,
     CircleDollarSign,
     ChartArea,
-    FileCheck
+    FileCheck,
+    Clock
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -62,9 +63,14 @@ const centerOwnerMenuItems = [
     ],
   },
   {
-    title: 'Lịch dạy',
+    title: 'Lịch dạy toàn trung tâm',
     icon: Calendar,
     href: '/center-qn/schedule',
+  },
+  { 
+    title: 'Buổi học hôm nay',
+    icon: Clock,
+    href: '/center-qn/schedule/today',
   },
   {
     title: 'Quản lý học sinh',
