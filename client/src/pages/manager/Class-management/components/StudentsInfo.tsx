@@ -26,6 +26,7 @@ import {
   Ban,
   Trash2,
   User,
+  ArrowRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -41,6 +42,8 @@ import {
   STUDENT_STATUS_LABELS,
 } from '../../../../lib/constants';
 import { SelectStudentSheet } from './Sheet/SelectStudentSheet';
+import { TransferStudentSheet } from './Sheet/TransferStudentSheet';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { enrollmentService } from '../../../../services/center-owner/enrollment/enrollment.service';
 import { centerOwnerStudentService } from '../../../../services/center-owner/student-management/student.service';
@@ -69,6 +72,8 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [isSelectStudentOpen, setIsSelectStudentOpen] = useState(false);
+  const [isTransferStudentOpen, setIsTransferStudentOpen] = useState(false);
+  const [selectedEnrollments, setSelectedEnrollments] = useState<string[]>([]);
   const debouncedSearch = useDebounce(searchTerm, 500);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -79,83 +84,96 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
     totalItems: 0,
   });
   
-  // Fetch enrollments students in class
+  // Fetch tất cả enrollments students in class (không pagination từ backend)
   const {
     data: studentsResp,
     isLoading,
     isError,
+    refetch,
   } = useQuery({
     queryKey: [
       'class-enrollments',
-      {
-        classId,
-        q: debouncedSearch,
-        page: pagination.currentPage,
-        limit: pagination.itemsPerPage,
-      },
+      classId,
+      classData?.academicYear,
     ],
     queryFn: () =>
       enrollmentService.getStudentsByClass(classId, {
-        search: debouncedSearch?.trim() ? debouncedSearch : undefined,
-        page: pagination.currentPage,
-        limit: pagination.itemsPerPage,
+        page: 1,
+        limit: 999, // Lấy hết tất cả enrollments
       }),
+    enabled: !!classId,
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
-  // Reset to first page when search changes
+  // Lấy tất cả data từ API
+  const allEnrollments = (studentsResp as any)?.data || [];
+
+  // Filter enrollments ở FE
+  const filteredEnrollments = allEnrollments.filter((enrollment: any) => {
+    // Filter by status
+    if (activeStatusFilter !== EnrollmentStatus.ALL && enrollment.status !== activeStatusFilter) {
+      return false;
+    }
+
+    // Filter by search term
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      const studentName = (enrollment?.student?.user?.fullName || '').toLowerCase();
+      const studentCode = (enrollment?.student?.studentCode || '').toLowerCase();
+      const studentEmail = (enrollment?.student?.user?.email || '').toLowerCase();
+      const studentPhone = (enrollment?.student?.user?.phone || '').toLowerCase();
+      const parentName = (enrollment?.student?.parent?.user?.fullName || '').toLowerCase();
+      const parentEmail = (enrollment?.student?.parent?.user?.email || '').toLowerCase();
+      const parentPhone = (enrollment?.student?.parent?.user?.phone || '').toLowerCase();
+      
+      if (!studentName.includes(searchLower) && 
+          !studentCode.includes(searchLower) &&
+          !studentEmail.includes(searchLower) &&
+          !studentPhone.includes(searchLower) &&
+          !parentName.includes(searchLower) &&
+          !parentEmail.includes(searchLower) &&
+          !parentPhone.includes(searchLower)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Pagination ở FE
+  const totalCount = filteredEnrollments.length;
+  const totalPages = Math.ceil(totalCount / pagination.itemsPerPage);
+  const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+  const endIndex = startIndex + pagination.itemsPerPage;
+  const enrollments = filteredEnrollments.slice(startIndex, endIndex);
+
+  // Update pagination total items when data changes
+  useEffect(() => {
+    // Đảm bảo currentPage không vượt quá totalPages
+    if (pagination.currentPage > totalPages && totalPages > 0) {
+      pagination.setCurrentPage(totalPages);
+    }
+  }, [totalCount, totalPages]);
+
+  // Reset to first page when search or filter changes
   useEffect(() => {
     pagination.setCurrentPage(1);
-  }, [debouncedSearch]);
-  
-  // Lấy data trực tiếp từ API
-  const enrollments = (studentsResp as any)?.data || [];
-  const totalCount = (studentsResp as any)?.meta?.total || 0;
-  const totalPages = (studentsResp as any)?.meta?.totalPages || 1;
+    setSelectedEnrollments([]);
+  }, [debouncedSearch, activeStatusFilter]);
 
-  // Mutation để update enrollment status với optimistic update
+  // Reset selection when class status is not READY
+  useEffect(() => {
+    if (classData?.status !== ClassStatus.READY) {
+      setSelectedEnrollments([]);
+    }
+  }, [classData?.status]);
+
+  // Mutation để update enrollment status
   const updateEnrollmentMutation = useMutation({
     mutationFn: ({ enrollmentId, status }: { enrollmentId: string; status: string }) =>
       enrollmentService.updateStatus(enrollmentId, { status }),
-    onMutate: async ({ enrollmentId, status }) => {
-      // Query key hiện tại
-      const queryKey = [
-        'class-enrollments',
-        {
-          classId,
-          q: debouncedSearch,
-          page: pagination.currentPage,
-          limit: pagination.itemsPerPage,
-        },
-      ];
-      
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey });
-      
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(queryKey);
-      
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: any) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: old.data.map((enrollment: any) =>
-            enrollment.id === enrollmentId
-              ? { ...enrollment, status }
-              : enrollment
-          ),
-        };
-      });
-      
-      return { previousData, queryKey };
-    },
-    onError: (error, variables, context: any) => {
-      // Rollback on error
-      if (context?.previousData && context?.queryKey) {
-        queryClient.setQueryData(context.queryKey, context.previousData);
-      }
+    onError: (error) => {
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật trạng thái tốt nghiệp. Vui lòng thử lại.",
@@ -167,10 +185,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         title: "Thành công",
         description: "Cập nhật trạng thái tốt nghiệp thành công",
       });
-    },
-    onSettled: () => {
-      // Invalidate all queries that start with 'class-enrollments'
-      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+      refetch();
     },
   });
 
@@ -184,39 +199,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const deleteEnrollmentMutation = useMutation({
     mutationFn: (enrollmentId: string) =>
       enrollmentService.deleteEnrollment(enrollmentId),
-    onMutate: async (enrollmentId) => {
-      const queryKey = [
-        'class-enrollments',
-        {
-          classId,
-          q: debouncedSearch,
-          page: pagination.currentPage,
-          limit: pagination.itemsPerPage,
-        },
-      ];
-      
-      await queryClient.cancelQueries({ queryKey });
-      const previousData = queryClient.getQueryData(queryKey);
-      
-      // Optimistically remove enrollment
-      queryClient.setQueryData(queryKey, (old: any) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: old.data.filter((enrollment: any) => enrollment.id !== enrollmentId),
-          meta: {
-            ...old.meta,
-            total: (old.meta?.total || 1) - 1,
-          },
-        };
-      });
-      
-      return { previousData, queryKey };
-    },
-    onError: (error: any, variables, context: any) => {
-      if (context?.previousData && context?.queryKey) {
-        queryClient.setQueryData(context.queryKey, context.previousData);
-      }
+    onError: (error: any) => {
       toast({
         title: "Lỗi",
         description: error?.response?.data?.message || "Không thể xóa học sinh khỏi lớp. Vui lòng thử lại.",
@@ -230,63 +213,15 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       });
       setShowDeleteConfirm(false);
       setSelectedEnrollment(null);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+      refetch();
     },
   });
 
-  // Mutation để update student account status với optimistic update
+  // Mutation để update student account status
   const updateStudentStatusMutation = useMutation({
     mutationFn: ({ studentId, isActive }: { studentId: string; isActive: boolean }) =>
       centerOwnerStudentService.updateStudentStatus(studentId, isActive),
-    onMutate: async ({ studentId, isActive }) => {
-      // Query key hiện tại
-      const queryKey = [
-        'class-enrollments',
-        {
-          classId,
-          q: debouncedSearch,
-          page: pagination.currentPage,
-          limit: pagination.itemsPerPage,
-        },
-      ];
-      
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey });
-      
-      // Snapshot previous value
-      const previousData = queryClient.getQueryData(queryKey);
-      
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: any) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: old.data.map((enrollment: any) =>
-            enrollment?.student?.id === studentId
-              ? {
-                  ...enrollment,
-                  student: {
-                    ...enrollment.student,
-                    user: {
-                      ...enrollment.student.user,
-                      isActive,
-                    },
-                  },
-                }
-              : enrollment
-          ),
-        };
-      });
-      
-      return { previousData, queryKey };
-    },
-    onError: (error, variables, context: any) => {
-      // Rollback on error
-      if (context?.previousData && context?.queryKey) {
-        queryClient.setQueryData(context.queryKey, context.previousData);
-      }
+    onError: (error) => {
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại.",
@@ -298,29 +233,26 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         title: "Thành công",
         description: "Cập nhật trạng thái tài khoản thành công",
       });
-    },
-    onSettled: () => {
-      // Invalidate all queries that start with 'class-enrollments'
-      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+      refetch();
     },
   });
 
-  // Status filters với counts
+  // Status filters với counts từ allEnrollments
   const statusFilters = [
     {
       key: EnrollmentStatus.ALL,
       label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.ALL] || '',
-      count: enrollments.length || 0,
+      count: allEnrollments.length || 0,
     },
     { 
       key: EnrollmentStatus.NOT_BEEN_UPDATED,
       label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.NOT_BEEN_UPDATED] || '',
-      count: enrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.NOT_BEEN_UPDATED).length || 0,
+      count: allEnrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.NOT_BEEN_UPDATED).length || 0,
     },
     {
       key: EnrollmentStatus.STUDYING,
       label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STUDYING],
-      count: enrollments.filter(
+      count: allEnrollments.filter(
         (enrollment: any) => enrollment.status === EnrollmentStatus.STUDYING,
       ).length,
     },
@@ -328,23 +260,27 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
     {
       key: EnrollmentStatus.STOPPED,
       label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STOPPED],
-      count: enrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.STOPPED)
+      count: allEnrollments.filter((enrollment: any) => enrollment.status === EnrollmentStatus.STOPPED)
         .length,
     },
     {
       key: EnrollmentStatus.GRADUATED,
       label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
-      count: enrollments.filter(
+      count: allEnrollments.filter(
         (enrollment: any) => enrollment.status === EnrollmentStatus.GRADUATED,
+      ).length,
+    },
+    {
+      key: EnrollmentStatus.WITHDRAWN,
+      label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.WITHDRAWN],
+      count: allEnrollments.filter(
+        (enrollment: any) => enrollment.status === EnrollmentStatus.WITHDRAWN,
       ).length,
     },
   ];
 
-  // Filter students based on active filter
-  const filteredStudents = enrollments?.filter((enrollment: any) => {
-    if (activeStatusFilter === EnrollmentStatus.ALL) return true;
-    return enrollment.status === activeStatusFilter;
-  });
+  // filteredStudents là enrollments đã được paginate (cho table)
+  const filteredStudents = enrollments;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<
@@ -374,6 +310,11 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         variant: 'default',
         label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
         className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.GRADUATED],
+      },
+      [EnrollmentStatus.WITHDRAWN]: {
+        variant: 'destructive',
+        label: ENROLLMENT_STATUS_LABELS[EnrollmentStatus.WITHDRAWN],
+        className: ENROLLMENT_STATUS_COLORS[EnrollmentStatus.WITHDRAWN],
       },
     };
     const config = variants[status] || variants[EnrollmentStatus.NOT_BEEN_UPDATED];
@@ -591,14 +532,14 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="text-red-600"
+              className="text-blue-600"
               onClick={() => {
                 setSelectedEnrollment(enrollment);
-                setShowDeleteConfirm(true);
+                setIsTransferStudentOpen(true);
               }}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Xóa khỏi lớp
+              <ArrowRight className="h-4 w-4 mr-2" />
+              Chuyển lớp
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -670,13 +611,47 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
             </div>
           </div>
 
+          {/* Selection Bar - Thanh hiển thị khi có items được chọn */}
+          {selectedEnrollments.length > 0 && (
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
+              <div className="px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selectedEnrollments.length === filteredEnrollments.length && filteredEnrollments.length > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const allIds = filteredEnrollments.map((enrollment: any) => enrollment.id);
+                        setSelectedEnrollments(allIds);
+                      } else {
+                        setSelectedEnrollments([]);
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+                    Đã chọn {selectedEnrollments.length}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                  onClick={() => setIsTransferStudentOpen(true)}
+                  title="Chuyển lớp cho các học sinh đã chọn"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Chuyển lớp
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* DataTable */}
           <DataTable
             data={filteredStudents}
             columns={columns}
             loading={isLoading}
             error={isError ? 'Có lỗi xảy ra khi tải dữ liệu' : null}
-            onRetry={() => window.location.reload()}
+            onRetry={refetch}
             pagination={{
               currentPage: pagination.currentPage,
               totalPages: totalPages,
@@ -686,9 +661,14 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               onItemsPerPageChange: pagination.setItemsPerPage,
               showItemsPerPage: true,
               showPageInfo: true,
-            }} // Disable default pagination
+            }}
             emptyMessage="Không có dữ liệu"
             className="shadow-sm"
+            enableCheckbox={true}
+            selectedItems={selectedEnrollments}
+            onSelectionChange={setSelectedEnrollments}
+            getItemId={(item: any) => item.id}
+            allData={filteredEnrollments}
           />
         </div>
       </div>
@@ -698,7 +678,37 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         classData={classData}
         onSubmit={() => {
           // Refetch enrollments data after successful bulk enroll
-          queryClient.invalidateQueries({ queryKey: ['class-enrollments', { classId }] });
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+        }}
+      />
+
+      {/* Transfer Student Sheet */}
+      <TransferStudentSheet
+        open={isTransferStudentOpen}
+        onOpenChange={(open) => {
+          setIsTransferStudentOpen(open);
+          if (!open) {
+            // Reset selection when closing
+            if (selectedEnrollment) {
+              setSelectedEnrollment(null);
+            } else {
+              // If bulk transfer, reset selected enrollments
+              setSelectedEnrollments([]);
+            }
+          }
+        }}
+        classData={classData}
+        selectedEnrollmentIds={
+          selectedEnrollment
+            ? [selectedEnrollment.id]
+            : selectedEnrollments
+        }
+        onSuccess={() => {
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
+          setSelectedEnrollments([]);
+          setSelectedEnrollment(null);
         }}
       />
 

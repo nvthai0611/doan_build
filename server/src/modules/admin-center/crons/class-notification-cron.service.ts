@@ -20,7 +20,7 @@ export class ClassNotificationCronService {
    * Cron job chạy mỗi ngày lúc 08:00 để kiểm tra và tạo thông báo
    * cho các lớp sắp bắt đầu và sắp kết thúc
    */
-  @Cron(CronExpression.EVERY_MINUTE) // Chạy mỗi ngày lúc 08:00
+  @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_NOON)  
   async checkClassNotifications() {
     this.logger.log('🔄 Bắt đầu kiểm tra thông báo lớp học...');
 

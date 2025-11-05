@@ -52,8 +52,9 @@ export class AlertService {
 
   /**
    * Lấy danh sách alerts với filter & pagination
+   * Filter theo role: nếu có userId hoặc role, chỉ lấy alerts có payload.targetRole hoặc payload.userId phù hợp
    */
-  async getAlerts(params: GetAlertsDto) {
+  async getAlerts(params: GetAlertsDto, userId?: string, userRole?: string) {
     try {
       const page = params.page || 1;
       const limit = params.limit || 20;
@@ -79,10 +80,10 @@ export class AlertService {
       }
 
       // Get total count
-      const total = await this.prisma.alert.count({ where });
+      let total = await this.prisma.alert.count({ where });
 
       // Get alerts
-      const alerts = await this.prisma.alert.findMany({
+      let alerts = await this.prisma.alert.findMany({
         where,
         orderBy: [
           { processed: 'asc' }, // Ưu tiên: Chưa xử lý (processed: false) lên đầu
@@ -94,10 +95,55 @@ export class AlertService {
         take: limit,
       });
 
-      // Get unread count
-      const unreadCount = await this.prisma.alert.count({
-        where: { isRead: false },
+      // Filter theo role/userId ở application level (vì payload là JSON)
+      // Nếu có userId hoặc role từ params hoặc từ request
+      const filterUserId = params.userId || userId;
+      const filterRole = params.role || userRole;
+
+      if (filterUserId || filterRole) {
+        alerts = alerts.filter((alert: any) => {
+          const payload = alert.payload || {};
+          // Nếu alert có targetUserId trong payload, phải match với userId
+          if (filterUserId && payload.targetUserId && payload.targetUserId !== filterUserId) {
+            return false;
+          }
+          // Nếu alert có targetRole trong payload, phải match với role
+          if (filterRole && payload.targetRole && payload.targetRole !== filterRole) {
+            return false;
+          }
+          // Nếu không có targetUserId hoặc targetRole, alert này dành cho tất cả (center_owner/admin)
+          // Chỉ center_owner/admin mới thấy alerts không có target
+          if (filterRole && !payload.targetRole && !['center_owner', 'admin'].includes(filterRole)) {
+            return false;
+          }
+          return true;
+        });
+        total = alerts.length;
+      }
+
+      // Get unread count với filter tương tự
+      let unreadCount = await this.prisma.alert.count({
+        where: { ...where, isRead: false },
       });
+
+      if (filterUserId || filterRole) {
+        const allUnreadAlerts = await this.prisma.alert.findMany({
+          where: { ...where, isRead: false },
+        });
+        unreadCount = allUnreadAlerts.filter((alert: any) => {
+          const payload = alert.payload || {};
+          if (filterUserId && payload.targetUserId && payload.targetUserId !== filterUserId) {
+            return false;
+          }
+          if (filterRole && payload.targetRole && payload.targetRole !== filterRole) {
+            return false;
+          }
+          if (filterRole && !payload.targetRole && !['center_owner', 'admin'].includes(filterRole)) {
+            return false;
+          }
+          return true;
+        }).length;
+      }
 
       return {
         data: alerts,
@@ -124,15 +170,33 @@ export class AlertService {
 
   /**
    * Lấy số lượng alerts chưa đọc
+   * Filter theo role nếu có
    */
-  async getUnreadCount() {
+  async getUnreadCount(userId?: string, userRole?: string) {
     try {
-      const count = await this.prisma.alert.count({
+      let alerts = await this.prisma.alert.findMany({
         where: { isRead: false },
       });
 
+      // Filter theo role/userId nếu có
+      if (userId || userRole) {
+        alerts = alerts.filter((alert: any) => {
+          const payload = alert.payload || {};
+          if (userId && payload.targetUserId && payload.targetUserId !== userId) {
+            return false;
+          }
+          if (userRole && payload.targetRole && payload.targetRole !== userRole) {
+            return false;
+          }
+          if (userRole && !payload.targetRole && !['center_owner', 'admin'].includes(userRole)) {
+            return false;
+          }
+          return true;
+        });
+      }
+
       return {
-        data: { count },
+        data: { count: alerts.length },
         message: 'Lấy số lượng cảnh báo chưa đọc thành công',
       };
     } catch (error) {

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
+import { toast } from 'sonner';
 
 export const useClassMutations = () => {
     const queryClient = useQueryClient();
@@ -49,10 +50,11 @@ export const useClassMutations = () => {
             console.log('Xóa lớp học thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            toast.error(error?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.message || 'Có lỗi xảy ra');
         }
     });
-
+    
     const assignTeacher = useMutation({
         mutationFn: ({ classId, data }: { classId: string; data: any }) =>
             classService.assignTeacher(classId, data),
@@ -63,7 +65,7 @@ export const useClassMutations = () => {
             console.log('Phân công giáo viên thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.message || 'Có lỗi xảy ra');
         }
     });
 
@@ -77,7 +79,7 @@ export const useClassMutations = () => {
             console.log('Xóa phân công giáo viên thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.message || 'Có lỗi xảy ra');
         }
     });
 

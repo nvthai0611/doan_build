@@ -635,6 +635,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 </label>
                 {isEditing ? (
                   <Select
+                  disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED}
                     value={editData.roomId}
                     onValueChange={(value) => handleInputChange('roomId', value)}
                   >
@@ -646,7 +647,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                       {rooms &&
                         rooms.length > 0 &&
                         rooms.map((room: any) => (
-                          <SelectItem key={room.id} value={room.id}>
+                          <SelectItem disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED} key={room.id} value={room.id}>
                             {room.name}
                           </SelectItem>
                         ))}
@@ -671,7 +672,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     size="sm"
                     onClick={() => setIsScheduleModalOpen(true)}
                     // disabled={isScheduleLoading || !canEditGeneralInfo}
-                    disabled={isScheduleLoading }
+                    disabled={isScheduleLoading || !canEditGeneralInfo || classData.status === ClassStatus.COMPLETED}
                     title={!canEditGeneralInfo ? `Không thể chỉnh sửa lịch học khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                   >
                     {isScheduleLoading ? (

@@ -481,13 +481,17 @@ export class EmailNotificationService {
   }
 
   /**
-   * Gửi email thông báo đăng ký lớp hàng loạt cho phụ huynh
-   * @param studentIds Mảng ID của các học sinh được đăng ký
-   * @param classId ID của lớp học
+   * Gửi email thông báo đăng ký lớp hoặc chuyển lớp hàng loạt cho phụ huynh
+   * @param studentIds Mảng ID của các học sinh được đăng ký/chuyển lớp
+   * @param classId ID của lớp học (lớp mới nếu là chuyển lớp)
+   * @param transferInfo Thông tin chuyển lớp (nếu có): { oldClassId: string, reason?: string }
    */
-  async sendBulkEnrollmentEmail(studentIds: string[], classId: string) {
+  async sendBulkEnrollmentEmail(
+    studentIds: string[], 
+    classId: string,
+    transferInfo?: { oldClassId: string; reason?: string }
+  ) {
     try {
-      console.log(`🚀 Bắt đầu xử lý gửi email đăng ký cho ${studentIds.length} học sinh`);
 
       // Lấy thông tin lớp học
       const classData = await this.prisma.class.findUnique({
@@ -532,6 +536,16 @@ export class EmailNotificationService {
         throw new HttpException('Không tìm thấy học sinh nào', HttpStatus.NOT_FOUND);
       }
 
+      // Lấy thông tin lớp cũ nếu là chuyển lớp
+      let oldClassName: string | undefined;
+      if (transferInfo) {
+        const oldClass = await this.prisma.class.findUnique({
+          where: { id: transferInfo.oldClassId },
+          select: { name: true }
+        });
+        oldClassName = oldClass?.name || 'N/A';
+      }
+
       // Chuẩn bị dữ liệu chung
       const className = classData.name || 'N/A';
       const subjectName = classData.subject?.name || 'N/A';
@@ -540,14 +554,6 @@ export class EmailNotificationService {
         ? new Date(classData.actualStartDate).toLocaleDateString('vi-VN')
         : undefined;
       const schedule = classData.recurringSchedule || undefined;
-
-      console.log(`Thông tin lớp học:\n` +
-        `   - Tên lớp: ${className}\n` +
-        `   - Môn học: ${subjectName}\n` +
-        `   - Giáo viên: ${teacherName || 'Chưa có'}\n` +
-        `   - Ngày bắt đầu: ${startDate || 'Chưa có'}\n` +
-        `   - Có lịch học: ${schedule ? 'Có' : 'Chưa có'}`
-      );
 
       // Thêm từng email vào queue
       const emailResults = [];
@@ -586,7 +592,11 @@ export class EmailNotificationService {
               schedule,
               enrollmentStatus,
               studentId: student.id,
-              classId
+              classId,
+              // Thông tin chuyển lớp (nếu có)
+              isTransfer: !!transferInfo,
+              oldClassName: transferInfo ? oldClassName : undefined,
+              transferReason: transferInfo?.reason
             },
             {
               priority: 2,
@@ -603,7 +613,7 @@ export class EmailNotificationService {
 
           jobPromises.push(jobPromise);
 
-          console.log(`📨 Đã thêm job gửi email đăng ký cho ${student.user?.fullName} vào queue`);
+          console.log(`Đã thêm job gửi email ${transferInfo ? 'chuyển lớp' : 'đăng ký'} cho ${student.user?.fullName} vào queue`);
 
           emailResults.push({
             studentId: student.id,
@@ -613,7 +623,7 @@ export class EmailNotificationService {
           });
         } catch (error: any) {
           console.error(
-            `❌ Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
+            `Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
           );
           
           emailResults.push({
@@ -632,7 +642,7 @@ export class EmailNotificationService {
       const failCount = emailResults.filter(r => !r.success).length;
 
       console.log(
-        `✅ Đã thêm ${successCount}/${studentIds.length} email vào queue thành công\n` +
+        `Đã thêm ${successCount}/${studentIds.length} email vào queue thành công\n` +
         `   - Thành công: ${successCount}\n` +
         `   - Thất bại: ${failCount}`
       );
@@ -643,10 +653,10 @@ export class EmailNotificationService {
         failCount,
         totalStudents: studentIds.length,
         details: emailResults,
-        message: `Đã thêm ${successCount} email thông báo đăng ký vào hàng đợi.`
+        message: `Đã thêm ${successCount} email thông báo ${transferInfo ? 'chuyển lớp' : 'đăng ký'} vào hàng đợi.`
       };
     } catch (error: any) {
-      console.error('❌ Lỗi khi xử lý gửi email đăng ký:', error);
+      console.error('Lỗi khi xử lý gửi email đăng ký:', error);
       throw new HttpException(
         error.message || 'Lỗi khi gửi email thông báo đăng ký',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
