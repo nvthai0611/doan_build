@@ -32,8 +32,8 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const { data: grades, isLoading: gradesLoading } = useQuery({
     queryKey: ["parent-child-grades", childId],
     queryFn: () => parentChildService.getChildGrades(childId),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     enabled: !!childId,
   })
 
@@ -41,8 +41,8 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const { data: attendances, isLoading: attendancesLoading } = useQuery({
     queryKey: ["parent-child-attendance", childId],
     queryFn: () => parentChildService.getChildAttendance(childId),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     enabled: !!childId,
   })
 

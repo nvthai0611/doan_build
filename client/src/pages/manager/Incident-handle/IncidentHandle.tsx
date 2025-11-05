@@ -39,7 +39,7 @@ export default function CenterOwnerIncidentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-incident-list'],
     queryFn: () => adminIncidentService.list({ page: 1, limit: 100 }),
-    staleTime: 30_000,
+    staleTime: 3000,
   })
   const incidentsApi: AdminIncidentItem[] = (data as any)?.data ?? []
   const incidents: Incident[] = incidentsApi.map((i) => ({
