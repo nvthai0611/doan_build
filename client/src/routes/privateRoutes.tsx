@@ -63,6 +63,7 @@ import { ShowcasesPage } from '../pages/manager/ShowcaseManagement/ShowcasePage'
 import SessionDetail from "../pages/manager/Session-management/SessionDetail";
 import NotFound from "../pages/Error/NotFound";
 import ClassroomsPage from "../pages/manager/Room-management/ClassRoom";
+import SubjectsPage from "../pages/manager/Subject-management/Subject";
 
 export const privateRoutes = (
   <>
@@ -107,6 +108,7 @@ export const privateRoutes = (
         <Route path="communication/showcases" element={<ShowcasesPage />} />
         <Route path="session-details/:sessionId" element={<SessionDetail />} />
         <Route path="rooms" element={<ClassroomsPage />} />
+        <Route path="courses" element={<SubjectsPage />} />
       </Route>
 
       {/* Giáo viên */}

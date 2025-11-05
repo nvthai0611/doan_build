@@ -52,6 +52,8 @@ import { ContractUploadController } from './controllers/contract-upload.controll
 import { ContractUploadService } from './services/contract-upload.service';
 import { RoomsManagementController } from './controllers/rooms-management.controller';
 import { RoomsManagementService } from './services/rooms-management.service';
+import { SubjectManagementController } from './controllers/subject-management.controller';
+import { SubjectManagementService } from './services/subject-management.service';
 
 @Module({
   imports: [
@@ -88,6 +90,7 @@ import { RoomsManagementService } from './services/rooms-management.service';
     ShowcaseManagementController,
     ContractUploadController,
     RoomsManagementController,
+    SubjectManagementController,
   ],
   providers: [
     PrismaService,
@@ -114,6 +117,7 @@ import { RoomsManagementService } from './services/rooms-management.service';
     CloudinaryService,
     ContractUploadService,
     RoomsManagementService,
+    SubjectManagementService,
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học

@@ -17,8 +17,8 @@ export function useRooms() {
     queryFn: async () => {
       return await classroomService.getRooms()
     },
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 
   // Đảm bảo rooms luôn là mảng, ngay cả khi undefined hoặc không phải mảng
@@ -28,10 +28,7 @@ export function useRooms() {
     setIsSubmitting(true)
     try {
       const newRoom = await classroomService.createRoom(roomData)
-      queryClient.setQueryData(['rooms'], (old: Room[] | undefined) => {
-        const oldRooms = Array.isArray(old) ? old : []
-        return [...oldRooms, newRoom]
-      })
+      await queryClient.invalidateQueries({ queryKey: ['rooms'] })
       return newRoom
     } catch (error) {
       console.error("Error adding room:", error)
@@ -45,10 +42,7 @@ export function useRooms() {
     setIsSubmitting(true)
     try {
       const updatedRoom = await classroomService.updateRoom(id, roomData)
-      queryClient.setQueryData(['rooms'], (old: Room[] | undefined) => {
-        const oldRooms = Array.isArray(old) ? old : []
-        return oldRooms.map((r: Room) => (r.id === id ? updatedRoom : r))
-      })
+      await queryClient.invalidateQueries({ queryKey: ['rooms'] })
       return updatedRoom
     } catch (error) {
       console.error("Error updating room:", error)
@@ -62,10 +56,7 @@ export function useRooms() {
     setIsSubmitting(true)
     try {
       await classroomService.deleteRoom(id)
-      queryClient.setQueryData(['rooms'], (old: Room[] | undefined) => {
-        const oldRooms = Array.isArray(old) ? old : []
-        return oldRooms.filter((r: Room) => r.id !== id)
-      })
+      await queryClient.invalidateQueries({ queryKey: ['rooms'] })
     } catch (error) {
       console.error("Error deleting room:", error)
       throw error

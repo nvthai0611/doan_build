@@ -98,7 +98,7 @@ const centerOwnerMenuItems = [
     href: '/center-qn/classes',
     children: [
       { title: 'Quản lý lớp học', href: '/center-qn/classes' },
-      { title: 'Quản lý môn học', href: '/courses' },
+      { title: 'Quản lý môn học', href: '/center-qn/courses' },
     //   { title: 'Thời khóa biểu', href: '/courses/timetable' },
       { title: 'Quản lý phòng học', href: '/center-qn/rooms' },
       { title: 'Cảnh báo xung đột', href: '/courses/conflicts' },
