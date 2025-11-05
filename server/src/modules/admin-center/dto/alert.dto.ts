@@ -15,6 +15,8 @@ export enum AlertType {
   ENROLLMENT = 'enrollment',
   PAYMENT = 'payment',
   STUDENT_CLASS_REQUEST = 'student_class_request',
+  CLASS_STARTING_SOON = 'class_starting_soon',
+  CLASS_ENDING_SOON = 'class_ending_soon',
   OTHER = 'other',
 }
 
