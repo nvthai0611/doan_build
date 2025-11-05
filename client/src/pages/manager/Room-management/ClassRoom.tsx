@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useRooms, Room } from "../../../hooks/use-rooms"
-import { RoomDialog } from "./component/RoomDialog"
-import { RoomsList } from "./component/RoomsList"
+import { RoomDialog } from "./components/RoomDialog"
+import { RoomsList } from "./components/RoomsList"
 
 export default function ClassroomsPage() {
   const { rooms, addRoom, updateRoom, deleteRoom, isSubmitting } = useRooms()
