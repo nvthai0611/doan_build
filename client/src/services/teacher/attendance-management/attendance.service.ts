@@ -95,16 +95,41 @@ const updateAttendanceStudent = async (
   records: AttendanceRecord[]
 ): Promise<any> => {
   try {
-    const response = await apiClient.put(`/teacher/attendances/${sessionId}`, records)
+    const response = await apiClient.put(
+      `/teacher/attendances/${sessionId}`,
+      { records }
+    )
+    
+    console.log('API Response:', response)
+    
+    // Backend trả về { data: {...}, message: '...' }
+    // Axios tự động wrap trong response.data
     return response.data
   } catch (error: any) {
-    if (error.response) {
-      throw new Error(error.response.data?.message || 'Cập nhật điểm danh thất bại')
-    } else if (error.request) {
+    console.error('Update attendance error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      error: error,
+    })
+    
+    // Xử lý error từ server
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message)
+    } 
+    
+    // Xử lý network error
+    if (error.request && !error.response) {
       throw new Error('Không thể kết nối đến server')
-    } else {
-      throw new Error(error.message || 'Đã có lỗi xảy ra')
     }
+    
+    // Xử lý error khác
+    if (error.message) {
+      throw new Error(error.message)
+    }
+    
+    // Fallback error
+    throw new Error('Đã có lỗi xảy ra khi cập nhật điểm danh')
   }
 }
 

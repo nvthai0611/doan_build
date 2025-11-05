@@ -69,7 +69,7 @@ export interface ApiRequestConfig extends AxiosRequestConfig {
    ======================= */
 const client: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1',
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true,
 });
 
