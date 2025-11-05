@@ -132,6 +132,7 @@ export default function StudentManagement() {
     queryFn: fetchDataSubject,
     staleTime: 30000,
     refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const { data: statusData, isLoading: isLoadingStatus, isError: isErrorStatus } = useQuery({
@@ -139,6 +140,7 @@ export default function StudentManagement() {
     queryFn: fetchDataStatus,
     staleTime: 30000,
     refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   
