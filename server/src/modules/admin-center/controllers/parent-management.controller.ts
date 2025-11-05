@@ -10,6 +10,7 @@ export class ParentManagementController {
         private readonly parentManagementService: ParentManagementService
     ) {}
 
+    // ...existing code...
     /**
      * Tạo mới phụ huynh kèm học sinh
      */
@@ -22,93 +23,77 @@ export class ParentManagementController {
             email: string;
             fullName: string;
             phone?: string;
-            gender?: string;
-            birthDate?: string;
+            relationshipType: 'FATHER' | 'MOTHER' | 'OTHER';
             students?: Array<{
                 fullName: string;
-                username: string;
-                email?: string;
-                phone?: string;
-                gender?: string;
-                birthDate?: string;
-                address?: string;
-                grade?: string;
+                gender: 'MALE' | 'FEMALE' | 'OTHER';
+                birthDate: string;
                 schoolId: string;
             }>;
         }
     ) {
         // Validate parent fields
         if (!body.username || body.username.trim().length < 3 || body.username.trim().length > 20) {
-            throw new HttpException(
-                'Username phụ huynh phải từ 3-20 ký tự',
-                HttpStatus.BAD_REQUEST
-            );
+            throw new HttpException('Username phụ huynh phải từ 3-20 ký tự', HttpStatus.BAD_REQUEST);
         }
 
         const usernameRegex = /^[a-zA-Z0-9_]+$/;
         if (!usernameRegex.test(body.username)) {
-            throw new HttpException(
-                'Username phụ huynh chỉ được chứa chữ, số và dấu gạch dưới',
-                HttpStatus.BAD_REQUEST
-            );
+            throw new HttpException('Username phụ huynh chỉ được chứa chữ, số và dấu gạch dưới', HttpStatus.BAD_REQUEST);
         }
 
         if (!body.password || body.password.length < 6) {
-            throw new HttpException(
-                'Mật khẩu phải có ít nhất 6 ký tự',
-                HttpStatus.BAD_REQUEST
-            );
+            throw new HttpException('Mật khẩu phải có ít nhất 6 ký tự', HttpStatus.BAD_REQUEST);
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!body.email || !emailRegex.test(body.email)) {
-            throw new HttpException(
-                'Email phụ huynh không hợp lệ',
-                HttpStatus.BAD_REQUEST
-            );
+            throw new HttpException('Email phụ huynh không hợp lệ', HttpStatus.BAD_REQUEST);
         }
 
         if (!body.fullName || body.fullName.trim().length === 0) {
-            throw new HttpException(
-                'Họ và tên phụ huynh không được để trống',
-                HttpStatus.BAD_REQUEST
-            );
+            throw new HttpException('Họ và tên phụ huynh không được để trống', HttpStatus.BAD_REQUEST);
         }
 
         if (body.phone) {
             const phoneRegex = /^[0-9]{10,11}$/;
             if (!phoneRegex.test(body.phone)) {
-                throw new HttpException(
-                    'Số điện thoại phụ huynh phải có 10-11 chữ số',
-                    HttpStatus.BAD_REQUEST
-                );
+                throw new HttpException('Số điện thoại phụ huynh phải có 10-11 chữ số', HttpStatus.BAD_REQUEST);
             }
         }
 
-        // Validate students if provided
+        // relationshipType is required and must be valid
+        const validRelationshipTypes = ['FATHER', 'MOTHER', 'OTHER'];
+        if (!body.relationshipType || !validRelationshipTypes.includes(body.relationshipType)) {
+            throw new HttpException(
+                'Mối quan hệ không hợp lệ. Chỉ chấp nhận: FATHER, MOTHER, OTHER',
+                HttpStatus.BAD_REQUEST
+            );
+        }
+
+        // Validate students (minimal fields)
         if (body.students && body.students.length > 0) {
+            const validGenders = ['MALE', 'FEMALE', 'OTHER'];
             for (let i = 0; i < body.students.length; i++) {
                 const student = body.students[i];
 
                 if (!student.fullName || student.fullName.trim().length === 0) {
+                    throw new HttpException(`Họ và tên học sinh ${i + 1} không được để trống`, HttpStatus.BAD_REQUEST);
+                }
+
+                if (!student.gender || !validGenders.includes(student.gender)) {
                     throw new HttpException(
-                        `Họ và tên học sinh ${i + 1} không được để trống`,
+                        `Giới tính học sinh ${i + 1} không hợp lệ. Chỉ chấp nhận: MALE, FEMALE, OTHER`,
                         HttpStatus.BAD_REQUEST
                     );
                 }
 
-                if (!student.username || student.username.trim().length < 3 || student.username.trim().length > 20) {
-                    throw new HttpException(
-                        `Username học sinh ${i + 1} phải từ 3-20 ký tự`,
-                        HttpStatus.BAD_REQUEST
-                    );
+                if (!student.birthDate) {
+                    throw new HttpException(`Ngày sinh học sinh ${i + 1} không được để trống`, HttpStatus.BAD_REQUEST);
                 }
-
-                if (!usernameRegex.test(student.username)) {
-                    throw new HttpException(
-                        `Username học sinh ${i + 1} chỉ được chứa chữ, số và dấu gạch dưới`,
-                        HttpStatus.BAD_REQUEST
-                    );
+                // Optional: validate date string
+                if (isNaN(Date.parse(student.birthDate))) {
+                    throw new HttpException(`Ngày sinh học sinh ${i + 1} không hợp lệ`, HttpStatus.BAD_REQUEST);
                 }
 
                 if (!student.schoolId) {
@@ -116,23 +101,6 @@ export class ParentManagementController {
                         `Trường học cho học sinh ${i + 1} không được để trống`,
                         HttpStatus.BAD_REQUEST
                     );
-                }
-
-                if (student.email && student.email.trim() && !emailRegex.test(student.email)) {
-                    throw new HttpException(
-                        `Email học sinh ${i + 1} không hợp lệ`,
-                        HttpStatus.BAD_REQUEST
-                    );
-                }
-
-                if (student.phone && student.phone.trim()) {
-                    const phoneRegex = /^[0-9]{10,11}$/;
-                    if (!phoneRegex.test(student.phone)) {
-                        throw new HttpException(
-                            `Số điện thoại học sinh ${i + 1} phải có 10-11 chữ số`,
-                            HttpStatus.BAD_REQUEST
-                        );
-                    }
                 }
             }
         }
@@ -144,17 +112,11 @@ export class ParentManagementController {
             email: body.email.trim(),
             fullName: body.fullName.trim(),
             phone: body.phone?.trim(),
-            gender: body.gender as any,
-            birthDate: body.birthDate,
+            relationshipType: body.relationshipType,
             students: body.students?.map(s => ({
                 fullName: s.fullName.trim(),
-                username: s.username.trim(),
-                email: s.email?.trim() || undefined,
-                phone: s.phone?.trim() || undefined,
                 gender: s.gender as any,
                 birthDate: s.birthDate,
-                address: s.address?.trim() || undefined,
-                grade: s.grade || undefined,
                 schoolId: s.schoolId
             }))
         });
@@ -210,46 +172,51 @@ export class ParentManagementController {
      */
     @Post(':id/add-student')
     @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Thêm học sinh mới cho phụ huynh' })
+    @ApiResponse({ status: HttpStatus.CREATED, description: 'Thêm học sinh thành công' })
     async addStudentToParent(
-        @Param('id') parentId: string,
-        @Body() body: {
-            fullName: string;
-            username: string;
-            email?: string;
-            phone?: string;
-            gender?: string;
-            birthDate?: string;
-            address?: string;
-            grade?: string;
-            schoolId: string;
-            password?: string;
-        }
+      @Param('id') parentId: string,
+      @Body() body: {
+        fullName: string;
+        gender: 'MALE' | 'FEMALE' | 'OTHER';
+        birthDate: string;
+        schoolId: string;
+        password?: string;
+      }
     ) {
-        // Validation...
+      // Minimal validations to align with service
+      if (!body.fullName || !body.fullName.trim()) {
+        throw new HttpException('Họ và tên học sinh không được để trống', HttpStatus.BAD_REQUEST);
+      }
 
-        const result = await this.parentManagementService.addStudentToParent(
-            parentId,
-            {
-                fullName: body.fullName.trim(),
-                username: body.username.trim(),
-                email: body.email?.trim() || undefined,
-                phone: body.phone?.trim() || undefined,
-                gender: body.gender as any,
-                birthDate: body.birthDate,
-                address: body.address?.trim() || undefined,
-                grade: body.grade || undefined,
-                schoolId: body.schoolId,
-                password: body.password
-            }
-        );
+      const validGenders = ['MALE', 'FEMALE', 'OTHER'];
+      if (!body.gender || !validGenders.includes(body.gender)) {
+        throw new HttpException('Giới tính không hợp lệ', HttpStatus.BAD_REQUEST);
+      }
 
-        return {
-            success: true,
-            status: HttpStatus.CREATED,
-            message: result.message,
-            data: result.data,
-            meta: {}
-        };
+      if (!body.birthDate || isNaN(Date.parse(body.birthDate))) {
+        throw new HttpException('Ngày sinh không hợp lệ', HttpStatus.BAD_REQUEST);
+      }
+
+      if (!body.schoolId) {
+        throw new HttpException('Trường học không được để trống', HttpStatus.BAD_REQUEST);
+      }
+
+      const result = await this.parentManagementService.addStudentToParent(parentId, {
+        fullName: body.fullName.trim(),
+        gender: body.gender as any,
+        birthDate: body.birthDate,
+        schoolId: body.schoolId,
+        password: body.password
+      });
+
+      return {
+        success: true,
+        status: HttpStatus.CREATED,
+        message: result.message,
+        data: result.data,
+        meta: {}
+      };
     }
 
     /**
@@ -398,9 +365,9 @@ export class ParentManagementController {
 @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy thanh toán' })
 async updatePaymentStatus(
   @Param('id') paymentId: string,
-  @Query('status') status: string,
-  @Body() body: any
+  @Body() body: { status: string; notes?: string }
 ) {
+    const {status, notes} = body
   if (!status || status.trim().length === 0) {
     throw new HttpException(
       'Trạng thái thanh toán không được để trống',
@@ -420,7 +387,7 @@ async updatePaymentStatus(
     const result = await this.parentManagementService.updateStatusPayment(
       paymentId,
       status,
-    body.note
+      notes
     );
 
     return {
@@ -489,80 +456,89 @@ async updatePaymentStatus(
     }
 
     /**
-     * Cập nhật thông tin phụ huynh
-     */
-    @Put(':id')
-    @ApiOperation({ summary: 'Cập nhật thông tin phụ huynh' })
-    @ApiResponse({ status: HttpStatus.OK, description: 'Cập nhật thành công' })
-    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy phụ huynh' })
-    async updateParent(
-        @Param('id') id: string,
-        @Body() body: {
-            email?: string;
-            fullName?: string;
-            phone?: string;
-            gender?: string;
-            birthDate?: string;
-        }
-    ) {
-        // Validate email if provided
-        if (body.email) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(body.email)) {
-                return {
-                    statusCode: HttpStatus.BAD_REQUEST,
-                    message: 'Email không hợp lệ',
-                    data: null
-                };
-            }
-        }
-
-        // Validate fullName if provided
-        if (body.fullName !== undefined && body.fullName.trim().length === 0) {
-            return {
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Họ và tên không được để trống',
-                data: null
-            };
-        }
-
-        // Validate phone if provided
-        if (body.phone) {
-            const phoneRegex = /^[0-9]{10,11}$/;
-            if (!phoneRegex.test(body.phone)) {
-                return {
-                    statusCode: HttpStatus.BAD_REQUEST,
-                    message: 'Số điện thoại phải có 10-11 chữ số',
-                    data: null
-                };
-            }
-        }
-
-        const result = await this.parentManagementService.updateParent(
-            id,
-            {
-                fullName: body.fullName?.trim(),
-                phone: body.phone?.trim(),
-                gender: body.gender as 'MALE' | 'FEMALE' | 'OTHER',
-                birthDate: body.birthDate
-            }
-        );
-
-        if (!result.data) {
-            return {
-                statusCode: HttpStatus.NOT_FOUND,
-                message: result.message,
-                data: null
-            };
-        }
-
-        return {
-            statusCode: HttpStatus.OK,
-            message: result.message,
-            data: result.data
-        };
+ * Cập nhật thông tin phụ huynh
+ */
+@Put(':id')
+@ApiOperation({ summary: 'Cập nhật thông tin phụ huynh' })
+@ApiResponse({ status: HttpStatus.OK, description: 'Cập nhật thành công' })
+@ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Dữ liệu không hợp lệ' })
+@ApiResponse({ status: HttpStatus.CONFLICT, description: 'Email hoặc số điện thoại đã được sử dụng' })
+@ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy phụ huynh' })
+async updateParent(
+  @Param('id') id: string,
+  @Body() body: {
+    fullName?: string
+    email?: string
+    phone?: string
+    relationshipType?: 'FATHER' | 'MOTHER' | 'OTHER'
+  }
+) {
+  // Validate fullName if provided
+  if (body.fullName !== undefined) {
+    if (body.fullName.trim().length === 0) {
+      throw new HttpException(
+        'Họ và tên không được để trống',
+        HttpStatus.BAD_REQUEST
+      )
     }
+    if (body.fullName.trim().length < 2) {
+      throw new HttpException(
+        'Họ và tên phải có ít nhất 2 ký tự',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+  }
+
+  // Validate email if provided
+  if (body.email !== undefined) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(body.email)) {
+      throw new HttpException(
+        'Email không hợp lệ',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+  }
+
+  // Validate phone if provided
+  if (body.phone !== undefined) {
+    if (body.phone.trim().length > 0) {
+      const phoneRegex = /^[0-9]{10,11}$/
+      if (!phoneRegex.test(body.phone)) {
+        throw new HttpException(
+          'Số điện thoại phải có 10-11 chữ số',
+          HttpStatus.BAD_REQUEST
+        )
+      }
+    }
+  }
+
+  // Validate relationshipType if provided
+  if (body.relationshipType !== undefined) {
+    const validRelationshipTypes = ['FATHER', 'MOTHER', 'OTHER']
+    if (!validRelationshipTypes.includes(body.relationshipType)) {
+      throw new HttpException(
+        'Mối quan hệ không hợp lệ. Chỉ chấp nhận: FATHER, MOTHER, OTHER',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+  }
+
+  const result = await this.parentManagementService.updateParent(id, {
+    fullName: body.fullName?.trim(),
+    email: body.email?.trim(),
+    phone: body.phone?.trim(),
+    relationshipType: body.relationshipType
+  })
+
+  return {
+    success: true,
+    status: HttpStatus.OK,
+    message: result.message,
+    data: result.data,
+    meta: {}
+  }
+}
 
     /**
      * Liên kết học sinh với phụ huynh

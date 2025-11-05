@@ -68,7 +68,6 @@ export default function ParentDetailPage() {
       </div>
     )
   }
-  console.log(parentData);
   
   return (
     <div className="min-h-screen bg-gray-50 p-6">

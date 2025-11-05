@@ -8,6 +8,12 @@ interface SendAbsentNotificationsDto {
   studentIds: string[];
 }
 
+interface AttendanceRecordDto {
+  studentId: string;
+  status: 'present' | 'absent' | 'excused' | 'late';
+  note?: string;
+}
+
 @ApiTags('Teacher - Attendance')
 @Controller('attendances')
 export class AttendanceController {
@@ -17,44 +23,82 @@ export class AttendanceController {
     ){}
 
     @Get(':sessionId/students')
-    @ApiOperation({summary:'Lấy danh sách học sinh theo ID buổi học'})
+    @ApiOperation({ summary: 'Lấy danh sách học sinh theo ID buổi học' })
     @ApiParam({
-        name:'sessionId',
-        description:'ID của buổi học',
+        name: 'sessionId',
+        description: 'ID của buổi học',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Lấy danh sách học sinh thành công'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Session ID không hợp lệ'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Buổi học không tồn tại'
     })
     async getListStudentBySessionId(@Param('sessionId') sessionId: string) {
         return this.attendanceService.getListStudentBySessionId(sessionId);
     }
 
-    @Get(':sessionId')
-    @ApiOperation({summary:'Lấy danh sách điểm danh theo ID buổi học'})
+    @Get(':sessionId/leave-requests')
+    @ApiOperation({ summary: 'Lấy danh sách đơn xin nghỉ trong ngày học' })
     @ApiParam({
-        name:'sessionId',
-        description:'ID của buổi học',
+        name: 'sessionId',
+        description: 'ID của buổi học',
     })
     @ApiResponse({
-        status:200,
-        description:'Lấy danh sách điểm danh thành công',
+        status: 200,
+        description: 'Lấy danh sách đơn xin nghỉ thành công'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Session ID không hợp lệ'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Buổi học không tồn tại'
+    })
+    async getLeaveRequestsBySessionId(@Param('sessionId') sessionId: string) {
+        return this.attendanceService.getLeaveRequestsBySessionId(sessionId);
+    }
+
+    @Get(':sessionId')
+    @ApiOperation({ summary: 'Lấy danh sách điểm danh theo ID buổi học' })
+    @ApiParam({
+        name: 'sessionId',
+        description: 'ID của buổi học',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Lấy danh sách điểm danh thành công',
         type: AttendanceResponseDto
     })
     @ApiResponse({
         status: 400,
         description: 'Session ID không hợp lệ'
     })
-    async getAttendanceBySessionId(@Param('sessionId')sessionId: string) {
+    async getAttendanceBySessionId(@Param('sessionId') sessionId: string) {
         return this.attendanceService.getAttendanceBySessionId(sessionId);
     }
 
     @Put(':sessionId')
-    @ApiOperation({summary:'Điểm danh học sinh theo buổi học'})
+    @ApiOperation({ summary: 'Điểm danh học sinh theo buổi học (tự động duyệt đơn xin nghỉ nếu chọn excused)' })
+    @ApiParam({
+        name: 'sessionId',
+        description: 'ID của buổi học',
+    })
     @ApiResponse({
-        status:200,
-        description:'Điểm danh học sinh thành công',
+        status: 200,
+        description: 'Điểm danh học sinh thành công',
         type: AttendanceResponseDto
     })
     @ApiResponse({
         status: 400,
-        description: 'Session ID không hợp lệ hoặc không thể cập nhật điểm danh cho buổi học đã hoàn thành hoặc đã qua ngày học'
+        description: 'Session ID không hợp lệ hoặc không thể cập nhật điểm danh'
     })
     @ApiResponse({
         status: 404,
@@ -63,17 +107,69 @@ export class AttendanceController {
     async attendanceStudentBySessionId(
         @Req() request: any,
         @Param('sessionId') sessionId: string,
-        @Body() records: any[]
+        @Body() records: AttendanceRecordDto[]
     ) {
-        const teacherId = request?.user?.teacherId;
-        return this.attendanceService.attendanceStudentBySessionId(sessionId, records, teacherId);
+        try {
+            if (!sessionId) {
+                throw new HttpException(
+                    'Session ID không được để trống',
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            if (!records || !Array.isArray(records) || records.length === 0) {
+                throw new HttpException(
+                    'Danh sách bản ghi điểm danh không được để trống',
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            const teacherId = request?.user?.teacherId;
+            
+            if (!teacherId) {
+                throw new HttpException(
+                    'Không tìm thấy thông tin giáo viên',
+                    HttpStatus.UNAUTHORIZED
+                );
+            }
+
+            // Validate records
+            for (const record of records) {
+                if (!record.studentId) {
+                    throw new HttpException(
+                        'Student ID không được để trống',
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
+                if (!['present', 'absent', 'excused', 'late'].includes(record.status)) {
+                    throw new HttpException(
+                        `Trạng thái '${record.status}' không hợp lệ`,
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
+            }
+
+            const result = await this.attendanceService.attendanceStudentBySessionId(
+                sessionId,
+                records,
+                teacherId
+            );
+
+            return {
+                data: result.data,
+                message: result.message
+            };
+        } catch (error) {
+            console.error('Error in attendanceStudentBySessionId:', error);
+            throw error;
+        }
     }
 
     @Post(':sessionId/send-absent-notifications')
-    @ApiOperation({summary:'Gửi email thông báo vắng mặt cho phụ huynh'})
+    @ApiOperation({ summary: 'Gửi email thông báo vắng mặt cho phụ huynh' })
     @ApiParam({
-        name:'sessionId',
-        description:'ID của buổi học',
+        name: 'sessionId',
+        description: 'ID của buổi học',
     })
     @ApiResponse({
         status: 200,
@@ -115,7 +211,6 @@ export class AttendanceController {
                 teacherId
             );
 
-            // Xây dựng message động
             let message = '';
             if (result.alreadySentCount > 0) {
                 message = `Đã gửi ${result.sentCount} email mới. ${result.alreadySentCount} học sinh đã được gửi email trước đó`;

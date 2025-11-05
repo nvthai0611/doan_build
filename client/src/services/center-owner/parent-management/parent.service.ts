@@ -171,17 +171,12 @@ const createParentWithStudents = async (data: {
     email: string
     fullName: string
     phone?: string
-    gender?: 'MALE' | 'FEMALE' | 'OTHER'
+    relationshipType: 'FATHER' | 'MOTHER' | 'OTHER'
     birthDate?: string
     students?: Array<{
         fullName: string
-        email: string
-        studentCode?: string
-        phone?: string
-        gender?: 'MALE' | 'FEMALE' | 'OTHER'
-        birthDate?: string
-        address?: string
-        grade?: string
+        gender: 'MALE' | 'FEMALE' | 'OTHER'
+        birthDate: string
         schoolId: string
     }>
 }) => {
@@ -225,11 +220,10 @@ const addStudentToParent = async (parentId: string, data: {
  * Cập nhật thông tin phụ huynh
  */
 const updateParent = async (id: string, data: {
-    email?: string
     fullName?: string
+    email?: string
     phone?: string
-    gender?: 'MALE' | 'FEMALE' | 'OTHER'
-    birthDate?: string
+    relationshipType?: 'FATHER' | 'MOTHER' | 'OTHER'
 }) => {
     try {
         const response = await ApiService.put(`/admin-center/parent-management/${id}`, data)
@@ -357,11 +351,14 @@ const createBillForParent = async (
     }
 }
 
-const updatePaymentStatus = async (paymentId: string, status: string) => {
+const updatePaymentStatus = async (paymentId: string, status: string, notes?: string) => {
     try {
-        const query = new URLSearchParams({ status }).toString()
         const response = await ApiService.patch(
-            `/admin-center/parent-management/${paymentId}/update-payment-status?${query}`
+            `/admin-center/parent-management/${paymentId}/update-payment-status`,
+            {
+                status,
+                notes
+            }
         )
         return response.data as {
             data: any

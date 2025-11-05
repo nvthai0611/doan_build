@@ -95,7 +95,6 @@ export default function ParentManagement() {
       toast.error(error?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái")
     }
   })
-  console.log(parentData);
   
   const parents = parentData || []
   const totalPages = parentData?.pagination?.totalPages || 1

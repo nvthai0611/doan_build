@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { ParentService } from "../../../../services/center-owner/parent-management/parent.service"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, UserPlus, Users } from "lucide-react"
+import { Loader2, Users } from "lucide-react"
 import { isValidEmail, isValidPhone, sanitizeString } from "../../../../services/common/utils/validation.utils"
 import { StudentFormSection } from "./StudentFormSection"
 import { SchoolService } from "../../../../services/common/school/school.service"
@@ -23,20 +23,14 @@ interface CreateParentModalProps {
 
 interface StudentData {
   fullName: string
-  username: string
-  email?: string
-  studentCode?: string
-  phone?: string
-  gender?: 'MALE' | 'FEMALE' | 'OTHER'
-  birthDate?: string
-  address?: string
-  grade?: string
+  gender: 'MALE' | 'FEMALE' | 'OTHER'
+  birthDate: string
   schoolId: string
 }
 
 export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentModalProps) {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState< "with-students" | "parent-only" >("with-students")
+  const [activeTab, setActiveTab] = useState<"with-students" | "parent-only">("with-students")
   
   const [formData, setFormData] = useState({
     username: "",
@@ -44,11 +38,10 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     email: "",
     fullName: "",
     phone: "",
-    gender: "OTHER" as "MALE" | "FEMALE" | "OTHER",
-    birthDate: ""
+    relationshipType: "OTHER" as "FATHER" | "MOTHER" | "OTHER",
   })
 
-  const [students, setStudents] = useState<any[]>([])
+  const [students, setStudents] = useState<StudentData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Fetch schools for student selection
@@ -60,22 +53,6 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
 
   const schools = schoolsData?.data || []
 
-  // Create parent only mutation
-  const createParentMutation = useMutation({
-    mutationFn: ParentService.createParent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["parents"] })
-      queryClient.invalidateQueries({ queryKey: ["parent-status"] })
-      toast.success("Tạo phụ huynh thành công!")
-      handleClose()
-      onSuccess?.()
-    },
-    onError: (error: any) => {
-      const message = error?.message || "Có lỗi xảy ra khi tạo phụ huynh"
-      toast.error(message)
-    }
-  })
-
   // Create parent with students mutation
   const createParentWithStudentsMutation = useMutation({
     mutationFn: ParentService.createParentWithStudents,
@@ -83,7 +60,6 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       queryClient.invalidateQueries({ queryKey: ["parents"] })
       queryClient.invalidateQueries({ queryKey: ["parent-status"] })
       
-      // Show success with created accounts info
       const studentCount = response.data?.studentCount || 0
       toast.success(`Tạo thành công phụ huynh và ${studentCount} học sinh!`, {
         description: "Thông tin đăng nhập đã được tạo cho tất cả tài khoản."
@@ -93,8 +69,18 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       onSuccess?.()
     },
     onError: (error: any) => {
-      const message = error?.message || "Có lỗi xảy ra khi tạo phụ huynh và học sinh"
-      toast.error(message)
+      console.error('Full error object:', error)
+      
+      // Extract error message from different possible structures
+      const message = 
+        error?.response?.data?.message || 
+        error?.message || 
+        error?.data?.message ||
+        "Có lỗi xảy ra khi tạo phụ huynh và học sinh"
+      
+      toast.error(message, {
+        description: error?.response?.data?.error || undefined
+      })
     }
   })
 
@@ -148,59 +134,34 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     const newErrors: Record<string, string> = {}
 
     if (students.length === 0) {
-        newErrors.students = "Vui lòng thêm ít nhất 1 học sinh"
-        setErrors(newErrors)
-        return false
+      newErrors.students = "Vui lòng thêm ít nhất 1 học sinh"
+      setErrors(newErrors)
+      return false
     }
 
     students.forEach((student, index) => {
-        // Validate fullName (required)
-        const sanitizedName = sanitizeString(student.fullName)
-        if (!sanitizedName) {
-            newErrors[`students.${index}.fullName`] = "Họ và tên không được để trống"
-        } else if (sanitizedName.length < 2) {
-            newErrors[`students.${index}.fullName`] = "Họ và tên phải có ít nhất 2 ký tự"
-        }
+      // Validate fullName (required)
+      const sanitizedName = sanitizeString(student.fullName)
+      if (!sanitizedName) {
+        newErrors[`students.${index}.fullName`] = "Họ và tên không được để trống"
+      } else if (sanitizedName.length < 2) {
+        newErrors[`students.${index}.fullName`] = "Họ và tên phải có ít nhất 2 ký tự"
+      }
 
-        // Validate username (required)
-        const sanitizedUsername = sanitizeString(student.username)
-        if (!sanitizedUsername) {
-            newErrors[`students.${index}.username`] = "Username không được để trống"
-        } else if (sanitizedUsername.length < 3 || sanitizedUsername.length > 20) {
-            newErrors[`students.${index}.username`] = "Username phải từ 3-20 ký tự"
-        } else if (!/^[a-zA-Z0-9_]+$/.test(sanitizedUsername)) {
-            newErrors[`students.${index}.username`] = "Username chỉ được chứa chữ, số và dấu gạch dưới"
-        }
+      // Validate gender (required)
+      if (!student.gender) {
+        newErrors[`students.${index}.gender`] = "Giới tính không được để trống"
+      }
 
-        // Validate studentCode (REQUIRED)
-        // const sanitizedCode = student.studentCode?.trim().toUpperCase()
-        // if (!sanitizedCode) {
-        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh không được để trống"
-        // } else if (!/^[A-Z0-9]+$/.test(sanitizedCode)) {
-        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh chỉ được chứa chữ IN HOA và số"
-        // } else if (sanitizedCode.length < 3) {
-        //     newErrors[`students.${index}.studentCode`] = "Mã học sinh phải có ít nhất 3 ký tự"
-        // }
-
-        // Validate schoolId (required)
-        if (!student.schoolId) {
-            newErrors[`students.${index}.schoolId`] = "Vui lòng chọn trường học"
-        }
-
-        // Email validation (optional but if provided must be valid)
-        if (student.email && student.email.trim() && !isValidEmail(student.email)) {
-            newErrors[`students.${index}.email`] = "Email không hợp lệ"
-        }
-
-        // Phone validation (optional but if provided must be valid)
-        if (student.phone && student.phone.trim() && !isValidPhone(student.phone)) {
-            newErrors[`students.${index}.phone`] = "Số điện thoại không hợp lệ"
-        }
+      // Validate schoolId (required)
+      if (!student.schoolId) {
+        newErrors[`students.${index}.schoolId`] = "Vui lòng chọn trường học"
+      }
     })
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-}
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -211,45 +172,29 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       return
     }
 
-    // Prepare parent data
-    const parentData = {
+    // Validate students
+    if (!validateStudents()) {
+      toast.error("Vui lòng kiểm tra lại thông tin học sinh")
+      return
+    }
+
+    // Prepare data to send to API
+    const submitData = {
       username: sanitizeString(formData.username),
       password: formData.password.trim(),
       fullName: sanitizeString(formData.fullName),
       email: formData.email.trim(),
       phone: formData.phone.trim(),
-      gender: formData.gender,
-      birthDate: formData.birthDate || undefined
+      relationshipType: formData.relationshipType,
+      students: students.map(s => ({
+        fullName: sanitizeString(s.fullName),
+        gender: s.gender,
+        birthDate: s.birthDate,
+        schoolId: s.schoolId
+      }))
     }
 
-    if (activeTab === "parent-only") {
-      // Create parent only
-      createParentMutation.mutate(parentData)
-    } else {
-      // Create parent with students
-      if (!validateStudents()) {
-        toast.error("Vui lòng kiểm tra lại thông tin học sinh")
-        return
-      }
-
-      const submitData = {
-        ...parentData,
-        students: students.map(s => ({
-          fullName: sanitizeString(s.fullName),
-          username: sanitizeString(s.username),
-          studentCode: s.studentCode.trim().toUpperCase(), // Convert to uppercase
-          email: s.email?.trim() || undefined,
-          phone: s.phone?.trim() || undefined,
-          gender: s.gender || "OTHER",
-          birthDate: s.birthDate || undefined,
-          address: s.address?.trim() || undefined,
-          grade: s.grade || undefined,
-          schoolId: s.schoolId
-        }))
-      }
-
-      createParentWithStudentsMutation.mutate(submitData)
-    }
+    createParentWithStudentsMutation.mutate(submitData as any)
   }
 
   const handleClose = () => {
@@ -259,8 +204,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       email: "",
       fullName: "",
       phone: "",
-      gender: "OTHER",
-      birthDate: ""
+      relationshipType: "OTHER",
     })
     setStudents([])
     setErrors({})
@@ -279,7 +223,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     setErrors(prev => ({ ...prev, [field]: value }))
   }
 
-  const isPending = createParentMutation.isPending || createParentWithStudentsMutation.isPending
+  const isPending = createParentWithStudentsMutation.isPending
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -289,162 +233,32 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
             Tạo tài khoản phụ huynh mới
           </DialogTitle>
           <DialogDescription>
-            Chọn tạo chỉ phụ huynh hoặc tạo kèm học sinh
+            Tạo phụ huynh kèm học sinh
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab}  onValueChange={(v) => setActiveTab(v as any)} className="mt-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-4">
           <TabsList className="grid w-full grid-cols-1">
-            {/* <TabsTrigger value="parent-only" className="gap-2">
-              <UserPlus className="w-4 h-4" />
-              Chỉ phụ huynh
-            </TabsTrigger> */}
-            <TabsTrigger value="with-students"  className="gap-2">
+            <TabsTrigger value="with-students" className="gap-2">
               <Users className="w-4 h-4" />
               Phụ huynh + Học sinh
             </TabsTrigger>
           </TabsList>
 
           <form onSubmit={handleSubmit} className="mt-6">
-            <TabsContent value="parent-only" className="space-y-4">
-              {/* Parent Form */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Thông tin phụ huynh</h3>
-                
-                {/* Username */}
-                <div className="space-y-2">
-                  <Label htmlFor="username">
-                    Username <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => handleInputChange("username", e.target.value)}
-                    placeholder="username123"
-                    className={errors.username ? "border-red-500" : ""}
-                  />
-                  {errors.username && (
-                    <p className="text-sm text-red-500">{errors.username}</p>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div className="space-y-2">
-                  <Label htmlFor="password">
-                    Mật khẩu <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    placeholder="Tối thiểu 6 ký tự"
-                    className={errors.password ? "border-red-500" : ""}
-                  />
-                  {errors.password && (
-                    <p className="text-sm text-red-500">{errors.password}</p>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="parent@example.com"
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500">{errors.email}</p>
-                  )}
-                </div>
-
-                {/* Full Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">
-                    Họ và tên <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="fullName"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange("fullName", e.target.value)}
-                    placeholder="Nguyễn Văn A"
-                    className={errors.fullName ? "border-red-500" : ""}
-                  />
-                  {errors.fullName && (
-                    <p className="text-sm text-red-500">{errors.fullName}</p>
-                  )}
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    Số điện thoại <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="0123456789"
-                    className={errors.phone ? "border-red-500" : ""}
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-red-500">{errors.phone}</p>
-                  )}
-                </div>
-
-                {/* Gender & Birth Date */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Giới tính</Label>
-                    <Select
-                      value={formData.gender}
-                      onValueChange={(value: "MALE" | "FEMALE" | "OTHER") => 
-                        handleInputChange("gender", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MALE">Nam</SelectItem>
-                        <SelectItem value="FEMALE">Nữ</SelectItem>
-                        <SelectItem value="OTHER">Khác</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="birthDate">Ngày sinh</Label>
-                    <Input
-                      id="birthDate"
-                      type="date"
-                      value={formData.birthDate}
-                      onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
             <TabsContent value="with-students" className="space-y-6">
-              {/* Parent Form (same as above) */}
+              {/* Parent Form */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Thông tin phụ huynh</h3>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Username */}
                   <div className="space-y-2">
-                    <Label htmlFor="username-with-students">
+                    <Label htmlFor="username">
                       Username <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="username-with-students"
+                      id="username"
                       value={formData.username}
                       onChange={(e) => handleInputChange("username", e.target.value)}
                       placeholder="username123"
@@ -457,11 +271,11 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
 
                   {/* Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="password-with-students">
+                    <Label htmlFor="password">
                       Mật khẩu <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="password-with-students"
+                      id="password"
                       type="password"
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
@@ -477,11 +291,11 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
                 <div className="grid grid-cols-2 gap-4">
                   {/* Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="email-with-students">
+                    <Label htmlFor="email">
                       Email <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="email-with-students"
+                      id="email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
@@ -495,11 +309,11 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
 
                   {/* Full Name */}
                   <div className="space-y-2">
-                    <Label htmlFor="fullName-with-students">
+                    <Label htmlFor="fullName">
                       Họ và tên <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="fullName-with-students"
+                      id="fullName"
                       value={formData.fullName}
                       onChange={(e) => handleInputChange("fullName", e.target.value)}
                       placeholder="Nguyễn Văn A"
@@ -514,11 +328,11 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
                 <div className="grid grid-cols-3 gap-4">
                   {/* Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone-with-students">
+                    <Label htmlFor="phone">
                       Số điện thoại <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="phone-with-students"
+                      id="phone"
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       placeholder="0123456789"
@@ -529,36 +343,38 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
                     )}
                   </div>
 
-                  {/* Gender */}
+                  {/* Relationship Type */}
                   <div className="space-y-2">
-                    <Label htmlFor="gender-with-students">Giới tính</Label>
+                    <Label htmlFor="relationshipType">
+                      Mối quan hệ <span className="text-red-500">*</span>
+                    </Label>
                     <Select
-                      value={formData.gender}
-                      onValueChange={(value: "MALE" | "FEMALE" | "OTHER") => 
-                        handleInputChange("gender", value)
+                      value={formData.relationshipType}
+                      onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") => 
+                        handleInputChange("relationshipType", value)
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="MALE">Nam</SelectItem>
-                        <SelectItem value="FEMALE">Nữ</SelectItem>
+                        <SelectItem value="FATHER">Bố</SelectItem>
+                        <SelectItem value="MOTHER">Mẹ</SelectItem>
                         <SelectItem value="OTHER">Khác</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Birth Date */}
+                  {/* Birth Date
                   <div className="space-y-2">
-                    <Label htmlFor="birthDate-with-students">Ngày sinh</Label>
+                    <Label htmlFor="birthDate">Ngày sinh</Label>
                     <Input
-                      id="birthDate-with-students"
+                      id="birthDate"
                       type="date"
                       value={formData.birthDate}
                       onChange={(e) => handleInputChange("birthDate", e.target.value)}
                     />
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -598,7 +414,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
                     Đang tạo...
                   </>
                 ) : (
-                  activeTab === "parent-only" ? "Tạo phụ huynh" : "Tạo phụ huynh & học sinh"
+                  "Tạo phụ huynh & học sinh"
                 )}
               </Button>
             </div>
