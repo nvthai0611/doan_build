@@ -50,6 +50,8 @@ import { ClassNotificationCronService } from './crons/class-notification-cron.se
 import { ClassNotificationService } from './services/class-notification.service';
 import { ContractUploadController } from './controllers/contract-upload.controller';
 import { ContractUploadService } from './services/contract-upload.service';
+import { RoomsManagementController } from './controllers/rooms-management.controller';
+import { RoomsManagementService } from './services/rooms-management.service';
 
 @Module({
   imports: [
@@ -85,6 +87,7 @@ import { ContractUploadService } from './services/contract-upload.service';
     TeacherFeedbackMonitoringController,
     ShowcaseManagementController,
     ContractUploadController,
+    RoomsManagementController,
   ],
   providers: [
     PrismaService,
@@ -110,6 +113,7 @@ import { ContractUploadService } from './services/contract-upload.service';
     ShowcaseManagementService,
     CloudinaryService,
     ContractUploadService,
+    RoomsManagementService,
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học

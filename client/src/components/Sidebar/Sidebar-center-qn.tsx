@@ -100,7 +100,7 @@ const centerOwnerMenuItems = [
       { title: 'Quản lý lớp học', href: '/center-qn/classes' },
       { title: 'Quản lý môn học', href: '/courses' },
     //   { title: 'Thời khóa biểu', href: '/courses/timetable' },
-      { title: 'Quản lý phòng học', href: '/courses/rooms' },
+      { title: 'Quản lý phòng học', href: '/center-qn/rooms' },
       { title: 'Cảnh báo xung đột', href: '/courses/conflicts' },
     //   { title: 'Clone khóa học', href: '/courses/clone' },   
     ],
