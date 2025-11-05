@@ -32,12 +32,52 @@ import { Switch } from "../../assets/shadcn-ui/components/ui/switch";
 import { Button } from "../../assets/shadcn-ui/components/ui/button";
 import { useTheme } from "../../lib/theme";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { alertService } from "../../services/center-owner/alerts/alert.service";
+import { AlertList } from "../../components/Alerts/AlertList";
+
+// Notification Dropdown Component
+const NotificationDropdown = () => {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { data: unreadCountData, refetch } = useQuery({
+    queryKey: ['alerts', 'unread-count'],
+    queryFn: async () => {
+      const response = await alertService.getUnreadCount();
+      return response.data.count;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const unreadCount = unreadCountData || 0;
+
+  return (
+    <DropdownMenu
+      open={notificationsOpen}
+      onOpenChange={setNotificationsOpen}
+    >
+      <DropdownMenuTrigger asChild>
+        <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+          <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          {unreadCount > 0 && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            </div>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-96 p-0">
+        <AlertList onUpdate={refetch} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 const Header = () => {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFullscreen, setSettingsFullscreen] = useState(false);
   
@@ -137,7 +177,6 @@ const Header = () => {
       if (e.key === "Escape") {
         setSearchOpen(false);
         setSettingsOpen(false);
-        setNotificationsOpen(false);
       }
     };
 
@@ -249,57 +288,7 @@ const Header = () => {
           </button>
 
           {/* Notifications */}
-          <DropdownMenu
-            open={notificationsOpen}
-            onOpenChange={setNotificationsOpen}
-          >
-            <DropdownMenuTrigger asChild>
-              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">92</span>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel className="flex items-center justify-between">
-                <span>Thông báo</span>
-                <span className="text-xs text-gray-500">92 thông báo mới</span>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="max-h-96 overflow-y-auto">
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium text-sm">
-                    Học sinh mới đăng ký
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Nguyễn Văn A vừa đăng ký khóa học Toán 12
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">2 phút trước</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium text-sm">
-                    Thanh toán thành công
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Học phí tháng 9 đã được thanh toán
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">1 giờ trước</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium text-sm">Lịch học thay đổi</div>
-                  <div className="text-xs text-gray-500">
-                    Lớp Toán 12A chuyển từ 14h sang 15h
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">3 giờ trước</div>
-                </DropdownMenuItem>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-center text-blue-600">
-                Xem tất cả thông báo
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationDropdown />
 
           {/* Settings */}
           <button

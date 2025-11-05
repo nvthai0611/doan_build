@@ -38,9 +38,14 @@ export class QueryClassDto {
   @IsEnum(['morning', 'afternoon', 'evening', 'all'])
   shift?: string = 'all';
 
+
   @IsOptional()
   @IsString()
-  academicYear?: string;
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
 
   @IsOptional()
   @Transform(({ value }) => parseInt(value))

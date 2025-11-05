@@ -93,7 +93,7 @@ const centerOwnerMenuItems = [
     ],
   },
   {
-    title: 'Lớp học & Khóa học',
+    title: 'Lớp học & Môn học',
     icon: BookOpen,
     href: '/center-qn/classes',
     children: [
