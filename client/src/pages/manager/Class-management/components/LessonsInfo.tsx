@@ -192,6 +192,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF],
         className: SESSION_STATUS_COLORS[SessionStatus.DAY_OFF],
         icon: CalendarOff
+      },
+      [SessionStatus.CANCELLED]: {
+        variant: 'destructive', 
+        label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED],
+        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED],
+        icon: XCircle
       }
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];

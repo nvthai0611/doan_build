@@ -185,10 +185,31 @@ export const ChangeStatusDialog = ({
       currentStatus === ClassStatus.DRAFT &&
       targetStatus === ClassStatus.READY
     ) {
+      // Kiểm tra điều kiện để chuyển sang ready
+      const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+      const hasSchedule = Boolean(classData?.recurringSchedule && 
+        classData.recurringSchedule.schedules && 
+        classData.recurringSchedule.schedules.length > 0);
+      
+      const warnings = [];
+      if (!hasTeacher) {
+        warnings.push('chưa có giáo viên');
+      }
+      if (!hasSchedule) {
+        warnings.push('chưa có lịch học');
+      }
+      
+      if (warnings.length > 0) {
+        return {
+          type: 'warning' as const,
+          message: `Cảnh báo: Lớp ${warnings.join(' và ')}. Bạn vẫn có thể chuyển trạng thái, nhưng nên bổ sung đầy đủ thông tin trước khi mở tuyển sinh.`,
+        };
+      }
+      
       return {
         type: 'info' as const,
         message:
-          'Lớp cần có giáo viên, phòng học, và lịch học trước khi mở tuyển sinh.',
+          'Lớp đã đủ điều kiện để mở tuyển sinh (có giáo viên, phòng học, và lịch học).',
       };
     }
 
@@ -245,6 +266,33 @@ export const ChangeStatusDialog = ({
   // === FIX 1: THAY ĐỔI LOGIC MỞ DIALOG XÁC NHẬN ===
   const handleChangeStatus = async () => {
     if (!selectedStatus) return;
+
+    // Nếu chuyển từ draft sang ready, kiểm tra và hiển thị warning nếu thiếu thông tin
+    if (
+      currentStatus === ClassStatus.DRAFT &&
+      selectedStatus === ClassStatus.READY
+    ) {
+      const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+      const hasSchedule = Boolean(classData?.recurringSchedule && 
+        classData.recurringSchedule.schedules && 
+        classData.recurringSchedule.schedules.length > 0);
+      
+      if (!hasTeacher || !hasSchedule) {
+        const warnings = [];
+        if (!hasTeacher) warnings.push('giáo viên');
+        if (!hasSchedule) warnings.push('lịch học');
+        
+        const message = `Bạn sắp chuyển lớp "${classData?.name}" từ trạng thái "Lớp nháp" sang "Sẵn sàng". ` +
+          `Lưu ý: Lớp hiện ${warnings.join(' và ')}. ` +
+          `Bạn vẫn có thể chuyển trạng thái, nhưng nên bổ sung đầy đủ thông tin trước khi mở tuyển sinh. ` +
+          `Bạn có chắc chắn muốn tiếp tục không?`;
+        
+        setWarningMessage(message);
+        setPendingStatus(selectedStatus);
+        setShowConfirmWarning(true);
+        return;
+      }
+    }
 
     // Nếu chuyển sang active từ ready hoặc suspended
     if (

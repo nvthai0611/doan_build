@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   XCircle
 } from 'lucide-react';
-import { alertService, Alert } from '../../../services/center-owner/alert.service';
+import { alertService, Alert } from '../../../services/center-owner/alerts/alert.service';
 import { useToast } from '../../../hooks/use-toast';
 
 export const AlertsPage = () => {

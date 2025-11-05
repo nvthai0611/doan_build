@@ -1,4 +1,4 @@
-import { apiClient } from '../common/api/api-client';
+import { apiClient } from '../../common/api/api-client';
 
 export interface Alert {
   id: string;
@@ -53,7 +53,7 @@ export class AlertService {
       const response = await apiClient.get<UnreadCountResponse>(
         `${this.BASE_URL}/unread-count`
       );
-      return response as any;
+      return response;
     } catch (error) {
       console.error('Error fetching unread count:', error);
       throw error;
