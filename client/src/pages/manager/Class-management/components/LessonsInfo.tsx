@@ -239,7 +239,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         <div>
           <div 
             className="font-medium text-blue-600 cursor-pointer hover:underline"
-            onClick={() => navigate(`/center-qn/session-details/${session.id}`)}
+            onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}
           >
             {`${session.name || session.notes || session.topic }`}
           </div>
@@ -329,7 +329,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/center-qn/session-details/${session.id}`)}>Xem chi tiết</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}>Xem chi tiết</DropdownMenuItem>
                         <DropdownMenuItem>Lùi lịch</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">Hủy buổi học</DropdownMenuItem>
                       </DropdownMenuContent>
