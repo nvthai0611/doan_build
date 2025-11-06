@@ -10,11 +10,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff } from 'lucide-react';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
 import { classService } from '../../../../services/center-owner/class-management/class.service';
+import { centerOwnerScheduleService } from '../../../../services/center-owner/center-schedule/schedule.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import { toast } from 'sonner';
 import { SessionStatus, SESSION_STATUS_LABELS, SESSION_STATUS_COLORS, ClassStatus, CLASS_STATUS_LABELS } from '../../../../lib/constants';
@@ -33,6 +34,13 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const [isAddLessonOpen, setIsAddLessonOpen] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<{
+    notes: string;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Pagination hook
   const pagination = usePagination({
@@ -215,6 +223,43 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     return Math.round((attendanceCount / totalStudents) * 100);
   };
 
+  // Handle edit session
+  const handleStartEdit = (session: any) => {
+    setEditingSessionId(session.id);
+    setEditingSession({
+      notes: session.name || session.notes || session.topic || '',
+      startTime: session.startTime || '08:00',
+      endTime: session.endTime || '09:30',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSessionId(null);
+    setEditingSession(null);
+  };
+
+  const handleSaveEdit = async (sessionId: string) => {
+    if (!editingSession) return;
+
+    try {
+      setIsUpdating(true);
+      await centerOwnerScheduleService.updateSession(sessionId, {
+        notes: editingSession.notes,
+        startTime: editingSession.startTime,
+        endTime: editingSession.endTime,
+      });
+      toast.success('Cập nhật buổi học thành công');
+      setEditingSessionId(null);
+      setEditingSession(null);
+      refetch();
+    } catch (error: any) {
+      console.error('Error updating session:', error);
+      toast.error(error?.message || 'Có lỗi xảy ra khi cập nhật buổi học');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
 
   // Define columns for DataTable
   const columns: Column<any>[] = [
@@ -235,26 +280,92 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       sortKey: 'topic',
       searchable: true,
       searchPlaceholder: 'Tìm kiếm buổi học...',
-      render: (session: any, index: number) => (
-        <div>
-          <div 
-            className="font-medium text-blue-600 cursor-pointer hover:underline"
-            onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}
-          >
-            {`${session.name || session.notes || session.topic }`}
+      render: (session: any, index: number) => {
+        const isEditing = editingSessionId === session.id;
+        const d = session.scheduledDate || session.sessionDate;
+        const weekday = d ? getWeekdayName(d) : '';
+        const dateText = d ? format(new Date(d), 'dd/MM/yyyy') : '-';
+        
+        return (
+          <div className="group relative">
+            {isEditing ? (
+              // Edit mode
+              <div className="space-y-2">
+                <Input
+                  value={editingSession?.notes || ''}
+                  onChange={(e) => setEditingSession({ ...editingSession!, notes: e.target.value })}
+                  placeholder="Tên buổi học"
+                  className="text-sm"
+                  autoFocus
+                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={editingSession?.startTime || ''}
+                    onChange={(e) => setEditingSession({ ...editingSession!, startTime: e.target.value })}
+                    className="text-sm h-8"
+                  />
+                  <span className="text-gray-500">→</span>
+                  <Input
+                    type="time"
+                    value={editingSession?.endTime || ''}
+                    onChange={(e) => setEditingSession({ ...editingSession!, endTime: e.target.value })}
+                    className="text-sm h-8"
+                  />
+                </div>
+                <div className="text-xs text-gray-500">
+                  {weekday}: {dateText}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2"
+                    onClick={() => handleSaveEdit(session.id)}
+                    disabled={isUpdating}
+                  >
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2"
+                    onClick={handleCancelEdit}
+                    disabled={isUpdating}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // View mode
+              <div className="relative">
+                <div 
+                  className="font-medium text-blue-600 cursor-pointer hover:underline inline-block"
+                  onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}
+                >
+                  {`${session.name || session.notes || session.topic }`}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {weekday}: {dateText}
+                  {session.startTime && session.endTime && ` ${session.startTime} → ${session.endTime}`}
+                </div>
+                {/* Edit icon on hover */}
+                <button
+                  className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(session);
+                  }}
+                  title="Chỉnh sửa"
+                >
+                  <Edit className="h-3 w-3 text-gray-600" />
+                </button>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-gray-500">
-            {(() => {
-              const d = session.scheduledDate || session.sessionDate;
-              if (!d) return '-';
-              const weekday = getWeekdayName(d);
-              const dateText = format(new Date(d), 'dd/MM/yyyy');
-              const timeText = session.startTime && session.endTime ? ` ${session.startTime} → ${session.endTime}` : '';
-              return `${weekday}: ${dateText}${timeText}`;
-            })()}
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'status',
@@ -280,7 +391,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       render: (session: any) => (
         <div className="flex items-center gap-1">
           <Info className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{session.totalStudents || session.studentCount || 0}</span>
+          <span className="text-sm">{session.studentCount || 0} / {session.totalStudents || session.studentCount || 0}</span>
         </div>
       )
     },
