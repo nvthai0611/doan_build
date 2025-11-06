@@ -285,7 +285,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         const d = session.scheduledDate || session.sessionDate;
         const weekday = d ? getWeekdayName(d) : '';
         const dateText = d ? format(new Date(d), 'dd/MM/yyyy') : '-';
-
+        
         return (
           <div className="group relative">
             {isEditing ? (
@@ -391,7 +391,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       render: (session: any) => (
         <div className="flex items-center gap-1">
           <Info className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{session.totalStudents || session.studentCount || 0}</span>
+          <span className="text-sm">{session.studentCount || 0} / {session.totalStudents || session.studentCount || 0}</span>
         </div>
       )
     },

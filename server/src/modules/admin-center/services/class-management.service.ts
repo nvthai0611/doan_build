@@ -2009,6 +2009,7 @@ export class ClassManagementService {
         sortOrder = 'desc',
       } = query;
 
+      
       const skip = (page - 1) * limit;
       const take = parseInt(limit);
 
@@ -2056,7 +2057,7 @@ export class ClassManagementService {
       }
 
       // Get sessions with pagination
-      const [sessions, total, studentCount] = await Promise.all([
+      const [sessions, total] = await Promise.all([
         this.prisma.classSession.findMany({
           where,
           skip,
@@ -2091,33 +2092,47 @@ export class ClassManagementService {
           },
         }),
         this.prisma.classSession.count({ where }),
-        this.prisma.enrollment.count({
-          where: { classId: classId, status: { notIn: ['stopped'] } },
-        }),
       ]);
 
+      // Đếm enrollment cho từng session dựa trên enrolledAt <= sessionDate
+      const sessionStudentCounts = await Promise.all(
+        sessions.map((session) =>
+          this.prisma.enrollment.count({
+            where: {
+              classId: classId,
+              status: { notIn: ['stopped', 'withdrawn'] },
+              enrolledAt: {
+                lte: session.sessionDate, // Chỉ đếm những người đã enroll trước hoặc vào ngày của buổi học
+              },
+            },
+          }),
+        ),
+      );
+
       // Transform data to match frontend expectations
-      const transformedSessions = sessions.map((session, index) => ({
-        id: session.id,
-        topic: session.notes || `Buổi ${index + 1}`,
-        name: session.notes || `Buổi ${index + 1}`,
-        scheduledDate: session.sessionDate.toISOString().split('T')[0],
-        sessionDate: session.sessionDate.toISOString().split('T')[0],
-        startTime: session.startTime,
-        endTime: session.endTime,
-        status: session.status,
-        notes: session.notes,
-        teacher: session.class.teacher?.user?.fullName || null,
-        teacherName: session.class.teacher?.user?.fullName || null,
-        totalStudents: session.class.maxStudents || 0,
-        studentCount: studentCount || 0,
-        attendanceCount: session._count.attendances || 0,
-        absentCount: 0, // Will be calculated based on attendance
-        notAttendedCount:
-          (studentCount || 0) - (session._count.attendances || 0),
-        rating: 0, // Default rating since not available in schema
-        roomName: session.room?.name || null,
-      }));
+      const transformedSessions = sessions.map((session, index) => {
+        const studentCount = sessionStudentCounts[index] || 0;
+        return {
+          id: session.id,
+          topic: session.notes || `Buổi ${index + 1}`,
+          name: session.notes || `Buổi ${index + 1}`,
+          scheduledDate: session.sessionDate.toISOString().split('T')[0],
+          sessionDate: session.sessionDate.toISOString().split('T')[0],
+          startTime: session.startTime,
+          endTime: session.endTime,
+          status: session.status,
+          notes: session.notes,
+          teacher: session.class.teacher?.user?.fullName || null,
+          teacherName: session.class.teacher?.user?.fullName || null,
+          totalStudents: session.class.maxStudents || 0,
+          studentCount: studentCount,
+          attendanceCount: session._count.attendances || 0,
+          absentCount: 0, // Will be calculated based on attendance
+          notAttendedCount: studentCount - (session._count.attendances || 0),
+          rating: 0, // Default rating since not available in schema
+          roomName: session.room?.name || null,
+        };
+      });
 
       const totalPages = Math.ceil(total / take);
 
