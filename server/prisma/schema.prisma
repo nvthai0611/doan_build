@@ -1043,3 +1043,38 @@ model Scholarship {
   @@index([isActive], map: "idx_scholarship_active")
   @@map("scholarships")
 }
+
+// Model hiện tại của bạn đã đủ tốt:
+model CronJobExecution {
+  id          String    @id @default(uuid()) @db.Uuid
+  jobType     String    @map("job_type")
+  status      String    @default("running")
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  totalItems   Int @default(0) @map("total_items")
+  successCount Int @default(0) @map("success_count")
+  failedCount  Int @default(0) @map("failed_count")
+
+  // ✅ Dùng metadata cho thông tin chung
+  metadata Json? // { teacherId: "xxx", period: "2024-11", filters: {...} }
+
+  // ✅ Dùng errorDetails cho CHI TIẾT từng item lỗi
+  errorDetails Json? @map("error_details")
+  // Ví dụ: [
+  //   { itemId: "student-123", itemName: "Nguyễn Văn A", error: "Missing fee structure" },
+  //   { itemId: "student-456", itemName: "Trần Thị B", error: "Database connection failed" }
+  // ]
+
+  // ✅ Dùng errorMessage cho thông báo lỗi tổng quát
+  errorMessage String? @map("error_message") // "Failed to generate 5/10 invoices"
+
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([jobType], map: "idx_cronjob_type")
+  @@index([status], map: "idx_cronjob_status")
+  @@index([startedAt], map: "idx_cronjob_started")
+  @@map("cron_job_executions")
+}
