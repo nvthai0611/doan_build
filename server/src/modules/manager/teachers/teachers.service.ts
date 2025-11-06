@@ -93,14 +93,12 @@ export class TeachersService {
               id: true,
               periodStart: true,
               periodEnd: true,
-              baseSalary: true,
               teachingHours: true,
               hourlyRate: true,
               bonuses: true,
               deductions: true,
               totalAmount: true,
               status: true,
-              paidAt: true,
             },
             orderBy: {
               periodStart: 'desc'
@@ -247,14 +245,12 @@ export class TeachersService {
               id: true,
               periodStart: true,
               periodEnd: true,
-              baseSalary: true,
               teachingHours: true,
               hourlyRate: true,
               bonuses: true,
               deductions: true,
               totalAmount: true,
               status: true,
-              paidAt: true,
             },
             orderBy: {
               periodStart: 'desc'
