@@ -2079,6 +2079,24 @@ export class ClassManagementService {
                 },
               },
             },
+            teacher: {
+              select: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
+            substituteTeacher: {
+              select: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
             room: {
               select: {
                 name: true,
@@ -2112,6 +2130,15 @@ export class ClassManagementService {
       // Transform data to match frontend expectations
       const transformedSessions = sessions.map((session, index) => {
         const studentCount = sessionStudentCounts[index] || 0;
+        
+        // Xác định giáo viên: nếu có giáo viên thay thế và ngày thay thế còn hiệu lực thì dùng giáo viên thay thế
+        const isSubstitute = session.substituteTeacherId && 
+                            session.substituteEndDate && 
+                            new Date(session.substituteEndDate) >= session.sessionDate;
+        const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
+        const teacherName = teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
+        const originalTeacherName = session.teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
+        
         return {
           id: session.id,
           topic: session.notes || `Buổi ${index + 1}`,
@@ -2122,8 +2149,11 @@ export class ClassManagementService {
           endTime: session.endTime,
           status: session.status,
           notes: session.notes,
-          teacher: session.class.teacher?.user?.fullName || null,
-          teacherName: session.class.teacher?.user?.fullName || null,
+          teacher: teacherName,
+          teacherName: teacherName,
+          substituteTeacher: session.substituteTeacher?.user?.fullName || null,
+          originalTeacher: originalTeacherName,
+          isSubstitute: isSubstitute,
           totalStudents: session.class.maxStudents || 0,
           studentCount: studentCount,
           attendanceCount: session._count.attendances || 0,
@@ -2818,6 +2848,25 @@ export class ClassManagementService {
           {
             success: false,
             message: 'Vui lòng cập nhật lịch học trước khi phân công giáo viên',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Kiểm tra trùng lịch học với các lớp đã được phân công cho giáo viên
+      const scheduleConflict = await this.checkTeacherScheduleConflict(
+        body.teacherId,
+        classId,
+        classItem.recurringSchedule,
+        classItem.roomId,
+      );
+
+      if (scheduleConflict.hasConflict) {
+        throw new HttpException(
+          {
+            success: false,
+            message: scheduleConflict.message,
+            conflictDetails: scheduleConflict.conflictDetails,
           },
           HttpStatus.BAD_REQUEST,
         );
@@ -4208,5 +4257,207 @@ export class ClassManagementService {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
+  }
+
+  /**
+   * Kiểm tra xung đột lịch học giữa lớp mới và các lớp đã được phân công cho giáo viên
+   * Conflict khi: cùng ngày và thời gian overlap (không cần kiểm tra roomId)
+   */
+  private async checkTeacherScheduleConflict(
+    teacherId: string,
+    newClassId: string,
+    newClassSchedule: any,
+    newClassRoomId: string | null,
+  ): Promise<{ hasConflict: boolean; message: string; conflictDetails?: any[] }> {
+    // Nếu lớp mới không có lịch học thì không cần kiểm tra
+    if (!newClassSchedule) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Lấy danh sách các lớp mà giáo viên đã được phân công (status: ready hoặc active)
+    const assignedClasses = await this.prisma.class.findMany({
+      where: {
+        teacherId,
+        status: { in: ['ready', 'active', 'suspended'] },
+        id: { not: newClassId }, // Loại trừ lớp đang muốn phân công
+      },
+      select: {
+        id: true,
+        name: true,
+        classCode: true,
+        recurringSchedule: true,
+        roomId: true,
+        subject: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (assignedClasses.length === 0) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Parse lịch học của lớp mới
+    const newSchedules = this.parseRecurringSchedule(newClassSchedule, newClassRoomId);
+    if (newSchedules.length === 0) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Kiểm tra xung đột với từng lớp đã được phân công
+    const conflicts: any[] = [];
+
+    for (const assignedClass of assignedClasses) {
+      if (!assignedClass.recurringSchedule) {
+        continue;
+      }
+
+      const assignedSchedules = this.parseRecurringSchedule(assignedClass.recurringSchedule, assignedClass.roomId);
+
+      // So sánh từng slot lịch học của lớp mới với từng slot của lớp đã được phân công
+      for (const newSchedule of newSchedules) {
+        for (const assignedSchedule of assignedSchedules) {
+          // Kiểm tra cùng ngày trong tuần
+          if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(assignedSchedule.day)) {
+            // Kiểm tra overlap thời gian cứ trùng lịch là conflict
+            if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, assignedSchedule.startTime, assignedSchedule.endTime)) {
+              conflicts.push({
+                assignedClass: {
+                  id: assignedClass.id,
+                  name: assignedClass.name,
+                  classCode: assignedClass.classCode,
+                  subject: assignedClass.subject?.name || 'N/A',
+                },
+                conflictDay: this.getDayName(newSchedule.day),
+                conflictTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
+                assignedTime: `${assignedSchedule.startTime} - ${assignedSchedule.endTime}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (conflicts.length > 0) {
+      // Tạo message chi tiết
+      const conflictMessages = conflicts.map(
+        (c) =>
+          `Lớp "${c.assignedClass.name}" (${c.assignedClass.subject}) - ${c.conflictDay}: ${c.conflictTime}`,
+      );
+      const message = `Lịch học của lớp này trùng với các lớp giáo viên đã được phân công:\n${conflictMessages.join('\n')}`;
+
+      return {
+        hasConflict: true,
+        message,
+        conflictDetails: conflicts,
+      };
+    }
+
+    return { hasConflict: false, message: '' };
+  }
+
+  /**
+   * Parse recurringSchedule từ nhiều định dạng khác nhau
+   * 
+   * Hỗ trợ các format:
+   * 1. Object có property schedules (format chính):
+   *    { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...] }
+   * 2. Array trực tiếp:
+   *    [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...]
+   * 
+   * roomId có thể có trong schedule item hoặc dùng classRoomId (roomId của class)
+   */
+  private parseRecurringSchedule(
+    schedule: any,
+    classRoomId: string | null = null,
+  ): Array<{ day: string; startTime: string; endTime: string; roomId: string | null }> {
+    if (!schedule) {
+      return [];
+    }
+
+    // Trường hợp 1: Object có property schedules (format chính)
+    // Format: { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...] }
+    if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+      return schedule.schedules.map((s: any) => ({
+        day: s.day || s.dayOfWeek || '',
+        startTime: s.startTime || '',
+        endTime: s.endTime || '',
+        roomId: s.roomId || classRoomId || null, // Ưu tiên roomId trong schedule, nếu không có thì dùng classRoomId
+      }));
+    }
+
+    // Trường hợp 2: Array trực tiếp (backward compatibility)
+    // Format: [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...]
+    if (Array.isArray(schedule)) {
+      return schedule.map((s: any) => ({
+        day: s.day || s.dayOfWeek || '',
+        startTime: s.startTime || '',
+        endTime: s.endTime || '',
+        roomId: s.roomId || classRoomId || null, // Ưu tiên roomId trong schedule, nếu không có thì dùng classRoomId
+      }));
+    }
+
+    return [];
+  }
+
+  /**
+   * Chuẩn hóa dayOfWeek về cùng format (lowercase)
+   */
+  private normalizeDayOfWeek(day: string): string {
+    if (!day) return '';
+    return day.toLowerCase().trim();
+  }
+
+  /**
+   * Kiểm tra hai khoảng thời gian có overlap (trùng) không
+   * 
+   * Công thức: start1 < end2 && end1 > start2
+   * 
+   * Giải thích:
+   * - Hai khoảng thời gian overlap khi chúng có phần chung
+   * - Điều kiện 1: start1 < end2 → Khoảng 1 bắt đầu trước khi khoảng 2 kết thúc
+   * - Điều kiện 2: end1 > start2 → Khoảng 1 kết thúc sau khi khoảng 2 bắt đầu
+   * - Cả hai điều kiện đều đúng → OVERLAP
+   */
+  private isTimeOverlapping(
+    start1: string,
+    end1: string,
+    start2: string,
+    end2: string,
+  ): boolean {
+    // Convert time string (HH:mm) to minutes for comparison
+    const toMinutes = (time: string): number => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + (minutes || 0);
+    };
+
+    const start1Min = toMinutes(start1);
+    const end1Min = toMinutes(end1);
+    const start2Min = toMinutes(start2);
+    const end2Min = toMinutes(end2);
+
+    // Overlap condition: start1 < end2 && end1 > start2
+    // Hai khoảng overlap khi: khoảng 1 bắt đầu trước khi khoảng 2 kết thúc
+    // VÀ khoảng 1 kết thúc sau khi khoảng 2 bắt đầu
+    return start1Min < end2Min && end1Min > start2Min;
+  }
+
+  /**
+   * Lấy tên ngày tiếng Việt
+   */
+  private getDayName(day: string): string {
+    const dayNames: { [key: string]: string } = {
+      monday: 'Thứ Hai',
+      tuesday: 'Thứ Ba',
+      wednesday: 'Thứ Tư',
+      thursday: 'Thứ Năm',
+      friday: 'Thứ Sáu',
+      saturday: 'Thứ Bảy',
+      sunday: 'Chủ Nhật',
+    };
+
+    const normalizedDay = this.normalizeDayOfWeek(day);
+    return dayNames[normalizedDay] || day;
   }
 }

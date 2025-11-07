@@ -33,6 +33,7 @@ import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ApiKeyMiddleware } from './common/middleware/api-key.middleware';
 import { PaymentModule } from './modules/payment/payment.module';
+import { TasksModule } from './modules/cronjob/cron.module';
 // ...existing code...
 
 @Module({
@@ -61,7 +62,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     AdminCenterModule,
     CloudinaryModule,
     SharedModule,
-    PaymentModule
+    PaymentModule,
+    TasksModule
   ],
   controllers: [AppController],
   providers: [AppService, AuthService, PrismaService],

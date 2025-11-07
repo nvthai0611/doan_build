@@ -7,6 +7,7 @@ import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
+import TodaySessionsPage from "../pages/manager/Center-schedule/TodaySessionsPage";
 import ScoreInputPage from "../pages/teacher/PointManagement/ScoreInput";
 import ViewStudentPage from "../pages/teacher/PointManagement/ScoreView";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
@@ -64,6 +65,7 @@ import SessionDetail from "../pages/manager/Session-management/SessionDetail";
 import NotFound from "../pages/Error/NotFound";
 import ClassroomsPage from "../pages/manager/Room-management/ClassRoom";
 import SubjectsPage from "../pages/manager/Subject-management/Subject";
+import PayrollManagement from "../pages/manager/Payroll-teacher-management/PayrollManagement";
 
 export const privateRoutes = (
   <>
@@ -87,6 +89,7 @@ export const privateRoutes = (
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
+        <Route path="lich-day-hom-nay" element={<TodaySessionsPage />} />
         <Route path="schedule" element={<CenterSchedulePage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
@@ -109,6 +112,7 @@ export const privateRoutes = (
         <Route path="communication/showcases" element={<ShowcasesPage />} />
         <Route path="rooms" element={<ClassroomsPage />} />
         <Route path="courses" element={<SubjectsPage />} />
+        <Route path="payroll-teacher" element={<PayrollManagement />} />
       </Route>
 
       {/* Giáo viên */}

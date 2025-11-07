@@ -28,7 +28,10 @@ export interface TeachingSession {
   room: string
   hasAlert: boolean
   status: SessionStatus
-  teacher: string
+  teacher: string // Giáo viên đang dạy (có thể là giáo viên thay thế)
+  originalTeacher?: string // Giáo viên chính
+  substituteTeacher?: string | null // Giáo viên thay thế
+  isSubstitute?: boolean // Có phải giáo viên thay thế không
   students: Student[]
   attendanceWarnings: string[]
   description?: string

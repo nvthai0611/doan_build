@@ -301,6 +301,7 @@ export class TeacherManagementService {
       take: limitNum,
     });
 
+
     return {
       data: teachers.map((teacher) => this.formatTeacherResponse(teacher)),
       meta: {
@@ -508,6 +509,24 @@ export class TeacherManagementService {
                   }
                   : undefined,
               include: {
+                teacher: {
+                  include: {
+                    user: {
+                      select: {
+                        fullName: true,
+                      },
+                    },
+                  },
+                },
+                substituteTeacher: {
+                  include: {
+                    user: {
+                      select: {
+                        fullName: true,
+                      },
+                    },
+                  },
+                },
                 attendances: {
                   include: {
                     student: {
@@ -531,20 +550,138 @@ export class TeacherManagementService {
       throw new Error('Teacher not found');
     }
 
-    // Chuyển đổi dữ liệu thành format phù hợp với frontend
-    const sessions = teacher.classes.flatMap((cls) =>
-      cls.sessions.map((session) => ({
+    // Lấy các sessions mà giáo viên này là giáo viên thay thế
+    const dateFilter = year && month
+      ? {
+          sessionDate: {
+            gte: new Date(year, month - 1, 1),
+            lt: new Date(year, month, 1),
+          },
+        }
+      : undefined;
+
+    const substituteSessions = await this.prisma.classSession.findMany({
+      where: {
+        substituteTeacherId: id,
+        substituteEndDate: {
+          gte: new Date(), // Chỉ lấy các buổi thay thế còn hiệu lực
+        },
+        ...(dateFilter ? dateFilter : {}),
+      },
+      include: {
+        class: {
+          include: {
+            room: true,
+            subject: true,
+          },
+        },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        substituteTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        attendances: {
+          include: {
+            student: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        sessionDate: 'asc',
+      },
+    });
+
+    // Chuyển đổi dữ liệu từ các lớp học chính
+    const mainSessions = teacher.classes.flatMap((cls) =>
+      cls.sessions
+        .filter((session) => {
+          // Chỉ lấy sessions mà giáo viên này là giáo viên chính (không phải substitute)
+          const isSubstitute = session.substituteTeacherId && 
+                              session.substituteEndDate && 
+                              new Date(session.substituteEndDate) >= session.sessionDate;
+          // Nếu có substitute và substitute không phải là giáo viên này, thì bỏ qua
+          if (isSubstitute && session.substituteTeacherId !== id) {
+            return false;
+          }
+          return true;
+        })
+        .map((session) => {
+          // Xác định giáo viên: nếu có giáo viên thay thế và ngày thay thế còn hiệu lực thì dùng giáo viên thay thế
+          const isSubstitute = session.substituteTeacherId && 
+                              session.substituteEndDate && 
+                              new Date(session.substituteEndDate) >= session.sessionDate &&
+                              session.substituteTeacherId === id;
+          const currentTeacher = isSubstitute ? session.substituteTeacher : session.teacher;
+          const teacherName = currentTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+          const originalTeacherName = session.teacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+          const substituteTeacherName = session.substituteTeacher?.user?.fullName || null;
+          
+          return {
+            id: session.id,
+            classId: cls.id,
+            date: session.sessionDate,
+            title: `Buổi ${cls.name}`,
+            time: `${session.startTime}-${session.endTime}`,
+            subject: cls.subject.name,
+            class: cls.name,
+            room: cls.room?.name || 'Chưa xác định',
+            hasAlert: this.checkSessionAlerts(session),
+            status: session.status as 'happening' | 'end' | 'has_not_happened' | 'day_off',
+            teacher: teacherName,
+            originalTeacher: originalTeacherName,
+            substituteTeacher: substituteTeacherName,
+            isSubstitute: isSubstitute,
+            students: session.attendances.map((attendance) => ({
+              id: attendance.student.id,
+              name: attendance.student.user.fullName || 'Chưa xác định',
+              avatar: undefined,
+              status: this.mapAttendanceStatus(attendance.status),
+            })),
+            attendanceWarnings: this.generateAttendanceWarnings(session),
+            description: session.notes || 'Phương học: Chưa cập nhật',
+            materials: [],
+            cancellationReason: session.cancellationReason,
+          };
+        }),
+    );
+
+    // Chuyển đổi dữ liệu từ các buổi học thay thế
+    const substituteSessionsFormatted = substituteSessions.map((session) => {
+      const originalTeacherName = session.teacher?.user?.fullName || 'Chưa xác định';
+      const substituteTeacherName = session.substituteTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+      
+      return {
         id: session.id,
-        classId: cls.id, // Thêm classId để navigate đến trang lớp học
+        classId: session.classId,
         date: session.sessionDate,
-        title: `Buổi ${cls.name}`,
+        title: `Buổi ${session.class.name}`,
         time: `${session.startTime}-${session.endTime}`,
-        subject: cls.subject.name,
-        class: cls.name,
-        room: cls.room?.name || 'Chưa xác định',
+        subject: session.class.subject.name,
+        class: session.class.name,
+        room: session.class.room?.name || 'Chưa xác định',
         hasAlert: this.checkSessionAlerts(session),
         status: session.status as 'happening' | 'end' | 'has_not_happened' | 'day_off',
-        teacher: teacher.user.fullName || 'Chưa xác định',
+        teacher: substituteTeacherName,
+        originalTeacher: originalTeacherName,
+        substituteTeacher: substituteTeacherName,
+        isSubstitute: true, // Đánh dấu đây là buổi học thay thế
         students: session.attendances.map((attendance) => ({
           id: attendance.student.id,
           name: attendance.student.user.fullName || 'Chưa xác định',
@@ -553,9 +690,15 @@ export class TeacherManagementService {
         })),
         attendanceWarnings: this.generateAttendanceWarnings(session),
         description: session.notes || 'Phương học: Chưa cập nhật',
-        materials: [], // Có thể thêm materials sau
-        cancellationReason: session.cancellationReason, // Thêm cancellationReason nếu có
-      })),
+        materials: [],
+        cancellationReason: session.cancellationReason,
+      };
+    });
+
+    // Merge và loại bỏ duplicate (nếu một session vừa là chính vừa là thay thế)
+    const allSessions = [...mainSessions, ...substituteSessionsFormatted];
+    const uniqueSessions = allSessions.filter((session, index, self) =>
+      index === self.findIndex((s) => s.id === session.id)
     );
 
     return {
@@ -564,7 +707,7 @@ export class TeacherManagementService {
         name: teacher.user.fullName,
         email: teacher.user.email,
       },
-      sessions: sessions.sort(
+      sessions: uniqueSessions.sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       ),
     };
@@ -647,6 +790,7 @@ export class TeacherManagementService {
       phone: teacher.user.phone,
       username: teacher.user.username,
       code: teacher.teacherCode,
+      avatar: teacher.user.avatar || null,
       role: this.mapRoleToVietnamese(teacher.user.role),
       gender:
         teacher.user.gender === Gender.MALE
