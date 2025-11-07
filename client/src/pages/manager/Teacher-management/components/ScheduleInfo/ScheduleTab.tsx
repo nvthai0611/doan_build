@@ -1017,7 +1017,7 @@ export default function ScheduleTab({
                   <Button 
                     onClick={() => {
                       if (selectedSession?.id) {
-                        navigate(`/center-qn/session-details/${selectedSession.id}`)
+                        navigate(`/center-qn/classes/session-details/${selectedSession.id}`)
                         setIsDialogOpen(false)
                       }
                     }}
@@ -1239,7 +1239,7 @@ export default function ScheduleTab({
                   <Button 
                     onClick={() => {
                       if (selectedSession?.id) {
-                        navigate(`/center-qn/session-details/${selectedSession.id}`)
+                        navigate(`/center-qn/classes/session-details/${selectedSession.id}`)
                         setIsDialogOpen(false)
                       }
                     }}

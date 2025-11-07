@@ -83,6 +83,7 @@ export const privateRoutes = (
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="classes/create" element={<CreateClass />} />
+        <Route path="classes/session-details/:sessionId" element={<SessionDetail />} />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
@@ -106,7 +107,6 @@ export const privateRoutes = (
         <Route path="feedback" element={<FeedbackTeacher />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="communication/showcases" element={<ShowcasesPage />} />
-        <Route path="session-details/:sessionId" element={<SessionDetail />} />
         <Route path="rooms" element={<ClassroomsPage />} />
         <Route path="courses" element={<SubjectsPage />} />
       </Route>

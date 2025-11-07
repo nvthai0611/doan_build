@@ -37,6 +37,7 @@ model User {
   sessions                UserSession[]
   blogs                   Blog[]                   @relation("BlogAuthor")
   roleData                Role?                    @relation(fields: [roleId], references: [id])
+  payrollPaymentsMade     PayrollPayment[]         @relation("PaidBy")
 
   @@map("users")
 }
@@ -82,6 +83,9 @@ model Teacher {
   feedbacks           TeacherFeedback[]
   school              School?                       @relation(fields: [schoolId], references: [id])
   user                User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  teacherSessionPayouts TeacherSessionPayout[]
+  payrollPayments       PayrollPayment[] // Các giao dịch thanh toán lương đã nhận
 
   @@map("teachers")
 }
@@ -219,6 +223,7 @@ model ClassSession {
   holidayLinks                 HolidayPeriodSession[]
   leaveRequestAffectedSessions LeaveRequestAffectedSession[]
   attendances                  StudentSessionAttendance[]
+  teacherSessionPayout         TeacherSessionPayout? // Một buổi học chỉ có 1 dòng payout
 
   @@index([substituteEndDate], map: "idx_session_substitute_end_date")
   @@map("class_sessions")
@@ -566,22 +571,102 @@ model Contract {
 }
 
 model Payroll {
-  id              BigInt    @id @default(autoincrement())
-  teacherId       String    @map("teacher_id") @db.Uuid
-  periodStart     DateTime  @map("period_start") @db.Date
-  periodEnd       DateTime  @map("period_end") @db.Date
-  computedDetails Json?     @map("computed_details")
-  paidAt          DateTime? @map("paid_at") @db.Timestamptz(6)
-  baseSalary      Decimal   @map("base_salary") @db.Decimal(12, 2)
-  bonuses         Decimal   @default(0) @db.Decimal(12, 2)
-  deductions      Decimal   @default(0) @db.Decimal(12, 2)
-  hourlyRate      Decimal?  @map("hourly_rate") @db.Decimal(8, 2)
-  status          String    @default("pending") // draft, pending, approved, paid, rejected, cancelled
-  teachingHours   Decimal?  @map("teaching_hours") @db.Decimal(5, 2)
-  totalAmount     Decimal   @map("total_amount") @db.Decimal(12, 2)
-  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id              BigInt   @id @default(autoincrement())
+  teacherId       String   @map("teacher_id") @db.Uuid
+  periodStart     DateTime @map("period_start") @db.Date
+  periodEnd       DateTime @map("period_end") @db.Date
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  computedDetails Json?    @map("computed_details")
+  bonuses         Decimal  @default(0) @db.Decimal(12, 2)
+  deductions      Decimal  @default(0) @db.Decimal(12, 2)
+  hourlyRate      Decimal? @map("hourly_rate") @db.Decimal(8, 2)
+  teachingHours   Decimal? @map("teaching_hours") @db.Decimal(5, 2)
 
+  // --- TRẠNG THÁI QUY TRÌNH DUYỆT LƯƠNG ---
+  status String @default("pending")
+  // "pending": Chờ Kế toán kiểm tra. (GV chưa thấy)
+  // "waiting_teacher_approval": Kế toán gửi, chờ GV duyệt. (GV thấy)
+  // "rejected_by_teacher": GV từ chối. (Quay lại cho Kế toán)
+  // "approved_by_teacher": GV đồng ý. (Chuyển cho Chủ trung tâm thanh toán)
+  // "paid": Đã thanh toán. (Kết thúc)
+  // "cancelled": Bị hủy.
+
+  // --- Dữ liệu theo dõi việc duyệt ---
+  adminPublishedAt       DateTime? @map("admin_published_at") // Thời điểm Kế toán gửi cho giáo viên
+  teacherActionAt        DateTime? @map("teacher_action_at") // Thời điểm giáo viên Approve/Reject
+  teacherRejectionReason String?   @map("teacher_rejection_reason") // Lý do giáo viên từ chối
+
+  // --- Liên kết với Giao dịch thanh toán ---
+  payrollPaymentId BigInt?         @map("payroll_payment_id") // ID của giao dịch thanh toán
+  payrollPayment   PayrollPayment? @relation(fields: [payrollPaymentId], references: [id], onDelete: SetNull)
+
+  // --- Relations ---
+  teacher       Teacher                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  payoutDetails TeacherSessionPayout[] // Chi tiết các buổi dạy
+
+  @@index([payrollPaymentId])
   @@map("payrolls")
+}
+
+model TeacherSessionPayout {
+  id        BigInt  @id @default(autoincrement())
+  sessionId String  @unique @map("session_id") @db.Uuid // Cập nhật: 1 session chỉ có 1 payout
+  teacherId String  @map("teacher_id") @db.Uuid
+  payrollId BigInt? @map("payroll_id") // ID của bảng lương tổng hợp
+
+  // Dữ liệu snapshot
+  sessionFeePerStudent Decimal  @map("session_fee_per_student") @db.Decimal(12, 2)
+  studentCount         Int      @map("student_count")
+  totalRevenue         Decimal  @map("total_revenue") @db.Decimal(12, 2)
+  payoutRate           Decimal  @map("payout_rate") @db.Decimal(5, 4)
+  teacherPayout        Decimal  @map("teacher_payout") @db.Decimal(12, 2)
+  calculatedAt         DateTime @default(now()) @map("calculated_at")
+
+  // --- TRẠNG THÁI NỘI BỘ CỦA KẾ TOÁN ---
+  status String @default("calculated")
+  // "calculated": Đã tính, sẵn sàng gộp vào Payroll.
+  // "batched": Đã gộp vào Payroll (đã có payrollId).
+
+  // --- Relations ---
+  session ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teacher Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  payroll Payroll?     @relation(fields: [payrollId], references: [id])
+
+  @@index([teacherId])
+  @@index([payrollId])
+  @@index([status])
+  @@map("teacher_session_payouts")
+}
+
+model PayrollPayment {
+  id BigInt @id @default(autoincrement())
+
+  // --- Thông tin cơ bản (do Chủ trung tâm TỰ NHẬP) ---
+  teacherId    String @map("teacher_id") @db.Uuid // Giáo viên nhận
+  paidByUserId String @map("paid_by_user_id") @db.Uuid // Người thực hiện (Chủ TT)
+
+  // Số tiền TỔNG CỘNG của lần chuyển khoản này (Tự nhập)
+  totalAmount Decimal @map("total_amount") @db.Decimal(12, 2)
+
+  // Phương thức (Tự chọn từ dropdown, ví dụ: "Sepay", "Tiền mặt")
+  paymentMethod String @map("payment_method")
+
+  // Thời điểm ghi nhận (Tự động)
+  paidAt DateTime @default(now()) @map("paid_at") @db.Timestamptz(6)
+
+  // Ghi chú (Tự nhập, ví dụ: "Đã ck T9 + T10")
+  notes String?
+
+  // --- Relations ---
+  // Liên kết tới các hóa đơn lương đã được thanh toán trong lần này
+  payrolls Payroll[]
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  paidBy  User    @relation("PaidBy", fields: [paidByUserId], references: [id])
+
+  @@index([teacherId])
+  @@index([paidByUserId])
+  @@map("payroll_payments")
 }
 
 model TeacherDocument {
@@ -957,4 +1042,39 @@ model Scholarship {
 
   @@index([isActive], map: "idx_scholarship_active")
   @@map("scholarships")
+}
+
+// Model hiện tại của bạn đã đủ tốt:
+model CronJobExecution {
+  id          String    @id @default(uuid()) @db.Uuid
+  jobType     String    @map("job_type")
+  status      String    @default("running")
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  totalItems   Int @default(0) @map("total_items")
+  successCount Int @default(0) @map("success_count")
+  failedCount  Int @default(0) @map("failed_count")
+
+  // ✅ Dùng metadata cho thông tin chung
+  metadata Json? // { teacherId: "xxx", period: "2024-11", filters: {...} }
+
+  // ✅ Dùng errorDetails cho CHI TIẾT từng item lỗi
+  errorDetails Json? @map("error_details")
+  // Ví dụ: [
+  //   { itemId: "student-123", itemName: "Nguyễn Văn A", error: "Missing fee structure" },
+  //   { itemId: "student-456", itemName: "Trần Thị B", error: "Database connection failed" }
+  // ]
+
+  // ✅ Dùng errorMessage cho thông báo lỗi tổng quát
+  errorMessage String? @map("error_message") // "Failed to generate 5/10 invoices"
+
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([jobType], map: "idx_cronjob_type")
+  @@index([status], map: "idx_cronjob_status")
+  @@index([startedAt], map: "idx_cronjob_started")
+  @@map("cron_job_executions")
 }

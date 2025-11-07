@@ -47,7 +47,7 @@ import {
 import { formatDateForInput, formatSchedule, convertDateToISO } from '../../../../utils/format';
 import { getStatusBadge } from '../const/statusBadge';
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { EditScheduleSheet } from './Sheet/EditScheduleSheet';
@@ -67,6 +67,7 @@ interface GeneralInfoProps {
 }
 
 export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -121,14 +122,13 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
   // Fetch sessions data để kiểm tra lớp đã có lịch học chưa
   const { data: sessionsData } = useQuery({
-    queryKey: ['classSessions', classData.id, classData.academicYear],
+    queryKey: ['classSessions', classData.id],
     queryFn: () => classService.getClassSessions(classData.id, {
       page: 1,
       limit: 30, // Chỉ cần kiểm tra có sessions hay không
-      academicYear: classData.academicYear, // Chỉ lấy sessions cùng academicYear
       sortOrder: "asc",
     }),
-    enabled: !!classData.id && !!classData.academicYear,
+    enabled: !!classData.id,
     staleTime: 0, // Không cache data
     refetchOnWindowFocus: true
   });
@@ -220,7 +220,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     setIsEditing(true);
     setErrors({}); // Clear errors when starting to edit
   };
-
   
 
   // Validation functions
@@ -391,9 +390,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       // Cập nhật lịch học với format đúng theo backend
       const scheduleData = {
         schedules: schedules, // Backend mong đợi 'schedules' không phải 'recurringSchedule'
-        // Thêm teacherId và academicYear nếu có để cập nhật đúng teacher assignment
+        // Thêm teacherId nếu có để cập nhật đúng teacher assignment
         ...(classData.teacherId && { teacherId: classData.teacherId }),
-        ...(classData.academicYear && { academicYear: classData.academicYear }),
       };
 
       await classService.updateClassSchedule(classData.id, scheduleData);
@@ -944,7 +942,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardContent>
           {classData.teacher ? (
             <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-              <Avatar className="h-16 w-16">
+              <Avatar 
+                className="h-16 w-16 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                onClick={() => {
+                  if (classData.teacher?.teacherId) {
+                    navigate(`/center-qn/teachers/${classData.teacher.teacherId}`);
+                  }
+                }}
+              >
                 <AvatarImage 
                   src={classData.teacher?.avatar} 
                   alt={classData.teacher.name} 
