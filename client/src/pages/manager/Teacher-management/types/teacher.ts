@@ -3,7 +3,8 @@ export interface Teacher {
     name: string
     email: string
     phone: string
-    username: string
+    username: string  
+    avatar: string | null
     code: string
     role: "teacher" | "admin" | "center_owner"
     gender: "MALE" | "FEMALE" | "OTHER"

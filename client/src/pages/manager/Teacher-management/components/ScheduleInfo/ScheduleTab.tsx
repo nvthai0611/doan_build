@@ -233,7 +233,7 @@ export default function ScheduleTab({
     setSelectedSession(session);
     setIsDialogOpen(true)
   }
-
+  console.log(selectedSession)
   /**
    * Tạo key duy nhất cho một ngày để dùng trong expandedDates
    * 
@@ -529,6 +529,11 @@ export default function ScheduleTab({
                             {session.status === 'end' && !isDayOff && <span className="text-xs">✓</span>}
                             {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ' : session.description}</span>
+                            {session.isSubstitute && !isDayOff && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-500 text-orange-700 bg-orange-50">
+                                Thay thế
+                              </Badge>
+                            )}
                           </span>
                           {session.hasAlert && !isDayOff && !isEnded && <AlertTriangle className="w-3 h-3 text-orange-300" />}
                         </div>
@@ -689,6 +694,11 @@ export default function ScheduleTab({
                             {session.status === 'end' && !isDayOff && <span className="text-[10px]">✓</span>}
                             {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
+                            {session.isSubstitute && !isDayOff && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-500 text-orange-700 bg-orange-50">
+                                Thay thế
+                              </Badge>
+                            )}
                           </div>
                           <div className="truncate opacity-90 text-[10px]">
                             {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : isEnded ? statusText : session.time}
@@ -789,7 +799,14 @@ export default function ScheduleTab({
                     </div>
                     <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{session.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{session.title}</span>
+                        {session.isSubstitute && (
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 border-orange-500 text-orange-700 bg-orange-50">
+                            Thay thế
+                          </Badge>
+                        )}
+                      </div>
                       {session.description && session.description !== 'Phương học: Chưa cập nhật' && (
                         <span className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">
                           {session.description}
@@ -937,9 +954,24 @@ export default function ScheduleTab({
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm">
-                      <strong>Giáo viên phụ trách:</strong> {selectedSession.teacher}
-                    </span>
+                    <div className="text-sm flex flex-col gap-1">
+                      <div>
+                        <strong>Giáo viên phụ trách:</strong>{' '}
+                        <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
+                          {selectedSession.teacher}
+                        </span>
+                        {selectedSession.isSubstitute && (
+                          <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
+                            Thay thế
+                          </Badge>
+                        )}
+                      </div>
+                      {selectedSession.isSubstitute && selectedSession.originalTeacher && (
+                        <div className="text-xs text-gray-500 ml-6">
+                          GV chính: {selectedSession.originalTeacher}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1159,9 +1191,24 @@ export default function ScheduleTab({
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm">
-                      <strong>Giáo viên phụ trách:</strong> {selectedSession.teacher}
-                    </span>
+                    <div className="text-sm flex flex-col gap-1">
+                      <div>
+                        <strong>Giáo viên phụ trách:</strong>{' '}
+                        <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
+                          {selectedSession.teacher}
+                        </span>
+                        {selectedSession.isSubstitute && (
+                          <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
+                            Thay thế
+                          </Badge>
+                        )}
+                      </div>
+                      {selectedSession.isSubstitute && selectedSession.originalTeacher && (
+                        <div className="text-xs text-gray-500 ml-6">
+                          GV chính: {selectedSession.originalTeacher}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
