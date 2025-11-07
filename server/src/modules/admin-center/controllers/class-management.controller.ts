@@ -86,7 +86,7 @@ export class ClassManagementController {
     @Post(':id/assign-teacher')
     @ApiOperation({ summary: 'Phân công giáo viên cho lớp' })
     @ApiResponse({ status: 200, description: 'Phân công thành công' })
-    @ApiResponse({ status: 400, description: 'Giáo viên đã được phân công' })
+    @ApiResponse({ status: 400, description: 'Giáo viên đã được phân công hoặc lịch học bị trùng với các lớp đã được phân công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' })
     async assignTeacher(@Param('id') classId: string, @Body() body: any) {
         return this.classManagementService.assignTeacher(classId, body);

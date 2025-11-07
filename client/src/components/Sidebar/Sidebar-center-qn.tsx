@@ -97,11 +97,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       icon: Calendar,
       href: '/center-qn/schedule',
     },
-    { 
-      title: 'Buổi học hôm nay',
-      icon: Clock,
-      href: '/center-qn/schedule/today',
-    },
+
   ],
   sections: [
     {
@@ -116,6 +112,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
             { title: 'Thông tin phụ huynh', href: '/center-qn/parents' },
           ],
         },
+        
         {
           title: 'Lớp học',
           icon: BookOpen,
@@ -126,7 +123,10 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           icon: Users,
           href: '/center-qn/teachers',
           children: [
-            { title: 'Danh sách giáo viên', href: '/center-qn/teachers' },
+            { title: 'Danh sách giáo viên',
+                icon: GraduationCap,
+                href: '/center-qn/teachers' },
+
             // { title: 'Thông tin chuyên môn', href: '/center-qn/teachers/expertise' },
             // { title: 'Quản lý lương', href: '/center-qn/teachers/salary' },
             // { title: 'Đánh giá từ PH/HS', href: '/center-qn/teachers/reviews' },
@@ -152,6 +152,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
             },
           ],
         },
+        { 
+            title: 'Buổi học hôm nay',
+            icon: Clock,
+            href: '/center-qn/lich-day-hom-nay',
+          },
       ],
     },
     {

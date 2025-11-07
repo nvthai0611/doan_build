@@ -240,5 +240,32 @@ export const centerOwnerScheduleService = {
    */
   applyScheduleTemplate: async (templateId: string, startDate: string): Promise<void> => {
     await ApiService.post(`/admin-center/schedule/templates/${templateId}/apply`, { startDate })
+  },
+
+  // ===== Teachers in Sessions Today =====
+
+  /**
+   * Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)
+   */
+  getTeachersInSessionsToday: async (params?: {
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    attendanceStatus?: 'all' | 'on_time' | 'late' | 'absent' | 'not_marked';
+    page?: number;
+    limit?: number;
+    classId?: string;
+    sessionStatus?: string;
+  }): Promise<{
+    data: any[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const response = await ApiService.get('/admin-center/schedule-management/teachers-in-sessions', params);
+    return response as any;
   }
 }
