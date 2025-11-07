@@ -64,6 +64,7 @@ import SessionDetail from "../pages/manager/Session-management/SessionDetail";
 import NotFound from "../pages/Error/NotFound";
 import ClassroomsPage from "../pages/manager/Room-management/ClassRoom";
 import SubjectsPage from "../pages/manager/Subject-management/Subject";
+import PayrollManagement from "../pages/manager/Payroll-teacher-management/PayrollManagement";
 
 export const privateRoutes = (
   <>
@@ -109,6 +110,7 @@ export const privateRoutes = (
         <Route path="communication/showcases" element={<ShowcasesPage />} />
         <Route path="rooms" element={<ClassroomsPage />} />
         <Route path="courses" element={<SubjectsPage />} />
+        <Route path="payroll-teacher" element={<PayrollManagement />} />
       </Route>
 
       {/* Giáo viên */}

@@ -162,6 +162,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           icon: DollarSign,
           href: '/finance',
           children: [
+            { title: 'Hóa đơn giáo viên', href: '/center-qn/payroll-teacher' },
             { title: 'Định nghĩa học phí', href: '/finance/tuition' },
             { title: 'Phiếu thu - chi', href: '/finance/receipts' },
             { title: 'Thanh toán online', href: '/finance/online-payment' },
