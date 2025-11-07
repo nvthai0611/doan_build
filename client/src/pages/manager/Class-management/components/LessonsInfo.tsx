@@ -377,11 +377,37 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       key: 'teacher',
       header: 'Giáo viên',
       width: '200px',
-      render: (session: any) => (
-        <div className="text-sm text-gray-600">
-          {session.teacher?.name || session.teacherName || '-'}
-        </div>
-      )
+      render: (session: any) => {
+        const teacherName = session.teacher || session.teacherName;
+        const isSubstitute = session.isSubstitute && session.substituteTeacher;
+        const originalTeacher = session.originalTeacher;
+        
+        return (
+          <div className="text-sm">
+            {teacherName ? (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className={isSubstitute ? 'text-orange-600 font-medium' : 'text-gray-600'}>
+                    {teacherName}
+                  </span>
+                  {isSubstitute && (
+                    <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 bg-orange-50">
+                      Thay thế
+                    </Badge>
+                  )}
+                </div>
+                {isSubstitute && originalTeacher && originalTeacher !== teacherName && (
+                  <div className="text-xs text-gray-500">
+                    GV chính: {originalTeacher}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-400">-</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'attendance',

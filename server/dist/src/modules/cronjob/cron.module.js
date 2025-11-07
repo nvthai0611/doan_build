@@ -9,12 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksModule = void 0;
 const common_1 = require("@nestjs/common");
 const bill_cron_service_1 = require("./service/bill-cron.service");
+const payroll_teacher_service_1 = require("./service/payroll-teacher.service");
+const prisma_service_1 = require("../../db/prisma.service");
 let TasksModule = class TasksModule {
 };
 exports.TasksModule = TasksModule;
 exports.TasksModule = TasksModule = __decorate([
     (0, common_1.Module)({
-        providers: [bill_cron_service_1.BillCronService],
+        providers: [bill_cron_service_1.BillCronService, payroll_teacher_service_1.PayrollCronService, prisma_service_1.PrismaService],
     })
 ], TasksModule);
 //# sourceMappingURL=cron.module.js.map

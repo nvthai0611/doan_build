@@ -56,7 +56,7 @@ export class ClassJoinController {
   @ApiOperation({ summary: 'Gửi yêu cầu tham gia lớp học cho con' })
   @ApiResponse({ status: 201, description: 'Gửi yêu cầu thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy lớp học hoặc học sinh' })
-  @ApiResponse({ status: 400, description: 'Lớp học đã đầy hoặc đã có yêu cầu pending' })
+  @ApiResponse({ status: 400, description: 'Lớp học đã đầy, đã có yêu cầu pending, hoặc lịch học bị trùng với các lớp đã đăng ký' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

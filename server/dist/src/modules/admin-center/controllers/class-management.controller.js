@@ -69,6 +69,16 @@ let ClassManagementController = class ClassManagementController {
         }
         return this.classManagementService.transferTeacher(classId, body, requestedBy);
     }
+    async validateTransfer(classId, replacementTeacherId, effectiveDate, substituteEndDate) {
+        if (!replacementTeacherId) {
+            throw new common_2.HttpException({ success: false, message: 'Thiếu replacementTeacherId' }, common_1.HttpStatus.BAD_REQUEST);
+        }
+        return this.classManagementService.validateTransferConflict(classId, {
+            replacementTeacherId,
+            effectiveDate,
+            substituteEndDate,
+        });
+    }
     async getTransferRequests(query) {
         return this.classManagementService.getTransferRequests(query);
     }
@@ -217,7 +227,7 @@ __decorate([
     (0, common_1.Post)(':id/assign-teacher'),
     (0, swagger_1.ApiOperation)({ summary: 'Phân công giáo viên cho lớp' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Phân công thành công' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Giáo viên đã được phân công' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Giáo viên đã được phân công hoặc lịch học bị trùng với các lớp đã được phân công' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' }),
     openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Param)('id')),
@@ -262,6 +272,19 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], ClassManagementController.prototype, "transferTeacher", null);
+__decorate([
+    (0, common_1.Get)(':id/transfer-teacher/validate'),
+    (0, swagger_1.ApiOperation)({ summary: 'Kiểm tra xung đột khi chuyển giáo viên' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Kết quả kiểm tra xung đột' }),
+    openapi.ApiResponse({ status: 200, type: Object }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('replacementTeacherId')),
+    __param(2, (0, common_1.Query)('effectiveDate')),
+    __param(3, (0, common_1.Query)('substituteEndDate')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ClassManagementController.prototype, "validateTransfer", null);
 __decorate([
     (0, common_1.Get)('transfers'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách yêu cầu chuyển giáo viên' }),

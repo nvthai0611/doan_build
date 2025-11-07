@@ -111,4 +111,9 @@ export declare class ClassJoinService {
             totalPages: number;
         };
     }>;
+    private checkScheduleConflict;
+    private parseRecurringSchedule;
+    private normalizeDayOfWeek;
+    private isTimeOverlapping;
+    private getDayName;
 }

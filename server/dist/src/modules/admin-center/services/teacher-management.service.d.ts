@@ -15,6 +15,7 @@ export declare class TeacherManagementService {
         phone: any;
         username: any;
         code: any;
+        avatar: any;
         role: string;
         gender: string;
         birthDate: string;
@@ -40,6 +41,7 @@ export declare class TeacherManagementService {
             phone: any;
             username: any;
             code: any;
+            avatar: any;
             role: string;
             gender: string;
             birthDate: string;
@@ -72,6 +74,7 @@ export declare class TeacherManagementService {
         phone: any;
         username: any;
         code: any;
+        avatar: any;
         role: string;
         gender: string;
         birthDate: string;
@@ -96,6 +99,7 @@ export declare class TeacherManagementService {
         phone: any;
         username: any;
         code: any;
+        avatar: any;
         role: string;
         gender: string;
         birthDate: string;
@@ -123,6 +127,7 @@ export declare class TeacherManagementService {
         phone: any;
         username: any;
         code: any;
+        avatar: any;
         role: string;
         gender: string;
         birthDate: string;
@@ -158,6 +163,9 @@ export declare class TeacherManagementService {
             hasAlert: boolean;
             status: "happening" | "end" | "has_not_happened" | "day_off";
             teacher: string;
+            originalTeacher: string;
+            substituteTeacher: string;
+            isSubstitute: boolean;
             students: {
                 id: string;
                 name: string;

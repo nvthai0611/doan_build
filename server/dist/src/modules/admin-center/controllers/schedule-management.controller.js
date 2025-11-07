@@ -55,6 +55,18 @@ let ScheduleManagementController = class ScheduleManagementController {
         const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
         return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
     }
+    async updateSession(sessionId, body) {
+        const data = await this.scheduleService.updateSession(sessionId, body);
+        return { data, message: 'Cập nhật buổi học thành công' };
+    }
+    async getTeachersInSessionsToday(query) {
+        const result = await this.scheduleService.getTeachersInSessionsToday(query);
+        return {
+            success: true,
+            ...result,
+            message: 'Lấy danh sách giáo viên tham gia buổi học thành công'
+        };
+    }
 };
 exports.ScheduleManagementController = ScheduleManagementController;
 __decorate([
@@ -113,6 +125,26 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ScheduleManagementController.prototype, "getAllActiveClassesWithSchedules", null);
+__decorate([
+    (0, common_1.Patch)('sessions/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Cập nhật buổi học' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'ID của buổi học', type: 'string' }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ScheduleManagementController.prototype, "updateSession", null);
+__decorate([
+    (0, common_1.Get)('teachers-in-sessions'),
+    (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)' }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ScheduleManagementController.prototype, "getTeachersInSessionsToday", null);
 exports.ScheduleManagementController = ScheduleManagementController = __decorate([
     (0, swagger_1.ApiTags)('Admin Center - Schedule Management'),
     (0, common_1.Controller)('schedule-management'),

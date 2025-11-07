@@ -65,30 +65,30 @@ export declare class ScheduleManagementController {
             cancellationReason: string;
             createdAt: Date;
             class: {
-                teacher: {
-                    user: {
-                        email: string;
-                        fullName: string;
-                        avatar: string;
-                        phone: string;
-                        id: string;
-                    };
+                id: string;
+                classCode: string;
+                name: string;
+                grade: {
                     id: string;
+                    name: string;
                 };
                 subject: {
                     id: string;
                     name: string;
                 };
-                grade: {
+                teacher: {
                     id: string;
-                    name: string;
+                    user: {
+                        id: string;
+                        email: string;
+                        fullName: string;
+                        avatar: string;
+                        phone: string;
+                    };
                 };
-                id: string;
                 _count: {
                     enrollments: number;
                 };
-                name: string;
-                classCode: string;
             };
             room: {
                 id: string;
@@ -96,14 +96,14 @@ export declare class ScheduleManagementController {
                 capacity: number;
             };
             teacher: {
+                id: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     avatar: string;
                     phone: string;
-                    id: string;
                 };
-                id: string;
             };
             attendanceCount: number;
         };
@@ -128,11 +128,11 @@ export declare class ScheduleManagementController {
                 id: string;
                 studentCode: string;
                 user: {
+                    id: string;
                     email: string;
                     fullName: string;
                     avatar: string;
                     phone: string;
-                    id: string;
                 };
             };
             thaiDoHoc: any;
@@ -154,5 +154,63 @@ export declare class ScheduleManagementController {
             schedules: any;
         }[];
         message: string;
+    }>;
+    updateSession(sessionId: string, body: any): Promise<{
+        data: {
+            createdAt: Date;
+            id: string;
+            roomId: string | null;
+            teacherId: string | null;
+            status: string;
+            academicYear: string;
+            classId: string;
+            substituteTeacherId: string | null;
+            substituteEndDate: Date | null;
+            sessionDate: Date;
+            startTime: string;
+            endTime: string;
+            notes: string | null;
+            cancellationReason: string | null;
+        };
+        message: string;
+    }>;
+    getTeachersInSessionsToday(query: any): Promise<{
+        message: string;
+        data: {
+            id: string;
+            stt: number;
+            teacher: {
+                id: string;
+                userId: string;
+                fullName: string;
+                avatar: string;
+                teacherCode: string;
+                email: any;
+            };
+            role: string;
+            session: {
+                id: string;
+                sessionNumber: string;
+                status: string;
+                sessionDate: string;
+                startTime: string;
+                endTime: string;
+                dateTimeRange: string;
+            };
+            class: {
+                id: string;
+                name: string;
+                classCode: string;
+                subject: string;
+            };
+            enrollmentCount: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+        success: boolean;
     }>;
 }

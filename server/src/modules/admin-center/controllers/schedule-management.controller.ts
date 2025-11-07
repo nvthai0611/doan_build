@@ -69,4 +69,15 @@ export class ScheduleManagementController {
     const data = await this.scheduleService.updateSession(sessionId, body);
     return { data, message: 'Cập nhật buổi học thành công' };
   }
+
+  @Get('teachers-in-sessions')
+  @ApiOperation({ summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)' })
+  async getTeachersInSessionsToday(@Query() query: any) {
+    const result = await this.scheduleService.getTeachersInSessionsToday(query);
+    return { 
+      success: true,
+      ...result, 
+      message: 'Lấy danh sách giáo viên tham gia buổi học thành công' 
+    };
+  }
 }

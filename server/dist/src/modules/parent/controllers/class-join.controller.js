@@ -105,7 +105,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Gửi yêu cầu tham gia lớp học cho con' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Gửi yêu cầu thành công' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp học hoặc học sinh' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Lớp học đã đầy hoặc đã có yêu cầu pending' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Lớp học đã đầy, đã có yêu cầu pending, hoặc lịch học bị trùng với các lớp đã đăng ký' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, swagger_1.ApiBody)({
         schema: {

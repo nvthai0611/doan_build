@@ -31,6 +31,7 @@ const bull_1 = require("@nestjs/bull");
 const schedule_1 = require("@nestjs/schedule");
 const api_key_middleware_1 = require("./common/middleware/api-key.middleware");
 const payment_module_1 = require("./modules/payment/payment.module");
+const cron_module_1 = require("./modules/cronjob/cron.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(api_key_middleware_1.ApiKeyMiddleware).forRoutes('*');
@@ -70,7 +71,8 @@ exports.AppModule = AppModule = __decorate([
             admin_center_module_1.AdminCenterModule,
             cloudinary_module_1.CloudinaryModule,
             shared_module_1.SharedModule,
-            payment_module_1.PaymentModule
+            payment_module_1.PaymentModule,
+            cron_module_1.TasksModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, auth_service_1.AuthService, prisma_service_1.PrismaService],

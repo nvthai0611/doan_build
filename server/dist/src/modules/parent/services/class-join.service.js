@@ -304,6 +304,14 @@ let ClassJoinService = class ClassJoinService {
         if (existingRequest) {
             throw new common_1.HttpException({ success: false, message: 'Đã có yêu cầu tham gia đang chờ xử lý' }, common_1.HttpStatus.BAD_REQUEST);
         }
+        const scheduleConflict = await this.checkScheduleConflict(dto.studentId, dto.classId, classData.recurringSchedule);
+        if (scheduleConflict.hasConflict) {
+            throw new common_1.HttpException({
+                success: false,
+                message: scheduleConflict.message,
+                conflictDetails: scheduleConflict.conflictDetails,
+            }, common_1.HttpStatus.BAD_REQUEST);
+        }
         const request = await this.prisma.studentClassRequest.create({
             data: {
                 studentId: dto.studentId,
@@ -478,6 +486,129 @@ let ClassJoinService = class ClassJoinService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+    }
+    async checkScheduleConflict(studentId, newClassId, newClassSchedule) {
+        if (!newClassSchedule) {
+            return { hasConflict: false, message: '' };
+        }
+        const enrolledClasses = await this.prisma.enrollment.findMany({
+            where: {
+                studentId,
+                status: { in: ['studying', 'not_been_updated'] },
+                class: {
+                    status: { in: ['ready', 'active'] },
+                    id: { not: newClassId },
+                },
+            },
+            include: {
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        recurringSchedule: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (enrolledClasses.length === 0) {
+            return { hasConflict: false, message: '' };
+        }
+        const newSchedules = this.parseRecurringSchedule(newClassSchedule);
+        if (newSchedules.length === 0) {
+            return { hasConflict: false, message: '' };
+        }
+        const conflicts = [];
+        for (const enrollment of enrolledClasses) {
+            const enrolledClass = enrollment.class;
+            if (!enrolledClass.recurringSchedule) {
+                continue;
+            }
+            const enrolledSchedules = this.parseRecurringSchedule(enrolledClass.recurringSchedule);
+            for (const newSchedule of newSchedules) {
+                for (const enrolledSchedule of enrolledSchedules) {
+                    if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(enrolledSchedule.day)) {
+                        if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, enrolledSchedule.startTime, enrolledSchedule.endTime)) {
+                            conflicts.push({
+                                enrolledClass: {
+                                    id: enrolledClass.id,
+                                    name: enrolledClass.name,
+                                    classCode: enrolledClass.classCode,
+                                    subject: enrolledClass.subject?.name || 'N/A',
+                                },
+                                conflictDay: this.getDayName(newSchedule.day),
+                                conflictTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
+                                enrolledTime: `${enrolledSchedule.startTime} - ${enrolledSchedule.endTime}`,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if (conflicts.length > 0) {
+            const conflictMessages = conflicts.map((c) => `Lớp "${c.enrolledClass.name}" (${c.enrolledClass.subject}) - ${c.conflictDay}: ${c.conflictTime}`);
+            const message = `Lịch học của lớp này trùng với các lớp đã đăng ký:\n${conflictMessages.join('\n')}`;
+            return {
+                hasConflict: true,
+                message,
+                conflictDetails: conflicts,
+            };
+        }
+        return { hasConflict: false, message: '' };
+    }
+    parseRecurringSchedule(schedule) {
+        if (!schedule) {
+            return [];
+        }
+        if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+            return schedule.schedules.map((s) => ({
+                day: s.day || s.dayOfWeek || '',
+                startTime: s.startTime || '',
+                endTime: s.endTime || '',
+            }));
+        }
+        if (Array.isArray(schedule)) {
+            return schedule.map((s) => ({
+                day: s.day || s.dayOfWeek || '',
+                startTime: s.startTime || '',
+                endTime: s.endTime || '',
+            }));
+        }
+        return [];
+    }
+    normalizeDayOfWeek(day) {
+        if (!day)
+            return '';
+        return day.toLowerCase().trim();
+    }
+    isTimeOverlapping(start1, end1, start2, end2) {
+        const toMinutes = (time) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + (minutes || 0);
+        };
+        const start1Min = toMinutes(start1);
+        const end1Min = toMinutes(end1);
+        const start2Min = toMinutes(start2);
+        const end2Min = toMinutes(end2);
+        return start1Min < end2Min && end1Min > start2Min;
+    }
+    getDayName(day) {
+        const dayNames = {
+            monday: 'Thứ Hai',
+            tuesday: 'Thứ Ba',
+            wednesday: 'Thứ Tư',
+            thursday: 'Thứ Năm',
+            friday: 'Thứ Sáu',
+            saturday: 'Thứ Bảy',
+            sunday: 'Chủ Nhật',
+        };
+        const normalizedDay = this.normalizeDayOfWeek(day);
+        return dayNames[normalizedDay] || day;
     }
 };
 exports.ClassJoinService = ClassJoinService;

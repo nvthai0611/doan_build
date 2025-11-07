@@ -86,7 +86,7 @@ export class ClassManagementController {
     @Post(':id/assign-teacher')
     @ApiOperation({ summary: 'Phân công giáo viên cho lớp' })
     @ApiResponse({ status: 200, description: 'Phân công thành công' })
-    @ApiResponse({ status: 400, description: 'Giáo viên đã được phân công' })
+    @ApiResponse({ status: 400, description: 'Giáo viên đã được phân công hoặc lịch học bị trùng với các lớp đã được phân công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' })
     async assignTeacher(@Param('id') classId: string, @Body() body: any) {
         return this.classManagementService.assignTeacher(classId, body);
@@ -127,6 +127,28 @@ export class ClassManagementController {
             );
         }
         return this.classManagementService.transferTeacher(classId, body, requestedBy);
+    }
+
+    @Get(':id/transfer-teacher/validate')
+    @ApiOperation({ summary: 'Kiểm tra xung đột khi chuyển giáo viên' })
+    @ApiResponse({ status: 200, description: 'Kết quả kiểm tra xung đột' })
+    async validateTransfer(
+        @Param('id') classId: string,
+        @Query('replacementTeacherId') replacementTeacherId: string,
+        @Query('effectiveDate') effectiveDate?: string,
+        @Query('substituteEndDate') substituteEndDate?: string,
+    ) {
+        if (!replacementTeacherId) {
+            throw new HttpException(
+                { success: false, message: 'Thiếu replacementTeacherId' },
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+        return this.classManagementService.validateTransferConflict(classId, {
+            replacementTeacherId,
+            effectiveDate,
+            substituteEndDate,
+        });
     }
 
     @Get('transfers')

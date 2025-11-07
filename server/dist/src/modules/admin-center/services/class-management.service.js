@@ -1520,7 +1520,7 @@ let ClassManagementService = class ClassManagementService {
             else {
                 orderBy.sessionDate = 'desc';
             }
-            const [sessions, total, studentCount] = await Promise.all([
+            const [sessions, total] = await Promise.all([
                 this.prisma.classSession.findMany({
                     where,
                     skip,
@@ -1542,6 +1542,24 @@ let ClassManagementService = class ClassManagementService {
                                 },
                             },
                         },
+                        teacher: {
+                            select: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
+                        substituteTeacher: {
+                            select: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
                         room: {
                             select: {
                                 name: true,
@@ -1555,30 +1573,48 @@ let ClassManagementService = class ClassManagementService {
                     },
                 }),
                 this.prisma.classSession.count({ where }),
-                this.prisma.enrollment.count({
-                    where: { classId: classId, status: { notIn: ['stopped'] } },
-                }),
             ]);
-            const transformedSessions = sessions.map((session, index) => ({
-                id: session.id,
-                topic: session.notes || `Buổi ${index + 1}`,
-                name: session.notes || `Buổi ${index + 1}`,
-                scheduledDate: session.sessionDate.toISOString().split('T')[0],
-                sessionDate: session.sessionDate.toISOString().split('T')[0],
-                startTime: session.startTime,
-                endTime: session.endTime,
-                status: session.status,
-                notes: session.notes,
-                teacher: session.class.teacher?.user?.fullName || null,
-                teacherName: session.class.teacher?.user?.fullName || null,
-                totalStudents: session.class.maxStudents || 0,
-                studentCount: studentCount || 0,
-                attendanceCount: session._count.attendances || 0,
-                absentCount: 0,
-                notAttendedCount: (studentCount || 0) - (session._count.attendances || 0),
-                rating: 0,
-                roomName: session.room?.name || null,
-            }));
+            const sessionStudentCounts = await Promise.all(sessions.map((session) => this.prisma.enrollment.count({
+                where: {
+                    classId: classId,
+                    status: { notIn: ['stopped', 'withdrawn'] },
+                    enrolledAt: {
+                        lte: session.sessionDate,
+                    },
+                },
+            })));
+            const transformedSessions = sessions.map((session, index) => {
+                const studentCount = sessionStudentCounts[index] || 0;
+                const isSubstitute = session.substituteTeacherId &&
+                    session.substituteEndDate &&
+                    new Date(session.substituteEndDate) >= session.sessionDate;
+                const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
+                const teacherName = teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
+                const originalTeacherName = session.teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
+                return {
+                    id: session.id,
+                    topic: session.notes || `Buổi ${index + 1}`,
+                    name: session.notes || `Buổi ${index + 1}`,
+                    scheduledDate: session.sessionDate.toISOString().split('T')[0],
+                    sessionDate: session.sessionDate.toISOString().split('T')[0],
+                    startTime: session.startTime,
+                    endTime: session.endTime,
+                    status: session.status,
+                    notes: session.notes,
+                    teacher: teacherName,
+                    teacherName: teacherName,
+                    substituteTeacher: session.substituteTeacher?.user?.fullName || null,
+                    originalTeacher: originalTeacherName,
+                    isSubstitute: isSubstitute,
+                    totalStudents: session.class.maxStudents || 0,
+                    studentCount: studentCount,
+                    attendanceCount: session._count.attendances || 0,
+                    absentCount: 0,
+                    notAttendedCount: studentCount - (session._count.attendances || 0),
+                    rating: 0,
+                    roomName: session.room?.name || null,
+                };
+            });
             const totalPages = Math.ceil(total / take);
             return {
                 success: true,
@@ -2040,6 +2076,14 @@ let ClassManagementService = class ClassManagementService {
                     message: 'Vui lòng cập nhật lịch học trước khi phân công giáo viên',
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
+            const scheduleConflict = await this.checkTeacherScheduleConflict(body.teacherId, classId, classItem.recurringSchedule, classItem.roomId);
+            if (scheduleConflict.hasConflict) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: scheduleConflict.message,
+                    conflictDetails: scheduleConflict.conflictDetails,
+                }, common_1.HttpStatus.BAD_REQUEST);
+            }
             let newStatus = classItem.status;
             let successMessage = 'Phân công giáo viên thành công';
             if (classItem.status === constants_1.ClassStatus.DRAFT) {
@@ -2300,15 +2344,13 @@ let ClassManagementService = class ClassManagementService {
             const activeStudentsCount = classItem.enrollments.length;
             if (activeStudentsCount === 0 && classItem.status !== 'draft') {
             }
-            const existingTransfers = await this.prisma.teacherClassTransfer.findMany({
+            const pendingTransfer = await this.prisma.teacherClassTransfer.findFirst({
                 where: {
                     fromClassId: classId,
-                    status: {
-                        in: ['pending', 'approved'],
-                    },
+                    status: 'pending',
                 },
             });
-            if (existingTransfers.length > 0) {
+            if (pendingTransfer) {
                 throw new common_1.HttpException({
                     success: false,
                     message: 'Lớp học đang có yêu cầu chuyển giáo viên đang chờ xử lý',
@@ -2326,56 +2368,128 @@ let ClassManagementService = class ClassManagementService {
                     }
                 }
             }
-            const transfer = await this.prisma.teacherClassTransfer.create({
-                data: {
-                    teacherId: classItem.teacherId,
-                    fromClassId: classId,
-                    replacementTeacherId: body.replacementTeacherId,
-                    reason: body.reason.trim(),
-                    reasonDetail: body.reasonDetail?.trim() || null,
-                    requestedBy: requestedBy,
-                    status: body.status || 'pending',
-                    effectiveDate: body.effectiveDate
-                        ? new Date(body.effectiveDate)
-                        : null,
-                    substituteEndDate: body.substituteEndDate
-                        ? new Date(body.substituteEndDate)
-                        : null,
-                    notes: body.notes?.trim() || null,
-                },
-                include: {
-                    teacher: {
-                        include: {
-                            user: {
-                                select: {
-                                    fullName: true,
-                                    email: true,
+            const effectiveDate = body.effectiveDate
+                ? new Date(body.effectiveDate)
+                : new Date();
+            const substituteEndDate = body.substituteEndDate
+                ? new Date(body.substituteEndDate)
+                : null;
+            const conflictResult = await this.validateTransferConflict(classId, {
+                replacementTeacherId: body.replacementTeacherId,
+                effectiveDate: effectiveDate.toISOString().split('T')[0],
+                substituteEndDate: substituteEndDate
+                    ? substituteEndDate.toISOString().split('T')[0]
+                    : undefined,
+            });
+            if (conflictResult?.data?.inactive) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'Giáo viên thay thế đang không hoạt động',
+                }, common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (conflictResult?.data?.incompatibleSubject) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: conflictResult?.data?.subjectMessage || 'Giáo viên thay thế không phù hợp môn học',
+                }, common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (conflictResult?.data?.hasConflict) {
+                throw new common_1.HttpException({
+                    success: false,
+                    message: 'Giáo viên thay thế đang có xung đột lịch trong khoảng áp dụng',
+                    data: conflictResult.data.conflicts,
+                }, common_1.HttpStatus.BAD_REQUEST);
+            }
+            const result = await this.prisma.$transaction(async (tx) => {
+                const transfer = await tx.teacherClassTransfer.create({
+                    data: {
+                        teacherId: classItem.teacherId,
+                        fromClassId: classId,
+                        replacementTeacherId: body.replacementTeacherId,
+                        reason: body.reason.trim(),
+                        reasonDetail: body.reasonDetail?.trim() || null,
+                        requestedBy: requestedBy,
+                        status: 'approved',
+                        approvedBy: requestedBy,
+                        approvedAt: new Date(),
+                        effectiveDate: effectiveDate,
+                        substituteEndDate: substituteEndDate,
+                        notes: body.notes?.trim() || null,
+                    },
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                        email: true,
+                                    },
                                 },
                             },
                         },
-                    },
-                    replacementTeacher: {
-                        include: {
-                            user: {
-                                select: {
-                                    fullName: true,
-                                    email: true,
+                        replacementTeacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                        email: true,
+                                    },
                                 },
                             },
                         },
-                    },
-                    fromClass: {
-                        select: {
-                            id: true,
-                            name: true,
+                        fromClass: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
                         },
                     },
-                },
+                });
+                if (substituteEndDate) {
+                    await tx.classSession.updateMany({
+                        where: {
+                            classId: classId,
+                            sessionDate: {
+                                gte: effectiveDate,
+                                lte: substituteEndDate,
+                            },
+                        },
+                        data: {
+                            teacherId: body.replacementTeacherId,
+                            substituteTeacherId: classItem.teacherId,
+                            substituteEndDate: substituteEndDate,
+                        },
+                    });
+                }
+                else {
+                    await tx.classSession.updateMany({
+                        where: {
+                            classId: classId,
+                            sessionDate: {
+                                gte: effectiveDate,
+                            },
+                        },
+                        data: {
+                            teacherId: body.replacementTeacherId,
+                            substituteTeacherId: null,
+                            substituteEndDate: null,
+                        },
+                    });
+                    await tx.class.update({
+                        where: { id: classId },
+                        data: {
+                            teacherId: body.replacementTeacherId,
+                        },
+                    });
+                }
+                return transfer;
             });
             return {
                 success: true,
-                message: 'Yêu cầu chuyển giáo viên đã được tạo thành công',
-                data: transfer,
+                message: substituteEndDate
+                    ? 'Chuyển giáo viên tạm thời thành công'
+                    : 'Chuyển giáo viên thành công',
+                data: result,
             };
         }
         catch (error) {
@@ -2383,9 +2497,101 @@ let ClassManagementService = class ClassManagementService {
                 throw error;
             throw new common_1.HttpException({
                 success: false,
-                message: 'Có lỗi xảy ra khi tạo yêu cầu chuyển giáo viên',
+                message: 'Có lỗi xảy ra khi chuyển giáo viên',
                 error: error.message,
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    async validateTransferConflict(classId, params) {
+        try {
+            const { replacementTeacherId, effectiveDate, substituteEndDate } = params;
+            const [classItem, teacher] = await Promise.all([
+                this.prisma.class.findUnique({ where: { id: classId }, include: { subject: true } }),
+                this.prisma.teacher.findUnique({ where: { id: replacementTeacherId }, include: { user: true } }),
+            ]);
+            if (!classItem) {
+                throw new common_1.HttpException({ success: false, message: 'Không tìm thấy lớp học' }, common_1.HttpStatus.NOT_FOUND);
+            }
+            if (!teacher) {
+                throw new common_1.HttpException({ success: false, message: 'Không tìm thấy giáo viên thay thế' }, common_1.HttpStatus.NOT_FOUND);
+            }
+            let incompatibleSubject = false;
+            let subjectMessage = null;
+            if (classItem.subjectId && classItem.subject?.name && Array.isArray(teacher.subjects)) {
+                const canTeach = teacher.subjects.includes(classItem.subject.name);
+                if (!canTeach) {
+                    incompatibleSubject = true;
+                    subjectMessage = `Giáo viên không thể dạy môn ${classItem.subject.name}`;
+                }
+            }
+            if (teacher.user && teacher.user.isActive === false) {
+                return {
+                    success: true,
+                    message: 'Giáo viên đang không hoạt động',
+                    data: { hasConflict: true, conflicts: [], incompatibleSubject, subjectMessage, inactive: true },
+                };
+            }
+            const startDate = effectiveDate ? new Date(effectiveDate) : new Date();
+            const endDate = substituteEndDate ? new Date(substituteEndDate) : null;
+            const classSessions = await this.prisma.classSession.findMany({
+                where: {
+                    classId: classId,
+                    sessionDate: endDate
+                        ? { gte: startDate, lte: endDate }
+                        : { gte: startDate },
+                },
+                select: {
+                    id: true,
+                    sessionDate: true,
+                    startTime: true,
+                    endTime: true,
+                },
+                orderBy: { sessionDate: 'asc' },
+            });
+            if (classSessions.length === 0) {
+                return {
+                    success: true,
+                    message: 'Không có buổi học trong khoảng thời gian áp dụng',
+                    data: { hasConflict: false, conflicts: [], incompatibleSubject, subjectMessage },
+                };
+            }
+            const conflicts = [];
+            for (const s of classSessions) {
+                const conflict = await this.prisma.classSession.findFirst({
+                    where: {
+                        sessionDate: s.sessionDate,
+                        teacherId: replacementTeacherId,
+                        OR: [
+                            { AND: [{ startTime: { lte: s.startTime } }, { endTime: { gt: s.startTime } }] },
+                            { AND: [{ startTime: { lt: s.endTime } }, { endTime: { gte: s.endTime } }] },
+                            { AND: [{ startTime: { gte: s.startTime } }, { endTime: { lte: s.endTime } }] },
+                        ],
+                    },
+                    select: { id: true, classId: true, startTime: true, endTime: true },
+                });
+                if (conflict) {
+                    conflicts.push({
+                        targetSessionId: s.id,
+                        date: s.sessionDate,
+                        targetStart: s.startTime,
+                        targetEnd: s.endTime,
+                        conflictSessionId: conflict.id,
+                        conflictClassId: conflict.classId,
+                        conflictStart: conflict.startTime,
+                        conflictEnd: conflict.endTime,
+                    });
+                }
+            }
+            return {
+                success: true,
+                message: conflicts.length ? 'Phát hiện xung đột lịch' : 'Không có xung đột',
+                data: { hasConflict: conflicts.length > 0, conflicts, incompatibleSubject, subjectMessage },
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.HttpException)
+                throw error;
+            throw new common_1.HttpException({ success: false, message: 'Lỗi kiểm tra xung đột', error: error.message }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     async getTransferRequests(params) {
@@ -2968,6 +3174,124 @@ let ClassManagementService = class ClassManagementService {
     isValidUUID(uuid) {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         return uuidRegex.test(uuid);
+    }
+    async checkTeacherScheduleConflict(teacherId, newClassId, newClassSchedule, newClassRoomId) {
+        if (!newClassSchedule) {
+            return { hasConflict: false, message: '' };
+        }
+        const assignedClasses = await this.prisma.class.findMany({
+            where: {
+                teacherId,
+                status: { in: ['ready', 'active', 'suspended'] },
+                id: { not: newClassId },
+            },
+            select: {
+                id: true,
+                name: true,
+                classCode: true,
+                recurringSchedule: true,
+                roomId: true,
+                subject: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        });
+        if (assignedClasses.length === 0) {
+            return { hasConflict: false, message: '' };
+        }
+        const newSchedules = this.parseRecurringSchedule(newClassSchedule, newClassRoomId);
+        if (newSchedules.length === 0) {
+            return { hasConflict: false, message: '' };
+        }
+        const conflicts = [];
+        for (const assignedClass of assignedClasses) {
+            if (!assignedClass.recurringSchedule) {
+                continue;
+            }
+            const assignedSchedules = this.parseRecurringSchedule(assignedClass.recurringSchedule, assignedClass.roomId);
+            for (const newSchedule of newSchedules) {
+                for (const assignedSchedule of assignedSchedules) {
+                    if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(assignedSchedule.day)) {
+                        if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, assignedSchedule.startTime, assignedSchedule.endTime)) {
+                            conflicts.push({
+                                assignedClass: {
+                                    id: assignedClass.id,
+                                    name: assignedClass.name,
+                                    classCode: assignedClass.classCode,
+                                    subject: assignedClass.subject?.name || 'N/A',
+                                },
+                                conflictDay: this.getDayName(newSchedule.day),
+                                conflictTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
+                                assignedTime: `${assignedSchedule.startTime} - ${assignedSchedule.endTime}`,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if (conflicts.length > 0) {
+            const conflictMessages = conflicts.map((c) => `Lớp "${c.assignedClass.name}" (${c.assignedClass.subject}) - ${c.conflictDay}: ${c.conflictTime}`);
+            const message = `Lịch học của lớp này trùng với các lớp giáo viên đã được phân công:\n${conflictMessages.join('\n')}`;
+            return {
+                hasConflict: true,
+                message,
+                conflictDetails: conflicts,
+            };
+        }
+        return { hasConflict: false, message: '' };
+    }
+    parseRecurringSchedule(schedule, classRoomId = null) {
+        if (!schedule) {
+            return [];
+        }
+        if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+            return schedule.schedules.map((s) => ({
+                day: s.day || s.dayOfWeek || '',
+                startTime: s.startTime || '',
+                endTime: s.endTime || '',
+                roomId: s.roomId || classRoomId || null,
+            }));
+        }
+        if (Array.isArray(schedule)) {
+            return schedule.map((s) => ({
+                day: s.day || s.dayOfWeek || '',
+                startTime: s.startTime || '',
+                endTime: s.endTime || '',
+                roomId: s.roomId || classRoomId || null,
+            }));
+        }
+        return [];
+    }
+    normalizeDayOfWeek(day) {
+        if (!day)
+            return '';
+        return day.toLowerCase().trim();
+    }
+    isTimeOverlapping(start1, end1, start2, end2) {
+        const toMinutes = (time) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + (minutes || 0);
+        };
+        const start1Min = toMinutes(start1);
+        const end1Min = toMinutes(end1);
+        const start2Min = toMinutes(start2);
+        const end2Min = toMinutes(end2);
+        return start1Min < end2Min && end1Min > start2Min;
+    }
+    getDayName(day) {
+        const dayNames = {
+            monday: 'Thứ Hai',
+            tuesday: 'Thứ Ba',
+            wednesday: 'Thứ Tư',
+            thursday: 'Thứ Năm',
+            friday: 'Thứ Sáu',
+            saturday: 'Thứ Bảy',
+            sunday: 'Chủ Nhật',
+        };
+        const normalizedDay = this.normalizeDayOfWeek(day);
+        return dayNames[normalizedDay] || day;
     }
 };
 exports.ClassManagementService = ClassManagementService;
