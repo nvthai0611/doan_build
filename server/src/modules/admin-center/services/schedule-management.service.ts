@@ -482,4 +482,15 @@ export class ScheduleManagementService {
             kyNangLamViecNhom: null, // Có thể thêm vào StudentSessionAttendance model sau
         }));
     }
+
+    /**
+     * Cập nhật buổi học
+     */
+    async updateSession(sessionId: string, body: any) {
+        const session = await this.prisma.classSession.update({
+            where: { id: sessionId },
+            data: body,
+        });
+        return session;
+    }
 }

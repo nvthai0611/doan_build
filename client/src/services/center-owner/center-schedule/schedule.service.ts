@@ -80,7 +80,7 @@ export const centerOwnerScheduleService = {
    * Cập nhật buổi học
    */
   updateSession: async (sessionId: string, data: Partial<CreateSessionRequest>): Promise<ClassSession> => {
-    const response = await ApiService.patch<ClassSession>(`/admin-center/schedule/sessions/${sessionId}`, data)
+    const response = await ApiService.patch<ClassSession>(`/admin-center/schedule-management/sessions/${sessionId}`, data)
     return response.data as any
   },
 
