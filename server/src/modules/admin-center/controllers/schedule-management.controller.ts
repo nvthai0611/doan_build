@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Controller, Get, Query, Param, Patch, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ScheduleManagementService } from '../services/schedule-management.service';
 import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
@@ -60,5 +60,24 @@ export class ScheduleManagementController {
     const expectedStartDate = query?.expectedStartDate;
     const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
     return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
+  }
+
+  @Patch('sessions/:id')
+  @ApiOperation({ summary: 'Cập nhật buổi học' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async updateSession(@Param('id') sessionId: string, @Body() body: any) {
+    const data = await this.scheduleService.updateSession(sessionId, body);
+    return { data, message: 'Cập nhật buổi học thành công' };
+  }
+
+  @Get('teachers-in-sessions')
+  @ApiOperation({ summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)' })
+  async getTeachersInSessionsToday(@Query() query: any) {
+    const result = await this.scheduleService.getTeachersInSessionsToday(query);
+    return { 
+      success: true,
+      ...result, 
+      message: 'Lấy danh sách giáo viên tham gia buổi học thành công' 
+    };
   }
 }

@@ -411,6 +411,24 @@ export class ClassJoinService {
       );
     }
 
+    // Kiểm tra trùng lịch học với các lớp đã đăng ký
+    const scheduleConflict = await this.checkScheduleConflict(
+      dto.studentId,
+      dto.classId,
+      classData.recurringSchedule,
+    );
+
+    if (scheduleConflict.hasConflict) {
+      throw new HttpException(
+        {
+          success: false,
+          message: scheduleConflict.message,
+          conflictDetails: scheduleConflict.conflictDetails,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // Tạo request - lưu cả commitmentImageUrl để backward compatible với code cũ
     const request = await this.prisma.studentClassRequest.create({
       data: {
@@ -607,6 +625,222 @@ export class ClassJoinService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Kiểm tra xung đột lịch học giữa lớp mới và các lớp đã đăng ký của học sinh
+   */
+  private async checkScheduleConflict(
+    studentId: string,
+    newClassId: string,
+    newClassSchedule: any,
+  ): Promise<{ hasConflict: boolean; message: string; conflictDetails?: any[] }> {
+    // Nếu lớp mới không có lịch học thì không cần kiểm tra
+    if (!newClassSchedule) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Lấy danh sách các lớp mà học sinh đã enrolled (status: studying hoặc not_been_updated)
+    const enrolledClasses = await this.prisma.enrollment.findMany({
+      where: {
+        studentId,
+        status: { in: ['studying', 'not_been_updated'] },
+        class: {
+          status: { in: ['ready', 'active'] },
+          id: { not: newClassId }, // Loại trừ lớp đang muốn join
+        },
+      },
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classCode: true,
+            recurringSchedule: true,
+            subject: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (enrolledClasses.length === 0) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Parse lịch học của lớp mới
+    const newSchedules = this.parseRecurringSchedule(newClassSchedule);
+    if (newSchedules.length === 0) {
+      return { hasConflict: false, message: '' };
+    }
+
+    // Kiểm tra xung đột với từng lớp đã enrolled
+    const conflicts: any[] = [];
+
+    for (const enrollment of enrolledClasses) {
+      const enrolledClass = enrollment.class;
+      if (!enrolledClass.recurringSchedule) {
+        continue;
+      }
+
+      const enrolledSchedules = this.parseRecurringSchedule(enrolledClass.recurringSchedule);
+
+      // So sánh từng slot lịch học của lớp mới với từng slot của lớp đã enrolled
+      for (const newSchedule of newSchedules) {
+        for (const enrolledSchedule of enrolledSchedules) {
+          // Kiểm tra cùng ngày trong tuần
+          if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(enrolledSchedule.day)) {
+            // Kiểm tra overlap thời gian
+            if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, enrolledSchedule.startTime, enrolledSchedule.endTime)) {
+              conflicts.push({
+                enrolledClass: {
+                  id: enrolledClass.id,
+                  name: enrolledClass.name,
+                  classCode: enrolledClass.classCode,
+                  subject: enrolledClass.subject?.name || 'N/A',
+                },
+                conflictDay: this.getDayName(newSchedule.day),
+                conflictTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
+                enrolledTime: `${enrolledSchedule.startTime} - ${enrolledSchedule.endTime}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (conflicts.length > 0) {
+      // Tạo message chi tiết
+      const conflictMessages = conflicts.map(
+        (c) =>
+          `Lớp "${c.enrolledClass.name}" (${c.enrolledClass.subject}) - ${c.conflictDay}: ${c.conflictTime}`,
+      );
+      const message = `Lịch học của lớp này trùng với các lớp đã đăng ký:\n${conflictMessages.join('\n')}`;
+
+      return {
+        hasConflict: true,
+        message,
+        conflictDetails: conflicts,
+      };
+    }
+
+    return { hasConflict: false, message: '' };
+  }
+
+  /**
+   * Parse recurringSchedule từ nhiều định dạng khác nhau
+   * 
+   * Hỗ trợ các format:
+   * 1. Object có property schedules (format chính):
+   *    { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00" }, ...] }
+   * 2. Array trực tiếp:
+   *    [{ day: "monday", startTime: "18:00", endTime: "20:00" }, ...]
+   */
+  private parseRecurringSchedule(schedule: any): Array<{ day: string; startTime: string; endTime: string }> {
+    if (!schedule) {
+      return [];
+    }
+
+    // Trường hợp 1: Object có property schedules (format chính)
+    // Format: { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00" }, ...] }
+    if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+      return schedule.schedules.map((s: any) => ({
+        day: s.day || s.dayOfWeek || '',
+        startTime: s.startTime || '',
+        endTime: s.endTime || '',
+      }));
+    }
+
+    // Trường hợp 2: Array trực tiếp (backward compatibility)
+    // Format: [{ day: "monday", startTime: "18:00", endTime: "20:00" }, ...]
+    if (Array.isArray(schedule)) {
+      return schedule.map((s: any) => ({
+        day: s.day || s.dayOfWeek || '',
+        startTime: s.startTime || '',
+        endTime: s.endTime || '',
+      }));
+    }
+
+    return [];
+  }
+
+  /**
+   * Chuẩn hóa dayOfWeek về cùng format (lowercase)
+   */
+  private normalizeDayOfWeek(day: string): string {
+    if (!day) return '';
+    return day.toLowerCase().trim();
+  }
+
+  /**
+   * Kiểm tra hai khoảng thời gian có overlap (trùng) không
+   * 
+   * Công thức: start1 < end2 && end1 > start2
+   * 
+   * Giải thích:
+   * - Hai khoảng thời gian overlap khi chúng có phần chung
+   * - Điều kiện 1: start1 < end2 → Khoảng 1 bắt đầu trước khi khoảng 2 kết thúc
+   * - Điều kiện 2: end1 > start2 → Khoảng 1 kết thúc sau khi khoảng 2 bắt đầu
+   * - Cả hai điều kiện đều đúng → OVERLAP
+   * 
+   * Ví dụ:
+   * 1. Khoảng 1: 08:00-10:00, Khoảng 2: 09:00-11:00
+   *    → 08:00 < 11:00 (true) && 10:00 > 09:00 (true) → OVERLAP 
+   * 
+   * 2. Khoảng 1: 08:00-10:00, Khoảng 2: 10:00-12:00
+   *    → 08:00 < 12:00 (true) && 10:00 > 10:00 (false) → KHÔNG OVERLAP 
+   *    (Tiếp giáp nhau, không overlap)
+   * 
+   * 3. Khoảng 1: 08:00-10:00, Khoảng 2: 11:00-13:00
+   *    → 08:00 < 13:00 (true) && 10:00 > 11:00 (false) → KHÔNG OVERLAP 
+   *    (Tách biệt, không overlap)
+   * 
+   * 4. Khoảng 1: 08:00-12:00, Khoảng 2: 09:00-11:00
+   *    → 08:00 < 11:00 (true) && 12:00 > 09:00 (true) → OVERLAP 
+   *    (Khoảng 2 nằm trong khoảng 1)
+   */
+  private isTimeOverlapping(
+    start1: string,
+    end1: string,
+    start2: string,
+    end2: string,
+  ): boolean {
+    // Convert time string (HH:mm) to minutes for comparison
+    const toMinutes = (time: string): number => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + (minutes || 0);
+    };
+
+    const start1Min = toMinutes(start1);
+    const end1Min = toMinutes(end1);
+    const start2Min = toMinutes(start2);
+    const end2Min = toMinutes(end2);
+
+    // Overlap condition: start1 < end2 && end1 > start2
+    // Hai khoảng overlap khi: khoảng 1 bắt đầu trước khi khoảng 2 kết thúc
+    // VÀ khoảng 1 kết thúc sau khi khoảng 2 bắt đầu
+    return start1Min < end2Min && end1Min > start2Min;
+  }
+
+  /**
+   * Lấy tên ngày tiếng Việt
+   */
+  private getDayName(day: string): string {
+    const dayNames: { [key: string]: string } = {
+      monday: 'Thứ Hai',
+      tuesday: 'Thứ Ba',
+      wednesday: 'Thứ Tư',
+      thursday: 'Thứ Năm',
+      friday: 'Thứ Sáu',
+      saturday: 'Thứ Bảy',
+      sunday: 'Chủ Nhật',
+    };
+
+    const normalizedDay = this.normalizeDayOfWeek(day);
+    return dayNames[normalizedDay] || day;
   }
 }
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -632,10 +632,9 @@ export default function GeneralInfoTab({
             <div className="flex flex-col items-center space-y-4">
               {/* Avatar */}
               <Avatar className="w-32 h-32">
+                <AvatarImage src={teacher.avatar || ''} />
                 <AvatarFallback className="bg-gray-200 text-4xl">
-                  <div className="w-24 h-24 bg-gray-400 rounded-full flex items-center justify-center">
-                    <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full"></div>
-                  </div>
+                  {teacher.name?.charAt(0) || 'GV'}
                 </AvatarFallback>
               </Avatar>
 

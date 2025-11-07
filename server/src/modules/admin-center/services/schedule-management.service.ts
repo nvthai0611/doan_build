@@ -482,4 +482,221 @@ export class ScheduleManagementService {
             kyNangLamViecNhom: null, // Có thể thêm vào StudentSessionAttendance model sau
         }));
     }
+
+    /**
+     * Cập nhật buổi học
+     */
+    async updateSession(sessionId: string, body: any) {
+        const session = await this.prisma.classSession.update({
+            where: { id: sessionId },
+            data: body,
+        });
+        return session;
+    }
+
+    /**
+     * Lấy danh sách giáo viên tham gia buổi học theo ngày
+     * Dùng cho trang "Buổi học hôm nay" của center-owner
+     */
+    async getTeachersInSessionsToday(query: any) {
+        const { startDate, endDate, search, attendanceStatus, page = 1, limit = 10, classId, sessionStatus } = query;
+        
+        // Convert page và limit sang number nếu là string
+        const pageNum = typeof page === 'string' ? parseInt(page, 10) : Number(page);
+        const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : Number(limit);
+
+        // Xác định khoảng thời gian (mặc định là hôm nay nếu không có)
+        let dateStart: Date;
+        let dateEnd: Date;
+
+        if (startDate && endDate) {
+            // Parse date string - tạo date ở UTC để so sánh với @db.Date
+            // Format: "yyyy-MM-dd"
+            // @db.Date trong PostgreSQL chỉ lưu ngày, không có timezone
+            // Nên cần tạo date ở UTC midnight để tránh lệch ngày
+            const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+            const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+            
+            // Tạo date ở UTC midnight
+            dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
+            dateEnd = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999));
+            
+        } else {
+            // Mặc định là hôm nay
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            dateStart = today;
+            dateEnd = new Date(today);
+            dateEnd.setHours(23, 59, 59, 999);
+        }
+
+        // Build where condition
+        const where: any = {
+            sessionDate: {
+                gte: dateStart,
+                lte: dateEnd,
+            },
+            // Chỉ lấy buổi học có giáo viên
+            teacherId: { not: null },
+            class: {
+                status: { in: ['active', 'ready', 'suspended'] },
+            },
+        };
+
+        // Filter theo sessionStatus nếu có, nếu không thì loại trừ 'end' và 'cancelled'
+        if (sessionStatus) {
+            where.status = sessionStatus;
+        } else {
+            // Loại trừ các buổi đã kết thúc hoặc bị hủy
+            where.status = { notIn: ['end', 'cancelled'] };
+        }
+
+        // Filter theo tên giáo viên nếu có search
+        if (search) {
+            where.teacher = {
+                user: {
+                    fullName: { contains: search, mode: 'insensitive' },
+                },
+            };
+        }
+
+        // Filter theo classId nếu có
+        if (classId) {
+            where.classId = classId;
+        }
+
+        // Lấy tổng số trước
+        const total = await this.prisma.classSession.count({ where });
+
+        // Lấy danh sách sessions với pagination
+        const skip = (pageNum - 1) * limitNum;
+        const sessions = await this.prisma.classSession.findMany({
+            where,
+            skip,
+            take: limitNum,
+            orderBy: [
+                { sessionDate: 'asc' },
+                { startTime: 'asc' },
+            ],
+            include: {
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                substituteTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                            },
+                        },
+                    },
+                },
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                        maxStudents: true,
+                    },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                attendances: {
+                    select: {
+                        id: true,
+                        status: true,
+                    },
+                },
+                teacherSessionPayout: {
+                    select: {
+                        teacherPayout: true,
+                    },
+                },
+            },
+        });
+
+        // Đếm enrollment cho từng session dựa trên enrolledAt <= sessionDate
+        const sessionEnrollmentCounts = await Promise.all(
+            sessions.map((session) =>
+                this.prisma.enrollment.count({
+                    where: {
+                        classId: session.classId,
+                        status: { in: ['studying', 'not_been_updated'] },
+                        enrolledAt: {
+                            lte: session.sessionDate, // Chỉ đếm những người đã enroll trước hoặc vào ngày của buổi học
+                        },
+                    },
+                }),
+            ),
+        );
+
+        const result = sessions.map((session, index) => {
+            // Xác định vai trò: giáo viên chính hoặc giáo viên thay thế
+            const isSubstitute = session.substituteTeacherId && 
+                                session.substituteEndDate && 
+                                new Date(session.substituteEndDate) >= session.sessionDate;
+            const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
+            const role = isSubstitute ? 'GV thay thế' : 'Giáo Viên';
+            
+
+            return {
+                id: session.id,
+                stt: skip + index + 1,
+                teacher: {
+                    id: teacher?.id || '',
+                    userId: teacher?.userId || '',
+                    fullName: teacher?.user?.fullName || 'Chưa có tên',
+                    avatar: teacher?.user?.avatar || null,
+                    teacherCode: teacher?.teacherCode || '',
+                    email: (teacher?.user as any)?.email || '',
+                },
+                role: role,
+                session: {
+                    id: session.id,
+                    sessionNumber: session.notes?.match(/Buổi (\d+)/)?.[1] || '',
+                    status: session.status,
+                    sessionDate: session.sessionDate.toISOString().split('T')[0],
+                    startTime: session.startTime,
+                    endTime: session.endTime,
+                    dateTimeRange: `${session.sessionDate.toISOString().split('T')[0]} ${session.startTime} → ${session.endTime}`,
+                },
+                class: {
+                    id: session.class.id,
+                    name: session.class.name,
+                    classCode: session.class.classCode,
+                    subject: session.class.subject?.name || '',
+                },
+                enrollmentCount: sessionEnrollmentCounts[index],
+            };
+        });
+        return {
+            data: result,
+            meta: {
+                total: result.length,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(result.length / limitNum),
+            },
+        };
+    }
 }
