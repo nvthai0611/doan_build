@@ -129,6 +129,28 @@ export class ClassManagementController {
         return this.classManagementService.transferTeacher(classId, body, requestedBy);
     }
 
+    @Get(':id/transfer-teacher/validate')
+    @ApiOperation({ summary: 'Kiểm tra xung đột khi chuyển giáo viên' })
+    @ApiResponse({ status: 200, description: 'Kết quả kiểm tra xung đột' })
+    async validateTransfer(
+        @Param('id') classId: string,
+        @Query('replacementTeacherId') replacementTeacherId: string,
+        @Query('effectiveDate') effectiveDate?: string,
+        @Query('substituteEndDate') substituteEndDate?: string,
+    ) {
+        if (!replacementTeacherId) {
+            throw new HttpException(
+                { success: false, message: 'Thiếu replacementTeacherId' },
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+        return this.classManagementService.validateTransferConflict(classId, {
+            replacementTeacherId,
+            effectiveDate,
+            substituteEndDate,
+        });
+    }
+
     @Get('transfers')
     @ApiOperation({ summary: 'Lấy danh sách yêu cầu chuyển giáo viên' })
     @ApiResponse({ status: 200, description: 'Danh sách yêu cầu chuyển giáo viên' })
