@@ -3372,8 +3372,7 @@ export class ClassManagementService {
               },
             },
             data: {
-              teacherId: body.replacementTeacherId,
-              substituteTeacherId: classItem.teacherId,
+              substituteTeacherId: body.replacementTeacherId,
               substituteEndDate: substituteEndDate,
             },
           });
@@ -3764,8 +3763,7 @@ export class ClassManagementService {
               },
             },
             data: {
-              teacherId: replacementTeacherId,
-              substituteTeacherId: transfer.teacherId,
+              substituteTeacherId: transfer.replacementTeacherId,
               substituteEndDate: substituteEndDate,
             },
           });
