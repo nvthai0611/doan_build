@@ -10,6 +10,38 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
+            feeStructure: {
+                createdAt: Date;
+                id: string;
+                description: string | null;
+                gradeId: string | null;
+                name: string;
+                subjectId: string | null;
+                isActive: boolean;
+                amount: import("@prisma/client/runtime/library").Decimal;
+                period: string;
+            };
+            grade: {
+                level: number;
+                id: string;
+                description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
+            };
             teacher: {
                 user: {
                     id: string;
@@ -19,53 +51,17 @@ export declare class ClassManagementController {
                     phone: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
-            grade: {
-                level: number;
-                id: string;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-            };
-            feeStructure: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-                gradeId: string | null;
-                subjectId: string | null;
-                amount: import("@prisma/client/runtime/library").Decimal;
-                period: string;
-            };
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -73,16 +69,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
     }>;
     findAll(queryDto: QueryClassDto): Promise<{
@@ -157,15 +157,26 @@ export declare class ClassManagementController {
                 enrollmentId: bigint;
                 studentId: string;
             }[];
-            _count: {
-                enrollments: number;
-            };
             grade: {
                 level: number;
                 id: string;
-                isActive: boolean;
-                name: string;
                 description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
             };
             enrollments: ({
                 student: {
@@ -176,22 +187,22 @@ export declare class ClassManagementController {
                         phone: string;
                     };
                 } & {
-                    id: string;
                     createdAt: Date;
+                    id: string;
                     updatedAt: Date;
+                    grade: string | null;
                     userId: string;
+                    schoolId: string;
                     studentCode: string | null;
                     address: string | null;
-                    grade: string | null;
-                    schoolId: string;
                     parentId: string | null;
                     scholarshipId: string | null;
                 };
             } & {
                 id: bigint;
+                status: string;
                 studentId: string;
                 classId: string;
-                status: string;
                 enrolledAt: Date;
                 semester: string | null;
                 completedAt: Date | null;
@@ -199,26 +210,11 @@ export declare class ClassManagementController {
                 completionStatus: string | null;
                 completionNotes: string | null;
             })[];
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            _count: {
+                enrollments: number;
             };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -226,22 +222,47 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
     }>;
     update(id: string, updateClassDto: UpdateClassDto): Promise<{
         success: boolean;
         message: string;
         data: {
+            grade: {
+                level: number;
+                id: string;
+                description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
+            };
             teacher: {
                 user: {
                     id: string;
@@ -251,42 +272,17 @@ export declare class ClassManagementController {
                     phone: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
-            grade: {
-                level: number;
-                id: string;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-            };
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -294,16 +290,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         sessionsGenerated: boolean;
         warning?: undefined;
@@ -311,6 +311,27 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
+            grade: {
+                level: number;
+                id: string;
+                description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
+            };
             teacher: {
                 user: {
                     id: string;
@@ -320,42 +341,17 @@ export declare class ClassManagementController {
                     phone: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
-            grade: {
-                level: number;
-                id: string;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-            };
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -363,16 +359,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         warning: any;
         sessionsGenerated?: undefined;
@@ -380,6 +380,27 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
+            grade: {
+                level: number;
+                id: string;
+                description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
+            };
             teacher: {
                 user: {
                     id: string;
@@ -389,42 +410,17 @@ export declare class ClassManagementController {
                     phone: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
-            grade: {
-                level: number;
-                id: string;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-            };
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -432,16 +428,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         sessionsGenerated?: undefined;
         warning?: undefined;
@@ -450,12 +450,8 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -463,16 +459,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         updatedEnrollmentsCount: number;
         sessionsGenerated: boolean;
@@ -481,12 +481,8 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -494,16 +490,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         updatedEnrollmentsCount: number;
         warning: any;
@@ -512,12 +512,8 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -525,16 +521,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         updatedEnrollmentsCount: number;
         sessionsGenerated?: undefined;
@@ -544,6 +544,38 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
+            feeStructure: {
+                createdAt: Date;
+                id: string;
+                description: string | null;
+                gradeId: string | null;
+                name: string;
+                subjectId: string | null;
+                isActive: boolean;
+                amount: import("@prisma/client/runtime/library").Decimal;
+                period: string;
+            };
+            grade: {
+                level: number;
+                id: string;
+                description: string | null;
+                name: string;
+                isActive: boolean;
+            };
+            room: {
+                createdAt: Date;
+                id: string;
+                name: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            subject: {
+                id: string;
+                description: string | null;
+                name: string;
+                code: string;
+            };
             teacher: {
                 user: {
                     id: string;
@@ -551,53 +583,17 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
-            grade: {
-                level: number;
-                id: string;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-            };
-            feeStructure: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                description: string | null;
-                gradeId: string | null;
-                subjectId: string | null;
-                amount: import("@prisma/client/runtime/library").Decimal;
-                period: string;
-            };
-            room: {
-                id: string;
-                createdAt: Date;
-                isActive: boolean;
-                name: string;
-                capacity: number | null;
-                equipment: import("@prisma/client/runtime/library").JsonValue | null;
-            };
-            subject: {
-                id: string;
-                name: string;
-                description: string | null;
-                code: string;
-            };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -605,16 +601,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
     }>;
     delete(id: string): Promise<{
@@ -638,30 +638,26 @@ export declare class ClassManagementController {
             grade: {
                 level: number;
                 id: string;
-                isActive: boolean;
-                name: string;
                 description: string | null;
+                name: string;
+                isActive: boolean;
             };
             room: {
-                id: string;
                 createdAt: Date;
-                isActive: boolean;
+                id: string;
                 name: string;
+                isActive: boolean;
                 capacity: number | null;
                 equipment: import("@prisma/client/runtime/library").JsonValue | null;
             };
             subject: {
                 id: string;
-                name: string;
                 description: string | null;
+                name: string;
                 code: string;
             };
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -669,16 +665,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
     }>;
     assignTeacher(classId: string, body: any): Promise<{
@@ -693,21 +693,17 @@ export declare class ClassManagementController {
                     phone: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -715,16 +711,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         metadata: {
             hasSchedule: true;
@@ -737,12 +737,8 @@ export declare class ClassManagementController {
         success: boolean;
         message: string;
         data: {
-            id: string;
-            status: string;
             createdAt: Date;
-            password: string | null;
-            updatedAt: Date;
-            name: string;
+            id: string;
             roomId: string | null;
             teacherId: string | null;
             classCode: string | null;
@@ -750,16 +746,20 @@ export declare class ClassManagementController {
             feeStructureId: string | null;
             gradeId: string | null;
             maxStudents: number | null;
+            name: string;
+            status: string;
             subjectId: string;
             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
             academicYear: string | null;
             expectedStartDate: Date | null;
             actualStartDate: Date | null;
             actualEndDate: Date | null;
+            updatedAt: Date;
             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
             feePeriod: string | null;
             feeCurrency: string | null;
             feeLockedAt: Date | null;
+            password: string | null;
         };
         metadata: {
             statusChanged: boolean;
@@ -790,12 +790,12 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
             fromClass: {
@@ -808,20 +808,20 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            updatedAt: Date;
+            id: string;
             teacherId: string;
+            status: string;
+            updatedAt: Date;
             completedAt: Date | null;
             substituteEndDate: Date | null;
             notes: string | null;
@@ -837,6 +837,27 @@ export declare class ClassManagementController {
             feedbackSummary: import("@prisma/client/runtime/library").JsonValue | null;
         };
     }>;
+    validateTransfer(classId: string, replacementTeacherId: string, effectiveDate?: string, substituteEndDate?: string): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            hasConflict: boolean;
+            conflicts: any[];
+            incompatibleSubject: boolean;
+            subjectMessage: string;
+            inactive: boolean;
+        };
+    } | {
+        success: boolean;
+        message: string;
+        data: {
+            hasConflict: boolean;
+            conflicts: any[];
+            incompatibleSubject: boolean;
+            subjectMessage: string;
+            inactive?: undefined;
+        };
+    }>;
     getTransferRequests(query: any): Promise<{
         success: boolean;
         data: ({
@@ -846,12 +867,12 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
             fromClass: {
@@ -864,20 +885,20 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            updatedAt: Date;
+            id: string;
             teacherId: string;
+            status: string;
+            updatedAt: Date;
             completedAt: Date | null;
             substituteEndDate: Date | null;
             notes: string | null;
@@ -910,12 +931,12 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
             fromClass: {
@@ -928,20 +949,20 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            updatedAt: Date;
+            id: string;
             teacherId: string;
+            status: string;
+            updatedAt: Date;
             completedAt: Date | null;
             substituteEndDate: Date | null;
             notes: string | null;
@@ -967,12 +988,12 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
             fromClass: {
@@ -985,20 +1006,20 @@ export declare class ClassManagementController {
                     fullName: string;
                 };
             } & {
-                id: string;
                 createdAt: Date;
+                id: string;
                 updatedAt: Date;
                 userId: string;
-                schoolId: string | null;
                 teacherCode: string;
+                schoolId: string | null;
                 subjects: string[];
             };
         } & {
-            id: string;
-            status: string;
             createdAt: Date;
-            updatedAt: Date;
+            id: string;
             teacherId: string;
+            status: string;
+            updatedAt: Date;
             completedAt: Date | null;
             substituteEndDate: Date | null;
             notes: string | null;
@@ -1099,6 +1120,9 @@ export declare class ClassManagementController {
             notes: string;
             teacher: string;
             teacherName: string;
+            substituteTeacher: string;
+            originalTeacher: string;
+            isSubstitute: boolean;
             totalStudents: number;
             studentCount: number;
             attendanceCount: number;
@@ -1170,12 +1194,8 @@ export declare class ClassManagementController {
         feeStructureName: string;
     }>;
     createClassLegacy(body: any): Promise<{
-        id: string;
-        status: string;
         createdAt: Date;
-        password: string | null;
-        updatedAt: Date;
-        name: string;
+        id: string;
         roomId: string | null;
         teacherId: string | null;
         classCode: string | null;
@@ -1183,15 +1203,19 @@ export declare class ClassManagementController {
         feeStructureId: string | null;
         gradeId: string | null;
         maxStudents: number | null;
+        name: string;
+        status: string;
         subjectId: string;
         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
         academicYear: string | null;
         expectedStartDate: Date | null;
         actualStartDate: Date | null;
         actualEndDate: Date | null;
+        updatedAt: Date;
         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
         feePeriod: string | null;
         feeCurrency: string | null;
         feeLockedAt: Date | null;
+        password: string | null;
     }>;
 }

@@ -206,7 +206,7 @@ export function AffectedSessionsTable({
         )}
       </div> */}
 
-      <div className="space-y-3 overflow-hidden">
+      <div className="space-y-3 overflow-hidden max-h-[600px] overflow-y-auto">
         {sessions.map((session) => (
           <div
             key={session.id}

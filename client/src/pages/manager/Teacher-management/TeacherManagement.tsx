@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -104,7 +104,7 @@ export default function TeacherQnmsManagement() {
   const employeeData = (teachersData as any)?.data || []
   const totalCount = (teachersData as any)?.meta?.total || 0
   const totalPages = (teachersData as any)?.meta?.totalPages || 1
-  
+
   const finalEmployeeData = employeeData
   const finalTotalCount = totalCount
 
@@ -250,10 +250,12 @@ export default function TeacherQnmsManagement() {
       render: (employee: Teacher) => (
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10">
-            <AvatarFallback className="bg-gray-200">
-              <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-              </div>
+            <AvatarImage 
+              src={employee.avatar || undefined} 
+              alt={employee.name || 'Giáo viên'}
+            />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+              {employee.name?.charAt(0)?.toUpperCase() || 'GV'}
             </AvatarFallback>
           </Avatar>
           <div>

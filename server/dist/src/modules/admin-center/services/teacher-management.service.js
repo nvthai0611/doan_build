@@ -394,6 +394,24 @@ let TeacherManagementService = class TeacherManagementService {
                                 }
                                 : undefined,
                             include: {
+                                teacher: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                fullName: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                substituteTeacher: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                fullName: true,
+                                            },
+                                        },
+                                    },
+                                },
                                 attendances: {
                                     include: {
                                         student: {
@@ -415,36 +433,146 @@ let TeacherManagementService = class TeacherManagementService {
         if (!teacher) {
             throw new Error('Teacher not found');
         }
-        const sessions = teacher.classes.flatMap((cls) => cls.sessions.map((session) => ({
-            id: session.id,
-            classId: cls.id,
-            date: session.sessionDate,
-            title: `Buổi ${cls.name}`,
-            time: `${session.startTime}-${session.endTime}`,
-            subject: cls.subject.name,
-            class: cls.name,
-            room: cls.room?.name || 'Chưa xác định',
-            hasAlert: this.checkSessionAlerts(session),
-            status: session.status,
-            teacher: teacher.user.fullName || 'Chưa xác định',
-            students: session.attendances.map((attendance) => ({
-                id: attendance.student.id,
-                name: attendance.student.user.fullName || 'Chưa xác định',
-                avatar: undefined,
-                status: this.mapAttendanceStatus(attendance.status),
-            })),
-            attendanceWarnings: this.generateAttendanceWarnings(session),
-            description: session.notes || 'Phương học: Chưa cập nhật',
-            materials: [],
-            cancellationReason: session.cancellationReason,
-        })));
+        const dateFilter = year && month
+            ? {
+                sessionDate: {
+                    gte: new Date(year, month - 1, 1),
+                    lt: new Date(year, month, 1),
+                },
+            }
+            : undefined;
+        const substituteSessions = await this.prisma.classSession.findMany({
+            where: {
+                substituteTeacherId: id,
+                substituteEndDate: {
+                    gte: new Date(),
+                },
+                ...(dateFilter ? dateFilter : {}),
+            },
+            include: {
+                class: {
+                    include: {
+                        room: true,
+                        subject: true,
+                    },
+                },
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+                substituteTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+                attendances: {
+                    include: {
+                        student: {
+                            include: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                sessionDate: 'asc',
+            },
+        });
+        const mainSessions = teacher.classes.flatMap((cls) => cls.sessions
+            .filter((session) => {
+            const isSubstitute = session.substituteTeacherId &&
+                session.substituteEndDate &&
+                new Date(session.substituteEndDate) >= session.sessionDate;
+            if (isSubstitute && session.substituteTeacherId !== id) {
+                return false;
+            }
+            return true;
+        })
+            .map((session) => {
+            const isSubstitute = session.substituteTeacherId &&
+                session.substituteEndDate &&
+                new Date(session.substituteEndDate) >= session.sessionDate &&
+                session.substituteTeacherId === id;
+            const currentTeacher = isSubstitute ? session.substituteTeacher : session.teacher;
+            const teacherName = currentTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+            const originalTeacherName = session.teacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+            const substituteTeacherName = session.substituteTeacher?.user?.fullName || null;
+            return {
+                id: session.id,
+                classId: cls.id,
+                date: session.sessionDate,
+                title: `Buổi ${cls.name}`,
+                time: `${session.startTime}-${session.endTime}`,
+                subject: cls.subject.name,
+                class: cls.name,
+                room: cls.room?.name || 'Chưa xác định',
+                hasAlert: this.checkSessionAlerts(session),
+                status: session.status,
+                teacher: teacherName,
+                originalTeacher: originalTeacherName,
+                substituteTeacher: substituteTeacherName,
+                isSubstitute: isSubstitute,
+                students: session.attendances.map((attendance) => ({
+                    id: attendance.student.id,
+                    name: attendance.student.user.fullName || 'Chưa xác định',
+                    avatar: undefined,
+                    status: this.mapAttendanceStatus(attendance.status),
+                })),
+                attendanceWarnings: this.generateAttendanceWarnings(session),
+                description: session.notes || 'Phương học: Chưa cập nhật',
+                materials: [],
+                cancellationReason: session.cancellationReason,
+            };
+        }));
+        const substituteSessionsFormatted = substituteSessions.map((session) => {
+            const originalTeacherName = session.teacher?.user?.fullName || 'Chưa xác định';
+            const substituteTeacherName = session.substituteTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+            return {
+                id: session.id,
+                classId: session.classId,
+                date: session.sessionDate,
+                title: `Buổi ${session.class.name}`,
+                time: `${session.startTime}-${session.endTime}`,
+                subject: session.class.subject.name,
+                class: session.class.name,
+                room: session.class.room?.name || 'Chưa xác định',
+                hasAlert: this.checkSessionAlerts(session),
+                status: session.status,
+                teacher: substituteTeacherName,
+                originalTeacher: originalTeacherName,
+                substituteTeacher: substituteTeacherName,
+                isSubstitute: true,
+                students: session.attendances.map((attendance) => ({
+                    id: attendance.student.id,
+                    name: attendance.student.user.fullName || 'Chưa xác định',
+                    avatar: undefined,
+                    status: this.mapAttendanceStatus(attendance.status),
+                })),
+                attendanceWarnings: this.generateAttendanceWarnings(session),
+                description: session.notes || 'Phương học: Chưa cập nhật',
+                materials: [],
+                cancellationReason: session.cancellationReason,
+            };
+        });
+        const allSessions = [...mainSessions, ...substituteSessionsFormatted];
+        const uniqueSessions = allSessions.filter((session, index, self) => index === self.findIndex((s) => s.id === session.id));
         return {
             teacher: {
                 id: teacher.id,
                 name: teacher.user.fullName,
                 email: teacher.user.email,
             },
-            sessions: sessions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+            sessions: uniqueSessions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
         };
     }
     checkSessionAlerts(session) {
@@ -499,6 +627,7 @@ let TeacherManagementService = class TeacherManagementService {
             phone: teacher.user.phone,
             username: teacher.user.username,
             code: teacher.teacherCode,
+            avatar: teacher.user.avatar || null,
             role: this.mapRoleToVietnamese(teacher.user.role),
             gender: teacher.user.gender === constants_1.Gender.MALE
                 ? 'Nam'

@@ -422,6 +422,179 @@ let ScheduleManagementService = class ScheduleManagementService {
             kyNangLamViecNhom: null,
         }));
     }
+    async updateSession(sessionId, body) {
+        const session = await this.prisma.classSession.update({
+            where: { id: sessionId },
+            data: body,
+        });
+        return session;
+    }
+    async getTeachersInSessionsToday(query) {
+        const { startDate, endDate, search, attendanceStatus, page = 1, limit = 10, classId, sessionStatus } = query;
+        const pageNum = typeof page === 'string' ? parseInt(page, 10) : Number(page);
+        const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : Number(limit);
+        let dateStart;
+        let dateEnd;
+        if (startDate && endDate) {
+            const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+            const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+            dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
+            dateEnd = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999));
+        }
+        else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            dateStart = today;
+            dateEnd = new Date(today);
+            dateEnd.setHours(23, 59, 59, 999);
+        }
+        const where = {
+            sessionDate: {
+                gte: dateStart,
+                lte: dateEnd,
+            },
+            teacherId: { not: null },
+            class: {
+                status: { in: ['active', 'ready', 'suspended'] },
+            },
+        };
+        if (sessionStatus) {
+            where.status = sessionStatus;
+        }
+        else {
+            where.status = { notIn: ['end', 'cancelled'] };
+        }
+        if (search) {
+            where.teacher = {
+                user: {
+                    fullName: { contains: search, mode: 'insensitive' },
+                },
+            };
+        }
+        if (classId) {
+            where.classId = classId;
+        }
+        const total = await this.prisma.classSession.count({ where });
+        const skip = (pageNum - 1) * limitNum;
+        const sessions = await this.prisma.classSession.findMany({
+            where,
+            skip,
+            take: limitNum,
+            orderBy: [
+                { sessionDate: 'asc' },
+                { startTime: 'asc' },
+            ],
+            include: {
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                substituteTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                            },
+                        },
+                    },
+                },
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                        maxStudents: true,
+                    },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                attendances: {
+                    select: {
+                        id: true,
+                        status: true,
+                    },
+                },
+                teacherSessionPayout: {
+                    select: {
+                        teacherPayout: true,
+                    },
+                },
+            },
+        });
+        const sessionEnrollmentCounts = await Promise.all(sessions.map((session) => this.prisma.enrollment.count({
+            where: {
+                classId: session.classId,
+                status: { in: ['studying', 'not_been_updated'] },
+                enrolledAt: {
+                    lte: session.sessionDate,
+                },
+            },
+        })));
+        const result = sessions.map((session, index) => {
+            const isSubstitute = session.substituteTeacherId &&
+                session.substituteEndDate &&
+                new Date(session.substituteEndDate) >= session.sessionDate;
+            const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
+            const role = isSubstitute ? 'GV thay thế' : 'Giáo Viên';
+            return {
+                id: session.id,
+                stt: skip + index + 1,
+                teacher: {
+                    id: teacher?.id || '',
+                    userId: teacher?.userId || '',
+                    fullName: teacher?.user?.fullName || 'Chưa có tên',
+                    avatar: teacher?.user?.avatar || null,
+                    teacherCode: teacher?.teacherCode || '',
+                    email: teacher?.user?.email || '',
+                },
+                role: role,
+                session: {
+                    id: session.id,
+                    sessionNumber: session.notes?.match(/Buổi (\d+)/)?.[1] || '',
+                    status: session.status,
+                    sessionDate: session.sessionDate.toISOString().split('T')[0],
+                    startTime: session.startTime,
+                    endTime: session.endTime,
+                    dateTimeRange: `${session.sessionDate.toISOString().split('T')[0]} ${session.startTime} → ${session.endTime}`,
+                },
+                class: {
+                    id: session.class.id,
+                    name: session.class.name,
+                    classCode: session.class.classCode,
+                    subject: session.class.subject?.name || '',
+                },
+                enrollmentCount: sessionEnrollmentCounts[index],
+            };
+        });
+        return {
+            data: result,
+            meta: {
+                total: result.length,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(result.length / limitNum),
+            },
+        };
+    }
 };
 exports.ScheduleManagementService = ScheduleManagementService;
 exports.ScheduleManagementService = ScheduleManagementService = __decorate([

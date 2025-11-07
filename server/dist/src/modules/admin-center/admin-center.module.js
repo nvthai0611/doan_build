@@ -62,6 +62,8 @@ const rooms_management_controller_1 = require("./controllers/rooms-management.co
 const rooms_management_service_1 = require("./services/rooms-management.service");
 const subject_management_controller_1 = require("./controllers/subject-management.controller");
 const subject_management_service_1 = require("./services/subject-management.service");
+const payroll_teacher_service_1 = require("./services/payroll-teacher.service");
+const payroll_teacher_controller_1 = require("./controllers/payroll-teacher.controller");
 let AdminCenterModule = class AdminCenterModule {
     configure(consumer) {
         consumer
@@ -106,6 +108,7 @@ exports.AdminCenterModule = AdminCenterModule = __decorate([
             contract_upload_controller_1.ContractUploadController,
             rooms_management_controller_1.RoomsManagementController,
             subject_management_controller_1.SubjectManagementController,
+            payroll_teacher_controller_1.PayrollTeacherController
         ],
         providers: [
             prisma_service_1.PrismaService,
@@ -135,6 +138,7 @@ exports.AdminCenterModule = AdminCenterModule = __decorate([
             subject_management_service_1.SubjectManagementService,
             class_notification_service_1.ClassNotificationService,
             class_notification_cron_service_1.ClassNotificationCronService,
+            payroll_teacher_service_1.PayRollTeacherService
         ],
         exports: [alert_service_1.AlertService, holidays_setting_service_1.HolidaysSettingService],
     })
