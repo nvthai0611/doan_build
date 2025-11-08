@@ -311,36 +311,66 @@ export class LeaveRequestService {
       where,
       skip,
       take: limit,
-      include: {
-        affectedSessions: {
-          include: {
-            session: {
-              include: {
-                class: {
-                  include: {
-                    subject: true,
-                  },
-                },
-                room: true,
-              },
-            },
-            replacementTeacher: {
-              include: {
-                user: true,
-              },
-            },
-          },
-        },
+      select: {
+        id: true,
+        requestType: true,
+        reason: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+        createdAt: true,
+        createdBy: true,
         createdByUser: {
           select: {
             fullName: true,
             email: true,
           },
         },
+        approvedBy: true,
         approvedByUser: {
           select: {
             fullName: true,
             email: true,
+          },
+        },
+        affectedSessions: {
+          select: {
+            id: true,
+            notes: true,
+            session: {
+              select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                notes: true,
+                class: {
+                  select: {
+                    name: true,
+                    subject: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                room: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+            // replacementTeacher: {
+            //   include: {
+            //     user: {
+            //       select: {
+            //         fullName: true,
+            //         email: true,
+            //       },
+            //     },
+            //   },
+            // },
           },
         },
       },
@@ -358,5 +388,59 @@ export class LeaveRequestService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Hủy đơn xin nghỉ (chỉ khi status = pending)
+   */
+  async cancelLeaveRequest(teacherId: string, leaveRequestId: string) {
+    if (!teacherId || !checkId(teacherId)) {
+      throw new HttpException(
+        'ID giáo viên không hợp lệ',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!leaveRequestId || !checkId(leaveRequestId)) {
+      throw new HttpException(
+        'ID đơn xin nghỉ không hợp lệ',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Find and verify ownership
+    const leaveRequest = await this.prisma.leaveRequest.findUnique({
+      where: { id: leaveRequestId },
+      include: {
+        teacher: true,
+      },
+    });
+
+    if (!leaveRequest) {
+      throw new HttpException(
+        'Không tìm thấy đơn xin nghỉ',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (leaveRequest.teacherId !== teacherId) {
+      throw new HttpException('Không có quyền hủy đơn này', HttpStatus.FORBIDDEN);
+    }
+
+    if (leaveRequest.status !== 'pending') {
+      throw new HttpException(
+        'Chỉ có thể hủy đơn đang chờ duyệt',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.prisma.leaveRequest.update({
+      where: { id: leaveRequestId },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    return { success: true };
   }
 }
