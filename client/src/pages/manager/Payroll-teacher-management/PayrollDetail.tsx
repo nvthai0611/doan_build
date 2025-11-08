@@ -168,7 +168,7 @@ export default function PayrollDetail() {
   }, [sessionRows, startDateFilter, endDateFilter, classFilter])
 
   const sessionColumns: Column<any>[] = [
-    { key: "date", header: "Ngày", sortable: true },
+    { key: "date", header: "Ngày" },
     { key: "time", header: "Thời gian" },
     { 
       key: "notes", 
@@ -192,7 +192,6 @@ export default function PayrollDetail() {
     {
       key: "studentCount",
       header: "Số HS",
-      sortable: true,
       render: (row) => `${row.studentCount} HS`
     },
     {
@@ -204,7 +203,6 @@ export default function PayrollDetail() {
     {
       key: "teacherPayout",
       header: "Lương buổi",
-      sortable: true,
       render: (row) => (
         <span className="font-medium text-emerald-700">
           {fmt(row.teacherPayout)} đ
