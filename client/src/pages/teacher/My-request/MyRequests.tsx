@@ -15,6 +15,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +39,7 @@ import {
 import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
 import { sessionRequestService } from '../../../services/teacher/session-request/session-request.service';
 import { scheduleChangeService } from '../../../services/teacher/schedule-change/schedule-change.service';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, type Column } from '../../../components/common/Table/DataTable';
@@ -45,6 +47,17 @@ import type { LeaveRequest } from '../../../services/teacher/leave-request/leave
 import type { SessionRequestResponse } from '../../../services/teacher/session-request/session-request.types';
 import type { ScheduleChangeResponse } from '../../../services/teacher/schedule-change/schedule-change.types';
 import RequestDetailModal from './RequestDetailModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 // Union type for all request types
 type RequestUnion = LeaveRequest | SessionRequestResponse | ScheduleChangeResponse;
@@ -140,7 +153,10 @@ export default function MyRequests() {
   const [selectedSessionRequest, setSelectedSessionRequest] = useState<SessionRequestResponse | null>(null);
   const [selectedScheduleChange, setSelectedScheduleChange] = useState<ScheduleChangeResponse | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [leaveRequestToCancel, setLeaveRequestToCancel] = useState<LeaveRequest | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [underlineStyle, setUnderlineStyle] = useState({ width: 0, left: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -286,9 +302,15 @@ export default function MyRequests() {
             render: (item: LeaveRequest) => (
               <Badge
                 variant="secondary"
-                className={requestTypeColors[item.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={
+                  requestTypeColors[
+                    item.requestType as keyof typeof requestTypeColors
+                  ] || requestTypeColors.other
+                }
               >
-                {requestTypeLabels[item.requestType as keyof typeof requestTypeLabels] || item.requestType}
+                {requestTypeLabels[
+                  item.requestType as keyof typeof requestTypeLabels
+                ] || item.requestType}
               </Badge>
             ),
           },
@@ -317,19 +339,23 @@ export default function MyRequests() {
             render: (item: LeaveRequest) => (
               <Badge
                 variant="secondary"
-                className={statusColors[item.status as keyof typeof statusColors] || statusColors.pending}
+                className={
+                  statusColors[item.status as keyof typeof statusColors] ||
+                  statusColors.pending
+                }
               >
-                {statusLabels[item.status as keyof typeof statusLabels] || item.status}
+                {statusLabels[item.status as keyof typeof statusLabels] ||
+                  item.status}
               </Badge>
             ),
           },
           {
             key: 'affectedSessions',
-            header: 'Sessions bị ảnh hưởng',
+            header: 'Tiết học bị ảnh hưởng',
             align: 'center' as const,
             render: (item: LeaveRequest) => (
               <Badge variant="outline">
-                {item.affectedSessions?.length || 0} sessions
+                {item.affectedSessions?.length || 0} tiết học
               </Badge>
             ),
           },
@@ -343,19 +369,18 @@ export default function MyRequests() {
             header: 'Thao tác',
             align: 'center' as const,
             render: (item: LeaveRequest) => (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleViewDetails(item)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Xem chi tiết
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md" onClick={() => handleViewDetails(item)}>
+                  <Eye className="h-4 w-4" />
+                  Xem
+                </div>
+                {item.status === 'pending' && (
+                  <div className="flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md" onClick={() => handleCancel(item)}>
+                    <X className="h-4 w-4" />
+                    Hủy
+                  </div>
+                )}
+              </div>
             ),
           },
         ] as Column<RequestUnion>[];
@@ -557,9 +582,33 @@ export default function MyRequests() {
     console.log('Edit:', leaveRequest);
   };
 
+  // Mutation để cancel leave request
+  const cancelLeaveRequestMutation = useMutation({
+    mutationFn: (id: string) => teacherLeaveRequestService.cancelLeaveRequest(id),
+    onSuccess: () => {
+      toast.success('Hủy đơn xin nghỉ thành công');
+      queryClient.invalidateQueries({ queryKey: ['my-leave-requests'] });
+      setCancelConfirmOpen(false);
+      setLeaveRequestToCancel(null);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || 
+        error?.message || 
+        'Có lỗi xảy ra khi hủy đơn xin nghỉ'
+      );
+    },
+  });
+
   const handleCancel = (leaveRequest: LeaveRequest) => {
-    // Handle cancel request
-    console.log('Cancel:', leaveRequest);
+    setLeaveRequestToCancel(leaveRequest);
+    setCancelConfirmOpen(true);
+  };
+
+  const handleConfirmCancel = () => {
+    if (leaveRequestToCancel) {
+      cancelLeaveRequestMutation.mutate(leaveRequestToCancel.id);
+    }
   };
 
   const handleCreateNew = () => {
@@ -599,9 +648,12 @@ export default function MyRequests() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Quản lý đơn của tôi</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Quản lý đơn của tôi
+          </h1>
           <p className="text-muted-foreground">
-            Xem và quản lý các đơn xin nghỉ, yêu cầu tạo buổi học, đổi ca của bạn
+            Xem và quản lý các đơn xin nghỉ, yêu cầu tạo buổi học, đổi ca của
+            bạn
           </p>
         </div>
       </div>
@@ -674,7 +726,13 @@ export default function MyRequests() {
           }}
           loading={isLoading}
           error={isError ? 'Có lỗi xảy ra khi tải dữ liệu' : null}
-          emptyMessage={`Chưa có ${requestType === 'leave' ? 'đơn xin nghỉ' : requestType === 'session' ? 'yêu cầu tạo buổi học' : 'đơn dời lịch'} nào được tạo`}
+          emptyMessage={`Chưa có ${
+            requestType === 'leave'
+              ? 'đơn xin nghỉ'
+              : requestType === 'session'
+              ? 'yêu cầu tạo buổi học'
+              : 'đơn dời lịch'
+          } nào được tạo`}
         />
       </div>
 
@@ -687,6 +745,53 @@ export default function MyRequests() {
         scheduleChange={selectedScheduleChange}
         requestType={requestType}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận hủy đơn</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn hủy đơn xin nghỉ này không? Hành động này
+              không thể hoàn tác.
+              {leaveRequestToCancel && (
+                <div className="mt-2 p-2 bg-muted rounded-md">
+                  <div className="text-sm font-medium">Thông tin đơn:</div>
+                  <div className="text-sm text-muted-foreground">
+                    Loại:{' '}
+                    {requestTypeLabels[
+                      leaveRequestToCancel.requestType as keyof typeof requestTypeLabels
+                    ] || leaveRequestToCancel.requestType}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Từ: {formatDate(leaveRequestToCancel.startDate)} đến{' '}
+                    {formatDate(leaveRequestToCancel.endDate)}
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelLeaveRequestMutation.isPending}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancel}
+              disabled={cancelLeaveRequestMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelLeaveRequestMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </div>
+              ) : (
+                'Xác nhận hủy'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

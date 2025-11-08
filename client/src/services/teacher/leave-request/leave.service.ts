@@ -74,6 +74,12 @@ class TeacherLeaveRequestService {
       meta: serverMeta || { total: 0, page: 1, limit: 10, totalPages: 0 }
     }
   }
+
+  async cancelLeaveRequest(id: string): Promise<void> {
+    const response = await apiClient.patch(`/teacher/leave-request/${id}/cancel`)
+    const payload: any = response as any
+    return payload
+  }
 }
 
 export const teacherLeaveRequestService = new TeacherLeaveRequestService()
