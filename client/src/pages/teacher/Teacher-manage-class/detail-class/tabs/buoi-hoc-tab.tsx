@@ -330,12 +330,12 @@ export function BuoiHocTab({
       </div>
 
       {/* Request Session Button */}
-      {/* <div className="flex justify-end">
+      <div className="flex justify-end">
         <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={onAddSession}>
           <Plus className="w-4 h-4" />
           Yêu cầu thêm buổi học
         </Button>
-      </div> */}
+      </div>
 
       {/* Search and Filter Bar */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4">

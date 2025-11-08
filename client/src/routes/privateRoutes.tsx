@@ -66,6 +66,8 @@ import NotFound from "../pages/Error/NotFound";
 import ClassroomsPage from "../pages/manager/Room-management/ClassRoom";
 import SubjectsPage from "../pages/manager/Subject-management/Subject";
 import PayrollManagement from "../pages/manager/Payroll-teacher-management/PayrollManagement";
+import PayrollOfTeacher from "../pages/manager/Payroll-teacher-management/PayrollOfTeacher";
+import PayrollDetail from "../pages/manager/Payroll-teacher-management/PayrollDetail";
 
 export const privateRoutes = (
   <>
@@ -113,6 +115,8 @@ export const privateRoutes = (
         <Route path="rooms" element={<ClassroomsPage />} />
         <Route path="courses" element={<SubjectsPage />} />
         <Route path="payroll-teacher" element={<PayrollManagement />} />
+        <Route path="payroll-teacher/:id" element={<PayrollOfTeacher />} />
+        <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
       </Route>
 
       {/* Giáo viên */}

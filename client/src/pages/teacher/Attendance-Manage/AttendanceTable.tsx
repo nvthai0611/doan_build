@@ -82,7 +82,8 @@ export default function AttendanceTable() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [showLeaveRequests, setShowLeaveRequests] = useState(false);
-
+  const [markAll, setMarkAll] = useState(false);
+  
   const navigate = useNavigate();
   const { classSessionId } = useParams();
   const queryClient = useQueryClient();
@@ -384,6 +385,67 @@ const saveMutation = useMutation({
     });
   };
 
+  // Đánh tất cả học sinh là 'present' / hoặc khôi phục trạng thái server khi bỏ chọn
+  const handleMarkAll = (checked: boolean) => {
+    setMarkAll(checked);
+    const enrollments = studentListData?.class?.enrollments || [];
+
+    setLocalAttendance((prev) => {
+      const newState: Record<string, AttendanceStatus | null> = { ...prev };
+
+      if (checked) {
+        enrollments.forEach((rec: any) => {
+          const id = rec.studentId || rec.student?.id;
+          if (id) newState[id] = 'present';
+        });
+      } else {
+        // khôi phục trạng thái từ server (nếu có), hoặc null
+        enrollments.forEach((rec: any) => {
+          const id = rec.studentId || rec.student?.id;
+          if (!id) return;
+          const serverRec = attendanceData?.find(
+            (r: any) => (r.studentId || r.student?.id) === id
+          );
+          newState[id] = serverRec?.status ?? null;
+        });
+      }
+
+      const hasAnyChanges = Object.keys(newState).some((id) => {
+        const serverRec = attendanceData?.find(
+          (r: any) => (r.studentId || r.student?.id) === id
+        );
+        const serverStat = serverRec?.status || null;
+        return newState[id] !== serverStat;
+      });
+
+      setHasChanges(hasAnyChanges);
+      return newState;
+    });
+  };
+  
+  // Đồng bộ checkbox "markAll" — nếu không phải tất cả là "present" thì bỏ tick
+  useEffect(() => {
+    const enrollments = studentListData?.class?.enrollments || [];
+    if (!enrollments.length) {
+      setMarkAll(false);
+      return;
+    }
+
+    const allPresent = enrollments.every((rec: any) => {
+      const id = rec.studentId || rec.student?.id;
+      if (!id) return false;
+      return getStudentCurrentStatus(id) === 'present';
+    });
+
+    // chỉ cập nhật nếu khác để tránh re-render vô nghĩa
+    setMarkAll((prev) => (prev === allPresent ? prev : allPresent));
+  }, [
+    studentListData?.class?.enrollments,
+    attendanceData,
+    localAttendance,
+    getStudentCurrentStatus,
+  ]);
+  
   const sendAbsentEmails = async () => {
     if (hasChanges) {
       toast.error('Vui lòng lưu thay đổi điểm danh trước khi gửi email', {
@@ -613,6 +675,20 @@ const saveMutation = useMutation({
             </div>
 
             <div className="flex gap-3 flex-wrap">
+             {  (
+               <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded border border-slate-200">
+                 <Checkbox
+                  id="mark-all-present"
+                   checked={markAll}
+                   onCheckedChange={(v) => handleMarkAll(Boolean(v))}
+                   className="h-4 w-4"
+                 />
+                <label htmlFor="mark-all-present" className="text-sm text-slate-700 cursor-pointer">
+                   Điểm danh tất cả (Có mặt)
+                 </label>
+               </div>
+             )}
+
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
                 <Check className="h-4 w-4 mr-1" />
                 Có mặt: {getStatusCount('present')}

@@ -1,12 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { payrollService } from '../../../services/center-owner/payroll-teacher/payroll.service'
 import React, { useState, useMemo, useEffect } from 'react'
 import { DataTable, Column } from '../../../components/common/Table/DataTable'
-import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar, Mail, Send } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/assets/shadcn-ui/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/hooks/use-toast'
+import { useNavigate } from 'react-router-dom'
 
 interface Teacher {
   id: string
@@ -58,13 +61,15 @@ const useDebounce = <T,>(value: T, delay: number = 500): T => {
 }
 
 const PayrollManagement: React.FC = () => {
+  const { toast } = useToast()
   const [teacherName, setTeacherName] = useState('')
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('')
   const [month, setMonth] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-
+  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([])
+  const navigate = useNavigate()
   // Debounced values for search inputs
   const debouncedTeacherName = useDebounce(teacherName, 500)
   const debouncedEmail = useDebounce(email, 500)
@@ -95,28 +100,49 @@ const PayrollManagement: React.FC = () => {
     retry: 1
   })
 
+  // Send email reminder mutation
+  const sendEmailMutation = useMutation({
+    mutationFn: (teacherIds: string[]) => payrollService.sendPayrollReminder(teacherIds),
+    onSuccess: () => {
+      toast({
+        title: 'Thành công',
+        description: 'Đã gửi email nhắc nhở thành công',
+        variant: 'default'
+      })
+      setSelectedTeachers([])
+      refetch()
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Lỗi',
+        description: error?.message || 'Không thể gửi email',
+        variant: 'destructive'
+      })
+    }
+  })
+
   const getPayrollStatus = (teacher: Teacher) => {
     if (!teacher.payrolls || teacher.payrolls.length === 0) {
-      return { label: 'Chưa có lương', variant: 'secondary' as const, icon: Clock }
+      return { label: 'Chưa có lương', variant: 'secondary' as const, icon: Clock, color: 'bg-gray-200' }
     }
 
     const latestPayroll = teacher.payrolls[0]
     
     switch (latestPayroll.status) {
       case 'pending':
-        return { label: 'Chờ xử lý', variant: 'warning' as const, icon: Clock }
+        return { label: 'Chờ xử lý', variant: 'warning' as const, icon: Clock, color: 'bg-yellow-200' }
       case 'waiting_teacher_approval':
-        return { label: 'Chờ GV duyệt', variant: 'default' as const, icon: Clock }
+        return { label: 'Chờ GV duyệt', variant: 'default' as const, icon: Clock, color: 'bg-blue-200' }
       case 'rejected_by_teacher':
-        return { label: 'GV từ chối', variant: 'destructive' as const, icon: XCircle }
+        return { label: 'GV từ chối', variant: 'destructive' as const, icon: XCircle, color: 'bg-red-200' }
       case 'approved_by_teacher':
-        return { label: 'GV đã duyệt', variant: 'success' as const, icon: CheckCircle }
+        return { label: 'GV đã duyệt', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-200' }
       case 'paid':
-        return { label: 'Đã thanh toán', variant: 'success' as const, icon: CheckCircle }
+        return { label: 'Đã thanh toán', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-300' }
       case 'cancelled':
-        return { label: 'Đã hủy', variant: 'secondary' as const, icon: XCircle }
+        return { label: 'Đã hủy', variant: 'secondary' as const, icon: XCircle, color: 'bg-gray-300' }
       default:
-        return { label: 'Không xác định', variant: 'secondary' as const, icon: Clock }
+        return { label: 'Không xác định', variant: 'secondary' as const, icon: Clock, color: 'bg-gray-200' }
     }
   }
 
@@ -150,7 +176,56 @@ const PayrollManagement: React.FC = () => {
     setCurrentPage(1)
   }
 
+  const handleSelectTeacher = (teacherId: string) => {
+    setSelectedTeachers(prev => 
+      prev.includes(teacherId) 
+        ? prev.filter(id => id !== teacherId)
+        : [...prev, teacherId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    if (!listTeacher) return
+    
+    if (selectedTeachers.length === listTeacher?.length) {
+      setSelectedTeachers([])
+    } else {
+      setSelectedTeachers(listTeacher.map(teacher => teacher.id))
+    }
+  }
+
+  const handleSendEmailReminder = () => {
+    if (selectedTeachers.length === 0) {
+      toast({
+        title: 'Cảnh báo',
+        description: 'Vui lòng chọn ít nhất một giáo viên',
+        variant: 'default'
+      })
+      return
+    }
+
+    sendEmailMutation.mutate(selectedTeachers)
+  }
+
   const columns: Column<Teacher>[] = [
+    {
+      key: 'checkbox',
+      header: (
+        <Checkbox
+          checked={listTeacher && selectedTeachers.length === listTeacher.length && listTeacher.length > 0}
+          onCheckedChange={handleSelectAll}
+          aria-label="Select all"
+        />
+      ),
+      width: '50px',
+      render: (teacher) => (
+        <Checkbox
+          checked={selectedTeachers.includes(teacher.id)}
+          onCheckedChange={() => handleSelectTeacher(teacher.id)}
+          aria-label={`Select ${teacher.user.fullName}`}
+        />
+      )
+    },
     {
       key: 'teacherCode',
       header: 'Mã GV',
@@ -190,15 +265,6 @@ const PayrollManagement: React.FC = () => {
       )
     },
     {
-      key: 'payrollCount',
-      header: 'Số bảng lương',
-      width: '120px',
-      align: 'center',
-      render: (teacher) => (
-        <span className="font-medium">{teacher.payrolls?.length || 0}</span>
-      )
-    },
-    {
       key: 'status',
       header: 'Trạng thái',
       width: '150px',
@@ -206,7 +272,7 @@ const PayrollManagement: React.FC = () => {
         const statusInfo = getPayrollStatus(teacher)
         const Icon = statusInfo.icon
         return (
-          <Badge variant={statusInfo.variant} className="gap-1">
+          <Badge variant={statusInfo.variant} className={`gap-1 ${statusInfo.color}`}>
             <Icon className="w-3 h-3" />
             {statusInfo.label}
           </Badge>
@@ -275,7 +341,7 @@ const PayrollManagement: React.FC = () => {
   ]
 
   const handleViewDetail = (teacher: Teacher) => {
-    console.log('View detail:', teacher)
+    navigate(`/center-qn/payroll-teacher/${teacher.id}`)
     // TODO: Navigate to detail page or open modal
   }
 
@@ -291,11 +357,25 @@ const PayrollManagement: React.FC = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý lương giáo viên</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Quản lý và theo dõi bảng lương của giáo viên
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý lương giáo viên</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Quản lý và theo dõi bảng lương của giáo viên
+          </p>
+        </div>
+
+        {/* Send Email Button */}
+        {selectedTeachers.length > 0 && (
+          <Button
+            onClick={handleSendEmailReminder}
+            disabled={sendEmailMutation.isPending}
+            className="gap-2"
+          >
+            <Send className="w-4 h-4" />
+            Gửi email nhắc nhở ({selectedTeachers.length})
+          </Button>
+        )}
       </div>
 
       {/* Search and Filter Section */}
@@ -368,7 +448,7 @@ const PayrollManagement: React.FC = () => {
           </div>
 
           {/* Month Filter */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tháng
             </label>
@@ -394,7 +474,7 @@ const PayrollManagement: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           {/* Status Filter */}
           <div>
