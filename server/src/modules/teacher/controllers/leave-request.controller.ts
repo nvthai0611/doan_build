@@ -1,5 +1,5 @@
-import { Controller, Get, HttpException, HttpStatus, Post, Query, Req, Body } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, HttpException, HttpStatus, Post, Patch, Query, Req, Body, Param } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiParam } from '@nestjs/swagger';
 import { LeaveRequestService } from '../services/leave-request.service';
 import { AffectedSessionsQueryDto, AffectedSessionItemDto, ReplacementTeachersQueryDto, ReplacementTeacherDto, LeaveRequestDto } from '../dto/leave-request/leave-request.dto';
 
@@ -172,6 +172,52 @@ export class LeaveRequestController {
       };
     } catch (error) {
       throw new Error(error.message);
+    }
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Hủy đơn xin nghỉ' })
+  @ApiParam({ name: 'id', description: 'ID của đơn xin nghỉ' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Hủy đơn thành công',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Chỉ có thể hủy đơn đang chờ duyệt',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Không tìm thấy đơn xin nghỉ',
+  })
+  async cancelLeaveRequest(@Req() req: any, @Param('id') id: string) {
+    try {
+      const teacherId = req.user?.teacherId;
+      if (!teacherId) {
+        throw new HttpException(
+          { success: false, message: 'Không tìm thấy thông tin giáo viên' },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      await this.leaveRequestService.cancelLeaveRequest(teacherId, id);
+
+      return {
+        success: true,
+        message: 'Hủy đơn xin nghỉ thành công',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi hủy đơn xin nghỉ',
+          error: error.message,
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

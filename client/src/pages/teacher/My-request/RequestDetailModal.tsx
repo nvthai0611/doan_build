@@ -10,6 +10,7 @@ import {
   XCircle,
   AlertCircle,
   BookOpen,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,20 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { formatDate } from '../../../utils/format';
+import { teacherLeaveRequestService } from '../../../services/teacher/leave-request/leave.service';
 import type { LeaveRequest } from '../../../services/teacher/leave-request/leave.types';
 import type { SessionRequestResponse } from '../../../services/teacher/session-request/session-request.types';
 import type { ScheduleChangeResponse } from '../../../services/teacher/schedule-change/schedule-change.types';
@@ -96,6 +110,26 @@ export default function RequestDetailModal({
   requestType = 'leave',
 }: RequestDetailModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Mutation để cancel leave request
+  const cancelLeaveRequestMutation = useMutation({
+    mutationFn: (id: string) => teacherLeaveRequestService.cancelLeaveRequest(id),
+    onSuccess: () => {
+      toast.success('Hủy đơn xin nghỉ thành công');
+      queryClient.invalidateQueries({ queryKey: ['my-leave-requests'] });
+      setCancelConfirmOpen(false);
+      onClose(); // Đóng modal sau khi hủy thành công
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || 
+        error?.message || 
+        'Có lỗi xảy ra khi hủy đơn xin nghỉ'
+      );
+    },
+  });
 
   // Get current data based on request type
   const getCurrentData = () => {
@@ -143,31 +177,39 @@ export default function RequestDetailModal({
               <DialogTitle className="text-xl font-semibold">
                 Chi tiết đơn xin nghỉ
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                ID: {data.id}
-              </p>
+              <p className="text-sm text-muted-foreground">ID: {data.id}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge
               variant="secondary"
-              className={requestTypeColors[data.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+              className={
+                requestTypeColors[
+                  data.requestType as keyof typeof requestTypeColors
+                ] || requestTypeColors.other
+              }
             >
-              {requestTypeLabels[data.requestType as keyof typeof requestTypeLabels] || data.requestType}
+              {requestTypeLabels[
+                data.requestType as keyof typeof requestTypeLabels
+              ] || data.requestType}
             </Badge>
             <Badge
               variant="secondary"
-              className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
+              className={
+                statusColors[data.status as keyof typeof statusColors] ||
+                statusColors.pending
+              }
             >
               <StatusIcon className="h-3 w-3 mr-1" />
-              {statusLabels[data.status as keyof typeof statusLabels] || data.status}
+              {statusLabels[data.status as keyof typeof statusLabels] ||
+                data.status}
             </Badge>
           </div>
         </div>
       </DialogHeader>
 
-      <ScrollArea className="flex-1 px-6">
-        <div className="space-y-6">
+      <ScrollArea className="flex-1 px-6 max-h-[70vh]">
+        <div className="space-y-3">
           {/* Leave Information */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 p-6 rounded-lg border">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -175,43 +217,56 @@ export default function RequestDetailModal({
               Thông tin nghỉ phép
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày bắt đầu</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(data.startDate)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(data.startDate)}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày kết thúc</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(data.endDate)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(data.endDate)}
+                    </p>
                   </div>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Số ngày nghỉ</p>
-                    <p className="text-sm text-muted-foreground">{Math.ceil((new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày</p>
+                    <p className="text-sm text-muted-foreground">
+                      {Math.ceil(
+                        (new Date(data.endDate).getTime() -
+                          new Date(data.startDate).getTime()) /
+                          (1000 * 60 * 60 * 24),
+                      ) + 1}{' '}
+                      ngày
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                {/* <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày tạo</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(data.createdAt)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(data.createdAt)}
+                    </p>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
 
           {/* Request Details */}
-          <div className="space-y-4">
+          {/* <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
               Chi tiết đơn xin nghỉ
@@ -221,23 +276,33 @@ export default function RequestDetailModal({
                 <p className="text-sm font-medium mb-2">Loại nghỉ</p>
                 <Badge
                   variant="secondary"
-                  className={requestTypeColors[data.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                  className={
+                    requestTypeColors[
+                      data.requestType as keyof typeof requestTypeColors
+                    ] || requestTypeColors.other
+                  }
                 >
-                  {requestTypeLabels[data.requestType as keyof typeof requestTypeColors] || data.requestType}
+                  {requestTypeLabels[
+                    data.requestType as keyof typeof requestTypeColors
+                  ] || data.requestType}
                 </Badge>
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-2">Trạng thái</p>
                 <Badge
                   variant="secondary"
-                  className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
+                  className={
+                    statusColors[data.status as keyof typeof statusColors] ||
+                    statusColors.pending
+                  }
                 >
                   <StatusIcon className="h-3 w-3 mr-1" />
-                  {statusLabels[data.status as keyof typeof statusLabels] || data.status}
+                  {statusLabels[data.status as keyof typeof statusLabels] ||
+                    data.status}
                 </Badge>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <Separator />
 
@@ -275,23 +340,39 @@ export default function RequestDetailModal({
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-red-600" />
-                  Sessions bị ảnh hưởng
+                  Tiết học bị ảnh hưởng
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-y-auto max-h-[200px]">
                   {data.affectedSessions.map((session, index) => (
-                    <div key={index} className="p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
+                    <div
+                      key={index}
+                      className="p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800"
+                    >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-red-900 dark:text-red-100">{session.session?.class?.subject?.name}</p>
+                          <p className="font-medium text-red-900 dark:text-red-100">
+                            {session.session?.class?.subject?.name} -{' '}
+                            {session.session?.class?.name} -{' '}
+                            {session.session?.room?.name}
+                          </p>
                           <p className="text-sm text-red-700 dark:text-red-300">
-                            {formatDate(session.session?.sessionDate)} - {session.session?.startTime} → {session.session?.endTime}
+                            {session.session?.notes}
+                          </p>
+                          <p className="text-sm text-red-700 dark:text-red-300">
+                            {formatDate(session.session?.sessionDate)} -{' '}
+                            {session.session?.startTime} →{' '}
+                            {session.session?.endTime}
                           </p>
                         </div>
-                        {session.replacementTeacher && (
-                          <Badge variant="outline" className="border-green-500 text-green-700">
-                            Thay thế: {session.replacementTeacher.user?.fullName}
+                        {/* {session.replacementTeacher && (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500 text-green-700"
+                          >
+                            Thay thế:{' '}
+                            {session.replacementTeacher.user?.fullName}
                           </Badge>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   ))}
@@ -310,11 +391,15 @@ export default function RequestDetailModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm font-medium mb-1">Giáo viên</p>
-                <p className="text-sm text-muted-foreground">{data.teacher?.user?.fullName || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {data.createdByUser?.fullName || 'N/A'}
+                </p>
               </div>
               <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm font-medium mb-1">Người tạo đơn</p>
-                <p className="text-sm text-muted-foreground">{data.createdByUser?.fullName || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {data.createdByUser?.fullName || 'N/A'}
+                </p>
               </div>
             </div>
           </div>
@@ -331,7 +416,9 @@ export default function RequestDetailModal({
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Đơn được tạo</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(data.createdAt.toString())}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(data.createdAt.toString())}
+                  </p>
                 </div>
               </div>
               {data.approvedAt && (
@@ -339,12 +426,15 @@ export default function RequestDetailModal({
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">Đơn được duyệt</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(data.approvedAt.toString())}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(data.approvedAt.toString())}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
           </div>
+          <Separator />
         </div>
       </ScrollArea>
     </>
@@ -386,7 +476,7 @@ export default function RequestDetailModal({
         </div>
       </DialogHeader>
 
-      <ScrollArea className="flex-1 px-6">
+      <ScrollArea className="flex-1 px-6 max-h-[70vh]">
         <div className="space-y-6">
           {/* Session Information */}
           <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/10 dark:to-blue-900/10 p-6 rounded-lg border">
@@ -577,7 +667,7 @@ export default function RequestDetailModal({
         </div>
       </DialogHeader>
 
-      <ScrollArea className="flex-1 px-6">
+      <ScrollArea className="flex-1 px-6 max-h-[70vh]">
         <div className="space-y-6">
           {/* Schedule Change Information */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 p-6 rounded-lg border">
@@ -685,16 +775,12 @@ export default function RequestDetailModal({
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <User className="h-5 w-5 text-indigo-600" />
-              Thông tin giáo viên
+              Thông tin yêu cầu
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                <p className="text-sm font-medium mb-1">Giáo viên</p>
-                <p className="text-sm text-muted-foreground">{data.teacher?.user?.fullName || 'N/A'}</p>
-              </div>
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-lg border border-indigo-200 dark:border-indigo-800">
                 <p className="text-sm font-medium mb-1">Người tạo yêu cầu</p>
-                <p className="text-sm text-muted-foreground">{data.createdByUser?.fullName || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground">{data.requestedBy || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -711,15 +797,15 @@ export default function RequestDetailModal({
                 <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Yêu cầu được tạo</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(data.createdAt.toString())}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(data.requestedAt.toString())}</p>
                 </div>
               </div>
-              {data.approvedAt && (
+              {data.processedAt && (
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Yêu cầu được duyệt</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(data.approvedAt.toString())}</p>
+                    <p className="text-sm font-medium">Yêu cầu được xử lý</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(data.processedAt.toString())}</p>
                   </div>
                 </div>
               )}
@@ -741,25 +827,64 @@ export default function RequestDetailModal({
             <Button variant="outline" onClick={onClose}>
               Đóng
             </Button>
-            {currentData.status === 'pending' && (
+            {currentData.status === 'pending' && requestType === 'leave' && leaveRequest && (
               <Button
                 variant="destructive"
-                onClick={() => {
-                  setIsLoading(true);
-                  // Handle cancel request
-                  setTimeout(() => {
-                    setIsLoading(false);
-                    onClose();
-                  }, 1000);
-                }}
-                disabled={isLoading}
+                onClick={() => setCancelConfirmOpen(true)}
+                disabled={cancelLeaveRequestMutation.isPending}
               >
-                {isLoading ? 'Đang xử lý...' : 'Hủy đơn'}
+                {cancelLeaveRequestMutation.isPending ? 'Đang xử lý...' : 'Hủy đơn'}
               </Button>
             )}
           </div>
         </div>
       </DialogContent>
+
+      {/* Cancel Confirmation Dialog */}
+      {leaveRequest && (
+        <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận hủy đơn</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn hủy đơn xin nghỉ này không? Hành động này không thể hoàn tác.
+                <div className="mt-2 p-2 bg-muted rounded-md">
+                  <div className="text-sm font-medium">Thông tin đơn:</div>
+                  <div className="text-sm text-muted-foreground">
+                    Loại: {requestTypeLabels[leaveRequest.requestType as keyof typeof requestTypeLabels] || leaveRequest.requestType}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Từ: {formatDate(leaveRequest.startDate)} đến {formatDate(leaveRequest.endDate)}
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelLeaveRequestMutation.isPending}>
+                Hủy
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (leaveRequest) {
+                    cancelLeaveRequestMutation.mutate(leaveRequest.id);
+                  }
+                }}
+                disabled={cancelLeaveRequestMutation.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {cancelLeaveRequestMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang xử lý...
+                  </div>
+                ) : (
+                  'Xác nhận hủy'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Dialog>
   );
 }

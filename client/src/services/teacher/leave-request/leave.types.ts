@@ -76,6 +76,7 @@ export interface AffectedSessionDetail {
     sessionDate: string
     startTime: string
     endTime: string
+    notes?: string
     class: {
       id: string
       name: string
