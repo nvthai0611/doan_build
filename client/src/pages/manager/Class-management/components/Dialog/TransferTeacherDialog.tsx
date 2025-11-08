@@ -28,6 +28,7 @@ import { useToast } from '../../../../../hooks/use-toast';
 import { classService } from '../../../../../services/center-owner/class-management/class.service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CodeDisplay } from '../../../../../components/common/CodeDisplay';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface TransferTeacherDialogProps {
   open: boolean;
@@ -45,6 +46,8 @@ export const TransferTeacherDialog = ({
   const [reason, setReason] = useState('');
   const [reasonDetail, setReasonDetail] = useState('');
   const [effectiveDate, setEffectiveDate] = useState('');
+  const [isTemporary, setIsTemporary] = useState(false);
+  const [substituteEndDate, setSubstituteEndDate] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -57,6 +60,8 @@ export const TransferTeacherDialog = ({
       setReason('');
       setReasonDetail('');
       setEffectiveDate('');
+      setIsTemporary(false);
+      setSubstituteEndDate('');
     }
   }, [open]);
 
@@ -104,10 +109,12 @@ export const TransferTeacherDialog = ({
   // Mutation to transfer teacher
   const transferMutation = useMutation({
     mutationFn: (data: any) => classService.transferTeacher(classData?.id, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast({
         title: 'Thành công',
-        description: 'Yêu cầu chuyển giáo viên đã được tạo thành công',
+        description: variables?.substituteEndDate
+          ? 'Chuyển giáo viên tạm thời đã được áp dụng'
+          : 'Chuyển giáo viên đã được áp dụng',
       });
       queryClient.invalidateQueries({ queryKey: ['class', classData?.id] });
       queryClient.invalidateQueries({ queryKey: ['classes'] });
@@ -119,7 +126,7 @@ export const TransferTeacherDialog = ({
         description:
           error?.response?.data?.message ||
           error?.message ||
-          'Có lỗi xảy ra khi tạo yêu cầu chuyển giáo viên',
+          'Có lỗi xảy ra khi chuyển giáo viên',
         variant: 'destructive',
       });
     },
@@ -144,12 +151,44 @@ export const TransferTeacherDialog = ({
       return;
     }
 
+    // Validate temporary transfer dates
+    if (isTemporary) {
+      if (!effectiveDate) {
+        toast({
+          title: 'Lỗi',
+          description: 'Vui lòng chọn ngày có hiệu lực cho chuyển tạm thời',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!substituteEndDate) {
+        toast({
+          title: 'Lỗi',
+          description: 'Vui lòng chọn ngày kết thúc cho chuyển tạm thời',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (new Date(substituteEndDate) <= new Date(effectiveDate)) {
+        toast({
+          title: 'Lỗi',
+          description: 'Ngày kết thúc phải sau ngày có hiệu lực',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const data: any = {
       replacementTeacherId: selectedTeacherId,
       reason: reason.trim(),
       reasonDetail: reasonDetail.trim() || undefined,
       effectiveDate: effectiveDate || undefined,
     };
+
+    if (isTemporary) {
+      data.substituteEndDate = substituteEndDate;
+    }
 
     transferMutation.mutate(data);
   };
@@ -173,7 +212,7 @@ export const TransferTeacherDialog = ({
         <DialogHeader>
           <DialogTitle>Chuyển giáo viên</DialogTitle>
           <DialogDescription>
-            Tạo yêu cầu chuyển giáo viên cho lớp học này
+            Chuyển giáo viên cho lớp học này và áp dụng ngay cho các buổi phù hợp
           </DialogDescription>
         </DialogHeader>
 
@@ -315,25 +354,46 @@ export const TransferTeacherDialog = ({
             />
           </div>
 
-          {/* Effective Date */}
+          {/* Temporary Toggle */}
           <div className="space-y-2">
-            <Label htmlFor="effective-date">Ngày có hiệu lực (tùy chọn)</Label>
-            <Input
-              id="effective-date"
-              type="date"
-              value={effectiveDate}
-              onChange={(e) => setEffectiveDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-            />
+            <div className="flex items-center gap-2">
+              <Checkbox id="is-temporary" checked={isTemporary} onCheckedChange={(v:any) => setIsTemporary(!!v)} />
+              <Label htmlFor="is-temporary" className="cursor-pointer">Chuyển tạm thời</Label>
+            </div>
           </div>
 
-          {/* Warning Alert */}
+          {/* Effective & End Dates (when temporary) */}
+          {isTemporary && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="effective-date">Ngày có hiệu lực <span className="text-red-500">*</span></Label>
+                <Input
+                  id="effective-date"
+                  type="date"
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="substitute-end-date">Ngày kết thúc tạm thời <span className="text-red-500">*</span></Label>
+                <Input
+                  id="substitute-end-date"
+                  type="date"
+                  value={substituteEndDate}
+                  onChange={(e) => setSubstituteEndDate(e.target.value)}
+                  min={effectiveDate || new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Info Alert */}
           {selectedTeacher && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Yêu cầu chuyển giáo viên sẽ được tạo và cần được duyệt trước
-                khi có hiệu lực.
+                Việc chuyển giáo viên sẽ được áp dụng ngay cho các buổi học trong phạm vi đã chọn.
               </AlertDescription>
             </Alert>
           )}
