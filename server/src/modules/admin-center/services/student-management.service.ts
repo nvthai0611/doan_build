@@ -7,7 +7,7 @@ import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 
 interface CreateStudentDto {
   fullName: string;
-  username: string;
+  username?: string;
   phone?: string;
   gender?: 'MALE' | 'FEMALE' | 'OTHER';
   birthDate?: string;
@@ -94,7 +94,10 @@ export class StudentManagementService {
     };
   }
 
-  async createStudent(createStudentData: CreateStudentDto): Promise<StudentResponse> {
+  async createStudent(
+    createStudentData: CreateStudentDto,
+    context?: { createdByRole?: 'center_owner' | 'parent'; parentUserId?: string }
+  ): Promise<StudentResponse> {
     try {
       // Validate school exists
       if (!checkId(createStudentData.schoolId)) {
@@ -115,16 +118,33 @@ export class StudentManagementService {
         );
       }
 
-      // Check if username already exists
+      // Nếu là phụ huynh gọi API: tự động xác định parent và sinh username
+      if (context?.createdByRole === 'parent') {
+        if (!context.parentUserId) {
+          throw new HttpException('Thiếu thông tin người dùng', HttpStatus.UNAUTHORIZED);
+        }
+        const parent = await this.prisma.parent.findUnique({
+          where: { userId: context.parentUserId },
+          include: { user: { select: { username: true } } }
+        });
+        if (!parent) {
+          throw new HttpException('Không tìm thấy phụ huynh', HttpStatus.NOT_FOUND);
+        }
+        const childCount = await this.prisma.student.count({ where: { parentId: parent.id } });
+        const generatedUsername = `${parent.user.username}_${childCount + 1}`;
+        createStudentData.username = generatedUsername;
+        createStudentData.parentId = parent.id; // ràng buộc với phụ huynh đang đăng nhập
+      }
+
+      // Check if username already exists (khi đã xác định được username)
+      if (!createStudentData.username) {
+        throw new HttpException('Username là bắt buộc', HttpStatus.BAD_REQUEST);
+      }
       const existingUser = await this.prisma.user.findUnique({
         where: { username: createStudentData.username }
       });
-
       if (existingUser) {
-        throw new HttpException(
-          'Username đã được sử dụng',
-          HttpStatus.CONFLICT
-        );
+        throw new HttpException('Username đã được sử dụng', HttpStatus.CONFLICT);
       }
 
       // Validate parent if provided
