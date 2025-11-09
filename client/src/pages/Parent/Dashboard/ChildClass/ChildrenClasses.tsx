@@ -91,10 +91,10 @@ export function ChildrenClasses() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Lớp học của các con</h1>
           <p className="text-muted-foreground mt-1">
-            Xem danh sách lớp học của các con 
+            Xem danh sách lớp học của các con
           </p>
         </div>
-        <Button 
+        <Button
           className="gap-2 bg-foreground text-background hover:bg-foreground/90"
           onClick={() => setIsJoinClassOpen(true)}
         >
@@ -189,8 +189,18 @@ export function ChildrenClasses() {
                                     <div className="flex items-center gap-2">
                                       <User className="w-4 h-4 text-muted-foreground" />
                                       <span className="text-muted-foreground">
-                                        {classItem.teacher?.user?.fullName || 'Chưa có giáo viên'}
+                                        {classItem.activePrimaryTeacher?.fullName || classItem.teacher?.user?.fullName || 'Chưa có giáo viên'}
                                       </span>
+                                      {classItem.activeSubstituteTeacher?.fullName && (
+                                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 border border-amber-200">
+                                          Thay thế: {classItem.activeSubstituteTeacher.fullName}
+                                          {(classItem.activeSubstituteTeacher as any).from && classItem.activeSubstituteTeacher.until && (
+                                            <span className="ml-1 font-normal text-[10px] text-amber-800">
+                                              ({(classItem.activeSubstituteTeacher as any).from} → {classItem.activeSubstituteTeacher.until})
+                                            </span>
+                                          )}
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <BookOpen className="w-4 h-4 text-muted-foreground" />
@@ -202,9 +212,8 @@ export function ChildrenClasses() {
                                 </div>
 
                                 <ChevronDown
-                                  className={`w-5 h-5 text-muted-foreground transition-transform ${
-                                    expandedClass === classItem.id ? "rotate-180" : ""
-                                  }`}
+                                  className={`w-5 h-5 text-muted-foreground transition-transform ${expandedClass === classItem.id ? "rotate-180" : ""
+                                    }`}
                                 />
                               </div>
                             </div>
@@ -221,9 +230,29 @@ export function ChildrenClasses() {
                                         <User className="w-4 h-4" />
                                         Giáo viên
                                       </h5>
-                                      <p className="text-sm text-muted-foreground ml-6">
-                                        {classItem.teacher?.user?.fullName || 'Chưa phân công'}
-                                      </p>
+                                      {classItem.activeSubstituteTeacher?.fullName ? (
+                                        <div className="ml-6 space-y-1">
+                                          <p className="text-sm text-muted-foreground">
+                                            <span className="font-medium text-foreground">Chính:</span> {classItem.activePrimaryTeacher?.fullName || classItem.teacher?.user?.fullName || 'Chưa phân công'}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground">
+                                            <span className="font-medium text-foreground">Thay thế:</span> {classItem.activeSubstituteTeacher.fullName}
+                                          </p>
+                                          <p className="text-xs inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                            Đang thay thế
+                                            {(classItem.activeSubstituteTeacher as any).from && (
+                                              <span className="ml-1 font-normal text-[10px] text-amber-800">{(classItem.activeSubstituteTeacher as any).from}</span>
+                                            )}
+                                            {classItem.activeSubstituteTeacher.until && (
+                                              <span className="ml-1 font-normal text-[10px] text-amber-800">→ {classItem.activeSubstituteTeacher.until}</span>
+                                            )}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground ml-6">
+                                          {classItem.activePrimaryTeacher?.fullName || classItem.teacher?.user?.fullName || 'Chưa phân công'}
+                                        </p>
+                                      )}
                                     </div>
 
                                     {/* Phòng học */}
@@ -244,12 +273,12 @@ export function ChildrenClasses() {
                                         Ngày bắt đầu
                                       </h5>
                                       <p className="text-sm text-muted-foreground ml-6">
-                                        {classItem.startDate 
+                                        {classItem.startDate
                                           ? new Date(classItem.startDate).toLocaleDateString('vi-VN', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                              year: 'numeric'
-                                            })
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                          })
                                           : 'Chưa xác định'}
                                       </p>
                                     </div>
@@ -261,12 +290,12 @@ export function ChildrenClasses() {
                                         Ngày kết thúc
                                       </h5>
                                       <p className="text-sm text-muted-foreground ml-6">
-                                        {classItem.endDate 
+                                        {classItem.endDate
                                           ? new Date(classItem.endDate).toLocaleDateString('vi-VN', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                              year: 'numeric'
-                                            })
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                          })
                                           : 'Chưa xác định'}
                                       </p>
                                     </div>

@@ -96,6 +96,66 @@ export class ParentOverviewService {
       );
     }
 
+    // Helper to format date as YYYY-MM-DD in local timezone
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    };
+
+    // Get all class IDs to fetch active transfers
+    const allClassIds: string[] = [];
+    for (const student of parent.students) {
+      for (const enrollment of student.enrollments) {
+        allClassIds.push(enrollment.class.id);
+      }
+    }
+
+    // Fetch active teacher transfers for all classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: allClassIds },
+        status: { in: ['approved', 'auto_created'] },
+        effectiveDate: { lte: today },
+        OR: [
+          { substituteEndDate: null },
+          { substituteEndDate: { gte: today } }
+        ]
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+
+    // Create map: classId -> active transfer
+    const transferMap = new Map();
+    activeTransfers.forEach(transfer => {
+      if (!transferMap.has(transfer.fromClassId)) {
+        transferMap.set(transfer.fromClassId, transfer);
+      }
+    });
+
     // Transform data for frontend
     const upcomingLessons: any[] = [];
     const activeClasses: any[] = [];
@@ -202,11 +262,30 @@ export class ParentOverviewService {
           nextClassInfo = `${dayOfWeek}, ${dateStr} (${nextSession.startTime} - ${nextSession.endTime})`;
         }
 
+        // Get active transfer for this class
+        const activeTransfer = transferMap.get(classData.id);
+        
+        // Determine teacher display (original or substitute)
+        let teacherDisplay = classData.teacher?.user?.fullName || 'Chưa phân công';
+        let substituteTeacher = null;
+        
+        if (activeTransfer && activeTransfer.replacementTeacher) {
+          teacherDisplay = activeTransfer.replacementTeacher.user?.fullName || teacherDisplay;
+          substituteTeacher = {
+            id: activeTransfer.replacementTeacher.id,
+            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+            until: activeTransfer.substituteEndDate ? formatLocalDate(activeTransfer.substituteEndDate) : null,
+          };
+        }
+
         activeClasses.push({
           id: classData.id,
           name: classData.name,
           subject: classData.subject.name,
-          teacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+          teacher: teacherDisplay,
+          originalTeacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+          substituteTeacher: substituteTeacher,
           room: classData.room?.name || 'Chưa phân phòng',
           progress,
           schedule: scheduleText,
@@ -220,13 +299,30 @@ export class ParentOverviewService {
             (a) => a.studentId === student.id,
           );
 
+          // Determine teacher for this specific session
+          const activeTransfer = transferMap.get(classData.id);
+          let sessionTeacher = classData.teacher?.user?.fullName || 'Chưa phân công';
+          let sessionSubstituteTeacher = null;
+          
+          if (activeTransfer && activeTransfer.replacementTeacher) {
+            sessionTeacher = activeTransfer.replacementTeacher.user?.fullName || sessionTeacher;
+            sessionSubstituteTeacher = {
+              id: activeTransfer.replacementTeacher.id,
+              fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+              from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+              until: activeTransfer.substituteEndDate ? formatLocalDate(activeTransfer.substituteEndDate) : null,
+            };
+          }
+
           upcomingLessons.push({
             id: session.id,
             className: classData.name,
             subject: classData.subject.name,
             time: `${session.startTime} - ${session.endTime}`,
             room: classData.room?.name || 'Chưa phân phòng',
-            teacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+            teacher: sessionTeacher,
+            originalTeacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+            substituteTeacher: sessionSubstituteTeacher,
             status:
               session.status === 'has_not_happened'
                 ? 'Chưa diễn ra'

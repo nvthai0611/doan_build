@@ -37,6 +37,11 @@ export interface ChildClass {
     dayOfWeek: string
     startTime: string
     endTime: string
+    substituteTeacher?: {
+      id: string
+      fullName: string | null
+      until?: string | null
+    } | null
   }>
   
   // Dates
@@ -50,6 +55,17 @@ export interface ChildClass {
   // Stats
   totalSessions: number
   completedSessions: number
+
+  // Substitution (computed)
+  activePrimaryTeacher?: {
+    id: string
+    fullName: string | null
+  } | null
+  activeSubstituteTeacher?: {
+    id: string
+    fullName: string | null
+    until?: string | null
+  } | null
 }
 
 export interface ChildClassesResponse {

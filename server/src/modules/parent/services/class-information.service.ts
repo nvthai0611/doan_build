@@ -103,6 +103,63 @@ export class ClassInformationService {
       },
     });
 
+    // Get class IDs to fetch active transfers
+    const classIds = enrollments.map(e => e.class.id);
+    
+    // Fetch active teacher transfers for all classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: classIds },
+        status: { in: ['approved', 'auto_created'] },
+        effectiveDate: { lte: today },
+        OR: [
+          { substituteEndDate: null },
+          { substituteEndDate: { gte: today } }
+        ]
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+
+    // Create map: classId -> active transfer
+    const transferMap = new Map();
+    activeTransfers.forEach(transfer => {
+      if (!transferMap.has(transfer.fromClassId)) {
+        transferMap.set(transfer.fromClassId, transfer);
+      }
+    });
+
+    // Helper to format date as YYYY-MM-DD in local timezone
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    };
+
     // Transform data to frontend format
     const classes = enrollments.map((enrollment) => {
       const classData = enrollment.class;
@@ -136,6 +193,34 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
+
+      // Get active transfer for this class from TeacherClassTransfer
+      const activeTransfer = transferMap.get(classData.id);
+
+      // Determine primary teacher (original teacher)
+      const activePrimaryTeacher = activeTransfer && activeTransfer.teacher
+        ? {
+            id: activeTransfer.teacher.id,
+            fullName: activeTransfer.teacher.user?.fullName || null,
+          }
+        : classData.teacher
+        ? {
+            id: classData.teacher.id,
+            fullName: classData.teacher.user?.fullName || null,
+          }
+        : null;
+
+      // Determine substitute teacher from transfer
+      const activeSubstituteTeacher = activeTransfer && activeTransfer.replacementTeacher
+        ? {
+            id: activeTransfer.replacementTeacher.id,
+            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+            until: activeTransfer.substituteEndDate
+              ? formatLocalDate(activeTransfer.substituteEndDate)
+              : null,
+          }
+        : null;
 
       return {
         id: classData.id,
@@ -171,6 +256,8 @@ export class ClassInformationService {
         } : null,
 
         schedule: schedule,
+        activePrimaryTeacher: activePrimaryTeacher,
+        activeSubstituteTeacher: activeSubstituteTeacher,
 
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],
@@ -294,6 +381,63 @@ export class ClassInformationService {
       },
     });
 
+    // Get class IDs to fetch active transfers
+    const classIds = enrollments.map(e => e.class.id);
+    
+    // Fetch active teacher transfers for all classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: classIds },
+        status: { in: ['approved', 'auto_created'] },
+        effectiveDate: { lte: today },
+        OR: [
+          { substituteEndDate: null },
+          { substituteEndDate: { gte: today } }
+        ]
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+
+    // Create map: classId -> active transfer
+    const transferMap = new Map();
+    activeTransfers.forEach(transfer => {
+      if (!transferMap.has(transfer.fromClassId)) {
+        transferMap.set(transfer.fromClassId, transfer);
+      }
+    });
+
+    // Helper to format date as YYYY-MM-DD in local timezone
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    };
+
     // Transform data
     const classes = enrollments.map((enrollment) => {
       const classData = enrollment.class;
@@ -327,6 +471,34 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
+
+      // Get active transfer for this class from TeacherClassTransfer
+      const activeTransfer = transferMap.get(classData.id);
+
+      // Determine primary teacher (original teacher)
+      const activePrimaryTeacher = activeTransfer && activeTransfer.teacher
+        ? {
+            id: activeTransfer.teacher.id,
+            fullName: activeTransfer.teacher.user?.fullName || null,
+          }
+        : classData.teacher
+        ? {
+            id: classData.teacher.id,
+            fullName: classData.teacher.user?.fullName || null,
+          }
+        : null;
+
+      // Determine substitute teacher from transfer
+      const activeSubstituteTeacher = activeTransfer && activeTransfer.replacementTeacher
+        ? {
+            id: activeTransfer.replacementTeacher.id,
+            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+            until: activeTransfer.substituteEndDate
+              ? formatLocalDate(activeTransfer.substituteEndDate)
+              : null,
+          }
+        : null;
 
       return {
         id: classData.id,
@@ -362,6 +534,8 @@ export class ClassInformationService {
         } : null,
 
         schedule: schedule,
+        activePrimaryTeacher: activePrimaryTeacher,
+        activeSubstituteTeacher: activeSubstituteTeacher,
 
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],

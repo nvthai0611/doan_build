@@ -400,26 +400,107 @@ export class StudentManagementService {
       orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
     });
 
-    const result = sessions.map((s) => ({
-      id: s.id,
-      classId: s.classId,
-      sessionDate: s.sessionDate.toISOString(),
-      startTime: s.startTime,
-      endTime: s.endTime,
-      room: s.room ? { id: s.room.id, name: s.room.name, capacity: s.room.capacity ?? 0 } : undefined,
-      status: s.status,
-      class: {
-        id: s.class.id,
-        name: s.class.name,
-        subject: { id: s.class.subject.id, name: s.class.subject.name },
-        teacher: s.class.teacher ? {
-          id: s.class.teacher.id,
-          fullName: s.class.teacher.user?.fullName || null,
-        } : undefined,
-        maxStudents: s.class.maxStudents ?? 0,
-        currentStudents: 0,
+    // Fetch all active teacher transfers for these classes
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: classIds },
+        status: { in: ['approved', 'auto_created'] },
       },
-    }));
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+
+    // Local date formatter to avoid UTC off-by-one when converting Postgres DATE to string
+    const formatYMD = (d?: Date | null) => {
+      if (!d) return undefined as unknown as string | undefined;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const result = sessions.map((s) => {
+      // Find active transfer for this session's class on this specific date
+      const sessionDate = new Date(s.sessionDate);
+      sessionDate.setHours(0, 0, 0, 0);
+
+      const activeTransfer = activeTransfers.find(transfer => {
+        if (transfer.fromClassId !== s.classId) return false;
+        
+        const effectiveDate = new Date(transfer.effectiveDate || 0);
+        effectiveDate.setHours(0, 0, 0, 0);
+        
+        if (effectiveDate > sessionDate) return false;
+        
+        if (transfer.substituteEndDate) {
+          const endDate = new Date(transfer.substituteEndDate);
+          endDate.setHours(0, 0, 0, 0);
+          if (endDate < sessionDate) return false;
+        }
+        
+        return true;
+      });
+
+      // Determine teacher and substitute teacher from transfer
+      const teacher = activeTransfer?.teacher || s.class.teacher;
+      const substituteTeacher = activeTransfer?.replacementTeacher || null;
+      const substituteEndDate = activeTransfer?.substituteEndDate || null;
+
+      return {
+        id: s.id,
+        classId: s.classId,
+        sessionDate: s.sessionDate.toISOString(),
+        startTime: s.startTime,
+        endTime: s.endTime,
+        room: s.room ? { id: s.room.id, name: s.room.name, capacity: s.room.capacity ?? 0 } : undefined,
+        status: s.status,
+        teacher: teacher
+          ? {
+              id: teacher.id,
+              fullName: teacher.user?.fullName || null,
+            }
+          : undefined,
+        substituteTeacher: substituteTeacher
+          ? {
+              id: substituteTeacher.id,
+              fullName: substituteTeacher.user?.fullName || null,
+            }
+          : undefined,
+        substituteEndDate: substituteEndDate ? formatYMD(substituteEndDate) : undefined,
+        class: {
+          id: s.class.id,
+          name: s.class.name,
+          subject: { id: s.class.subject.id, name: s.class.subject.name },
+          teacher: s.class.teacher ? {
+            id: s.class.teacher.id,
+            fullName: s.class.teacher.user?.fullName || null,
+          } : undefined,
+          maxStudents: s.class.maxStudents ?? 0,
+          currentStudents: 0,
+        },
+      };
+    });
 
     return { data: result, message: 'Lấy lịch học thành công' };
   }
