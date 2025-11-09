@@ -38,6 +38,7 @@ export interface StudentResponse {
 const STUDENT_USER_SELECT = {
   id: true,
   email: true,
+  username: true,
   fullName: true,
   phone: true,
   avatar: true,
