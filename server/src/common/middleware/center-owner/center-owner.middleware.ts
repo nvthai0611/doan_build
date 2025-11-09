@@ -28,8 +28,18 @@ export class MiddlewareCenterOwner implements NestMiddleware {
         });
       }
 
-      // Bước 2: Kiểm tra role là center_owner
-      if (payload.role !== 'center_owner') {
+      // Bước 2: Kiểm tra role truy cập
+      // Cho phép:
+      //  - center_owner: toàn bộ /admin-center/*
+      //  - parent: POST /admin-center/student-management (tạo học sinh cho chính mình)
+      const url: string = req.originalUrl || req.url || '';
+      const isStudentCreateRoute = req.method === 'POST' && /\/admin-center\/student-management(\/)?$/i.test(url.split('?')[0]);
+
+      if (payload.role === 'center_owner') {
+        // Full access
+      } else if (payload.role === 'parent' && isStudentCreateRoute) {
+        // Phụ huynh chỉ được phép tạo học sinh trên endpoint chia sẻ
+      } else {
         return res.status(403).json({ 
           success: false,
           message: 'Bạn không có quyền truy cập. Chỉ chủ trung tâm mới được phép.' 
@@ -39,7 +49,7 @@ export class MiddlewareCenterOwner implements NestMiddleware {
       // Bước 3: Thêm user info vào request
       req.user = {
         ...payload,
-        isCenterOwner: true, // Flag để dễ check trong controller
+        isCenterOwner: payload.role === 'center_owner',
       };
       
       next();

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, MoreVertical, Phone, CalendarIcon, ChevronRight } from "lucide-react"
+import { Search, Filter, MoreVertical, Phone, CalendarIcon, ChevronRight, Plus } from "lucide-react"
 import { ChildDetailView } from "./ChildDetailView"
+import { AddChildModal } from "./AddChildModal"
 import { useQuery } from "@tanstack/react-query"
 import { parentChildService } from "../../../../services"
 
@@ -71,8 +72,9 @@ const getStatusDisplay = (status: ChildRow['status']) => {
 export function ListChildren() {
   const [selectedChild, setSelectedChild] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["parent-children", { search: searchQuery }],
     queryFn: () => parentChildService.getChildren({ search: searchQuery, limit: 50, page: 1 }),
     staleTime: 30_000,
@@ -179,13 +181,22 @@ export function ListChildren() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-balance">Danh sách con em</h1>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-          <span>Dashboard</span>
-          <ChevronRight className="w-4 h-4" />
-          <span>Danh sách con em</span>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-balance">Danh sách con em</h1>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+            <span>Dashboard</span>
+            <ChevronRight className="w-4 h-4" />
+            <span>Danh sách con em</span>
+          </div>
         </div>
+        <Button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="bg-primary hover:bg-primary/90"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Thêm con
+        </Button>
       </div>
 
       {/* Search and Filter Bar */}
@@ -313,6 +324,15 @@ export function ListChildren() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Child Modal */}
+      <AddChildModal 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          refetch() // Refresh danh sách con sau khi thêm thành công
+        }}
+      />
     </div>
   )
 }
