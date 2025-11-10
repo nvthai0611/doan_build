@@ -142,18 +142,8 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
       return;
     }
 
-    // Validate: Phải có hợp đồng
-    if (!selectedContractId || selectedContractId.trim() === '') {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn hợp đồng cam kết học tập",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Validate: Đảm bảo các field có giá trị
-    if (!classInfo.id || !selectedStudentId || !selectedContractId) {
+    if (!classInfo.id || !selectedStudentId) {
       toast({
         title: "Lỗi",
         description: "Thiếu thông tin cần thiết. Vui lòng kiểm tra lại.",
@@ -175,13 +165,18 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
 
     setIsLoading(true);
     try {
-      await parentClassJoinService.requestJoinClassForm({
+      const payload: any = {
         classId: classInfo.id,
         studentId: selectedStudentId,
-        contractUploadId: selectedContractId,
         password: password || undefined,
         message: message || `Phụ huynh đăng ký lớp học cho con`,
-      });
+      };
+
+      if (selectedContractId) {
+        payload.contractUploadId = selectedContractId;
+      }
+
+      await parentClassJoinService.requestJoinClassForm(payload);
       
       toast({
         title: "Thành công",
@@ -455,7 +450,7 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
                 {/* Hợp đồng cam kết - Tự động chọn */}
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">
-                    Bản cam kết học tập <span className="text-red-500">*</span>
+                    Bản cam kết học tập <span className="text-muted-foreground/70">(Tùy chọn)</span>
                   </Label>
                   {selectedStudentId ? (
                     <div className="mt-2">
@@ -466,7 +461,7 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
                               <AlertCircle className="w-5 h-5 text-green-600 mt-0.5" />
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                                  Đã tự động chọn hợp đồng hợp lệ
+                                  Đã tự động chọn bản cam kết hợp lệ
                                 </p>
                                 <p className="text-xs text-green-700 dark:text-green-300 mt-1">
                                   Hợp đồng {new Date(selectedCommitment.uploadedAt).toLocaleDateString('vi-VN')} - 
@@ -503,8 +498,8 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
                               </p>
                               <p className="text-xs text-red-700 dark:text-red-300 mt-1">
                                 {allCommitments.length === 0
-                                  ? `Học sinh này chưa có hợp đồng nào cho môn "${classInfo.subject?.name || ''}". Vui lòng đến trang quản lý hợp đồng để upload hợp đồng trước.`
-                                  : `Hợp đồng hiện tại không bao gồm môn "${classInfo.subject?.name || ''}" hoặc hợp đồng đã hết hạn. Vui lòng cập nhật bản cam kết mới có môn học này.`}
+                                  ? `Học sinh này chưa có hợp đồng nào cho môn "${classInfo.subject?.name || ''}". Bạn vẫn có thể gửi yêu cầu, trung tâm sẽ hướng dẫn hoàn tất hợp đồng sau.`
+                                  : `Hợp đồng hiện tại không bao gồm môn "${classInfo.subject?.name || ''}" hoặc hợp đồng đã hết hạn. Bạn vẫn có thể gửi yêu cầu, đồng thời chuẩn bị bản cam kết có môn học này.`}
                               </p>
                               <div className="flex items-center gap-2 mt-3">
                                 <Button
@@ -547,7 +542,7 @@ export const JoinClassSheet = ({ open, onOpenChange }: JoinClassSheetProps) => {
               {/* Nút tham gia */}
               <Button
                 onClick={handleJoinClass}
-                disabled={isLoading || !selectedStudentId || !selectedContractId}
+                disabled={isLoading || !selectedStudentId}
                 className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
               >
                 {isLoading ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu tham gia'}

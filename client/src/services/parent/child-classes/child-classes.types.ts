@@ -76,10 +76,65 @@ export interface ChildClassesResponse {
   message: string
 }
 
+export interface PendingClassRequest {
+  id: string // ID của StudentClassRequest (để cancel)
+  classId: string // ID của Class
+  name: string
+  classCode: string
+  status: "ready" | "active" | "completed"
+  progress: number
+  currentStudents: number
+  maxStudents: number
+  description: string
+  
+  teacher?: {
+    id: string
+    user: {
+      fullName: string
+      email: string
+    }
+  } | null
+  
+  room?: {
+    name: string
+  } | null
+  
+  subject?: {
+    name: string
+    code: string
+  } | null
+  
+  grade?: {
+    name: string
+    level: number
+  } | null
+  
+  schedule: Array<{
+    dayOfWeek: string
+    startTime: string
+    endTime: string
+  }>
+  
+  startDate?: string | null
+  endDate?: string | null
+  studentName: string
+  
+  // Request specific fields
+  requestStatus: string
+  requestedAt: string
+  requestMessage?: string | null
+  
+  totalSessions: number
+  completedSessions: number
+}
+
 export interface ChildClassResponse {
   success: boolean
   status?: number
-  data: ChildClass[]
+  data: {
+    enrolledClasses: ChildClass[]
+    pendingRequests: PendingClassRequest[]
+  }
   meta?: any
   message: string
 }

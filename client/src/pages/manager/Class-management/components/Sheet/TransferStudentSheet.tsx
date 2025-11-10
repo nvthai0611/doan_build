@@ -253,15 +253,31 @@ export const TransferStudentSheet = ({
       onOpenChange(false);
     },
     onError: (error: any) => {
-      // Hiển thị thông báo lỗi
-      toast({
-        title: 'Lỗi',
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Có lỗi xảy ra khi chuyển lớp học sinh',
-        variant: 'destructive',
-      });
+      // Xử lý lỗi schedule conflict từ backend
+      const errorData = error?.response?.data;
+      if (errorData?.conflicts && Array.isArray(errorData.conflicts)) {
+        const conflictMessages = errorData.conflicts
+          .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
+          .join('; ');
+        toast({
+          title: 'Lịch học bị trùng',
+          description: conflictMessages,
+          variant: 'destructive',
+          duration: 10000,
+        });
+      } else {
+        // Hiển thị thông báo lỗi thông thường
+        toast({
+          title: 'Lỗi',
+          description:
+            errorData?.message ||
+            error?.response?.data?.message ||
+            error?.message ||
+            'Có lỗi xảy ra khi chuyển lớp học sinh',
+          variant: 'destructive',
+          duration: 8000,
+        });
+      }
     },
   });
 
