@@ -34,6 +34,8 @@ export const useTeachingSessions = (teacherId: string, year: number, month: numb
             teacher: session.teacher,
             originalTeacher: session.originalTeacher,
             substituteTeacher: session.substituteTeacher,
+            substituteStartDate: session.substituteStartDate || null,
+            substituteEndDate: session.substituteEndDate || null,
             students: session.students || [],
             attendanceWarnings: session.attendanceWarnings || [],
             description: session.description,

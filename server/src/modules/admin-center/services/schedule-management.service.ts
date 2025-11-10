@@ -171,6 +171,7 @@ export class ScheduleManagementService {
                 id: true,
                 name: true,
                 recurringSchedule: true,
+                teacherId: true,  // Thêm teacherId để frontend có thể filter
                 room: { 
                     select: { 
                         id: true,
@@ -179,6 +180,7 @@ export class ScheduleManagementService {
                 },
                 teacher: { 
                     select: { 
+                        id: true,  // Thêm teacher.id
                         user: { 
                             select: { 
                                 fullName: true 
@@ -204,6 +206,7 @@ export class ScheduleManagementService {
             return {
                 classId: cls.id,
                 className: cls.name,
+                teacherId: cls.teacherId || cls.teacher?.id || null,  // Thêm teacherId
                 teacherName: cls.teacher?.user?.fullName || '',
                 subjectName: cls.subject?.name || '',
                 roomId: cls.room?.id || null,
