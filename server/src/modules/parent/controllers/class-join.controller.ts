@@ -2,9 +2,11 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Req,
   Query,
+  Param,
   UseGuards,
   HttpException,
   HttpStatus,
@@ -21,6 +23,8 @@ import { JoinClassByCodeDto, RequestJoinClassDto } from '../dto/request/join-cla
 export class ClassJoinController {
   constructor(private readonly classJoinService: ClassJoinService) {}
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Post('get-class-info')
   @ApiOperation({ summary: 'Lấy thông tin lớp học từ classCode hoặc link' })
   @ApiResponse({ status: 200, description: 'Lấy thông tin lớp học thành công' })
@@ -51,6 +55,8 @@ export class ClassJoinController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Post('request-join')
   @UseInterceptors(AnyFilesInterceptor()) // Enable multipart/form-data parsing
   @ApiOperation({ summary: 'Gửi yêu cầu tham gia lớp học cho con' })
@@ -97,6 +103,8 @@ export class ClassJoinController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get('my-requests')
   @ApiOperation({ summary: 'Lấy danh sách yêu cầu tham gia lớp của parent' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách yêu cầu thành công' })
@@ -128,6 +136,39 @@ export class ClassJoinController {
         {
           success: false,
           message: 'Có lỗi xảy ra khi lấy danh sách yêu cầu',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Patch('cancel-request/:requestId')
+  @ApiOperation({ summary: 'Hủy yêu cầu tham gia lớp học' })
+  @ApiResponse({ status: 200, description: 'Hủy yêu cầu thành công' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy yêu cầu' })
+  @ApiResponse({ status: 403, description: 'Không có quyền hủy yêu cầu này' })
+  async cancelRequest(@Req() req: any, @Param('requestId') requestId: string) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new HttpException(
+          { success: false, message: 'Không tìm thấy thông tin người dùng' },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      return await this.classJoinService.cancelClassRequest(userId, requestId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi hủy yêu cầu',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,

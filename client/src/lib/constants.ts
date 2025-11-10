@@ -496,6 +496,18 @@ export const STUDENT_CLASS_REQUEST_STATUS_COLORS: Record<
     'border-gray-500 text-gray-700 bg-gray-50',
 };
 
+export const STUDENT_CLASS_REQUEST_STATUS_BADGE_COLORS: Record<
+  StudentClassRequestStatus,
+  string
+> = {
+  [StudentClassRequestStatus.PENDING]: 'bg-yellow-100 text-yellow-800',
+  [StudentClassRequestStatus.UNDER_REVIEW]: 'bg-blue-100 text-blue-800',
+  [StudentClassRequestStatus.APPROVED]: 'bg-green-100 text-green-800',
+  [StudentClassRequestStatus.REJECTED]: 'bg-red-100 text-red-800',
+  [StudentClassRequestStatus.CANCELLED]: 'bg-gray-100 text-gray-800',
+  [StudentClassRequestStatus.EXPIRED]: 'bg-gray-100 text-gray-800',
+};
+
 // ==================== CONTRACT STATUS ====================
 // Contract.status: active, expired
 export enum ContractStatus {
