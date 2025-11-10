@@ -30,7 +30,6 @@ import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { convertDateToISO } from '../../../utils/format';
-import { GRADE_LEVEL_OPTIONS } from '../../../lib/gradeConstants';
 import { dayOptions } from '../../../utils/commonData';
 import { WeeklySchedulePicker } from '../../../components/common/WeeklySchedulePicker';
 
@@ -63,9 +62,7 @@ export const CreateClass = () => {
     recurringSchedule: null as any,
   });
 
-  const [useTemplate, setUseTemplate] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [useCalendarPicker, setUseCalendarPicker] = useState(true); // Mặc định dùng calendar picker
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   
   // State để quản lý validation errors
@@ -117,33 +114,8 @@ export const CreateClass = () => {
   const grades = (gradesData as any)?.data || [];
 
 
-  const handleAddSchedule = () => {
-    // Tìm thứ tiếp theo chưa được sử dụng theo thứ tự logic
-    const usedDays = schedules.map(s => s.day);
-    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const nextAvailableDay = dayOrder.find(day => !usedDays.includes(day)) || 'monday';
-    const newSchedule: ScheduleItem = {
-      id: Date.now().toString(),
-      day: nextAvailableDay,
-      startTime: '08:00',
-      endTime: '09:30',
-      duration: 90,
-    };
-    setSchedules([...schedules, newSchedule]);
-  };
-
   const handleRemoveSchedule = (id: string) => {
     setSchedules(schedules.filter((s) => s.id !== id));
-  };
-
-  const handleScheduleChange = (
-    id: string,
-    field: keyof ScheduleItem,
-    value: string | number,
-  ) => {
-    setSchedules(
-      schedules.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
-    );
   };
 
   // Validation functions
@@ -361,9 +333,9 @@ export const CreateClass = () => {
           }
         : null;
 
-    // Nếu dùng calendar picker và có chọn phòng, tự động set roomId từ lịch đầu tiên
+    // Nếu có chọn phòng từ lịch, tự động set roomId từ lịch đầu tiên
     let finalRoomId = formData.roomId;
-    if (useCalendarPicker && schedules.length > 0 && schedules[0].roomId) {
+    if (schedules.length > 0 && schedules[0].roomId) {
       finalRoomId = schedules[0].roomId;
     }
 
@@ -542,159 +514,67 @@ export const CreateClass = () => {
                 </div>
               </div>
 
-              {/* Ngày khai giảng & Phòng học */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="expectedStartDate" className="text-sm font-medium">
-                    Ngày khai giảng dự kiến <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="expectedStartDate"
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={formData.expectedStartDate}
-                    onChange={(e) => handleInputChange("expectedStartDate", e.target.value)}
-                    className={`mt-1.5 ${errors.expectedStartDate ? "border-red-500" : ""}`}
-                    required
-                  />
-                  <ErrorMessage field="expectedStartDate" />
-                </div>
-                {!useCalendarPicker && (
-                  <div>
-                    <Label htmlFor="roomId" className="text-sm font-medium">
-                      Chọn phòng học 
-                    </Label>
-                    <Select
-                      value={formData.roomId}
-                      onValueChange={(value) => handleInputChange("roomId", value)}
-                    >
-                      <SelectTrigger className={`mt-1.5 ${errors.roomId ? "border-red-500" : ""}`}>
-                        <SelectValue placeholder="Chọn phòng học" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Không chọn</SelectItem>
-                        {rooms &&
-                          rooms.length > 0 &&
-                          rooms.map((room: any) => (
-                            <SelectItem key={room.id} value={room.id}>
-                              {room.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <ErrorMessage field="roomId" />
-                  </div>
-                )}
-                {useCalendarPicker && schedules.length > 0 && schedules[0].roomName && (
-                  <div>
-                    <Label className="text-sm font-medium">Phòng học</Label>
-                    <div className="mt-1.5 px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800">
-                      {schedules[0].roomName}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Năm học */}
+              {/* Ngày khai giảng */}
               <div>
-                <Label htmlFor="academicYear" className="text-sm font-medium">
-                  Năm học 
-                  {/* <span className="text-red-500">*</span> */}
+                <Label htmlFor="expectedStartDate" className="text-sm font-medium">
+                  Ngày khai giảng dự kiến <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={formData.academicYear}
-                  onValueChange={(value) => handleInputChange("academicYear", value)}
-                >
-                  <SelectTrigger className={`mt-1.5 ${errors.academicYear ? "border-red-500" : ""}`}>
-                    <SelectValue placeholder="Chọn năm học" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      const currentYear = new Date().getFullYear();
-                      const academicYears = [
-                        `${currentYear - 1}-${currentYear}`,
-                        `${currentYear}-${currentYear + 1}`,
-                        ];
-                      return academicYears.map((year) => (
-                        <SelectItem key={year} value={year}>
-                          {year}
-                        </SelectItem>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
-                <ErrorMessage field="academicYear" />
+                <Input
+                  id="expectedStartDate"
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={formData.expectedStartDate}
+                  onChange={(e) => handleInputChange("expectedStartDate", e.target.value)}
+                  className={`mt-1.5 ${errors.expectedStartDate ? "border-red-500" : ""}`}
+                  required
+                />
+                <ErrorMessage field="expectedStartDate" />
               </div>
-
-                  
-
               {/* Lịch học hàng tuần */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <Label className="text-base font-semibold">
                     Lịch học hàng tuần
                   </Label>
-                  <div className="flex items-center gap-2">
-                    {useCalendarPicker ? (
-                      <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Chọn từ lịch
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>Chọn thời gian học từ lịch hệ thống</DialogTitle>
-                          </DialogHeader>
-                          <WeeklySchedulePicker
-                            selectedSlots={schedules}
-                            onSlotsChange={setSchedules}
-                            defaultDuration={90}
-                            expectedStartDate={formData.expectedStartDate || undefined}
-                          />
-                          <div className="flex justify-end gap-2 pt-4 border-t">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setIsScheduleModalOpen(false)}
-                            >
-                              Đóng
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() => setIsScheduleModalOpen(false)}
-                            >
-                              <Check className="w-4 h-4 mr-2" />
-                              Xong
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    ) : (
+                  <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
+                    <DialogTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={handleAddSchedule}
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Thêm lịch học
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Chọn từ lịch
                       </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant={useCalendarPicker ? "ghost" : "default"}
-                      size="sm"
-                      onClick={() => setUseCalendarPicker(!useCalendarPicker)}
-                    >
-                      {useCalendarPicker ? 'Nhập thủ công' : 'Chọn từ lịch'}
-                    </Button>
-                  </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Chọn thời gian học từ lịch hệ thống</DialogTitle>
+                      </DialogHeader>
+                      <WeeklySchedulePicker
+                        selectedSlots={schedules}
+                        onSlotsChange={setSchedules}
+                        defaultDuration={90}
+                        expectedStartDate={formData.expectedStartDate || undefined}
+                      />
+                      <div className="flex justify-end gap-2 pt-4 border-t">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsScheduleModalOpen(false)}
+                        >
+                          Đóng
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => setIsScheduleModalOpen(false)}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Xong
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 {/* Hiển thị lịch đã chọn */}
@@ -737,103 +617,7 @@ export const CreateClass = () => {
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500 text-sm border border-dashed rounded-lg">
-                      Chưa có lịch học. Click "{useCalendarPicker ? 'Chọn từ lịch' : 'Thêm lịch học'}" để thêm.
-                    </div>
-                  )}
-
-                  {/* Form nhập thủ công khi không dùng calendar */}
-                  {!useCalendarPicker && schedules.length > 0 && (
-                    <div className="space-y-3 pt-3 border-t">
-                      {schedules.map((schedule) => (
-                        <div
-                          key={schedule.id}
-                          className="p-3 border rounded-lg bg-white dark:bg-gray-900"
-                        >
-                          <div className="flex items-end gap-3">
-                            {/* Thứ */}
-                            <div className="flex-1">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400">
-                                Thứ
-                              </Label>
-                              <Select
-                                value={schedule.day}
-                                onValueChange={(value: string) =>
-                                  handleScheduleChange(schedule.id, 'day', value)
-                                }
-                              >
-                                <SelectTrigger className="mt-1 h-9">
-                                  <SelectValue placeholder="Chọn" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {dayOptions.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Bắt đầu */}
-                            <div className="flex-1">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400">
-                                Bắt đầu <span className="text-red-500">*</span>
-                              </Label>
-                              <div className="relative mt-1">
-                                <Clock className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                <Input
-                                  type="time"
-                                  value={schedule.startTime}
-                                  onChange={(e: any) =>
-                                    handleScheduleChange(
-                                      schedule.id,
-                                      'startTime',
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="pl-9 h-9"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Thời lượng */}
-                            <div className="flex-1">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400">
-                                Thời lượng (phút){' '}
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Input
-                                type="number"
-                                value={schedule.duration}
-                                onChange={(e: any) =>
-                                  handleScheduleChange(
-                                    schedule.id,
-                                    'duration',
-                                    parseInt(e.target.value) || 0,
-                                  )
-                                }
-                                min={0}
-                                step={15}
-                                className="mt-1 h-9"
-                              />
-                            </div>
-
-                            {/* Delete button */}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveSchedule(schedule.id)}
-                              className="text-red-600 hover:text-red-700 h-9 w-9 p-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                      Chưa có lịch học. Click "Chọn từ lịch" để thêm.
                     </div>
                   )}
                 </div>

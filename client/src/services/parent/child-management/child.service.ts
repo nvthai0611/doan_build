@@ -48,5 +48,18 @@ export const parentChildService = {
   ): Promise<any[]> => {
     const response = await apiClient.get<any[]>(`/parent/student-management/children/${childId}/schedule`, params)
     return (response as any)?.data?.data ?? (response as any)?.data
+  },
+
+  // Add new child
+  addChild: async (data: FormData): Promise<any> => {
+    // Sử dụng API chung tạo học sinh của admin-center (đã mở cho parent)
+    const response = await apiClient.post(`/admin-center/student-management`, data)
+    return (response as any)?.data
+  },
+
+  // Get schools list
+  getSchools: async (): Promise<any[]> => {
+    const response = await apiClient.get(`/schools`)
+    return (response as any)?.data
   }
 }

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { X, Search, Check, AlertCircle, User, Mail, Phone, Calendar, MapPin, GraduationCap, FileText, Upload } from "lucide-react"
+import { X, Search, Check, AlertCircle, User, Mail, Phone, Calendar, MapPin, GraduationCap, FileText, Upload, Info } from "lucide-react"
 import { toast } from "sonner"
 import { centerOwnerStudentService } from "../../../../services/center-owner/student-management/student.service"
 import { ApiService } from "../../../../services/common"
@@ -23,15 +23,11 @@ interface CreateStudentModalProps {
 
 interface CreateStudentFormData {
   fullName: string
-  username: string
-  phone: string
   gender: "MALE" | "FEMALE" | "OTHER" | ""
   birthDate: string
-  address: string
-  grade: string
-  parentEmail: string  // Keep this for form input (search field)
+  parentEmail: string
   schoolId: string
-  password: string
+  parentId?: string  // Parent ID from search
   applicationFile: File | null  // Đơn xin học thêm
   subjectIds: string[]  // Các môn học được chọn
 }
@@ -43,6 +39,7 @@ interface ParentInfo {
     fullName: string
     email: string
     phone: string
+    username: string  // Add username field
     isActive: boolean
   }
   students: Array<{
@@ -79,29 +76,28 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
   const [formData, setFormData] = useState<CreateStudentFormData>({
     fullName: "",
-    username: "",
-    phone: "",
     gender: "",
     birthDate: "",
-    address: "",
-    grade: "",
     parentEmail: "",
     schoolId: "",
-    password: "",
     applicationFile: null,
     subjectIds: []
   })
 
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null)
+  const [parentSearchEmail, setParentSearchEmail] = useState("")
   const [parentSearchLoading, setParentSearchLoading] = useState(false)
   const [parentSearched, setParentSearched] = useState(false)
-  const [formErrors, setFormErrors] = useState<Partial<CreateStudentFormData>>({})
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Store generated username to show in success message
+  const [lastGeneratedUsername, setLastGeneratedUsername] = useState<string>("")
 
   // Create student mutation
   const createStudentMutation = useMutation({
     mutationFn: (data: any) => centerOwnerStudentService.createStudentAccount(data),
     onSuccess: (response) => {
-      toast.success("Tạo tài khoản học viên thành công!")
+      toast.success(`Tạo tài khoản học viên thành công! Username: ${lastGeneratedUsername}`)
       queryClient.invalidateQueries({ queryKey: ['students'] })
       queryClient.invalidateQueries({ queryKey: ['student-count-by-status'] })
       resetForm()
@@ -135,17 +131,27 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     try {
       const response = await centerOwnerStudentService.findParentByEmail(email)
       
-      setParentInfo(response)
+      console.log("Parent search response:", response) // Debug log
+      
+      // Backend returns { data: {...}, message: '...' }
+      const parentData = response.data || response
+      
+      setParentInfo(parentData)
       setParentSearched(true)
       
-      if (response) {
+      if (parentData && parentData.id) {
+        // Update parentId in formData
+        setFormData(prev => ({ ...prev, parentId: parentData.id }))
         toast.success("Tìm thấy thông tin phụ huynh!")
       } else {
+        setFormData(prev => ({ ...prev, parentId: undefined }))
         toast.info("Không tìm thấy phụ huynh với email này")
       }
     } catch (error: any) {
+      console.error("Error searching parent:", error) // Debug log
       toast.error("Có lỗi khi tìm kiếm phụ huynh")
       setParentInfo(null)
+      setFormData(prev => ({ ...prev, parentId: undefined }))
       setParentSearched(true)
     } finally {
       setParentSearchLoading(false)
@@ -154,27 +160,26 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
   // Validate form
   const validateForm = (): boolean => {
-    const errors: Partial<CreateStudentFormData> = {}
+    const errors: Record<string, string> = {}
 
     if (!formData.fullName.trim()) {
       errors.fullName = "Họ tên là bắt buộc"
     }
 
-    if (!formData.username.trim()) {
-      errors.username = "Username là bắt buộc"
-    } else {
-      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-      if (!usernameRegex.test(formData.username)) {
-        errors.username = "Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự"
-      }
+    if (!parentInfo?.id) {
+      errors.parentId = "Vui lòng tìm và chọn phụ huynh"
+    }
+
+    if (!formData.gender) {
+      errors.gender = "Vui lòng chọn giới tính"
+    }
+
+    if (!formData.birthDate) {
+      errors.birthDate = "Vui lòng chọn ngày sinh"
     }
 
     if (!formData.schoolId) {
       errors.schoolId = "Vui lòng chọn trường học"
-    }
-
-    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone)) {
-      errors.phone = "Số điện thoại không hợp lệ"
     }
 
     setFormErrors(errors)
@@ -190,20 +195,34 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       return
     }
 
+    if (!parentInfo?.id) {
+      toast.error("Vui lòng tìm và chọn phụ huynh trước")
+      return
+    }
+
+    if (!parentInfo?.user?.username) {
+      toast.error("Thông tin phụ huynh không đầy đủ. Vui lòng thử tìm kiếm lại.")
+      return
+    }
+
+    // Generate username: parentUsername_childIndex
+    const childIndex = (parentInfo.students?.length || 0) + 1
+    const generatedUsername = `${parentInfo.user.username}_${childIndex}`
+    
+    // Store generated username for success message
+    setLastGeneratedUsername(generatedUsername)
+
     // Prepare FormData for file upload
     const formDataToSend = new FormData()
     
     // Add all fields
     formDataToSend.append('fullName', formData.fullName)
-    formDataToSend.append('username', formData.username)
+    formDataToSend.append('username', generatedUsername) // Auto-generated username
+    formDataToSend.append('password', '123456') // Default password
     formDataToSend.append('schoolId', formData.schoolId)
     
     if (formData.gender) formDataToSend.append('gender', formData.gender)
-    if (formData.phone) formDataToSend.append('phone', formData.phone)
     if (formData.birthDate) formDataToSend.append('birthDate', formData.birthDate)
-    if (formData.address) formDataToSend.append('address', formData.address)
-    if (formData.grade) formDataToSend.append('grade', formData.grade)
-    if (formData.password) formDataToSend.append('password', formData.password)
     if (parentInfo?.id) formDataToSend.append('parentId', parentInfo.id)
     
     // Add subjectIds as JSON array
@@ -223,15 +242,10 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
   const resetForm = () => {
     setFormData({
       fullName: "",
-      username: "",
-      phone: "",
       gender: "",
       birthDate: "",
-      address: "",
-      grade: "",
       parentEmail: "",
       schoolId: "",
-      password: "",
       applicationFile: null,
       subjectIds: []
     })
@@ -246,7 +260,11 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     
     // Clear error when user starts typing
     if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: undefined }))
+      setFormErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
     }
   }
 
@@ -340,44 +358,28 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">
-                  Username <span className="text-red-500">*</span>
+                <Label htmlFor="birthDate">
+                  Ngày sinh <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="username"
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange("username", e.target.value)}
-                  placeholder="student001"
-                  className={formErrors.username ? "border-red-500" : ""}
+                  id="birthDate"
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                  className={formErrors.birthDate ? "border-red-500" : ""}
                 />
-                {formErrors.username && (
-                  <p className="text-sm text-red-500">{formErrors.username}</p>
+                {formErrors.birthDate && (
+                  <p className="text-sm text-red-500">{formErrors.birthDate}</p>
                 )}
-                <p className="text-xs text-gray-500">
-                  Chỉ sử dụng chữ cái, số và dấu gạch dưới, từ 3-20 ký tự
-                </p>
               </div>
 
-              {/* <div className="space-y-2">
-                <Label htmlFor="phone">Số điện thoại</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="0123456789"
-                  className={formErrors.phone ? "border-red-500" : ""}
-                />
-                {formErrors.phone && (
-                  <p className="text-sm text-red-500">{formErrors.phone}</p>
-                )}
-              </div> */}
-
               <div className="space-y-2">
-                <Label htmlFor="gender">Giới tính</Label>
+                <Label htmlFor="gender">
+                  Giới tính <span className="text-red-500">*</span>
+                </Label>
                 <Select value={formData.gender} onValueChange={(value: any) => handleInputChange("gender", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn giới tính" />
+                  <SelectTrigger className={formErrors.gender ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Chọn" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">Nam</SelectItem>
@@ -385,58 +387,18 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
                     <SelectItem value="OTHER">Khác</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.gender && (
+                  <p className="text-sm text-red-500">{formErrors.gender}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Ngày sinh</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="grade">Lớp</Label>
-                <Input
-                  id="grade"
-                  value={formData.grade}
-                  onChange={(e) => handleInputChange("grade", e.target.value)}
-                  placeholder="VD: 10A1, 11B2..."
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Địa chỉ</Label>
-              <Textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Nhập địa chỉ chi tiết"
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Account Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" />
-              Thông tin tài khoản
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="schoolId">
                   Trường học <span className="text-red-500">*</span>
                 </Label>
                 <Select value={formData.schoolId} onValueChange={(value) => handleInputChange("schoolId", value)}>
                   <SelectTrigger className={formErrors.schoolId ? "border-red-500" : ""}>
-                    <SelectValue placeholder={schoolsLoading ? "Đang tải..." : "Chọn trường học"} />
+                    <SelectValue placeholder={schoolsLoading ? "Đang tải..." : "Chọn"} />
                   </SelectTrigger>
                   <SelectContent>
                     {schoolsLoading ? (
@@ -456,19 +418,19 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
                   <p className="text-sm text-red-500">{formErrors.schoolId}</p>
                 )}
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu (tùy chọn)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
-                  placeholder="Mặc định: 123456"
-                />
-                <p className="text-xs text-gray-500">
-                  Để trống để sử dụng mật khẩu mặc định: 123456
-                </p>
+            {/* Username & Password Info */}
+            <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20 mt-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-700 dark:text-blue-300">
+                  <p className="font-medium mb-1">Thông tin tài khoản tự động</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Username sẽ được tạo tự động theo phụ huynh (VD: hopnd_1, hopnd_2)</li>
+                    <li>Mật khẩu mặc định: <strong>123456</strong></li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

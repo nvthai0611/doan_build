@@ -383,9 +383,6 @@ export default function TeacherQnmsManagement() {
               <Plus className="w-4 h-4 mr-2" />
               Giáo Viên
             </Button>
-            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-transparent" onClick={handleInviteEmployee}>
-              Mời Giáo Viên
-            </Button>
           </div>
         </div>
       </div>

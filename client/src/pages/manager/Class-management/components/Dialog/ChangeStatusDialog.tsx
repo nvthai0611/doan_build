@@ -305,6 +305,31 @@ export const ChangeStatusDialog = ({
       currentStatus === ClassStatus.READY &&
       targetStatus === ClassStatus.ACTIVE
     ) {
+      // Kiểm tra giáo viên và lịch học - bắt buộc
+      const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+      const hasSchedule = Boolean(
+        classData?.recurringSchedule && 
+        classData.recurringSchedule.schedules && 
+        Array.isArray(classData.recurringSchedule.schedules) &&
+        classData.recurringSchedule.schedules.length > 0
+      );
+      
+      const missingRequirements = [];
+      if (!hasTeacher) {
+        missingRequirements.push('giáo viên phụ trách');
+      }
+      if (!hasSchedule) {
+        missingRequirements.push('lịch học');
+      }
+      
+      if (missingRequirements.length > 0) {
+        return {
+          type: 'error' as const,
+          message: `Không thể chuyển lớp sang trạng thái "Đang hoạt động" khi chưa có ${missingRequirements.join(' và ')}. Vui lòng bổ sung đầy đủ thông tin trước.`,
+          canProceed: false,
+        };
+      }
+
       const studentCount = classData?.enrollments?.length || 0;
 
       if (studentCount < 5) {
@@ -414,6 +439,34 @@ export const ChangeStatusDialog = ({
       selectedStatus === ClassStatus.ACTIVE &&
       (currentStatus === ClassStatus.READY || currentStatus === ClassStatus.SUSPENDED)
     ) {
+      // Kiểm tra giáo viên và lịch học - bắt buộc khi chuyển từ ready sang active
+      if (currentStatus === ClassStatus.READY) {
+        const hasTeacher = Boolean(classData?.teacherId || classData?.teacher);
+        const hasSchedule = Boolean(
+          classData?.recurringSchedule && 
+          classData.recurringSchedule.schedules && 
+          Array.isArray(classData.recurringSchedule.schedules) &&
+          classData.recurringSchedule.schedules.length > 0
+        );
+        
+        const missingRequirements = [];
+        if (!hasTeacher) {
+          missingRequirements.push('giáo viên phụ trách');
+        }
+        if (!hasSchedule) {
+          missingRequirements.push('lịch học');
+        }
+        
+        if (missingRequirements.length > 0) {
+          toast({
+            title: 'Lỗi',
+            description: `Không thể chuyển lớp sang trạng thái "Đang hoạt động" khi chưa có ${missingRequirements.join(' và ')}. Vui lòng bổ sung đầy đủ thông tin trước.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
       // Kiểm tra số học sinh
       const studentCount =
         classData?._count?.enrollments || classData?.enrollments?.length || 0;
@@ -824,20 +877,26 @@ export const ChangeStatusDialog = ({
             {validationMessage && (
               <Alert
                 className={
-                  validationMessage.type === 'warning'
+                  validationMessage.type === 'error'
+                    ? 'border-red-500 bg-red-50'
+                    : validationMessage.type === 'warning'
                     ? 'border-yellow-500 bg-yellow-50'
                     : 'border-blue-500 bg-blue-50'
                 }
               >
                 <div className="flex gap-2">
-                  {validationMessage.type === 'warning' ? (
+                  {validationMessage.type === 'error' ? (
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                  ) : validationMessage.type === 'warning' ? (
                     <AlertTriangle className="w-4 h-4 text-yellow-600" />
                   ) : (
                     <Info className="w-4 h-4 text-blue-600" />
                   )}
                   <AlertDescription
                     className={
-                      validationMessage.type === 'warning'
+                      validationMessage.type === 'error'
+                        ? 'text-red-800'
+                        : validationMessage.type === 'warning'
                         ? 'text-yellow-800'
                         : 'text-blue-800'
                     }
@@ -996,6 +1055,8 @@ export const ChangeStatusDialog = ({
               disabled={
                 !selectedStatus ||
                 isLoading ||
+                // Disable nếu validation message có type = 'error' hoặc canProceed = false
+                (validationMessage?.type === 'error' || validationMessage?.canProceed === false) ||
                 // Nếu chuyển sang ACTIVE từ READY hoặc SUSPENDED
                 // và chưa có sessions → cần nhập ngày
                 (selectedStatus === ClassStatus.ACTIVE &&

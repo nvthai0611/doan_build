@@ -1,6 +1,6 @@
 import { query } from 'express';
 import { StudentManagementService, StudentResponse } from '../services/student-management.service';
-import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put, UseInterceptors, UploadedFile } from "@nestjs/common";
+import { Controller, Get, Injectable, Query, Patch, Param, Body, HttpStatus, HttpException, Post, Put, UseInterceptors, UploadedFile, Req } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -131,24 +131,29 @@ export class StudentManagementController {
     }))
     async createStudent(
         @Body() createStudentDto: any,
-        @UploadedFile() applicationFile: Express.Multer.File
+        @UploadedFile() applicationFile: Express.Multer.File,
+        @Req() req: any,
     ) {
         try {
             // Validate required fields
             if (!createStudentDto.fullName) {
                 throw new HttpException('Họ tên là bắt buộc', HttpStatus.BAD_REQUEST);
             }
-            if (!createStudentDto.username) {
-                throw new HttpException('Username là bắt buộc', HttpStatus.BAD_REQUEST);
+            // Với phụ huynh, username sẽ được sinh tự động trên backend
+            const isParentCaller = req?.user?.role === 'parent';
+            if (!isParentCaller) {
+                if (!createStudentDto.username) {
+                    throw new HttpException('Username là bắt buộc', HttpStatus.BAD_REQUEST);
+                }
+
+                // Validate username format (alphanumeric and underscore only)
+                const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+                if (!usernameRegex.test(createStudentDto.username)) {
+                    throw new HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', HttpStatus.BAD_REQUEST);
+                }
             }
             if (!createStudentDto.schoolId) {
                 throw new HttpException('School ID là bắt buộc', HttpStatus.BAD_REQUEST);
-            }
-
-            // Validate username format (alphanumeric and underscore only)
-            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-            if (!usernameRegex.test(createStudentDto.username)) {
-                throw new HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', HttpStatus.BAD_REQUEST);
             }
 
             // Add file to dto if uploaded
@@ -167,7 +172,12 @@ export class StudentManagementController {
                 }
             }
 
-            return await this.studentManagementService.createStudent(createStudentDto);
+            // Truyền context để service hiểu nguồn gọi (admin hay parent)
+            const context: { createdByRole?: 'center_owner' | 'parent'; parentUserId?: string } = isParentCaller
+                ? { createdByRole: 'parent', parentUserId: req?.user?.userId as string }
+                : { createdByRole: 'center_owner' };
+
+            return await this.studentManagementService.createStudent(createStudentDto, context);
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;

@@ -704,6 +704,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
             ? [selectedEnrollment.id]
             : selectedEnrollments
         }
+        allEnrollments={allEnrollments}
         onSuccess={() => {
           refetch();
           queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });

@@ -184,7 +184,25 @@ export function ParentOverview() {
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Giáo viên</p>
-                              <p className="font-medium">{classItem.teacher}</p>
+                              {(classItem as any).substituteTeacher ? (
+                                <>
+                                  <p className="font-medium">
+                                    {(classItem as any).originalTeacher}
+                                  </p>
+                                  <p className="text-xs text-amber-700 mt-0.5">
+                                    <span className="font-medium">Thay thế:</span> {(classItem as any).substituteTeacher.fullName}
+                                  </p>
+                                  <p className="text-xs text-amber-600 mt-0.5">
+                                    {(classItem as any).substituteTeacher.from && (classItem as any).substituteTeacher.until && (
+                                      <span className="text-[10px]">
+                                        ({(classItem as any).substituteTeacher.from} → {(classItem as any).substituteTeacher.until})
+                                      </span>
+                                    )}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="font-medium">{classItem.teacher}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -245,7 +263,21 @@ export function ParentOverview() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold">{c.name} - {c.studentName}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{c.subject} • {c.teacher}</p>
+                        {(c as any).substituteTeacher ? (
+                          <>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {c.subject} • {(c as any).originalTeacher}
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                              <span className="font-medium">Thay thế:</span> {c.teacher}
+                            </p>
+                            <p className="text-xs text-amber-600 mt-0.5">
+                              {(c as any).substituteTeacher.from} → {(c as any).substituteTeacher.until}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground mt-1">{c.subject} • {c.teacher}</p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">Phòng: {c.room}</p>
                       </div>
                       <div className="text-right">

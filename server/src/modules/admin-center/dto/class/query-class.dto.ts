@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class QueryClassDto {
@@ -7,7 +14,15 @@ export class QueryClassDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum(['draft', 'ready', 'active', 'completed', 'suspended', 'cancelled', 'all'])
+  @IsEnum([
+    'draft',
+    'ready',
+    'active',
+    'completed',
+    'suspended',
+    'cancelled',
+    'all',
+  ])
   status?: string = 'all';
 
   @IsOptional()
@@ -38,7 +53,6 @@ export class QueryClassDto {
   @IsEnum(['morning', 'afternoon', 'evening', 'all'])
   shift?: string = 'all';
 
-
   @IsOptional()
   @IsString()
   startDate?: string;
@@ -57,7 +71,6 @@ export class QueryClassDto {
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
   @Min(1)
-  @Max(100)
   limit?: number = 10;
 
   @IsOptional()

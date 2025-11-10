@@ -382,7 +382,6 @@ export class EmailNotificationService {
         throw new HttpException('Không tìm thấy giáo viên', HttpStatus.NOT_FOUND);
       }
 
-      console.log(`📧 Thêm job gửi email phân công lớp cho giáo viên: ${teacher.user.fullName}`);
 
       await this.classAssignTeacherQueue.add('send_class_assign_teacher_email', {
         to: teacher.user.email,
@@ -395,7 +394,7 @@ export class EmailNotificationService {
         schedule: classData.recurringSchedule,
       });
 
-      console.log(`✅ Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
+      console.log(`Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
 
       return {
         success: true,
@@ -405,7 +404,7 @@ export class EmailNotificationService {
         email: teacher.user.email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email phân công lớp: ${error.message}`);
+      console.error(`Lỗi khi thêm job email phân công lớp: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email phân công lớp: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -451,7 +450,7 @@ export class EmailNotificationService {
         throw new HttpException('Không tìm thấy giáo viên', HttpStatus.NOT_FOUND);
       }
 
-      console.log(`📧 Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
+      console.log(`Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
 
       await this.classAssignTeacherQueue.add('send_class_remove_teacher_email', {
         to: teacher.user.email,
@@ -472,7 +471,7 @@ export class EmailNotificationService {
         email: teacher.user.email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
+      console.error(`Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email hủy phân công lớp: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR

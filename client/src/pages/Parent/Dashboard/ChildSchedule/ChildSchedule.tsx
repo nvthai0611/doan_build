@@ -523,6 +523,9 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="text-sm text-muted-foreground">{session.room?.name}</div>
+                              {session.substituteTeacher?.fullName && (
+                                <Badge className="bg-amber-500 hover:bg-amber-600">GV thay thế</Badge>
+                              )}
                               <button
                                 className="text-sm text-primary underline"
                                 onClick={async () => {
@@ -554,7 +557,23 @@ export function ChildSchedule({ childId }: ChildScheduleProps) {
                             <div className="mt-3 text-sm text-muted-foreground space-y-2">
                               <div><strong>Lớp:</strong> {session.class?.name}</div>
                               <div><strong>Môn:</strong> {session.class?.subject?.name}</div>
-                              <div><strong>Giáo viên:</strong> {session.class?.teacher?.fullName || session.class?.teacher?.user?.fullName}</div>
+                              {session.substituteTeacher?.fullName ? (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <strong>Giáo viên thay thế:</strong>
+                                    <span className="text-foreground">{session.substituteTeacher.fullName}</span>
+                                    <Badge variant="secondary">Tạm thời</Badge>
+                                    {session.substituteEndDate && (
+                                      <span className="text-xs text-muted-foreground">(đến {session.substituteEndDate})</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <strong>Giáo viên chính:</strong> {session.teacher?.fullName || 'Chưa phân công'}
+                                  </div>
+                                </>
+                              ) : (
+                                <div><strong>Giáo viên:</strong> {session.teacher?.fullName || 'Chưa phân công'}</div>
+                              )}
                               <div><strong>Phòng:</strong> {session.room?.name}</div>
                               <div className="flex items-center gap-2">
                                 <strong>Trạng thái:</strong>

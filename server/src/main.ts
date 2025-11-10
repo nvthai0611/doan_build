@@ -6,6 +6,7 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ValidationError } from 'class-validator';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { verifyEmailConnection } from './utils/email.util';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -67,6 +68,15 @@ async function bootstrap() {
   // Swagger nằm trong cùng prefix với API
   //http://localhost:9999/api/v1/docs
   SwaggerModule.setup(`${API_PREFIX}/docs`, app, documentFactory);
+
+  // Verify SMTP connection khi khởi động (không block, chạy async)
+  // Chỉ verify nếu có cấu hình SMTP
+  if (process.env.SMTP_USERNAME && process.env.SMTP_PASSWORD) {
+    verifyEmailConnection().catch(() => {
+      // Ignore errors, app vẫn chạy bình thường
+      // Email sẽ fail khi gửi nếu connection không hợp lệ
+    });
+  }
 
   await app.listen(process.env.PORT ?? 9999);
 }
