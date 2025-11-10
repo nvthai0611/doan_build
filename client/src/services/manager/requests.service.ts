@@ -2,11 +2,11 @@ import { apiClient } from "../../utils/clientAxios"
 
 export interface LeaveRequest {
   id: string
-  requestType: string
   teacherId: string
   startDate: string
   endDate: string
   reason: string
+  type: string
   status: 'pending' | 'approved' | 'rejected'
   notes?: string
   imageUrl?: string

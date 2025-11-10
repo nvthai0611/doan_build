@@ -20,6 +20,7 @@ export class ScheduleManagementService {
                 (session.class?._count && session.class._count.enrollments) || 0,
             maxStudents: session.class?.maxStudents ?? 0,
             status: session.status,
+            substituteTeacher: session.substituteTeacher?.user?.fullName || null,
         };
     }
 
@@ -27,38 +28,56 @@ export class ScheduleManagementService {
         const { date } = queryDto;
         if (!date) return [];
         const sessions = await this.prisma.classSession.findMany({
-            where: { 
-                sessionDate: new Date(date),
-                status: {
-                    notIn: ['end', 'cancelled']
-                },
-                class: {
-                    status: {
-                        in: ['active', 'ready', 'suspended']
-                    }
-                }
+          where: {
+            sessionDate: new Date(date),
+            status: {
+              notIn: ['end', 'cancelled'],
             },
-            orderBy: { startTime: 'asc' },
-            include: {
-                room: { select: { name: true } },
-                class: {
-                    select: {
-                        name: true,
-                        maxStudents: true,
-                        subject: { select: { name: true } },
-                        teacher: { 
-                            select: { 
-                                user: { 
-                                    select: { 
-                                        fullName: true 
-                                    } 
-                                } 
-                            } 
-                        },
-                        _count: { select: { enrollments: true } },
+            class: {
+              status: {
+                in: ['active', 'ready', 'suspended'],
+              },
+            },
+          },
+          orderBy: { startTime: 'asc' },
+          select: {
+            id: true,
+            sessionDate: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            notes: true,
+            academicYear: true,
+            cancellationReason: true,
+            createdAt: true,
+            substituteTeacher: {
+              select: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
+            room: { select: { name: true } },
+            class: {
+              select: {
+                name: true,
+                maxStudents: true,
+                subject: { select: { name: true } },
+                teacher: {
+                  select: {
+                    user: {
+                      select: {
+                        fullName: true,
+                      },
                     },
+                  },
                 },
+                _count: { select: { enrollments: true } },
+              },
             },
+          },
         });
         return sessions.map((s) => this.mapSessionToClientShape(s));
     }
@@ -69,38 +88,56 @@ export class ScheduleManagementService {
         const end = new Date(endDate);
         // bao gồm cả endDate: dùng lte
         const sessions = await this.prisma.classSession.findMany({
-            where: { 
-                sessionDate: { gte: start, lte: end },
-                status: {
-                    notIn: ['end', 'cancelled']
-                },
-                class: {
-                    status: {
-                        in: ['active', 'ready', 'suspended']
-                    }
-                }
+          where: {
+            sessionDate: { gte: start, lte: end },
+            status: {
+              notIn: ['end', 'cancelled'],
             },
-            orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
-            include: {
-                room: { select: { name: true } },
-                class: {
-                    select: {
-                        name: true,
-                        maxStudents: true,
-                        subject: { select: { name: true } },
-                        teacher: { 
-                            select: { 
-                                user: { 
-                                    select: { 
-                                        fullName: true 
-                                    } 
-                                } 
-                            } 
-                        },
-                        _count: { select: { enrollments: true } },
+            class: {
+              status: {
+                in: ['active', 'ready', 'suspended'],
+              },
+            },
+          },
+          orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+          select: {
+            id: true,
+            sessionDate: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            notes: true,
+            academicYear: true,
+            cancellationReason: true,
+            createdAt: true,
+            substituteTeacher: {
+              select: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
+            room: { select: { name: true } },
+            class: {
+              select: {
+                name: true,
+                maxStudents: true,
+                subject: { select: { name: true } },
+                teacher: {
+                  select: {
+                    user: {
+                      select: {
+                        fullName: true,
+                      },
                     },
+                  },
                 },
+                _count: { select: { enrollments: true } },
+              },
             },
+          },
         });
         return sessions.map((s) => this.mapSessionToClientShape(s));
     }
@@ -125,7 +162,25 @@ export class ScheduleManagementService {
                 }
             },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
-            include: {
+            select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+                notes: true,
+                academicYear: true,
+                cancellationReason: true,
+                createdAt: true,
+                substituteTeacher: {
+                    select: {
+                        user: {
+                            select: {
+                                fullName: true
+                            }
+                        }
+                    }
+                },
                 room: { select: { name: true } },
                 class: {
                     select: {
@@ -145,6 +200,7 @@ export class ScheduleManagementService {
                     },
                 },
             },
+
         });
         return sessions.map((s) => this.mapSessionToClientShape(s));
     }
