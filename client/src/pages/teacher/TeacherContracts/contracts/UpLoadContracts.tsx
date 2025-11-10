@@ -34,6 +34,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
   const [startDate, setStartDate] = useState("")
   const [expiryDate, setExpiryDate] = useState("")
   const [notes, setNotes] = useState("")
+  const [salaryPercent, setSalaryPercent] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -61,6 +62,17 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       return
     }
 
+    if (!salaryPercent || isNaN(Number(salaryPercent))) {
+      alert("Vui lòng nhập % lương hợp lệ")
+      return
+    }
+
+    const percentValue = Number(salaryPercent)
+    if (percentValue < 0 || percentValue > 100) {
+      alert("% lương phải từ 0 đến 100")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -69,6 +81,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       formData.append('contractType', contractType === "other" ? customContractType : contractType)
       formData.append('startDate', startDate)
       formData.append('expiryDate', expiryDate)
+      formData.append('teacherSalaryPercent', salaryPercent)
       if (notes.trim()) {
         formData.append('notes', notes.trim())
       }
@@ -90,7 +103,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
         expiryDate: created.expiryDate || expiryDate || null,
         fileSize: undefined,
         notes: created.notes || notes || null,
-         status: created.status || 'active',
+        status: created.status || 'active',
         url: created.uploadedImageUrl,
       }
 
@@ -103,9 +116,10 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
       setStartDate("")
       setExpiryDate("")
       setNotes("")
+      setSalaryPercent("")
       setFile(null)
       setPreviewUrl(null)
-      
+
       // Close dialog
       onOpenChange(false)
     } catch (e) {
@@ -137,126 +151,151 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
           <div className="max-h-[calc(90vh-10rem)] overflow-auto contract-upload-dialog-content">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-            <Label htmlFor="fileName">Tên tệp hợp đồng</Label>
-            <Input
-              id="fileName"
-              placeholder="Ví dụ: Hợp đồng lao động 2024.pdf"
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
-              disabled={isSubmitting}
-            />
-            <input
-              type="file"
-              accept="application/pdf,image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0] || null
-                setFile(f)
-                if (f && !fileName) setFileName(f.name)
-                
-                // Create preview URL
-                if (f) {
-                  // Revoke old preview URL to avoid memory leaks
-                  if (previewUrl) {
-                    URL.revokeObjectURL(previewUrl)
-                  }
-                  const url = URL.createObjectURL(f)
-                  setPreviewUrl(url)
-                } else {
-                  setPreviewUrl(null)
-                }
-              }}
-              className="mt-2"
-            />
-          </div>
+                <Label htmlFor="fileName">Tên tệp hợp đồng</Label>
+                <Input
+                  id="fileName"
+                  placeholder="Ví dụ: Hợp đồng lao động 2024.pdf"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null
+                    setFile(f)
+                    if (f && !fileName) setFileName(f.name)
 
-          {/* Preview Section */}
-          {previewUrl && (
-            <div className="space-y-2">
-              <Label>Xem trước</Label>
-              <div className="border rounded-lg p-2 max-h-[300px] overflow-auto contract-upload-preview">
-                {file?.type.startsWith('image/') ? (
-                  <img
-                    src={previewUrl}
-                    alt="Contract preview"
-                    className="w-full h-auto object-contain"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center p-8 bg-muted rounded">
-                    <p className="text-sm text-muted-foreground">
-                      PDF được chọn: {file?.name}
-                    </p>
-                  </div>
-                )}
+                    // Create preview URL
+                    if (f) {
+                      // Revoke old preview URL to avoid memory leaks
+                      if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl)
+                      }
+                      const url = URL.createObjectURL(f)
+                      setPreviewUrl(url)
+                    } else {
+                      setPreviewUrl(null)
+                    }
+                  }}
+                  className="mt-2"
+                />
               </div>
-            </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="contractType">Loại hợp đồng</Label>
-            <Select value={contractType} onValueChange={setContractType} disabled={isSubmitting}>
-              <SelectTrigger id="contractType">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="indefinite">Hợp đồng Vô Thời hạn</SelectItem>
-                <SelectItem value="one_year">Hợp đồng 1 năm</SelectItem>
-                <SelectItem value="two_years">Hợp đồng 2 năm</SelectItem>
-                <SelectItem value="three_months">Hợp đồng 3 tháng</SelectItem>
-                <SelectItem value="other">Khác (nhập tay)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              {/* Preview Section */}
+              {previewUrl && (
+                <div className="space-y-2">
+                  <Label>Xem trước</Label>
+                  <div className="border rounded-lg p-2 max-h-[300px] overflow-auto contract-upload-preview">
+                    {file?.type.startsWith('image/') ? (
+                      <img
+                        src={previewUrl}
+                        alt="Contract preview"
+                        className="w-full h-auto object-contain"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center p-8 bg-muted rounded">
+                        <p className="text-sm text-muted-foreground">
+                          PDF được chọn: {file?.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-          {contractType === "other" && (
-            <div className="space-y-2">
-              <Label htmlFor="customContractType">Nhập loại hợp đồng <span className="text-red-500">*</span></Label>
-              <Input
-                id="customContractType"
-                placeholder="Ví dụ: Hợp đồng cộng tác viên"
-                value={customContractType}
-                onChange={(e) => setCustomContractType(e.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </div>
-          )}
+              <div className="space-y-2">
+                <Label htmlFor="contractType">Loại hợp đồng</Label>
+                <Select value={contractType} onValueChange={setContractType} disabled={isSubmitting}>
+                  <SelectTrigger id="contractType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="indefinite">Hợp đồng Vô Thời hạn</SelectItem>
+                    <SelectItem value="one_year">Hợp đồng 1 năm</SelectItem>
+                    <SelectItem value="two_years">Hợp đồng 2 năm</SelectItem>
+                    <SelectItem value="three_months">Hợp đồng 3 tháng</SelectItem>
+                    <SelectItem value="other">Khác (nhập tay)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Ngày bắt đầu <span className="text-red-500">*</span></Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={isSubmitting}
-              required
-            />
-          </div>
+              {contractType === "other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="customContractType">Nhập loại hợp đồng <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="customContractType"
+                    placeholder="Ví dụ: Hợp đồng cộng tác viên"
+                    value={customContractType}
+                    onChange={(e) => setCustomContractType(e.target.value)}
+                    disabled={isSubmitting}
+                    required
+                  />
+                </div>
+              )}
 
-          <div className="space-y-2">
-            <Label htmlFor="expiryDate">Ngày hết hạn <span className="text-red-500">*</span></Label>
-            <Input
-              id="expiryDate"
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              disabled={isSubmitting}
-              min={startDate || new Date().toISOString().split('T')[0]}
-              required
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Ngày bắt đầu <span className="text-red-500">*</span></Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Ghi chú (tùy chọn)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Thêm ghi chú về hợp đồng này..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="expiryDate">Ngày hết hạn <span className="text-red-500">*</span></Label>
+                <Input
+                  id="expiryDate"
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  disabled={isSubmitting}
+                  min={startDate || new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="salaryPercent">% Lương giáo viên <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <Input
+                    id="salaryPercent"
+                    type="number"
+                    placeholder="Ví dụ: 70"
+                    value={salaryPercent}
+                    onChange={(e) => setSalaryPercent(e.target.value)}
+                    disabled={isSubmitting}
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    required
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Phần trăm lương giáo viên nhận được (từ 0 đến 100)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Ghi chú (tùy chọn)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Thêm ghi chú về hợp đồng này..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  disabled={isSubmitting}
+                  rows={3}
+                />
+              </div>
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
@@ -271,6 +310,6 @@ export function ContractUploadDialog({ isOpen, onOpenChange, onAddContract }: Co
           </div>
         </DialogContent>
       </Dialog>
-      </>
-    )
-  }
+    </>
+  )
+}
