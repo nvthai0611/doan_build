@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
@@ -39,6 +40,13 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     notes: string;
     startTime: string;
     endTime: string;
+    sessionDate?: string;
+  } | null>(null);
+  const [originalSession, setOriginalSession] = useState<{
+    notes: string;
+    startTime: string;
+    endTime: string;
+    sessionDate?: string;
   } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -224,33 +232,167 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   };
 
   // Handle edit session
+  // Handle edit session
   const handleStartEdit = (session: any) => {
-    setEditingSessionId(session.id);
-    setEditingSession({
+    const sessionData = {
       notes: session.name || session.notes || session.topic || '',
       startTime: session.startTime || '08:00',
       endTime: session.endTime || '09:30',
-    });
+      sessionDate: session.scheduledDate || session.sessionDate,
+    };
+    setEditingSessionId(session.id);
+    setEditingSession(sessionData);
+    setOriginalSession(sessionData); // Lưu giá trị gốc
   };
 
   const handleCancelEdit = () => {
     setEditingSessionId(null);
     setEditingSession(null);
+    setOriginalSession(null);
+  };
+
+  // Helper: Tính duration giữa 2 thời gian (phút)
+  const calculateDurationMinutes = (startTime: string, endTime: string): number => {
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+    return endTotalMinutes - startTotalMinutes;
+  };
+
+  // Helper: Thêm phút vào thời gian
+  const addMinutesToTime = (time: string, minutes: number): string => {
+    const [hours, mins] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMins = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+  };
+
+  // Xử lý khi thay đổi startTime
+  const handleStartTimeChange = (newStartTime: string) => {
+    if (!editingSession || !originalSession) return;
+
+    // Tính duration gốc
+    const originalDuration = calculateDurationMinutes(
+      originalSession.startTime,
+      originalSession.endTime
+    );
+
+    // Tự động tính endTime mới = startTime mới + duration gốc
+    const newEndTime = addMinutesToTime(newStartTime, originalDuration);
+
+    setEditingSession({
+      ...editingSession,
+      startTime: newStartTime,
+      endTime: newEndTime,
+    });
   };
 
   const handleSaveEdit = async (sessionId: string) => {
-    if (!editingSession) return;
+    if (!editingSession || !originalSession) return;
 
     try {
       setIsUpdating(true);
-      await centerOwnerScheduleService.updateSession(sessionId, {
+
+      // Format sessionDate to YYYY-MM-DD
+      const sessionDateObj = editingSession.sessionDate 
+        ? new Date(editingSession.sessionDate) 
+        : new Date();
+      const sessionDateStr = format(sessionDateObj, 'yyyy-MM-dd');
+
+      // Kiểm tra xung đột lịch
+      const conflictResult = await centerOwnerScheduleService.checkScheduleConflict(
+        sessionId,
+        sessionDateStr,
+        editingSession.startTime,
+        editingSession.endTime
+      );
+
+      let finalData = {
         notes: editingSession.notes,
         startTime: editingSession.startTime,
         endTime: editingSession.endTime,
-      });
-      toast.success('Cập nhật buổi học thành công');
+      };
+
+      if (conflictResult.hasConflict) {
+        // Check xem có thay đổi gì không
+        const startChanged = editingSession.startTime !== originalSession.startTime;
+        const endChanged = editingSession.endTime !== originalSession.endTime;
+
+        // Helper: Parse time to minutes
+        const parseTimeToMinutes = (time: string): number => {
+          const [hours, minutes] = time.split(':').map(Number);
+          return hours * 60 + minutes;
+        };
+
+        // Helper: Convert minutes to time string
+        const minutesToTime = (totalMinutes: number): string => {
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        };
+
+        if (startChanged || endChanged) {
+          // Tìm earliest conflict start time để cắt endTime
+          const newStartMinutes = parseTimeToMinutes(editingSession.startTime);
+          const newEndMinutes = parseTimeToMinutes(editingSession.endTime);
+          
+          // Tìm thời điểm sớm nhất mà conflict bắt đầu (sau newStartTime)
+          let earliestConflictStart = newEndMinutes; // Mặc định là endTime hiện tại
+          
+          for (const conflict of conflictResult.conflicts) {
+            const conflictStartMinutes = parseTimeToMinutes(conflict.startTime);
+            const conflictEndMinutes = parseTimeToMinutes(conflict.endTime);
+            
+            // Nếu conflict bắt đầu sau newStart và trước earliestConflictStart
+            if (conflictStartMinutes > newStartMinutes && conflictStartMinutes < earliestConflictStart) {
+              earliestConflictStart = conflictStartMinutes;
+            }
+            
+            // Nếu conflict đang diễn ra (bắt đầu trước newStart, kết thúc sau newStart)
+            if (conflictStartMinutes <= newStartMinutes && conflictEndMinutes > newStartMinutes) {
+              // Không thể update vì conflict ngay từ startTime
+              toast.error(
+                `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
+                `Trùng với: ${conflict.className} (${conflict.startTime} - ${conflict.endTime})`
+              );
+              setIsUpdating(false);
+              return; // Không save
+            }
+          }
+          
+          // Điều chỉnh endTime để vừa khít với khoảng trống
+          const adjustedEndTime = minutesToTime(earliestConflictStart);
+          finalData.endTime = adjustedEndTime;
+          
+          // Hiển thị thông báo
+          if (adjustedEndTime !== editingSession.endTime) {
+            toast.warning(
+              `Phát hiện trùng lịch! Đã tự động điều chỉnh giờ kết thúc: ${editingSession.endTime} → ${adjustedEndTime}\n` +
+              `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}`
+            );
+          }
+        }
+      }
+
+      // Thực hiện update
+      await centerOwnerScheduleService.updateSession(sessionId, finalData);
+      
+      if (conflictResult.hasConflict) {
+        const startChanged = editingSession.startTime !== originalSession.startTime;
+        if (startChanged) {
+          toast.success(`Đã cập nhật buổi học với giờ kết thúc điều chỉnh: ${finalData.endTime}`);
+        } else {
+          toast.success('Đã cập nhật buổi học thành công');
+        }
+      } else {
+        toast.success('Cập nhật buổi học thành công');
+      }
+
       setEditingSessionId(null);
       setEditingSession(null);
+      setOriginalSession(null);
       refetch();
     } catch (error: any) {
       console.error('Error updating session:', error);
@@ -302,7 +444,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   <Input
                     type="time"
                     value={editingSession?.startTime || ''}
-                    onChange={(e) => setEditingSession({ ...editingSession!, startTime: e.target.value })}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
                     className="text-sm h-8"
                   />
                   <span className="text-gray-500">→</span>
@@ -341,7 +483,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               // View mode
               <div className="relative">
                 <div 
-                  className="font-medium text-blue-600 cursor-pointer hover:underline inline-block"
+                  className="font-medium text-blue-600 cursor-pointer hover:underline inline-block pr-8"
                   onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}
                 >
                   {`${session.name || session.notes || session.topic }`}
@@ -350,16 +492,16 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   {weekday}: {dateText}
                   {session.startTime && session.endTime && ` ${session.startTime} → ${session.endTime}`}
                 </div>
-                {/* Edit icon on hover */}
+                {/* Edit icon - always visible */}
                 <button
-                  className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="absolute top-0 right-0 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleStartEdit(session);
                   }}
                   title="Chỉnh sửa"
                 >
-                  <Edit className="h-3 w-3 text-gray-600" />
+                  <Edit className="h-4 w-4 text-gray-600 hover:text-blue-600" />
                 </button>
               </div>
             )}
@@ -455,22 +597,53 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     // },
     {
       key: 'actions',
-      header: '',
-      width: '80px',
+      header: 'Thao tác',
+      width: '200px',
       align: 'center',
       render: (session: any) => (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}>Xem chi tiết</DropdownMenuItem>
-                        <DropdownMenuItem>Lùi lịch</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">Hủy buổi học</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center justify-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => navigate(`/center-qn/classes/session-details/${session.id}`)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Xem chi tiết</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-orange-600 hover:text-orange-700"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Lùi lịch</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-600 hover:text-red-700"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Hủy buổi học</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       )
     }
   ];
