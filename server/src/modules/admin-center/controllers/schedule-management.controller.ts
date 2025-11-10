@@ -1,7 +1,11 @@
 import { Controller, Get, Query, Param, Patch, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ScheduleManagementService } from '../services/schedule-management.service';
-import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
+import {
+  QueryScheduleDto,
+  QueryScheduleMonthDto,
+  QueryScheduleWeekDto,
+} from '../dto/schedule/query-schedule.dto';
 
 @ApiTags('Admin Center - Schedule Management')
 @Controller('schedule-management')
@@ -34,7 +38,10 @@ export class ScheduleManagementController {
     if (!Number.isInteger(yearNum) || yearNum < 1970 || yearNum > 3000) {
       throw new Error('year must be an integer between 1970 and 3000');
     }
-    const data = await this.scheduleService.getScheduleByMonth({ month: monthNum as any, year: yearNum as any });
+    const data = await this.scheduleService.getScheduleByMonth({
+      month: monthNum as any,
+      year: yearNum as any,
+    });
     return { data, message: 'Lấy lịch theo tháng thành công' };
   }
 
@@ -55,11 +62,20 @@ export class ScheduleManagementController {
   }
 
   @Get('classes/active-schedules')
-  @ApiOperation({ summary: 'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng' })
+  @ApiOperation({
+    summary:
+      'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng',
+  })
   async getAllActiveClassesWithSchedules(@Query() query: any) {
     const expectedStartDate = query?.expectedStartDate;
-    const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
-    return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
+    const data =
+      await this.scheduleService.getAllActiveClassesWithSchedules(
+        expectedStartDate,
+      );
+    return {
+      data,
+      message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công',
+    };
   }
 
   @Patch('sessions/:id')
@@ -70,14 +86,35 @@ export class ScheduleManagementController {
     return { data, message: 'Cập nhật buổi học thành công' };
   }
 
+  @Get('sessions/:id/check-conflict')
+  @ApiOperation({ summary: 'Kiểm tra xung đột lịch học tại phòng học' })
+  @ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+  async checkScheduleConflict(
+    @Param('id') sessionId: string,
+    @Query('sessionDate') sessionDate: string,
+    @Query('startTime') startTime: string,
+    @Query('endTime') endTime: string,
+  ) {
+    const data = await this.scheduleService.checkScheduleConflict(
+      sessionId,
+      sessionDate,
+      startTime,
+      endTime,
+    );
+    return { data, message: 'Kiểm tra xung đột lịch học thành công' };
+  }
+
   @Get('teachers-in-sessions')
-  @ApiOperation({ summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)' })
+  @ApiOperation({
+    summary:
+      'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)',
+  })
   async getTeachersInSessionsToday(@Query() query: any) {
     const result = await this.scheduleService.getTeachersInSessionsToday(query);
-    return { 
+    return {
       success: true,
-      ...result, 
-      message: 'Lấy danh sách giáo viên tham gia buổi học thành công' 
+      ...result,
+      message: 'Lấy danh sách giáo viên tham gia buổi học thành công',
     };
   }
 }

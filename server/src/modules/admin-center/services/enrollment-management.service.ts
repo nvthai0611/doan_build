@@ -18,11 +18,11 @@ export class EnrollmentManagementService {
 
   /**
    * Helper function: Kiểm tra xung đột lịch học giữa lớp mới và các lớp hiện tại của học sinh
-   * 
+   *
    * @param studentId - ID của học sinh
    * @param newClassSchedule - Lịch học của lớp mới (recurringSchedule)
    * @param excludeClassId - ID lớp cần loại trừ khỏi việc kiểm tra (optional, dùng khi transfer)
-   * 
+   *
    * @returns Mảng các xung đột lịch học, rỗng nếu không có xung đột
    */
   private async checkScheduleConflicts(
@@ -30,7 +30,8 @@ export class EnrollmentManagementService {
     newClassSchedule: any,
     excludeClassId?: string,
   ): Promise<any[]> {
-    const normalizedNewSchedules = this.normalizeScheduleEntries(newClassSchedule);
+    const normalizedNewSchedules =
+      this.normalizeScheduleEntries(newClassSchedule);
 
     if (normalizedNewSchedules.length === 0) {
       return [];
@@ -939,12 +940,13 @@ export class EnrollmentManagementService {
 
       const total = await this.prisma.enrollment.count({ where });
 
-      // Lấy thông tin lớp học để biết ngày kết thúc
+      // Lấy thông tin lớp học để biết ngày kết thúc và subjectId
       const classInfo = await this.prisma.class.findUnique({
         where: { id: classId },
         select: {
           actualEndDate: true,
           expectedStartDate: true,
+          subjectId: true,
         },
       });
 
@@ -973,6 +975,22 @@ export class EnrollmentManagementService {
                   avatar: true,
                 },
               },
+            },
+          },
+          contractUploads: {
+            select: {
+              id: true,
+              uploadedAt: true,
+              status: true,
+              subjectIds: true,
+            },
+            where: {
+              status: {
+                in: ['active'],
+              },
+            },
+            orderBy: {
+              uploadedAt: 'desc',
             },
           },
         },
@@ -1009,10 +1027,31 @@ export class EnrollmentManagementService {
               },
             });
 
+          // Kiểm tra contract có đúng môn học không
+          let hasValidContract = false;
+          if (
+            enrollment.contractUploads &&
+            enrollment.contractUploads.length > 0 &&
+            classInfo?.subjectId
+          ) {
+            // Duyệt qua tất cả contracts để tìm contract đúng môn
+            for (const contract of enrollment.contractUploads) {
+              if (
+                contract.subjectIds &&
+                Array.isArray(contract.subjectIds) &&
+                contract.subjectIds.includes(classInfo.subjectId)
+              ) {
+                hasValidContract = true;
+                break;
+              }
+            }
+          }
+
           return {
             ...enrollment,
             classesRegistered: totalSessions,
             classesAttended: attendedSessions,
+            hasContract: hasValidContract,
           };
         }),
       );

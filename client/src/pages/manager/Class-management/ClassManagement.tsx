@@ -604,21 +604,6 @@ export const ClassManagement = () => {
                             </TooltipTrigger>
                             <TooltipContent>Sửa lịch học</TooltipContent>
                         </Tooltip>
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleViewLessons(item)}
-                                >
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Chương trình học</TooltipContent>
-                        </Tooltip>
-
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
