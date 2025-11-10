@@ -15,14 +15,14 @@ export const parentClassJoinService = {
   async requestJoinClassForm(params: { classId: string; studentId: string; contractUploadId: string; password?: string; message?: string }) {
     try {
       // Validate required fields
-      if (!params.classId || !params.studentId || !params.contractUploadId) {
-        throw new Error('Missing required fields: classId, studentId, or contractUploadId');
+      if (!params.classId || !params.studentId) {
+        throw new Error('Missing required fields: classId, studentId');
       }
 
       const formData = new FormData();
       formData.append('classId', params.classId.trim());
       formData.append('studentId', params.studentId.trim());
-      formData.append('contractUploadId', params.contractUploadId.trim());
+      if (params.contractUploadId) formData.append('contractUploadId', params.contractUploadId.trim());
       if (params.password) formData.append('password', params.password.trim());
       if (params.message) formData.append('message', params.message.trim());
       
