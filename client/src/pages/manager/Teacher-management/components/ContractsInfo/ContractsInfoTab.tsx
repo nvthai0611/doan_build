@@ -246,6 +246,9 @@ export default function ContractsInfoTab({ teacherId, teacherName }: ContractsIn
                             <p>Loại: {getTypeLabel(contract.contractType || contract.type || "")}</p>
                             <p>Tải lên: {formatDate(contract.uploadedAt || contract.uploadDate || "")}</p>
                             {contract.expiryDate && <p>Hết hạn: {formatDate(contract.expiryDate)}</p>}
+                            {contract.teacherSalaryPercent !== null && contract.teacherSalaryPercent !== undefined && (
+                              <p className="font-medium text-foreground">Phần trăm lương: {contract.teacherSalaryPercent}%</p>
+                            )}
                             {contract.notes && <p className="text-xs italic">Ghi chú: {contract.notes}</p>}
                           </div>
                         </div>

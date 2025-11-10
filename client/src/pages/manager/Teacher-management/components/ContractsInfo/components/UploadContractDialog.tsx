@@ -28,7 +28,10 @@ interface ContractUploadDialogProps {
 export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUploadSuccess }: ContractUploadDialogProps) {
   const [fileName, setFileName] = useState("")
   const [contractType, setContractType] = useState("employment")
+  const [customContractType, setCustomContractType] = useState("")
+  const [startDate, setStartDate] = useState("")
   const [expiryDate, setExpiryDate] = useState("")
+  const [salaryPercent, setSalaryPercent] = useState("")
   const [notes, setNotes] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -42,8 +45,29 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
       return
     }
 
+    if (!startDate) {
+      alert("Vui lòng nhập ngày bắt đầu")
+      return
+    }
+
     if (!expiryDate) {
       alert("Vui lòng nhập ngày hết hạn")
+      return
+    }
+    
+    if (contractType === "other" && !customContractType.trim()) {
+      alert("Vui lòng nhập loại hợp đồng")
+      return
+    }
+
+    if (!salaryPercent || isNaN(Number(salaryPercent))) {
+      alert("Vui lòng nhập % lương hợp lệ")
+      return
+    }
+
+    const percentValue = Number(salaryPercent)
+    if (percentValue < 0 || percentValue > 100) {
+      alert("% lương phải từ 0 đến 100")
       return
     }
 
@@ -52,8 +76,10 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
     try {
       const formData = new FormData()
       formData.append('file', file as Blob)
-      formData.append('contractType', contractType)
+      formData.append('contractType', contractType === "other" ? customContractType : contractType)
+      formData.append('startDate', startDate)
       formData.append('expiryDate', expiryDate)
+      formData.append('teacherSalaryPercent', salaryPercent)
       if (notes.trim()) {
         formData.append('notes', notes.trim())
       }
@@ -63,11 +89,14 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
       // Reset form
       setFileName("")
       setContractType("employment")
+      setCustomContractType("")
+      setStartDate("")
       setExpiryDate("")
+      setSalaryPercent("")
       setNotes("")
       setFile(null)
       setPreviewUrl(null)
-      
+
       // Close dialog and notify parent
       onOpenChange(false)
       onUploadSuccess()
@@ -115,7 +144,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
                     const f = e.target.files?.[0] || null
                     setFile(f)
                     if (f && !fileName) setFileName(f.name)
-                    
+
                     // Create preview URL
                     if (f) {
                       // Revoke old preview URL to avoid memory leaks
@@ -161,12 +190,39 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="employment">Hợp đồng lao động</SelectItem>
-                    <SelectItem value="probation">Hợp đồng thử việc</SelectItem>
-                    <SelectItem value="renewal">Hợp đồng gia hạn</SelectItem>
-                    <SelectItem value="other">Khác</SelectItem>
+                    <SelectItem value="indefinite">Hợp đồng Vô Thời hạn</SelectItem>
+                    <SelectItem value="one_year">Hợp đồng 1 năm</SelectItem>
+                    <SelectItem value="two_years">Hợp đồng 2 năm</SelectItem>
+                    <SelectItem value="three_months">Hợp đồng 3 tháng</SelectItem>
+                    <SelectItem value="other">Khác (nhập tay)</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {contractType === "other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="customContractType">Nhập loại hợp đồng <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="customContractType"
+                    placeholder="Ví dụ: Hợp đồng cộng tác viên"
+                    value={customContractType}
+                    onChange={(e) => setCustomContractType(e.target.value)}
+                    disabled={isSubmitting}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Ngày bắt đầu <span className="text-red-500">*</span></Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -177,9 +233,34 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
                   value={expiryDate}
                   onChange={(e) => setExpiryDate(e.target.value)}
                   disabled={isSubmitting}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={startDate || new Date().toISOString().split('T')[0]}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="salaryPercent">% Lương giáo viên <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <Input
+                    id="salaryPercent"
+                    type="number"
+                    placeholder="Ví dụ: 70"
+                    value={salaryPercent}
+                    onChange={(e) => setSalaryPercent(e.target.value)}
+                    disabled={isSubmitting}
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    required
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Phần trăm lương giáo viên nhận được (từ 0 đến 100)
+                </p>
               </div>
 
               <div className="space-y-2">
