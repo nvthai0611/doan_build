@@ -443,6 +443,20 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         </div>
       ),
     },
+    {
+      key: 'contract',
+      header: 'Cam kết',
+      width: '120px',
+      align: 'center',
+      render: (enrollment: any) => {
+        const hasContract = enrollment?.hasContract === true;
+        return hasContract ? (
+          <Badge className="bg-green-100 text-green-800">Đã có</Badge>
+        ) : (
+          <Badge variant="outline" className="text-gray-600">Chưa có</Badge>
+        );
+      },
+    },
     // {
     //   key: 'enrolledDate',
     //   header: 'Ngày tham gia lớp',
