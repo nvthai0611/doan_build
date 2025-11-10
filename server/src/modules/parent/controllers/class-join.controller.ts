@@ -64,11 +64,11 @@ export class ClassJoinController {
       properties: {
         classId: { type: 'string', format: 'uuid' },
         studentId: { type: 'string', format: 'uuid' },
-        contractUploadId: { type: 'string', format: 'uuid', description: 'ID của hợp đồng đã upload (BẮT BUỘC)' },
+        contractUploadId: { type: 'string', format: 'uuid', description: 'ID của hợp đồng đã upload (KHÔNG BẮT BUỘC)' },
         password: { type: 'string' },
         message: { type: 'string' },
       },
-      required: ['classId', 'studentId', 'contractUploadId']
+      required: ['classId', 'studentId']
     },
   })
   async requestJoinClass(@Req() req: any, @Body() dto: RequestJoinClassDto) {

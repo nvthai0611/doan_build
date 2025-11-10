@@ -193,6 +193,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResumeConfirm, setShowResumeConfirm] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState<any>(null);
 
   // Mutation để xóa enrollment
@@ -214,6 +215,34 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
       setShowDeleteConfirm(false);
       setSelectedEnrollment(null);
       refetch();
+    },
+  });
+
+  // Mutation để xóa nhiều enrollment cùng lúc
+  const bulkDeleteEnrollmentMutation = useMutation({
+    mutationFn: async (enrollmentIds: string[]) => {
+      // Xóa từng enrollment (gọi API song song để nhanh hơn)
+      const promises = enrollmentIds.map((enrollmentId) =>
+        enrollmentService.deleteEnrollment(enrollmentId)
+      );
+      return Promise.all(promises);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể xóa học sinh khỏi lớp. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (_, enrollmentIds) => {
+      toast({
+        title: "Thành công",
+        description: `Đã xóa ${enrollmentIds.length} học sinh khỏi lớp`,
+      });
+      setShowBulkDeleteConfirm(false);
+      setSelectedEnrollments([]);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['class-enrollments'] });
     },
   });
 
@@ -631,16 +660,29 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
                     Đã chọn {selectedEnrollments.length}
                   </span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
-                  onClick={() => setIsTransferStudentOpen(true)}
-                  title="Chuyển lớp cho các học sinh đã chọn"
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Chuyển lớp
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    onClick={() => setIsTransferStudentOpen(true)}
+                    title="Chuyển lớp cho các học sinh đã chọn"
+                  >
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Chuyển lớp
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    disabled={classData?.status !== ClassStatus.READY}
+                    title={classData?.status !== ClassStatus.READY ? 'Chỉ có thể xóa học sinh khi lớp ở trạng thái READY' : 'Xóa các học sinh đã chọn khỏi lớp'}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Xóa
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -822,6 +864,66 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               disabled={deleteEnrollmentMutation.isPending}
             >
               {deleteEnrollmentMutation.isPending ? 'Đang xử lý...' : 'Xác nhận xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Enrollment Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa nhiều học sinh</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p>
+                  Bạn có chắc chắn muốn xóa <strong>{selectedEnrollments.length} học sinh</strong> khỏi lớp này không?
+                </p>
+                
+                {/* Hiển thị danh sách tên học sinh sẽ bị xóa */}
+                {selectedEnrollments.length > 0 && (
+                  <div className="mt-3">
+                    <p className="font-medium mb-2">Danh sách học sinh sẽ bị xóa:</p>
+                    <div className="max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50 dark:bg-gray-900">
+                      {allEnrollments
+                        .filter((enrollment: any) => selectedEnrollments.includes(enrollment.id))
+                        .slice(0, 10)
+                        .map((enrollment: any) => (
+                          <div key={enrollment.id} className="text-sm py-1">
+                            • {enrollment?.student?.user?.fullName || 'Không có tên'}
+                          </div>
+                        ))}
+                      {selectedEnrollments.length > 10 && (
+                        <div className="text-sm text-gray-500 italic mt-2">
+                          ... và {selectedEnrollments.length - 10} học sinh khác
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-red-600 font-medium mt-3">
+                  ⚠️ Cảnh báo: Hành động này không thể hoàn tác. Tất cả học sinh được chọn sẽ bị xóa khỏi lớp và mất tất cả dữ liệu liên quan.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowBulkDeleteConfirm(false);
+            }}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (selectedEnrollments.length > 0) {
+                  bulkDeleteEnrollmentMutation.mutate(selectedEnrollments);
+                }
+              }}
+              disabled={bulkDeleteEnrollmentMutation.isPending || classData?.status !== ClassStatus.READY}
+            >
+              {bulkDeleteEnrollmentMutation.isPending ? 'Đang xử lý...' : `Xác nhận xóa ${selectedEnrollments.length} học sinh`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
