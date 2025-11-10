@@ -49,5 +49,14 @@ export const parentClassJoinService = {
       throw error;
     }
   },
+
+  async cancelRequest(requestId: string) {
+    try {
+      const response = await apiClient.patch(`/parent/class-join/cancel-request/${requestId}`);
+      return response;
+    } catch (error: any) {
+      throw error;
+    }
+  },
 };
 

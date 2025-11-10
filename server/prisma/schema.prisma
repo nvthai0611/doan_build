@@ -755,17 +755,17 @@ model ContractUpload {
   uploadedImageName String?  @map("uploaded_image_name")
   uploadedAt        DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
 
-  startDate DateTime? @map("start_date") // Ngày bắt đầu hợp đồng
-  expiredAt DateTime? @map("expired_at") // Ngày hết hạn
-  note      String?   @map("note")
-  status    String?   @default("active") @map("status") // active, expiring_soon, expired
-
+  startDate            DateTime?             @map("start_date") // Ngày bắt đầu hợp đồng
+  expiredAt            DateTime?             @map("expired_at") // Ngày hết hạn
+  note                 String?               @map("note")
+  status               String?               @default("active") @map("status") // active, expiring_soon, expired
+  teacherSalaryPercent Decimal?              @map("teacher_salary_percent") @db.Decimal(5, 2)
   // Relations
-  enrollment    Enrollment?           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade) // DEPRECATED
-  student       Student?              @relation(fields: [studentId], references: [id], onDelete: Cascade) // MỚI
-  parent        Parent?               @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  teacher       Teacher?              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  classRequests StudentClassRequest[] // MỚI: Nhiều request dùng chung 1 cam kết
+  enrollment           Enrollment?           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade) // DEPRECATED
+  student              Student?              @relation(fields: [studentId], references: [id], onDelete: Cascade) // MỚI
+  parent               Parent?               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacher              Teacher?              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classRequests        StudentClassRequest[] // MỚI: Nhiều request dùng chung 1 cam kết
 
   @@index([studentId], map: "idx_contract_upload_student")
   @@map("contract_uploads")

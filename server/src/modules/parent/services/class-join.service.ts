@@ -922,5 +922,91 @@ export class ClassJoinService {
     const normalizedDay = this.normalizeDayOfWeek(day);
     return dayNames[normalizedDay] || day;
   }
+
+  /**
+   * Hủy yêu cầu tham gia lớp học
+   */
+  async cancelClassRequest(userId: string, requestId: string) {
+    // Verify parent owns this request
+    const parent = await this.prisma.parent.findUnique({
+      where: { userId },
+      include: {
+        students: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new HttpException(
+        { success: false, message: 'Không tìm thấy thông tin phụ huynh' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const studentIds = parent.students.map((s) => s.id);
+
+    // Find the request
+    const request = await this.prisma.studentClassRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        class: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new HttpException(
+        { success: false, message: 'Không tìm thấy yêu cầu' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Verify this request belongs to this parent's student
+    if (!studentIds.includes(request.studentId)) {
+      throw new HttpException(
+        { success: false, message: 'Bạn không có quyền hủy yêu cầu này' },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Only allow canceling pending or under_review requests
+    if (!['pending', 'under_review'].includes(request.status)) {
+      throw new HttpException(
+        {
+          success: false,
+          message: `Không thể hủy yêu cầu có trạng thái "${request.status}"`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Update request status to cancelled
+    const updatedRequest = await this.prisma.studentClassRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'cancelled',
+        processedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã hủy yêu cầu tham gia lớp "${request.class.name}" cho ${request.student.user?.fullName || 'học sinh'}`,
+      data: updatedRequest,
+    };
+  }
 }
 
