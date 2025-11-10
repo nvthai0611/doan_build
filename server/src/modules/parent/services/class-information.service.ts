@@ -273,7 +273,161 @@ export class ClassInformationService {
       };
     });
 
-    return classes;
+    // Get pending class requests (StudentClassRequest)
+    const pendingRequests = await this.prisma.studentClassRequest.findMany({
+      where: {
+        studentId: studentId,
+        status: {
+          in: ['pending', 'under_review'], // Only show pending and under review requests
+        },
+      },
+      include: {
+        class: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            room: {
+              select: {
+                name: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
+            grade: {
+              select: {
+                name: true,
+                level: true,
+              },
+            },
+            sessions: {
+              select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+              },
+              orderBy: {
+                sessionDate: 'asc',
+              },
+            },
+          },
+        },
+        student: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Transform pending requests to similar format
+    const pendingClasses = pendingRequests.map((request) => {
+      const classData = request.class;
+      const totalSessions = classData.sessions.length;
+      const completedSessions = classData.sessions.filter(
+        (s) => s.status === 'completed',
+      ).length;
+      const progress =
+        totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+      // Get schedule from sessions
+      const scheduleMap = new Map();
+
+      classData.sessions.forEach((session) => {
+        const date = new Date(session.sessionDate);
+        const dayIndex = date.getDay();
+        const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+        const dayOfWeek = dayNames[dayIndex];
+        const key = `${dayOfWeek}-${session.startTime}-${session.endTime}`;
+
+        if (!scheduleMap.has(key)) {
+          scheduleMap.set(key, {
+            dayOfWeek: dayOfWeek,
+            startTime: session.startTime,
+            endTime: session.endTime,
+          });
+        }
+      });
+
+      const schedule = Array.from(scheduleMap.values());
+
+      return {
+        id: request.id, // ID của StudentClassRequest (để có thể cancel)
+        classId: classData.id, // ID của Class
+        name: classData.name,
+        classCode: classData.classCode || '',
+        status: classData.status,
+        progress: progress,
+        currentStudents: classData['currentStudents'] || 0,
+        maxStudents: classData['maxStudents'] || 0,
+        description: classData.description || '',
+
+        teacher: classData.teacher ? {
+          id: classData.teacher.id,
+          user: {
+            fullName: classData.teacher.user.fullName,
+            email: classData.teacher.user.email,
+          }
+        } : null,
+
+        room: classData.room ? {
+          name: classData.room.name,
+        } : null,
+
+        subject: classData.subject ? {
+          name: classData.subject.name,
+          code: classData.subject['code'],
+        } : null,
+
+        grade: classData.grade ? {
+          name: classData.grade.name,
+          level: classData.grade.level,
+        } : null,
+
+        schedule: schedule,
+
+        // Dates
+        startDate: classData.actualStartDate || classData['expectedStartDate'],
+        endDate: classData.actualEndDate || classData['expectedEndDate'],
+
+        // Student info
+        studentName: request.student.user.fullName,
+
+        // Request info
+        requestStatus: request.status,
+        requestedAt: request.createdAt,
+        requestMessage: request.message,
+
+        // Stats
+        totalSessions: totalSessions,
+        completedSessions: completedSessions,
+      };
+    });
+
+    return {
+      enrolledClasses: classes,
+      pendingRequests: pendingClasses,
+    };
   }
 
   /**

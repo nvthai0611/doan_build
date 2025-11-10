@@ -2,6 +2,13 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 
+interface NormalizedSchedule {
+  dayKey: string;
+  dayLabel: string;
+  startTime: string;
+  endTime: string;
+}
+
 @Injectable()
 export class EnrollmentManagementService {
   constructor(
@@ -11,11 +18,11 @@ export class EnrollmentManagementService {
 
   /**
    * Helper function: Kiểm tra xung đột lịch học giữa lớp mới và các lớp hiện tại của học sinh
-   * 
+   *
    * @param studentId - ID của học sinh
    * @param newClassSchedule - Lịch học của lớp mới (recurringSchedule)
    * @param excludeClassId - ID lớp cần loại trừ khỏi việc kiểm tra (optional, dùng khi transfer)
-   * 
+   *
    * @returns Mảng các xung đột lịch học, rỗng nếu không có xung đột
    */
   private async checkScheduleConflicts(
@@ -23,11 +30,13 @@ export class EnrollmentManagementService {
     newClassSchedule: any,
     excludeClassId?: string,
   ): Promise<any[]> {
-    if (!newClassSchedule || !Array.isArray(newClassSchedule)) {
+    const normalizedNewSchedules =
+      this.normalizeScheduleEntries(newClassSchedule);
+
+    if (normalizedNewSchedules.length === 0) {
       return [];
     }
 
-    // Lấy tất cả lớp khác mà học sinh đang tham gia (status = studying)
     const whereClause: any = {
       studentId,
       status: {
@@ -54,47 +63,305 @@ export class EnrollmentManagementService {
       },
     });
 
-    // Kiểm tra xung đột lịch
-    const conflicts = [];
-    for (const activeEnrollment of studentActiveEnrollments) {
-      const activeClassSchedule = activeEnrollment.class
-        .recurringSchedule as any;
+    const conflicts: any[] = [];
 
-      if (!activeClassSchedule || !Array.isArray(activeClassSchedule)) {
+    for (const activeEnrollment of studentActiveEnrollments) {
+      const normalizedActiveSchedules = this.normalizeScheduleEntries(
+        activeEnrollment.class.recurringSchedule,
+      );
+
+      if (normalizedActiveSchedules.length === 0) {
         continue;
       }
 
-      // So sánh từng lịch học trong tuần
-      for (const newSchedule of newClassSchedule) {
-        for (const activeSchedule of activeClassSchedule) {
-          // Kiểm tra cùng ngày trong tuần
-          if (newSchedule.dayOfWeek === activeSchedule.dayOfWeek) {
-            // Chuyển đổi thời gian sang phút để dễ so sánh
-            const parseTime = (time: string) => {
-              const [hours, minutes] = time.split(':').map(Number);
-              return hours * 60 + minutes;
-            };
+      for (const newSchedule of normalizedNewSchedules) {
+        for (const activeSchedule of normalizedActiveSchedules) {
+          if (newSchedule.dayKey !== activeSchedule.dayKey) {
+            continue;
+          }
 
-            const newStart = parseTime(newSchedule.startTime);
-            const newEnd = parseTime(newSchedule.endTime);
-            const activeStart = parseTime(activeSchedule.startTime);
-            const activeEnd = parseTime(activeSchedule.endTime);
-
-            // Kiểm tra trùng giờ: (start1 < end2) && (start2 < end1)
-            if (newStart < activeEnd && activeStart < newEnd) {
-              conflicts.push({
-                className: activeEnrollment.class.name,
-                dayOfWeek: newSchedule.dayOfWeek,
-                newClassTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
-                conflictingClassTime: `${activeSchedule.startTime} - ${activeSchedule.endTime}`,
-              });
-            }
+          if (
+            this.areTimeRangesOverlapping(
+              newSchedule.startTime,
+              newSchedule.endTime,
+              activeSchedule.startTime,
+              activeSchedule.endTime,
+            )
+          ) {
+            conflicts.push({
+              classId: activeEnrollment.class.id,
+              className: activeEnrollment.class.name,
+              dayOfWeek: newSchedule.dayLabel,
+              newClassTime: `${newSchedule.startTime} - ${newSchedule.endTime}`,
+              conflictingClassTime: `${activeSchedule.startTime} - ${activeSchedule.endTime}`,
+            });
           }
         }
       }
     }
 
     return conflicts;
+  }
+
+  private normalizeScheduleEntries(schedule: any): NormalizedSchedule[] {
+    const rawItems = this.parseScheduleInput(schedule);
+    const normalized: NormalizedSchedule[] = [];
+
+    for (const item of rawItems) {
+      const dayValue =
+        item?.day ??
+        item?.dayOfWeek ??
+        item?.day_of_week ??
+        item?.weekday ??
+        item?.weekDay ??
+        item?.dayIndex ??
+        item?.dayindex;
+
+      const normalizedDay = this.normalizeScheduleDay(dayValue);
+      if (!normalizedDay) {
+        continue;
+      }
+
+      const startTime = this.extractScheduleTime(item, 'start');
+      const endTime = this.extractScheduleTime(item, 'end');
+
+      if (!startTime || !endTime) {
+        continue;
+      }
+
+      normalized.push({
+        dayKey: normalizedDay,
+        dayLabel: this.getDayLabelFromKey(normalizedDay),
+        startTime,
+        endTime,
+      });
+    }
+
+    return normalized;
+  }
+
+  private parseScheduleInput(input: any): any[] {
+    if (!input) {
+      return [];
+    }
+
+    let schedule = input;
+
+    if (typeof schedule === 'string') {
+      try {
+        schedule = JSON.parse(schedule);
+      } catch (error) {
+        return [];
+      }
+    }
+
+    if (Array.isArray(schedule)) {
+      return schedule;
+    }
+
+    const candidateKeys = ['schedules', 'schedule', 'items', 'slots'];
+
+    for (const key of candidateKeys) {
+      if (Array.isArray(schedule?.[key])) {
+        return schedule[key];
+      }
+    }
+
+    return [];
+  }
+
+  private normalizeScheduleDay(day: any): string {
+    if (day === null || day === undefined) {
+      return '';
+    }
+
+    const normalizedDays = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+
+    const normalizedDaySet = new Set(normalizedDays);
+
+    const numericDayMap: Record<number, string> = {
+      0: 'sunday',
+      1: 'sunday',
+      2: 'monday',
+      3: 'tuesday',
+      4: 'wednesday',
+      5: 'thursday',
+      6: 'friday',
+      7: 'saturday',
+      8: 'sunday',
+    };
+
+    if (typeof day === 'number' && Number.isFinite(day)) {
+      if (numericDayMap[day] !== undefined) {
+        return numericDayMap[day];
+      }
+
+      const fallbackIndex = ((day % 7) + 7) % 7;
+      return normalizedDays[fallbackIndex] ?? '';
+    }
+
+    let normalized = String(day).toLowerCase().trim();
+
+    if (!normalized) {
+      return '';
+    }
+
+    normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const compact = normalized.replace(/[^a-z0-9]/g, '');
+
+    const aliasMap: Record<string, string> = {
+      sunday: 'sunday',
+      chunhat: 'sunday',
+      chuanhat: 'sunday',
+      cn: 'sunday',
+      monday: 'monday',
+      thu2: 'monday',
+      thuhai: 'monday',
+      t2: 'monday',
+      tuesday: 'tuesday',
+      thu3: 'tuesday',
+      thuba: 'tuesday',
+      t3: 'tuesday',
+      wednesday: 'wednesday',
+      thu4: 'wednesday',
+      thutu: 'wednesday',
+      t4: 'wednesday',
+      thursday: 'thursday',
+      thu5: 'thursday',
+      thunam: 'thursday',
+      t5: 'thursday',
+      friday: 'friday',
+      thu6: 'friday',
+      thusau: 'friday',
+      t6: 'friday',
+      saturday: 'saturday',
+      thu7: 'saturday',
+      thubay: 'saturday',
+      t7: 'saturday',
+    };
+
+    if (aliasMap[compact]) {
+      return aliasMap[compact];
+    }
+
+    const thuPattern = /^(thu|t)(\d)$/;
+    const thuMatch = compact.match(thuPattern);
+
+    if (thuMatch) {
+      const number = parseInt(thuMatch[2], 10);
+
+      if (number >= 2 && number <= 7) {
+        return normalizedDays[number - 1];
+      }
+
+      if (number === 8 || number === 0 || number === 1) {
+        return 'sunday';
+      }
+    }
+
+    if (normalizedDaySet.has(compact)) {
+      return compact;
+    }
+
+    const numericCompact = parseInt(compact, 10);
+
+    if (!Number.isNaN(numericCompact)) {
+      if (numericDayMap[numericCompact] !== undefined) {
+        return numericDayMap[numericCompact];
+      }
+
+      const fallbackIndex = ((numericCompact % 7) + 7) % 7;
+      return normalizedDays[fallbackIndex] ?? '';
+    }
+
+    if (normalizedDaySet.has(normalized)) {
+      return normalized;
+    }
+
+    return '';
+  }
+
+  private extractScheduleTime(schedule: any, type: 'start' | 'end'): string {
+    const candidateKeys =
+      type === 'start'
+        ? ['startTime', 'start_time', 'start', 'from', 'fromTime']
+        : ['endTime', 'end_time', 'end', 'to', 'toTime'];
+
+    for (const key of candidateKeys) {
+      const value = schedule?.[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    return '';
+  }
+
+  private getDayLabelFromKey(day: string): string {
+    const dayLabels: Record<string, string> = {
+      monday: 'Thứ Hai',
+      tuesday: 'Thứ Ba',
+      wednesday: 'Thứ Tư',
+      thursday: 'Thứ Năm',
+      friday: 'Thứ Sáu',
+      saturday: 'Thứ Bảy',
+      sunday: 'Chủ Nhật',
+    };
+
+    return dayLabels[day] || day;
+  }
+
+  private areTimeRangesOverlapping(
+    startA: string,
+    endA: string,
+    startB: string,
+    endB: string,
+  ): boolean {
+    const startAMin = this.convertTimeStringToMinutes(startA);
+    const endAMin = this.convertTimeStringToMinutes(endA);
+    const startBMin = this.convertTimeStringToMinutes(startB);
+    const endBMin = this.convertTimeStringToMinutes(endB);
+
+    if (
+      startAMin === null ||
+      endAMin === null ||
+      startBMin === null ||
+      endBMin === null
+    ) {
+      return false;
+    }
+
+    return startAMin < endBMin && startBMin < endAMin;
+  }
+
+  private convertTimeStringToMinutes(time: string): number | null {
+    if (!time) {
+      return null;
+    }
+
+    const parts = time.split(':');
+
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return null;
+    }
+
+    return hours * 60 + minutes;
   }
 
   /**
@@ -673,12 +940,13 @@ export class EnrollmentManagementService {
 
       const total = await this.prisma.enrollment.count({ where });
 
-      // Lấy thông tin lớp học để biết ngày kết thúc
+      // Lấy thông tin lớp học để biết ngày kết thúc và subjectId
       const classInfo = await this.prisma.class.findUnique({
         where: { id: classId },
         select: {
           actualEndDate: true,
           expectedStartDate: true,
+          subjectId: true,
         },
       });
 
@@ -707,6 +975,22 @@ export class EnrollmentManagementService {
                   avatar: true,
                 },
               },
+            },
+          },
+          contractUploads: {
+            select: {
+              id: true,
+              uploadedAt: true,
+              status: true,
+              subjectIds: true,
+            },
+            where: {
+              status: {
+                in: ['active'],
+              },
+            },
+            orderBy: {
+              uploadedAt: 'desc',
             },
           },
         },
@@ -743,10 +1027,31 @@ export class EnrollmentManagementService {
               },
             });
 
+          // Kiểm tra contract có đúng môn học không
+          let hasValidContract = false;
+          if (
+            enrollment.contractUploads &&
+            enrollment.contractUploads.length > 0 &&
+            classInfo?.subjectId
+          ) {
+            // Duyệt qua tất cả contracts để tìm contract đúng môn
+            for (const contract of enrollment.contractUploads) {
+              if (
+                contract.subjectIds &&
+                Array.isArray(contract.subjectIds) &&
+                contract.subjectIds.includes(classInfo.subjectId)
+              ) {
+                hasValidContract = true;
+                break;
+              }
+            }
+          }
+
           return {
             ...enrollment,
             classesRegistered: totalSessions,
             classesAttended: attendedSessions,
+            hasContract: hasValidContract,
           };
         }),
       );
@@ -1089,32 +1394,33 @@ export class EnrollmentManagementService {
         );
       }
 
-      // Update old enrollment to withdrawn
-      await this.prisma.enrollment.update({
-        where: { id: parseInt(id) },
-        data: {
-          status: 'withdrawn',
-          completionNotes: body.reason || 'Chuyển lớp',
-        },
-      });
+      const shouldDeleteOldEnrollment = enrollment.class?.status === 'ready';
+
+      if (shouldDeleteOldEnrollment) {
+        await this.prisma.enrollment.delete({
+          where: { id: parseInt(id) },
+        });
+      } else {
+        // Update old enrollment to withdrawn
+        await this.prisma.enrollment.update({
+          where: { id: parseInt(id) },
+          data: {
+            status: 'withdrawn',
+            completionNotes: body.reason || 'Chuyển lớp',
+          },
+        });
+      }
 
       // Note: currentStudents count is now managed through _count.enrollments in Class model
       // No need to manually update teacherClassAssignment since it no longer exists
 
-      // Create new enrollment with appropriate status
-      // Check if new class has sessions
-      const newClassSessions = await this.prisma.classSession.count({
-        where: { classId: body.newClassId },
-      });
-      const newEnrollmentStatus =
-        newClassSessions > 0 ? 'studying' : 'not_been_updated';
-
+      // Create new enrollment with status mặc định là 'studying'
       const newEnrollment = await this.prisma.enrollment.create({
         data: {
           studentId: enrollment.studentId,
           classId: body.newClassId,
           semester: body.semester || enrollment.semester,
-          status: newEnrollmentStatus,
+          status: 'studying', // Trạng thái mặc định luôn là 'studying'
         },
       });
 
@@ -1141,7 +1447,7 @@ export class EnrollmentManagementService {
           });
 
         console.log(
-          `📧 Đã queue email chuyển lớp:\n` +
+          `Đã queue email chuyển lớp:\n` +
             `   - Phụ huynh: ${parentName} (${parentEmail})\n` +
             `   - Học sinh: ${studentName}\n` +
             `   - Từ lớp: ${oldClassName}\n` +
@@ -1303,7 +1609,7 @@ export class EnrollmentManagementService {
         where: {
           classId,
           status: {
-            notIn: ['stopped', 'graduated'],
+            notIn: ['stopped', 'graduated', 'withdrawn'],
           },
         },
         select: {

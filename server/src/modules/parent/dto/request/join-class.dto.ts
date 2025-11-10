@@ -19,10 +19,10 @@ export class RequestJoinClassDto {
   @IsNotEmpty({ message: 'Student ID không được để trống' })
   studentId: string;
 
-  @ApiProperty({ description: 'Contract Upload ID (ID của hợp đồng đã upload trước) - BẮT BUỘC' })
+  @ApiProperty({ description: 'Contract Upload ID (ID của hợp đồng đã upload trước) - KHÔNG BẮT BUỘC', required: false })
+  @IsOptional()
   @IsUUID('4', { message: 'Contract Upload ID không hợp lệ' })
-  @IsNotEmpty({ message: 'Contract Upload ID không được để trống' })
-  contractUploadId: string;
+  contractUploadId?: string;
 
   @ApiProperty({ description: 'Mật khẩu lớp học (nếu có)', required: false })
   @IsOptional()

@@ -6,12 +6,21 @@ interface ToastInput {
   title?: string
   description?: string
   variant?: ToastVariant
+  duration?: number
 }
 
 export function useToast() {
   const toast = (input: ToastInput) => {
     const message = input.title ?? (input.variant === 'destructive' ? 'Lỗi' : 'Thông báo')
-    const options = input.description ? { description: input.description } : undefined
+    const options: Record<string, any> = {}
+
+    if (input.description) {
+      options.description = input.description
+    }
+
+    if (typeof input.duration === 'number') {
+      options.duration = input.duration
+    }
 
     if (input.variant === 'destructive') {
       sonnerToast.error(message, options)
