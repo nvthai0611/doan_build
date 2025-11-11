@@ -68,15 +68,14 @@ export interface AffectedSessionDetail {
 
 export interface CreateStudentLeaveRequestDto {
   studentId: string
-  startDate: string
-  endDate: string
+  classId: string
+  sessionIds: string[]
   reason: string
 }
 
 export interface UpdateStudentLeaveRequestDto {
-  startDate?: string
-  endDate?: string
   reason?: string
+  sessionIds?: string[]
 }
 
 export interface GetStudentLeaveRequestsParams {
