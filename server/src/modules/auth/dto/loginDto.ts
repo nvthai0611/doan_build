@@ -2,12 +2,12 @@ import { IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @IsString()
-  @IsNotEmpty({ message: 'Email hoặc tên đăng nhập không được để trống' })
+  @IsNotEmpty({ message: 'Email/Username hoặc mật khẩu không chính xác' })
   identifier: string; // Có thể là email hoặc username
 
   @IsString()
-  @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
-  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
-  @MaxLength(16, { message: 'Mật khẩu không được quá 16 ký tự' })
+  @IsNotEmpty({ message: 'Email/Username hoặc mật khẩu không chính xác' })
+  @MinLength(6, { message: 'Email/Username hoặc mật khẩu không chính xác' })
+  @MaxLength(16, { message: 'Email/Username hoặc mật khẩu không chính xác' })
   password: string;
 }
