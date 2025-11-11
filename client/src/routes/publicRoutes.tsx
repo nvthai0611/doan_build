@@ -25,31 +25,22 @@ const RoleBasedRedirect = () => {
   }
   
   if (!user) {
-    console.log("RoleBasedRedirect: No user, redirecting to portal selection");
     return <Navigate to="/auth" replace />;
   }
-  
-  console.log("RoleBasedRedirect: User role:", user.role);
   
   // Chỉ parent về homepage, các role khác vào trang quản trị
   switch (user.role) {
     case 'center_owner':
-      console.log("RoleBasedRedirect: Redirecting to /center-qn");
       return <Navigate to="/center-qn" replace />;
     case 'teacher':
-      console.log("RoleBasedRedirect: Redirecting to /teacher/profile");
       return <Navigate to="/teacher/profile" replace />;
     case 'student':
-      console.log("RoleBasedRedirect: Redirecting to /student");
       return <Navigate to="/student" replace />;
     case 'parent':
-      console.log("RoleBasedRedirect: Parent redirecting to /parent");
       return <Navigate to="/parent" replace />;
     case 'admin':
-      console.log("RoleBasedRedirect: Redirecting to /admin");
       return <Navigate to="/admin" replace />;
     default:
-      console.log("RoleBasedRedirect: Unknown role, redirecting to portal selection");
       return <Navigate to="/auth" replace />;
   }
 };
