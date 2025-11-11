@@ -36,20 +36,42 @@ export class ContractsManageService {
         uploadedImageUrl: u.uploadedImageUrl,
         uploadedImageName: u.uploadedImageName,
         uploadedAt: u.uploadedAt,
+        startDate: u.startDate,
         expiryDate: u.expiredAt,
+        teacherSalaryPercent: u.teacherSalaryPercent,
         notes: u.note,
         status,
       };
     });
   }
 
-  async createForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, expiryDate?: string, notes?: string) {
+  async createForTeacher(
+    teacherId: string,
+    file: Express.Multer.File,
+    contractType: string,
+    startDate?: string,
+    expiryDate?: string,
+    notes?: string,
+    teacherSalaryPercent?: number
+  ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
 
+    if (!startDate) {
+      throw new BadRequestException('Start date is required');
+    }
+
     if (!expiryDate) {
       throw new BadRequestException('Expiry date is required');
+    }
+
+    if (teacherSalaryPercent === undefined || teacherSalaryPercent === null) {
+      throw new BadRequestException('teacherSalaryPercent is required');
+    }
+
+    if (teacherSalaryPercent < 0 || teacherSalaryPercent > 100) {
+      throw new BadRequestException('teacherSalaryPercent must be between 0 and 100');
     }
 
     let uploadResult: any;
@@ -73,15 +95,19 @@ export class ContractsManageService {
       status = 'expiring_soon';
     }
 
+    const startDateObj = new Date(startDate);
+
     const created = await this.prisma.contractUpload.create({
       data: {
         teacherId,
         contractType: contractType || 'other',
         uploadedImageUrl: uploadResult.secure_url,
         uploadedImageName: file.originalname,
+        startDate: startDateObj,
         expiredAt,
         note: notes || null,
         status,
+        teacherSalaryPercent,
       },
     });
 

@@ -502,11 +502,11 @@ export class TeacherManagementService {
               where:
                 year && month
                   ? {
-                      sessionDate: {
-                        gte: new Date(year, month - 1, 1),
-                        lt: new Date(year, month, 1),
-                      },
-                    }
+                    sessionDate: {
+                      gte: new Date(year, month - 1, 1),
+                      lt: new Date(year, month, 1),
+                    },
+                  }
                   : undefined,
               include: {
                 teacher: {
@@ -552,11 +552,11 @@ export class TeacherManagementService {
 
     const dateFilter = year && month
       ? {
-          sessionDate: {
-            gte: new Date(year, month - 1, 1),
-            lt: new Date(year, month, 1),
-          },
-        }
+        sessionDate: {
+          gte: new Date(year, month - 1, 1),
+          lt: new Date(year, month, 1),
+        },
+      }
       : undefined;
 
     // Bước 1: Lấy tất cả TeacherClassTransfer liên quan đến giáo viên này
@@ -1255,7 +1255,9 @@ export class TeacherManagementService {
         uploadedImageUrl: u.uploadedImageUrl,
         uploadedImageName: u.uploadedImageName,
         uploadedAt: u.uploadedAt,
+        startDate: u.startDate,
         expiryDate: u.expiredAt,
+        teacherSalaryPercent: u.teacherSalaryPercent,
         notes: u.note,
         status,
       };
@@ -1271,15 +1273,29 @@ export class TeacherManagementService {
     teacherId: string,
     file: Express.Multer.File,
     contractType: string,
+    startDate?: string,
     expiryDate?: string,
-    notes?: string
+    notes?: string,
+    teacherSalaryPercent?: number
   ) {
     if (!file) {
       throw new BadRequestException('File là bắt buộc');
     }
 
+    if (!startDate) {
+      throw new BadRequestException('Ngày bắt đầu là bắt buộc');
+    }
+
     if (!expiryDate) {
       throw new BadRequestException('Ngày hết hạn là bắt buộc');
+    }
+
+    if (teacherSalaryPercent === undefined || teacherSalaryPercent === null) {
+      throw new BadRequestException('teacherSalaryPercent là bắt buộc');
+    }
+
+    if (teacherSalaryPercent < 0 || teacherSalaryPercent > 100) {
+      throw new BadRequestException('teacherSalaryPercent phải từ 0 đến 100');
     }
 
     // Verify teacher exists
@@ -1317,6 +1333,8 @@ export class TeacherManagementService {
       status = 'expiring_soon';
     }
 
+    const startDateObj = new Date(startDate);
+
     // Create contract record
     const created = await this.prisma.contractUpload.create({
       data: {
@@ -1324,9 +1342,11 @@ export class TeacherManagementService {
         contractType: contractType || 'other',
         uploadedImageUrl: uploadResult.secure_url,
         uploadedImageName: file.originalname,
+        startDate: startDateObj,
         expiredAt,
         note: notes || null,
         status,
+        teacherSalaryPercent,
       },
     });
 
