@@ -23,7 +23,7 @@ const AuthMiddleware = ({ allowedRoles = [] }: AuthMiddlewareProps) => {
     <AuthGuard 
       requireAuth={true} 
       allowedRoles={allowedRoles}
-      fallback={<Navigate to="/auth/login" state={{ from: location }} replace />}
+      fallback={<Navigate to="/auth/" state={{ from: location }} replace />}
     >
       <Outlet />
     </AuthGuard>

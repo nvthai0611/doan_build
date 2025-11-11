@@ -189,7 +189,7 @@ client.interceptors.response.use(
           sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
         }
         
-        window.location.href = '/auth/login';
+        window.location.href = 'http://localhost:5173/auth/';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
