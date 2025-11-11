@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  HttpException,
   UseInterceptors,
   UploadedFile
 } from '@nestjs/common';
@@ -24,7 +25,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('Admin Center - Teacher Management')
 @Controller('/teachers')
 export class TeacherManagementController {
-  constructor(private readonly teacherManagementService: TeacherManagementService) {}
+  constructor(private readonly teacherManagementService: TeacherManagementService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -35,8 +36,8 @@ export class TeacherManagementController {
     if (file) {
       createTeacherDto.contractImage = file;
     }
-    
-    
+
+
     return this.teacherManagementService.createTeacher(createTeacherDto);
   }
 
@@ -53,7 +54,7 @@ export class TeacherManagementController {
   @Patch(':id')
   @UseInterceptors(FileInterceptor('contractImage'))
   update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateTeacherDto: UpdateTeacherDto,
     @UploadedFile() file?: Express.Multer.File
   ) {
@@ -82,7 +83,7 @@ export class TeacherManagementController {
   ) {
     const yearNum = year ? parseInt(year) : undefined;
     const monthNum = month ? parseInt(month) : undefined;
-    
+
     return this.teacherManagementService.getTeacherSchedule(id, yearNum, monthNum);
   }
 
@@ -96,7 +97,7 @@ export class TeacherManagementController {
   @HttpCode(HttpStatus.OK)
   bulkImport(@Body() body: { teachers: any[] }) {
     console.log("Creating teachers:", body.teachers.length);
-    
+
     return this.teacherManagementService.bulkImportTeachers(body.teachers);
   }
 
@@ -113,15 +114,25 @@ export class TeacherManagementController {
     @Param('id') teacherId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('contractType') contractType: string,
+    @Body('startDate') startDate: string,
     @Body('expiryDate') expiryDate: string,
+    @Body('teacherSalaryPercent') teacherSalaryPercent: string,
     @Body('notes') notes?: string
   ) {
+    // Validate teacherSalaryPercent
+    const salaryPercent = parseFloat(teacherSalaryPercent);
+    if (isNaN(salaryPercent) || salaryPercent < 0 || salaryPercent > 100) {
+      throw new HttpException('teacherSalaryPercent must be between 0 and 100', HttpStatus.BAD_REQUEST);
+    }
+
     return this.teacherManagementService.uploadContractForTeacher(
       teacherId,
       file,
       contractType,
+      startDate,
       expiryDate,
-      notes
+      notes,
+      salaryPercent
     );
   }
 
