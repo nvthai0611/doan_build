@@ -100,15 +100,11 @@ class ParentStudentLeaveRequestService {
   }
 
   /**
-   * Lấy các buổi học sẽ bị ảnh hưởng trong khoảng thời gian nghỉ (tất cả lớp của học sinh)
+   * Lấy các buổi học của một lớp theo học sinh để chọn xin nghỉ
    */
-  async getAffectedSessions(params: {
-    studentId: string
-    startDate: string
-    endDate: string
-  }): Promise<any[]> {
+  async getSessionsByClass(params: { studentId: string; classId: string }): Promise<any[]> {
     const response = await apiClient.get<{ data: any[] }>(
-      '/parent/student-leave-requests/affected-sessions',
+      '/parent/student-leave-requests/sessions-by-class',
       params
     )
 

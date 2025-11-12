@@ -9,14 +9,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { ClassInformationService } from '../services/class-information.service';
+import { StudentLeaveRequestService } from '../services/student-leave-request.service';
 
 @ApiTags('Parent - Child Classes')
 @Controller('') // Remove 'parent' since RouterModule already has it
 @UseGuards(JwtAuthGuard)
 export class ChildClassesController {
   constructor(
-    private readonly classInformationService: ClassInformationService,
+    private readonly studentLeaveRequestService: StudentLeaveRequestService,
   ) {}
 
   @Get('children-classes')
@@ -32,7 +32,7 @@ export class ChildClassesController {
         );
       }
 
-      const result = await this.classInformationService.getAllChildrenClasses(
+      const result = await this.studentLeaveRequestService.getAllChildrenClasses(
         parentUserId,
       );
 
@@ -66,14 +66,16 @@ export class ChildClassesController {
         );
       }
 
-      const result = await this.classInformationService.getChildClasses(
-        parentUserId,
-        studentId,
-      );
+      const result = await this.studentLeaveRequestService.getChildClasses(parentUserId, studentId);
+      const list = Array.isArray(result)
+        ? result
+        : (result && Array.isArray((result as any).data))
+          ? (result as any).data
+          : [];
 
       return {
         success: true,
-        data: result,
+        data: list,
         message: 'Lấy danh sách lớp học thành công',
       };
     } catch (error) {

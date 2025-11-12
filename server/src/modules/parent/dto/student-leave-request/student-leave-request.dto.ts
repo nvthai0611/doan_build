@@ -1,11 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
+import { IsArray, ArrayNotEmpty, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateStudentLeaveRequestDto {
   @ApiProperty({ description: 'ID học sinh', example: 'uuid' })
@@ -13,21 +7,15 @@ export class CreateStudentLeaveRequestDto {
   @IsNotEmpty()
   studentId: string;
 
-  @ApiProperty({
-    description: 'Ngày bắt đầu nghỉ (YYYY-MM-DD)',
-    example: '2025-10-23',
-  })
-  @IsDateString()
+  @ApiProperty({ description: 'ID lớp học', example: 'uuid' })
+  @IsUUID()
   @IsNotEmpty()
-  startDate: string;
+  classId: string;
 
-  @ApiProperty({
-    description: 'Ngày kết thúc nghỉ (YYYY-MM-DD)',
-    example: '2025-10-25',
-  })
-  @IsDateString()
-  @IsNotEmpty()
-  endDate: string;
+  @ApiProperty({ description: 'Danh sách sessionId được xin nghỉ', type: [String] })
+  @IsArray()
+  @ArrayNotEmpty()
+  sessionIds: string[];
 
   @ApiProperty({ description: 'Lý do nghỉ học', example: 'Con bị ốm' })
   @IsString()
@@ -36,26 +24,15 @@ export class CreateStudentLeaveRequestDto {
 }
 
 export class UpdateStudentLeaveRequestDto {
-  @ApiPropertyOptional({
-    description: 'Ngày bắt đầu nghỉ (YYYY-MM-DD)',
-    example: '2025-10-23',
-  })
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Ngày kết thúc nghỉ (YYYY-MM-DD)',
-    example: '2025-10-25',
-  })
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
   @ApiPropertyOptional({ description: 'Lý do nghỉ học' })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   reason?: string;
+
+  @ApiPropertyOptional({ description: 'Danh sách sessionId được xin nghỉ', type: [String] })
+  @IsArray()
+  @IsOptional()
+  sessionIds?: string[];
 }
 
 export class GetStudentLeaveRequestsQueryDto {
@@ -83,26 +60,15 @@ export class GetStudentLeaveRequestsQueryDto {
   classId?: string;
 }
 
-export class GetAffectedSessionsQueryDto {
+export class GetSessionsByClassQueryDto {
   @ApiProperty({ description: 'ID học sinh', example: 'uuid' })
   @IsUUID()
   @IsNotEmpty()
   studentId: string;
 
-  @ApiProperty({
-    description: 'Ngày bắt đầu (YYYY-MM-DD)',
-    example: '2025-10-23',
-  })
-  @IsDateString()
+  @ApiProperty({ description: 'ID lớp học', example: 'uuid' })
+  @IsUUID()
   @IsNotEmpty()
-  startDate: string;
-
-  @ApiProperty({
-    description: 'Ngày kết thúc (YYYY-MM-DD)',
-    example: '2025-10-25',
-  })
-  @IsDateString()
-  @IsNotEmpty()
-  endDate: string;
+  classId: string;
 }
 

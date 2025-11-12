@@ -13,7 +13,7 @@ export function AuthGuard({
   children, 
   requireAuth = true, 
   allowedRoles = [],
-  fallback = <Navigate to="/auth/login" state={{ from: useLocation() }} replace />
+  fallback = <Navigate to="/auth" state={{ from: useLocation() }} replace />
 }: AuthGuardProps) {
   const { user, loading } = useAuth()
   const location = useLocation()

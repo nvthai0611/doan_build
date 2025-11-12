@@ -589,7 +589,7 @@ const ClassCard = ({
       navigate("/parent/recruiting-classes")
     } else {
       sessionStorage.setItem("redirectAfterLogin", "/parent/recruiting-classes")
-      navigate("/auth/login/family")
+      navigate("/auth/")
     }
   }
 

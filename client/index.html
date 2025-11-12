@@ -1,15 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://tse4.mm.bing.net/th/id/OIP.LIYsiApAtwl8WrSIvGYchAHaDt?pid=Api&P=0&h=180" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="https://tse4.mm.bing.net/th/id/OIP.LIYsiApAtwl8WrSIvGYchAHaDt?pid=Api&P=0&h=180"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thầy Quang Education</title>
     <script>
       (function () {
         try {
           var saved = localStorage.getItem('theme-mode');
-          var isDark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = saved
+            ? saved === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (isDark) document.documentElement.classList.add('dark');
         } catch (e) {}
       })();

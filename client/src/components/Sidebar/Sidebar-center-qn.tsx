@@ -811,18 +811,8 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={async () => {
-                            // Lưu role trước khi logout (vì sau logout user sẽ null)
-                            const currentRole = user?.role
                             await logout()
-                            // Redirect về đúng cổng dựa trên role
-                            if (currentRole === 'parent' || currentRole === 'student') {
-                                navigate('/auth/login/family')
-                            } else if(currentRole === 'center_owner' || currentRole === 'teacher') {
-                                // center_owner, teacher, admin → cổng quản lý
-                                navigate('/auth/login/management')
-                            } else if(currentRole === 'admin') {
-                                navigate('/auth/login/admin')
-                            }
+                            navigate('/auth')
                         }}>
                             <LogOut className="mr-2 h-4 w-4" />
                             Đăng xuất
