@@ -43,13 +43,13 @@ export const Header = () => {
             ) : (
               <>
                 <Button variant="outline" asChild>
-                  <Link to="/auth/login/family">Đăng Nhập</Link>
+                  <Link to="/auth/login?portal=family">Đăng Nhập</Link>
                 </Button>
                 <Button
                   asChild
                   className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 hover:opacity-90 text-white border-0"
                 >
-                  <Link to="/auth/register/family">Đăng Ký</Link>
+                  <Link to="/auth/register?portal=family">Đăng Ký</Link>
                 </Button>
               </>
             )}
