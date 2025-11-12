@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
@@ -49,6 +50,10 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     sessionDate?: string;
   } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [cancelPopoverSessionId, setCancelPopoverSessionId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSession, setCancelSession] = useState<any | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   
   // Pagination hook
   const pagination = usePagination({
@@ -183,7 +188,52 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     }
   };
 
-  const getStatusBadge = (status: string) => {  
+  const openCancelPopover = (session: any) => {
+    setCancelSession(session);
+    setCancelReason(session?.cancellationReason || '');
+    setCancelPopoverSessionId(session.id);
+  };
+
+  const closeCancelPopover = () => {
+    setCancelPopoverSessionId(null);
+    if (!isCancelling) {
+      setCancelSession(null);
+      setCancelReason('');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelSession) return;
+    if (!cancelReason.trim()) {
+      toast.error('Vui lòng nhập lý do nghỉ buổi học');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      await centerOwnerScheduleService.updateSession(cancelSession.id, {
+        status: SessionStatus.DAY_OFF,
+        cancellationReason: cancelReason.trim(),
+      } as any);
+
+      toast.success('Đã ghi nhận buổi học nghỉ');
+      closeCancelPopover();
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể cập nhật trạng thái buổi học');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleSuggestPostpone = (session: any) => {
+    toast.info('Hướng dẫn lùi lịch', {
+      description: 'Mở chi tiết buổi học và chỉnh sửa ngày/giờ, hoặc tạo yêu cầu đổi lịch trong mục Quản lý lịch.',
+    });
+  };
+
+  const renderStatusBadge = (session: any) => {
+    const status = session.status;
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
       [SessionStatus.END]: { 
         variant: 'default', 
@@ -218,12 +268,28 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];
     const Icon = config.icon;
-    return (
+    const badge = (
       <Badge variant={config.variant} className={config.className}>
         <Icon className="h-3 w-3 mr-1" />
         {config.label}
       </Badge>
     );
+
+    if (status === SessionStatus.DAY_OFF) {
+      const reason = session.cancellationReason || 'Chưa cung cấp lý do';
+      return (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-sm">
+              Lý do nghỉ: {reason}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getAttendanceRate = (attendanceCount: number, totalStudents: number) => {
@@ -513,7 +579,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       key: 'status',
       header: 'Trạng thái',
       width: '80px',
-      render: (session: any) => getStatusBadge(session.status)
+      render: (session: any) => renderStatusBadge(session)
     },
     {
       key: 'teacher',
@@ -623,6 +689,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-orange-600 hover:text-orange-700"
+                  onClick={() => handleSuggestPostpone(session)}
                 >
                   <Clock className="h-4 w-4" />
                 </Button>
@@ -630,18 +697,57 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               <TooltipContent>Lùi lịch</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover
+              open={cancelPopoverSessionId === session.id}
+              onOpenChange={(open) => {
+                if (open) {
+                  openCancelPopover(session);
+                } else {
+                  closeCancelPopover();
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-red-600 hover:text-red-700"
+                  disabled={session.status === SessionStatus.DAY_OFF || session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
                 >
                   <XCircle className="h-4 w-4" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Hủy buổi học</TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 space-y-3" align="end">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Lý do nghỉ <span className="text-red-500">*</span>
+                  </p>
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Ví dụ: Nghỉ lễ, giáo viên bận công tác..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closeCancelPopover}
+                    disabled={isCancelling}
+                  >
+                    Thoát
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleConfirmCancel}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? 'Đang lưu...' : 'Xác nhận'}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </TooltipProvider>
       )
@@ -910,6 +1016,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           allData={filteredSessions}
         />
       </div>
+
     </div>
   );
 };

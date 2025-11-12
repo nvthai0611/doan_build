@@ -626,12 +626,14 @@ const ClassCard = ({
           </div>
 
           {/* Teacher */}
-          {classItem.teacher && (
-            <div className="flex items-center gap-2 text-sm">
-              <User className="w-4 h-4 text-pink-500" />
+          <div className="flex items-center gap-2 text-sm">
+            <User className="w-4 h-4 text-pink-500" />
+            {classItem.teacher ? (
               <span className="truncate">{classItem.teacher.fullName}</span>
-            </div>
-          )}
+            ) : (
+              <span className="italic text-muted-foreground">Đang phân công giáo viên</span>
+            )}
+          </div>
 
           {/* Students */}
           <div className="flex items-center gap-2 text-sm">
@@ -655,9 +657,9 @@ const ClassCard = ({
           </div>
 
           {/* Schedule */}
-          {schedules.length > 0 && (
-            <div className="flex items-start gap-2 text-sm">
-              <Clock className="w-4 h-4 text-blue-500 mt-0.5" />
+          <div className="flex items-start gap-2 text-sm">
+            <Clock className="w-4 h-4 text-blue-500 mt-0.5" />
+            {schedules.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {schedules.map((s, idx) => (
                   <Badge
@@ -669,8 +671,10 @@ const ClassCard = ({
                   </Badge>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <span className="italic text-muted-foreground">Đang chuẩn bị lịch học</span>
+            )}
+          </div>
           {/* Expected Start Date */}
           {classItem.expectedStartDate && (
             <div className="flex items-center gap-2 text-sm">
