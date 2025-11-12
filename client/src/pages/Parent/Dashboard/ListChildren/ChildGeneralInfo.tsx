@@ -122,6 +122,7 @@ export function ChildGeneralInfo({ child }: ChildGeneralInfoProps) {
       queryFn: () => getClassRanking(child.id, enrollment.class.id),
       enabled: !!child.id && !!enrollment.class.id && stats.gpa !== null,
       staleTime: 3000,
+      refetchOnWindowFocus: true,
     })
 
     return (
