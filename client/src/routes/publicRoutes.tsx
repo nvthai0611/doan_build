@@ -2,13 +2,10 @@ import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import Home from "../pages/Home/Home";
 import LandingPage from "../pages/Home/LandingPage";
-import { LoginForm } from "../pages/Auth/Login";
 import { PortalSelection } from "../pages/Auth/PortalSelection";
-import { ParentStudentLogin } from "../pages/Auth/ParentStudentLogin";
 import { ParentRegister } from "../pages/Auth/ParentRegister";
-import { AdminLogin } from "../pages/Auth/AdminLogin";
 import NotFound from "../pages/Error/NotFound";
-import { Route, Navigate } from "react-router-dom";
+import { Route, Navigate, useParams } from "react-router-dom";
 import GuestMiddleware from "../middlewares/GuestMiddleware";
 import { useAuth } from "../lib/auth";
 
@@ -45,6 +42,15 @@ const RoleBasedRedirect = () => {
   }
 };
 
+const LegacyLoginRedirect = () => {
+  const { portal } = useParams<{ portal?: string }>();
+  const normalizedPortal = portal ? portal.split("/")[0] : undefined;
+  const target = normalizedPortal
+    ? `/auth?portal=${normalizedPortal}`
+    : "/auth";
+  return <Navigate to={target} replace />;
+};
+
 export const publicRoutes = (
   <>
     {/* Landing Page - Public */}
@@ -56,16 +62,13 @@ export const publicRoutes = (
         {/* Portal Selection - Landing page */}
         <Route path="/auth" element={<PortalSelection />} />
         
-        {/* Management Portal - Center Owner & Teacher */}
-        <Route path="/auth/login/management" element={<LoginForm />} />
-        <Route path="/auth/login" element={<Navigate to="/auth/login/management" replace />} />
+        {/* Legacy login routes */}
+        <Route path="/auth/login" element={<LegacyLoginRedirect />} />
+        <Route path="/auth/login/:portal" element={<LegacyLoginRedirect />} />
+        <Route path="/auth/login/:portal/*" element={<LegacyLoginRedirect />} />
         
-        {/* Family Portal - Parent & Student */}
-        <Route path="/auth/login/family" element={<ParentStudentLogin />} />
+        {/* Family Portal Registration */}
         <Route path="/auth/register/family" element={<ParentRegister />} />
-        
-        {/* Admin Portal - IT Admin */}
-        <Route path="/auth/login/admin" element={<AdminLogin />} />
       </Route>
     </Route>
 
