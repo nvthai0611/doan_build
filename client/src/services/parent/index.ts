@@ -72,3 +72,7 @@ export type {
   ActiveClass,
   ParentOverviewResponse
 } from './parent-overview/parent-overview.types'
+
+// Child Progress Reports
+export { parentChildProgressReportService } from './child-progress/child-progress.service'
+export type { ProgressReportDto } from './child-progress/child-progress.types'

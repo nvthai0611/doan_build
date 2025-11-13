@@ -93,7 +93,7 @@ export function FeedbackTeacher() {
   const { data: feedbackResp } = useQuery({
     queryKey: ['teacher-feedback', dateFrom, dateTo],
     queryFn: () => teacherFeedbackService.list({ dateFrom, dateTo }),
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   })
 
   const teacherRows = useMemo<TeacherRow[]>(() => {

@@ -16,7 +16,6 @@ import { CommunicationService } from './services/communication.service';
 import { GradeService } from './services/grade.service';
 import { LeaveRequestService } from './services/leave-request.service';
 import { MaterialService } from './services/material.service';
-import { ReportService } from './services/report.service';
 import { ScheduleService } from './services/schedule.service';
 import { SessionService } from './services/session.service';
 import { SessionRequestService } from './services/session-request.service';
@@ -74,7 +73,6 @@ import { PrismaService } from 'src/db/prisma.service';
     GradeService,
     LeaveRequestService,
     MaterialService,
-    ReportService,
     ScheduleService,
     SessionService,
     SessionRequestService,
