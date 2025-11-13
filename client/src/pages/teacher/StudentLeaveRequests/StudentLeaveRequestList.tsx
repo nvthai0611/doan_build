@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  MoreHorizontal,
   Eye,
   CheckCircle,
   XCircle,
@@ -9,13 +8,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import { teacherStudentLeaveRequestService } from '../../../services/teacher/student-leave-request/student-leave.service';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
@@ -165,12 +157,30 @@ export default function StudentLeaveRequestList() {
     {
       key: 'dateRange',
       header: 'Thời gian nghỉ',
-      render: (item) => (
-        <div className="text-sm">
-          <div>{formatDate(item.startDate)}</div>
-          <div className="text-muted-foreground">→ {formatDate(item.endDate)}</div>
-        </div>
-      ),
+      render: (item) => {
+        const sessions = Array.isArray((item as any)?.affectedSessions) ? (item as any).affectedSessions : [];
+        if (sessions.length > 0) {
+          const sorted = [...sessions].sort((a: any, b: any) => {
+            const da = a?.session?.sessionDate ? new Date(a.session.sessionDate).getTime() : Infinity;
+            const db = b?.session?.sessionDate ? new Date(b.session.sessionDate).getTime() : Infinity;
+            return da - db;
+          });
+          const first = sorted[0]?.session?.sessionDate;
+          const last = sorted[sorted.length - 1]?.session?.sessionDate || first;
+          return (
+            <div className="text-sm">
+              <div>{first ? new Date(first).toLocaleDateString('vi-VN') : '—'}</div>
+              <div className="text-muted-foreground">→ {last ? new Date(last).toLocaleDateString('vi-VN') : '—'}</div>
+            </div>
+          );
+        }
+        return (
+          <div className="text-sm">
+            <div>{formatDate(item.startDate)}</div>
+            <div className="text-muted-foreground">→ {formatDate(item.endDate)}</div>
+          </div>
+        );
+      },
     },
     {
       key: 'sessions',
@@ -203,38 +213,21 @@ export default function StudentLeaveRequestList() {
       header: 'Thao tác',
       align: 'center',
       render: (item) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleApprove(item)}
-                  className="text-green-600"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Duyệt đơn
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleReject(item)}
-                  className="text-red-600"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-center gap-2">
+          <Button title="Xem chi tiết" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDetails(item)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          {item.status === 'pending' && (
+            <>
+              <Button title="Duyệt đơn" variant="ghost" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleApprove(item)}>
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button title="Từ chối" variant="ghost" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => handleReject(item)}>
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
       ),
     },
   ];

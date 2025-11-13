@@ -13,13 +13,51 @@ import { enrollmentService } from '../../../../../services/center-owner/enrollme
 import { classService } from '../../../../../services/center-owner/class-management/class.service';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ClassStatus, CLASS_STATUS_LABELS } from '../../../../../lib/constants';
+import { dayOptions } from '../../../../../utils/commonData';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+/**
+ * ============================================
+ * TRANSFER STUDENT SHEET - CHUYỂN LỚP HỌC SINH
+ * ============================================
+ * 
+ * MÔ TẢ CHỨC NĂNG:
+ * Component này cho phép chuyển nhiều học sinh từ lớp hiện tại sang lớp khác.
+ * 
+ * LUỒNG HOẠT ĐỘNG:
+ * 1. Hiển thị danh sách lớp đích khả dụng (cùng môn, cùng khối, còn chỗ trống)
+ * 2. User tìm kiếm và chọn lớp đích
+ * 3. Nếu lớp hiện tại đang ACTIVE → hiển thị dialog cảnh báo
+ * 4. Thực hiện chuyển lớp (gọi API cho từng enrollment)
+ * 5. Cập nhật lại UI (invalidate cache)
+ * 
+ * ĐIỀU KIỆN LỚP ĐẾN HỢP LỆ:
+ * - Cùng môn học và cùng khối lớp
+ * - Trạng thái READY hoặc ACTIVE
+ * - Còn đủ chỗ trống cho tất cả học sinh được chọn
+ * - Không phải lớp hiện tại
+ * 
+ * ƯU TIÊN SẮP XẾP:
+ * 1. Lớp cùng giáo viên (để dễ quản lý)
+ * 2. Lớp có ít học sinh hơn (cân bằng sĩ số)
+ */
 
 interface TransferStudentSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  classData?: any;
-  selectedEnrollmentIds: string[];
-  onSuccess?: () => void;
+  open: boolean; // Trạng thái mở/đóng sheet
+  onOpenChange: (open: boolean) => void; // Callback khi đóng/mở sheet
+  classData?: any; // Thông tin lớp hiện tại
+  selectedEnrollmentIds: string[]; // Danh sách ID enrollment được chọn để chuyển
+  onSuccess?: () => void; // Callback khi chuyển lớp thành công
+  allEnrollments?: any[]; // Danh sách tất cả enrollments (để lấy tên học sinh)
 }
 
 export const TransferStudentSheet = ({
@@ -28,22 +66,41 @@ export const TransferStudentSheet = ({
   classData,
   selectedEnrollmentIds,
   onSuccess,
+  allEnrollments = [],
 }: TransferStudentSheetProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const debouncedSearch = useDebounce(searchTerm, 500);
+  // === STATE MANAGEMENT ===
+  const [searchTerm, setSearchTerm] = useState(''); // Từ khóa tìm kiếm lớp đích
+  const [selectedClassId, setSelectedClassId] = useState<string>(''); // ID lớp đích được chọn
+  const [showActiveClassConfirm, setShowActiveClassConfirm] = useState(false); // Hiển thị dialog xác nhận khi chuyển từ lớp ACTIVE
+  const debouncedSearch = useDebounce(searchTerm, 500); // Debounce search để tránh call API liên tục
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Reset form when sheet closes
+  // === EXTRACT DANH SÁCH TÊN HỌC SINH ===
+  // Lấy tên các học sinh được chọn để hiển thị trong dialog xác nhận
+  const studentNames = useMemo(() => {
+    if (!allEnrollments || allEnrollments.length === 0) return [];
+    
+    // Filter enrollments theo danh sách ID được chọn
+    const selectedEnrollments = allEnrollments.filter((enrollment: any) =>
+      selectedEnrollmentIds.includes(enrollment.id)
+    );
+    
+    // Lấy tên học sinh từ enrollment
+    return selectedEnrollments
+      .map((enrollment: any) => enrollment?.student?.user?.fullName || 'Không có tên')
+      .filter(Boolean);
+  }, [allEnrollments, selectedEnrollmentIds]);
+
+  // === RESET FORM KHI ĐÓNG SHEET ===
   useEffect(() => {
     if (!open) {
       setSearchTerm('');
       setSelectedClassId('');
+      setShowActiveClassConfirm(false);
     }
   }, [open]);
 
-  // Fetch available classes (excluding current class)
   const { data: classesData, isLoading: isLoadingClasses } = useQuery({
     queryKey: [
       'available-classes-transfer',
@@ -58,7 +115,6 @@ export const TransferStudentSheet = ({
     queryFn: async () => {
       const params: any = {
         limit: 100,
-        // Không truyền status filter - sẽ filter ở frontend
       };
 
       // Filter theo cùng môn và cùng khối
@@ -73,7 +129,8 @@ export const TransferStudentSheet = ({
         params.search = debouncedSearch.trim();
       }
 
-      const response = await classService.getClasses(params);
+      // Sử dụng API getClassesForTransfer thay vì getClasses để có đầy đủ thông tin teacher
+      const response = await classService.getClassesForTransfer(params);
       return response;
     },
     enabled: open && !!classData && !!(classData?.subjectId || classData?.subject?.id) && !!(classData?.gradeId || classData?.grade?.id),
@@ -82,69 +139,49 @@ export const TransferStudentSheet = ({
 
   const classes: any[] = (classesData as any)?.data || [];
   
-  // Fetch capacity for each class to check if they have available slots
-  const { data: classesWithCapacity } = useQuery({
-    queryKey: ['classes-capacity', classes.map((c: any) => c.id).join(',')],
-    queryFn: async () => {
-      const capacityPromises = classes.map(async (cls: any) => {
-        try {
-          const capacity = await enrollmentService.checkCapacity(cls.id);
-          return {
-            classId: cls.id,
-            capacity: (capacity as any)?.data,
-          };
-        } catch (error) {
-          return {
-            classId: cls.id,
-            capacity: null,
-          };
-        }
-      });
-      return Promise.all(capacityPromises);
-    },
-    enabled: open && classes.length > 0,
-    staleTime: 0,
-  });
-
+  // === TẠO CAPACITY MAP TỪ DATA ĐÃ CÓ ===
+  // API getClassesForTransfer đã trả về currentStudents và maxStudents rồi
+  // Không cần gọi thêm checkCapacity nữa
   const capacityMap = useMemo(() => {
     const map: Record<string, any> = {};
-    if (classesWithCapacity) {
-      (classesWithCapacity as any[]).forEach((item: any) => {
-        map[item.classId] = item.capacity;
-      });
-    }
+    classes.forEach((cls: any) => {
+      map[cls.id] = {
+        currentStudents: cls.currentStudents || 0,
+        maxStudents: cls.maxStudents,
+      };
+    });
     return map;
-  }, [classesWithCapacity]);
+  }, [classes]);
 
-  // Filter and sort classes
+  // === LỌC VÀ SẮP XẾP DANH SÁCH LỚP KHẢ DỤNG ===
   const availableClasses = useMemo(() => {
     const currentSubjectId = classData?.subjectId || classData?.subject?.id;
     const currentGradeId = classData?.gradeId || classData?.grade?.id;
     const currentTeacherId = classData?.teacherId || classData?.teacher?.id;
     
-    // Filter classes
+    // === BƯỚC 1: LỌC CÁC LỚP PHÙ HỢP ===
     let filtered = classes.filter((cls: any) => {
-      // Exclude current class
+      // 1.1. Loại bỏ lớp hiện tại (không cho chuyển vào chính nó)
       if (cls.id === classData?.id) return false;
       
-      // Must be READY or ACTIVE
+      // 1.2. Chỉ cho phép chuyển vào lớp READY hoặc ACTIVE
       if (cls.status !== ClassStatus.READY && cls.status !== ClassStatus.ACTIVE) return false;
       
-      // Must have same subject and grade
+      // 1.3. Phải cùng môn học và cùng khối lớp
       const clsSubjectId = cls.subjectId || cls.subject?.id;
       const clsGradeId = cls.gradeId || cls.grade?.id;
       if (clsSubjectId !== currentSubjectId || clsGradeId !== currentGradeId) return false;
       
-      // Must have available slots
+      // 1.4. Kiểm tra còn chỗ trống hay không
       const capacity = capacityMap[cls.id];
       if (capacity) {
         const currentStudents = capacity.currentStudents || 0;
         const maxStudents = capacity.maxStudents;
         
-        // If maxStudents is set, check if there's space
+        // Nếu lớp có giới hạn sĩ số
         if (maxStudents !== null && maxStudents !== undefined) {
           const availableSlots = maxStudents - currentStudents;
-          // Must have enough slots for all selected students
+          // Phải có đủ chỗ cho TẤT CẢ học sinh được chọn
           if (availableSlots < selectedEnrollmentIds.length) return false;
         }
       }
@@ -152,18 +189,20 @@ export const TransferStudentSheet = ({
       return true;
     });
 
-    // Sort classes: 1. Same teacher first, 2. By current students ascending
+    // === BƯỚC 2: SẮP XẾP DANH SÁCH ===
+    // Ưu tiên: 1. Cùng giáo viên → 2. Lớp ít học sinh hơn
     filtered.sort((a: any, b: any) => {
       const aTeacherId = a.teacherId || a.teacher?.id;
       const bTeacherId = b.teacherId || b.teacher?.id;
       const aHasSameTeacher = aTeacherId === currentTeacherId;
       const bHasSameTeacher = bTeacherId === currentTeacherId;
       
-      // Same teacher comes first
+      // 2.1. Lớp cùng giáo viên sẽ hiển thị trước (dễ quản lý hơn)
       if (aHasSameTeacher && !bHasSameTeacher) return -1;
       if (!aHasSameTeacher && bHasSameTeacher) return 1;
       
-      // Then sort by current students (ascending)
+      // 2.2. Sau đó sắp xếp theo số học sinh hiện tại (tăng dần)
+      // Lớp ít học sinh hơn sẽ lên trước (cân bằng sĩ số)
       const aCapacity = capacityMap[a.id];
       const bCapacity = capacityMap[b.id];
       const aStudents = aCapacity?.currentStudents || 0;
@@ -175,50 +214,76 @@ export const TransferStudentSheet = ({
     return filtered;
   }, [classes, classData, capacityMap, selectedEnrollmentIds.length]);
 
-  // Mutation to transfer students
+
+  // === MUTATION CHUYỂN LỚP HỌC SINH ===
   const transferMutation = useMutation({
     mutationFn: async ({ enrollmentIds, newClassId }: { enrollmentIds: string[]; newClassId: string }) => {
-      // Transfer each enrollment
+      // Chuyển từng enrollment (gọi API song song để nhanh hơn)
       const promises = enrollmentIds.map((enrollmentId) =>
         enrollmentService.transferStudent(enrollmentId, {
           newClassId,
-          reason: 'Chuyển lớp hàng loạt',
+          reason: 'Chuyển lớp hàng loạt', // Lý do mặc định
         })
       );
       return Promise.all(promises);
      
     },
     onSuccess: () => {
+      // Hiển thị thông báo thành công
       toast({
         title: 'Thành công',
         description: `Đã chuyển ${selectedEnrollmentIds.length} học sinh sang lớp mới thành công`,
       });
-      // Invalidate tất cả queries liên quan để đảm bảo danh sách lớp cũ được cập nhật
-      // Query key chính xác: ['class-enrollments', classId, academicYear]
+      
+      // === INVALIDATE CACHE ĐỂ CẬP NHẬT UI ===
+      // Xóa cache để force re-fetch data mới
       queryClient.invalidateQueries({ 
-        queryKey: ['class-enrollments'],
-        exact: false // Invalidate tất cả queries bắt đầu với 'class-enrollments'
+        queryKey: ['class-enrollments'], // Danh sách học sinh trong lớp
+        exact: false // Invalidate tất cả queries có prefix này
       });
-      queryClient.invalidateQueries({ queryKey: ['class', classData?.id] });
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
-      queryClient.invalidateQueries({ queryKey: ['available-classes-transfer'] });
-      queryClient.invalidateQueries({ queryKey: ['classes-capacity'] });
+      queryClient.invalidateQueries({ queryKey: ['class', classData?.id] }); // Thông tin lớp hiện tại
+      queryClient.invalidateQueries({ queryKey: ['classes'] }); // Danh sách tất cả lớp
+      queryClient.invalidateQueries({ queryKey: ['available-classes-transfer'] }); // Danh sách lớp khả dụng
+      queryClient.invalidateQueries({ queryKey: ['classes-capacity'] }); // Sĩ số các lớp
+      
+      // Gọi callback từ parent component (nếu có)
       onSuccess && onSuccess();
+      
+      // Đóng sheet
       onOpenChange(false);
     },
     onError: (error: any) => {
-      toast({
-        title: 'Lỗi',
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Có lỗi xảy ra khi chuyển lớp học sinh',
-        variant: 'destructive',
-      });
+      // Xử lý lỗi schedule conflict từ backend
+      const errorData = error?.response?.data;
+      if (errorData?.conflicts && Array.isArray(errorData.conflicts)) {
+        const conflictMessages = errorData.conflicts
+          .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
+          .join('; ');
+        toast({
+          title: 'Lịch học bị trùng',
+          description: conflictMessages,
+          variant: 'destructive',
+          duration: 10000,
+        });
+      } else {
+        // Hiển thị thông báo lỗi thông thường
+        toast({
+          title: 'Lỗi',
+          description:
+            errorData?.message ||
+            error?.response?.data?.message ||
+            error?.message ||
+            'Có lỗi xảy ra khi chuyển lớp học sinh',
+          variant: 'destructive',
+          duration: 8000,
+        });
+      }
     },
   });
 
+  // === XỬ LÝ SUBMIT FORM ===
   const handleSubmit = () => {
+    // Validation: Phải chọn lớp đích
     if (!selectedClassId) {
       toast({
         title: 'Lỗi',
@@ -228,6 +293,7 @@ export const TransferStudentSheet = ({
       return;
     }
 
+    // Validation: Phải có ít nhất 1 học sinh được chọn
     if (selectedEnrollmentIds.length === 0) {
       toast({
         title: 'Lỗi',
@@ -237,10 +303,25 @@ export const TransferStudentSheet = ({
       return;
     }
 
+    // === XỬ LÝ ĐẶC BIỆT CHO LỚP ĐANG HOẠT ĐỘNG ===
+    // Nếu lớp hiện tại đang ACTIVE → hiển thị dialog xác nhận
+    // (vì chuyển từ lớp ACTIVE có thể ảnh hưởng đến tiến độ học)
+    if (classData?.status === ClassStatus.ACTIVE) {
+      setShowActiveClassConfirm(true);
+      return;
+    }
+
+    // Nếu lớp không phải ACTIVE (DRAFT, READY,...) → chuyển lớp ngay
+    executeTransfer();
+  };
+
+  // === THỰC HIỆN CHUYỂN LỚP ===
+  const executeTransfer = () => {
     transferMutation.mutate({
       enrollmentIds: selectedEnrollmentIds,
       newClassId: selectedClassId,
     });
+    setShowActiveClassConfirm(false); // Đóng dialog confirm
   };
 
   const selectedClass = availableClasses.find(
@@ -299,7 +380,19 @@ export const TransferStudentSheet = ({
             </div>
           )}
 
-          {/* Warning Alert */}
+          {/* Warning Alert for Active Class */}
+          {classData?.status === ClassStatus.ACTIVE && (
+            <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <AlertDescription className="text-sm text-red-800 dark:text-red-200">
+                <strong className="font-semibold">⚠️ Cảnh báo:</strong> Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>.
+                <br />
+                Nếu chuyển lớp, học sinh sẽ không thể quay lại lớp cũ. Vui lòng cân nhắc kỹ trước khi thực hiện.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* General Warning Alert */}
           <Alert className="bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:border-cyan-800">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm text-cyan-800 dark:text-cyan-200">
@@ -316,7 +409,7 @@ export const TransferStudentSheet = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 id="search-class"
-                placeholder="Tìm kiếm theo tên lớp, môn học, khối lớp..."
+                placeholder="Tìm kiếm theo tên lớp, mã lớp, tên giáo viên..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -381,18 +474,18 @@ export const TransferStudentSheet = ({
                                 <GraduationCap className="h-3 w-3" />
                                 <span>{cls.subjectName || cls.subject?.name} - {cls.gradeName || cls.grade?.name || 'Chưa xác định'}</span>
                               </div>
-                              {cls.teacherName && (
+                              {/* Hiển thị tên giáo viên nếu có */}
+                              {(cls.teacherName || cls.teacher?.user?.fullName || cls.teacher?.fullName) && (
                                 <div className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
-                                  <span>GV: {cls.teacherName}</span>
+                                  <span>GV: {cls.teacherName || cls.teacher?.user?.fullName || cls.teacher?.fullName}</span>
                                 </div>
                               )}
                               <div className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
                                 <span>
-                                  Sĩ số: {currentStudents}
-                                  {maxStudents !== null && maxStudents !== undefined && `/${maxStudents}`}
-                                  {availableSlots !== null && (
+                                  Sĩ số: {currentStudents}/{maxStudents ?? 'N/A'}
+                                  {availableSlots !== null && availableSlots > 0 && (
                                     <span className="text-green-600 font-medium ml-1">
                                       (Còn {availableSlots} chỗ)
                                     </span>
@@ -403,6 +496,28 @@ export const TransferStudentSheet = ({
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
                                   <span>Phòng: {cls.roomName}</span>
+                                </div>
+                              )}
+                              {/* Hiển thị lịch học */}
+                              {cls.recurringSchedule && cls.recurringSchedule.schedules && cls.recurringSchedule.schedules.length > 0 && (
+                                <div className="flex items-start gap-1 mt-2">
+                                  <Calendar className="h-3 w-3 mt-0.5" />
+                                  <div className="flex-1">
+                                    <span className="font-medium text-xs">Lịch học:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {cls.recurringSchedule.schedules.map((schedule: any, idx: number) => {
+                                        const dayLabel = dayOptions.find(d => d.value === schedule.day)?.label || schedule.day;
+                                        return (
+                                          <span 
+                                            key={idx} 
+                                            className="inline-flex items-center text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded"
+                                          >
+                                            {dayLabel}: {schedule.startTime}-{schedule.endTime}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -416,28 +531,70 @@ export const TransferStudentSheet = ({
             </div>
           </div>
 
-          {/* Selected Class Preview */}
-          {selectedClass && (
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <h4 className="text-sm font-medium text-green-900 dark:text-green-200 mb-3 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Lớp đích đã chọn
-              </h4>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-green-600" />
-                  <p className="font-medium text-green-900 dark:text-green-100">
-                    {selectedClass.name || '-'}
-                  </p>
-                </div>
-                <div className="text-sm text-green-700 dark:text-green-300">
-                  {selectedClass.subjectName || selectedClass.subject?.name} - {selectedClass.gradeName || selectedClass.grade?.name || 'Chưa xác định'}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </SheetContent>
+
+      {/* Confirmation Dialog for Active Class */}
+      <AlertDialog open={showActiveClassConfirm} onOpenChange={setShowActiveClassConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Xác nhận chuyển lớp từ lớp đang hoạt động
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+                  ⚠️ Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>
+                </p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Bạn có chắc chắn muốn chuyển <strong>{selectedEnrollmentIds.length} học sinh</strong> từ lớp{' '}
+                  <strong>{classData?.name}</strong> sang lớp mới không?
+                </p>
+                
+                {/* Danh sách tên học sinh */}
+                {studentNames.length > 0 && (
+                  <div className="mt-3">
+                    <p className="font-medium mb-2">Danh sách học sinh sẽ được chuyển:</p>
+                    {studentNames.length <= 5 ? (
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                        {studentNames.map((name, index) => (
+                          <li key={index}>{name}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
+                        {studentNames.map((name, index) => (
+                          <li key={index}>{name}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                
+                <p className="text-red-600 dark:text-red-400 font-medium mt-3">
+                  ⚠️ Lưu ý quan trọng: Nếu chuyển lớp, học sinh sẽ <strong>không thể quay lại lớp cũ</strong>.
+                  Hành động này không thể hoàn tác.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowActiveClassConfirm(false)}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={executeTransfer}
+              disabled={transferMutation.isPending}
+            >
+              {transferMutation.isPending ? 'Đang xử lý...' : 'Xác nhận chuyển lớp'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };

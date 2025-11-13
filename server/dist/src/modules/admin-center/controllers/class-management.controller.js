@@ -32,6 +32,9 @@ let ClassManagementController = class ClassManagementController {
     async findAll(queryDto) {
         return this.classManagementService.findAll(queryDto);
     }
+    async getClassesForTransfer(queryDto) {
+        return this.classManagementService.findAllWithTeacher(queryDto);
+    }
     async findOne(id) {
         return this.classManagementService.findOne(id);
     }
@@ -151,6 +154,21 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClassManagementController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Get)('transfer-available'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Lấy danh sách lớp học khả dụng cho chuyển lớp (bao gồm thông tin giáo viên)',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Danh sách lớp học với thông tin giáo viên',
+    }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [query_class_dto_1.QueryClassDto]),
+    __metadata("design:returntype", Promise)
+], ClassManagementController.prototype, "getClassesForTransfer", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy chi tiết 1 lớp học' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Chi tiết lớp học' }),
@@ -202,7 +220,10 @@ __decorate([
     (0, common_1.Delete)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Xóa lớp học (soft delete)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Xóa thành công' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Không thể xóa lớp có học sinh đang học' }),
+    (0, swagger_1.ApiResponse)({
+        status: 400,
+        description: 'Không thể xóa lớp có học sinh đang học',
+    }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp học' }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Param)('id')),
@@ -227,8 +248,14 @@ __decorate([
     (0, common_1.Post)(':id/assign-teacher'),
     (0, swagger_1.ApiOperation)({ summary: 'Phân công giáo viên cho lớp' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Phân công thành công' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Giáo viên đã được phân công hoặc lịch học bị trùng với các lớp đã được phân công' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' }),
+    (0, swagger_1.ApiResponse)({
+        status: 400,
+        description: 'Giáo viên đã được phân công hoặc lịch học bị trùng với các lớp đã được phân công',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 404,
+        description: 'Không tìm thấy lớp hoặc giáo viên',
+    }),
     openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -261,9 +288,15 @@ __decorate([
 __decorate([
     (0, common_1.Post)(':id/transfer-teacher'),
     (0, swagger_1.ApiOperation)({ summary: 'Chuyển giáo viên cho lớp' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Yêu cầu chuyển giáo viên đã được tạo' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Yêu cầu chuyển giáo viên đã được tạo',
+    }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Dữ liệu không hợp lệ' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp hoặc giáo viên' }),
+    (0, swagger_1.ApiResponse)({
+        status: 404,
+        description: 'Không tìm thấy lớp hoặc giáo viên',
+    }),
     openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -288,7 +321,10 @@ __decorate([
 __decorate([
     (0, common_1.Get)('transfers'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách yêu cầu chuyển giáo viên' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Danh sách yêu cầu chuyển giáo viên' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Danh sách yêu cầu chuyển giáo viên',
+    }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
@@ -299,7 +335,10 @@ __decorate([
     (0, common_1.Post)('transfers/:id/approve'),
     (0, swagger_1.ApiOperation)({ summary: 'Duyệt yêu cầu chuyển giáo viên' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Duyệt yêu cầu thành công' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Yêu cầu đã được xử lý hoặc thiếu thông tin' }),
+    (0, swagger_1.ApiResponse)({
+        status: 400,
+        description: 'Yêu cầu đã được xử lý hoặc thiếu thông tin',
+    }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy yêu cầu' }),
     openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Param)('id')),
@@ -373,7 +412,10 @@ __decorate([
     (0, common_1.Delete)(':id/sessions'),
     (0, swagger_1.ApiOperation)({ summary: 'Xóa nhiều buổi học' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Xóa buổi học thành công' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Không thể xóa buổi học đã diễn ra' }),
+    (0, swagger_1.ApiResponse)({
+        status: 400,
+        description: 'Không thể xóa buổi học đã diễn ra',
+    }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy lớp học' }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Param)('id')),

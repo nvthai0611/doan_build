@@ -17,6 +17,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Search,
   Filter,
@@ -323,23 +324,27 @@ export default function TeacherQnmsManagement() {
     },
     {
       key: 'actions',
-      header: '',
-      width: '80px',
+      header: 'Thao tác',
+      width: '100px',
       align: 'center',
       render: (employee: Teacher) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="gap-2" onClick={() => handleViewEmployee(employee.id)}>
-              <Eye className="w-4 h-4" />
-              Xem
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center justify-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                  onClick={() => handleViewEmployee(employee.id)}
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Xem chi tiết</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       )
     }
   ]
@@ -382,9 +387,6 @@ export default function TeacherQnmsManagement() {
           <Button  onClick={handleAddEmployee}>
               <Plus className="w-4 h-4 mr-2" />
               Giáo Viên
-            </Button>
-            <Button variant="outline" className="text-gray-600 dark:text-gray-300 bg-transparent" onClick={handleInviteEmployee}>
-              Mời Giáo Viên
             </Button>
           </div>
         </div>

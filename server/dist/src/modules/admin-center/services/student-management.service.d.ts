@@ -2,7 +2,7 @@ import { PrismaService } from 'src/db/prisma.service';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 interface CreateStudentDto {
     fullName: string;
-    username: string;
+    username?: string;
     phone?: string;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     birthDate?: string;
@@ -32,7 +32,10 @@ export declare class StudentManagementService {
     private readonly cloudinaryService;
     constructor(prisma: PrismaService, cloudinaryService: CloudinaryService);
     private formatStudentResponse;
-    createStudent(createStudentData: CreateStudentDto): Promise<StudentResponse>;
+    createStudent(createStudentData: CreateStudentDto, context?: {
+        createdByRole?: 'center_owner' | 'parent';
+        parentUserId?: string;
+    }): Promise<StudentResponse>;
     findParentByEmail(email: string): Promise<StudentResponse>;
     getAllStudents(status?: string, search?: string, birthMonth?: string, birthYear?: string, gender?: string, accountStatus?: string, customerConnection?: string, course?: string, page?: number, limit?: number): Promise<StudentResponse>;
     getCountByStatus(): Promise<StudentResponse>;

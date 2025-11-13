@@ -24,6 +24,7 @@ const class_assign_teacher_processor_1 = require("./consumer/class_assign_teache
 const enrollment_email_processor_1 = require("./consumer/enrollment-email.processor");
 const class_status_change_processor_1 = require("./consumer/class-status-change.processor");
 const class_request_email_processor_1 = require("./consumer/class-request-email.processor");
+const session_change_email_processor_1 = require("./consumer/session-change-email.processor");
 const public_classes_controller_1 = require("./controllers/public-classes.controller");
 const public_classes_service_1 = require("./services/public-classes.service");
 const public_showcases_controller_1 = require("./controllers/public-showcases.controller");
@@ -34,6 +35,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     removeOnComplete: 10,
     removeOnFail: 5,
     attempts: 3,
+    timeout: 60000,
     backoff: {
         type: 'exponential',
         delay: 2000,
@@ -79,6 +81,10 @@ exports.SharedModule = SharedModule = __decorate([
                 name: 'class_request_email',
                 defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
             }),
+            bull_1.BullModule.registerQueue({
+                name: 'session_change_email',
+                defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
+            }),
         ],
         controllers: [
             students_controller_1.StudentsSharedController,
@@ -102,7 +108,8 @@ exports.SharedModule = SharedModule = __decorate([
             class_assign_teacher_processor_1.ClassAssignTeacherProcessor,
             enrollment_email_processor_1.EnrollmentEmailProcessor,
             class_status_change_processor_1.ClassStatusChangeProcessor,
-            class_request_email_processor_1.ClassRequestEmailProcessor
+            class_request_email_processor_1.ClassRequestEmailProcessor,
+            session_change_email_processor_1.SessionChangeEmailProcessor
         ],
         exports: [
             student_service_1.StudentSharedService,

@@ -36,6 +36,14 @@ let TeacherManagementService = class TeacherManagementService {
             if (existingUser) {
                 throw new common_1.BadRequestException('Email hoặc username đã tồn tại');
             }
+            if (createTeacherDto.phone) {
+                const existingPhone = await prisma.user.findFirst({
+                    where: { phone: createTeacherDto.phone },
+                });
+                if (existingPhone) {
+                    throw new common_1.BadRequestException('Số điện thoại đã được sử dụng');
+                }
+            }
             const passwordData = await hasing_util_1.default.generateRandomPassword();
             const defaultPassword = passwordData.rawPassword;
             const hashedPassword = passwordData.hashedPassword;
@@ -106,26 +114,25 @@ let TeacherManagementService = class TeacherManagementService {
                 },
             });
             if (createTeacherDto.contractImage) {
+                let uploadResult = null;
                 try {
-                    const uploadResult = await this.cloudinaryService.uploadImage(createTeacherDto.contractImage, 'teachers');
+                    uploadResult = await this.cloudinaryService.uploadImage(createTeacherDto.contractImage, 'teachers');
+                }
+                catch (uploadError) {
+                    console.error('Error uploading contract image to Cloudinary:', uploadError);
+                }
+                try {
                     await prisma.contractUpload.create({
                         data: {
                             teacherId: teacher.id,
                             contractType: 'teacher_contract',
-                            uploadedImageUrl: uploadResult.secure_url,
-                            uploadedImageName: createTeacherDto.contractImage.originalname,
+                            uploadedImageUrl: uploadResult?.secure_url || createTeacherDto.contractImage.filename || 'temp-filename',
+                            uploadedImageName: createTeacherDto.contractImage.originalname || 'contract-image',
                         },
                     });
                 }
-                catch (error) {
-                    await prisma.contractUpload.create({
-                        data: {
-                            teacherId: teacher.id,
-                            contractType: 'teacher_contract',
-                            uploadedImageUrl: createTeacherDto.contractImage.filename || 'temp-filename',
-                            uploadedImageName: createTeacherDto.contractImage.originalname,
-                        },
-                    });
+                catch (dbError) {
+                    console.error('Error creating contractUpload record:', dbError);
                 }
             }
             try {
@@ -134,6 +141,9 @@ let TeacherManagementService = class TeacherManagementService {
             catch (emailError) {
             }
             return this.formatTeacherResponse(teacher);
+        }, {
+            timeout: 30000,
+            maxWait: 10000,
         });
     }
     async findAllTeachers(queryDto) {
@@ -441,19 +451,105 @@ let TeacherManagementService = class TeacherManagementService {
                 },
             }
             : undefined;
-        const substituteSessions = await this.prisma.classSession.findMany({
-            where: {
-                substituteTeacherId: id,
-                substituteEndDate: {
-                    gte: new Date(),
+        const [transfersAsOriginalTeacher, transfersAsReplacementTeacher] = await Promise.all([
+            this.prisma.teacherClassTransfer.findMany({
+                where: {
+                    teacherId: id,
+                    status: { in: ['approved', 'completed'] },
+                    substituteEndDate: { not: null },
                 },
-                ...(dateFilter ? dateFilter : {}),
-            },
+                include: {
+                    replacementTeacher: {
+                        include: {
+                            user: {
+                                select: {
+                                    fullName: true,
+                                },
+                            },
+                        },
+                    },
+                    fromClass: {
+                        select: {
+                            id: true,
+                        },
+                    },
+                },
+            }),
+            this.prisma.teacherClassTransfer.findMany({
+                where: {
+                    replacementTeacherId: id,
+                    status: { in: ['approved', 'completed'] },
+                    substituteEndDate: { not: null },
+                },
+                include: {
+                    teacher: {
+                        include: {
+                            user: {
+                                select: {
+                                    fullName: true,
+                                },
+                            },
+                        },
+                    },
+                    fromClass: {
+                        select: {
+                            id: true,
+                        },
+                    },
+                },
+            }),
+        ]);
+        const transfersAsOriginalMap = new Map();
+        transfersAsOriginalTeacher.forEach((transfer) => {
+            if (transfer.fromClassId &&
+                transfer.effectiveDate &&
+                transfer.substituteEndDate) {
+                transfersAsOriginalMap.set(transfer.fromClassId, {
+                    effectiveDate: new Date(transfer.effectiveDate),
+                    substituteEndDate: new Date(transfer.substituteEndDate),
+                    replacementTeacherName: transfer.replacementTeacher?.user?.fullName ||
+                        'Chưa xác định',
+                });
+            }
+        });
+        const transfersAsReplacementMap = new Map();
+        transfersAsReplacementTeacher.forEach((transfer) => {
+            if (transfer.fromClassId &&
+                transfer.effectiveDate &&
+                transfer.substituteEndDate) {
+                transfersAsReplacementMap.set(transfer.fromClassId, {
+                    effectiveDate: new Date(transfer.effectiveDate),
+                    substituteEndDate: new Date(transfer.substituteEndDate),
+                    originalTeacherName: transfer.teacher?.user?.fullName || 'Chưa xác định',
+                });
+            }
+        });
+        const classesToCheck = new Set();
+        transfersAsReplacementTeacher.forEach((transfer) => {
+            if (transfer.fromClassId) {
+                classesToCheck.add(transfer.fromClassId);
+            }
+        });
+        const substituteSessionsWhere = {
+            classId: { in: Array.from(classesToCheck) },
+            ...(dateFilter ? dateFilter : {}),
+        };
+        const substituteSessions = await this.prisma.classSession.findMany({
+            where: substituteSessionsWhere,
             include: {
                 class: {
                     include: {
                         room: true,
                         subject: true,
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 teacher: {
@@ -488,25 +584,41 @@ let TeacherManagementService = class TeacherManagementService {
                 sessionDate: 'asc',
             },
         });
-        const mainSessions = teacher.classes.flatMap((cls) => cls.sessions
-            .filter((session) => {
-            const isSubstitute = session.substituteTeacherId &&
-                session.substituteEndDate &&
-                new Date(session.substituteEndDate) >= session.sessionDate;
-            if (isSubstitute && session.substituteTeacherId !== id) {
-                return false;
+        const isSessionInSubstitutePeriod = (sessionDate, effectiveDate, substituteEndDate) => {
+            const sd = new Date(sessionDate);
+            const ed = new Date(effectiveDate);
+            const sed = new Date(substituteEndDate);
+            sd.setHours(0, 0, 0, 0);
+            ed.setHours(0, 0, 0, 0);
+            sed.setHours(0, 0, 0, 0);
+            return sd >= ed && sd <= sed;
+        };
+        const mainSessions = teacher.classes.flatMap((cls) => cls.sessions.map((session) => {
+            const sessionDate = new Date(session.sessionDate);
+            const transferInfo = transfersAsOriginalMap.get(cls.id);
+            let isSubstitute = false;
+            let substituteTeacherName = null;
+            let originalTeacherName = null;
+            let substituteStartDate = null;
+            let substituteEndDate = null;
+            if (transferInfo &&
+                isSessionInSubstitutePeriod(sessionDate, transferInfo.effectiveDate, transferInfo.substituteEndDate)) {
+                isSubstitute = true;
+                originalTeacherName =
+                    session.teacher?.user?.fullName ||
+                        teacher.user.fullName ||
+                        'Chưa xác định';
+                substituteTeacherName = transferInfo.replacementTeacherName;
+                substituteStartDate = transferInfo.effectiveDate;
+                substituteEndDate = transferInfo.substituteEndDate;
             }
-            return true;
-        })
-            .map((session) => {
-            const isSubstitute = session.substituteTeacherId &&
-                session.substituteEndDate &&
-                new Date(session.substituteEndDate) >= session.sessionDate &&
-                session.substituteTeacherId === id;
-            const currentTeacher = isSubstitute ? session.substituteTeacher : session.teacher;
-            const teacherName = currentTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
-            const originalTeacherName = session.teacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
-            const substituteTeacherName = session.substituteTeacher?.user?.fullName || null;
+            else {
+                originalTeacherName =
+                    session.teacher?.user?.fullName ||
+                        teacher.user.fullName ||
+                        'Chưa xác định';
+                substituteTeacherName = null;
+            }
             return {
                 id: session.id,
                 classId: cls.id,
@@ -518,10 +630,18 @@ let TeacherManagementService = class TeacherManagementService {
                 room: cls.room?.name || 'Chưa xác định',
                 hasAlert: this.checkSessionAlerts(session),
                 status: session.status,
-                teacher: teacherName,
+                teacher: isSubstitute
+                    ? substituteTeacherName || 'Chưa xác định'
+                    : originalTeacherName,
                 originalTeacher: originalTeacherName,
                 substituteTeacher: substituteTeacherName,
                 isSubstitute: isSubstitute,
+                substituteStartDate: substituteStartDate
+                    ? this.formatDateYYYYMMDD(new Date(substituteStartDate))
+                    : null,
+                substituteEndDate: substituteEndDate
+                    ? this.formatDateYYYYMMDD(new Date(substituteEndDate))
+                    : null,
                 students: session.attendances.map((attendance) => ({
                     id: attendance.student.id,
                     name: attendance.student.user.fullName || 'Chưa xác định',
@@ -534,9 +654,22 @@ let TeacherManagementService = class TeacherManagementService {
                 cancellationReason: session.cancellationReason,
             };
         }));
-        const substituteSessionsFormatted = substituteSessions.map((session) => {
-            const originalTeacherName = session.teacher?.user?.fullName || 'Chưa xác định';
-            const substituteTeacherName = session.substituteTeacher?.user?.fullName || teacher.user.fullName || 'Chưa xác định';
+        const substituteSessionsFormatted = substituteSessions
+            .filter((session) => {
+            const transferInfo = transfersAsReplacementMap.get(session.classId);
+            if (!transferInfo) {
+                return false;
+            }
+            const sessionDate = new Date(session.sessionDate);
+            return isSessionInSubstitutePeriod(sessionDate, transferInfo.effectiveDate, transferInfo.substituteEndDate);
+        })
+            .map((session) => {
+            const transferInfo = transfersAsReplacementMap.get(session.classId);
+            const originalTeacherName = transferInfo?.originalTeacherName ||
+                session.teacher?.user?.fullName ||
+                session.class.teacher?.user?.fullName ||
+                'Chưa xác định';
+            const substituteTeacherName = teacher.user.fullName || 'Chưa xác định';
             return {
                 id: session.id,
                 classId: session.classId,
@@ -552,6 +685,12 @@ let TeacherManagementService = class TeacherManagementService {
                 originalTeacher: originalTeacherName,
                 substituteTeacher: substituteTeacherName,
                 isSubstitute: true,
+                substituteStartDate: transferInfo
+                    ? this.formatDateYYYYMMDD(new Date(transferInfo.effectiveDate))
+                    : null,
+                substituteEndDate: transferInfo
+                    ? this.formatDateYYYYMMDD(new Date(transferInfo.substituteEndDate))
+                    : null,
                 students: session.attendances.map((attendance) => ({
                     id: attendance.student.id,
                     name: attendance.student.user.fullName || 'Chưa xác định',
@@ -663,6 +802,12 @@ let TeacherManagementService = class TeacherManagementService {
     }
     formatDate(date) {
         return date.toLocaleDateString('vi-VN');
+    }
+    formatDateYYYYMMDD(date) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
     }
     async validateTeachersData(teachersData) {
         const results = {
@@ -850,7 +995,9 @@ let TeacherManagementService = class TeacherManagementService {
                 uploadedImageUrl: u.uploadedImageUrl,
                 uploadedImageName: u.uploadedImageName,
                 uploadedAt: u.uploadedAt,
+                startDate: u.startDate,
                 expiryDate: u.expiredAt,
+                teacherSalaryPercent: u.teacherSalaryPercent,
                 notes: u.note,
                 status,
             };
@@ -860,12 +1007,21 @@ let TeacherManagementService = class TeacherManagementService {
             message: 'Lấy danh sách hợp đồng thành công',
         };
     }
-    async uploadContractForTeacher(teacherId, file, contractType, expiryDate, notes) {
+    async uploadContractForTeacher(teacherId, file, contractType, startDate, expiryDate, notes, teacherSalaryPercent) {
         if (!file) {
             throw new common_1.BadRequestException('File là bắt buộc');
         }
+        if (!startDate) {
+            throw new common_1.BadRequestException('Ngày bắt đầu là bắt buộc');
+        }
         if (!expiryDate) {
             throw new common_1.BadRequestException('Ngày hết hạn là bắt buộc');
+        }
+        if (teacherSalaryPercent === undefined || teacherSalaryPercent === null) {
+            throw new common_1.BadRequestException('teacherSalaryPercent là bắt buộc');
+        }
+        if (teacherSalaryPercent < 0 || teacherSalaryPercent > 100) {
+            throw new common_1.BadRequestException('teacherSalaryPercent phải từ 0 đến 100');
         }
         const teacher = await this.prisma.teacher.findUnique({
             where: { id: teacherId },
@@ -893,15 +1049,18 @@ let TeacherManagementService = class TeacherManagementService {
         else if (expiredAt <= thirtyDaysFromNow) {
             status = 'expiring_soon';
         }
+        const startDateObj = new Date(startDate);
         const created = await this.prisma.contractUpload.create({
             data: {
                 teacherId,
                 contractType: contractType || 'other',
                 uploadedImageUrl: uploadResult.secure_url,
                 uploadedImageName: file.originalname,
+                startDate: startDateObj,
                 expiredAt,
                 note: notes || null,
                 status,
+                teacherSalaryPercent,
             },
         });
         return {

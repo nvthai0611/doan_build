@@ -12,12 +12,14 @@ export declare class ContractsManageController {
             uploadedImageUrl: string;
             uploadedImageName: string;
             uploadedAt: Date;
+            startDate: Date;
             expiryDate: Date;
+            teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
             notes: string;
             status: string;
         }[];
     }>;
-    upload(req: any, file: Express.Multer.File, contractType: string, expiryDate: string, notes: string): Promise<{
+    upload(req: any, file: Express.Multer.File, contractType: string, startDate: string, expiryDate: string, notes: string, teacherSalaryPercent: string): Promise<{
         success: boolean;
         data: {
             id: string;

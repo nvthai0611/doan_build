@@ -13,7 +13,8 @@ export class EmailNotificationService {
     @InjectQueue('class_assign_teacher') private readonly classAssignTeacherQueue: Queue,
     @InjectQueue('enrollment_email') private readonly enrollmentEmailQueue: Queue,
     @InjectQueue('class_status_change_email') private readonly classStatusChangeEmailQueue: Queue,
-    @InjectQueue('class_request_email') private readonly classRequestEmailQueue: Queue
+    @InjectQueue('class_request_email') private readonly classRequestEmailQueue: Queue,
+    @InjectQueue('session_change_email') private readonly sessionChangeEmailQueue: Queue
   ) {}
 
 
@@ -205,6 +206,7 @@ export class EmailNotificationService {
               priority: 1, // Priority cao hơn cho email khẩn cấp
               delay: 2000, // Delay 2s giữa các email
               attempts: 3,
+              timeout: 60000, // 60 giây timeout cho mỗi job
               backoff: {
                 type: 'exponential',
                 delay: 2000
@@ -317,7 +319,7 @@ export class EmailNotificationService {
     teacherCode: string
   ) {
     try {
-      console.log(`📧 Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
+      console.log(`Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
 
       await this.teacherAccountQueue.add('send_teacher_account_email', {
         to: email,
@@ -329,7 +331,7 @@ export class EmailNotificationService {
         teacherId,
       });
 
-      console.log(`✅ Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
+      console.log(`Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
 
       return {
         success: true,
@@ -338,7 +340,7 @@ export class EmailNotificationService {
         email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email tài khoản: ${error.message}`);
+      console.error(`Lỗi khi thêm job email tài khoản: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email tài khoản: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -382,7 +384,6 @@ export class EmailNotificationService {
         throw new HttpException('Không tìm thấy giáo viên', HttpStatus.NOT_FOUND);
       }
 
-      console.log(`📧 Thêm job gửi email phân công lớp cho giáo viên: ${teacher.user.fullName}`);
 
       await this.classAssignTeacherQueue.add('send_class_assign_teacher_email', {
         to: teacher.user.email,
@@ -395,7 +396,7 @@ export class EmailNotificationService {
         schedule: classData.recurringSchedule,
       });
 
-      console.log(`✅ Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
+      console.log(`Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
 
       return {
         success: true,
@@ -405,7 +406,7 @@ export class EmailNotificationService {
         email: teacher.user.email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email phân công lớp: ${error.message}`);
+      console.error(`Lỗi khi thêm job email phân công lớp: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email phân công lớp: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -451,7 +452,7 @@ export class EmailNotificationService {
         throw new HttpException('Không tìm thấy giáo viên', HttpStatus.NOT_FOUND);
       }
 
-      console.log(`📧 Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
+      console.log(`Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
 
       await this.classAssignTeacherQueue.add('send_class_remove_teacher_email', {
         to: teacher.user.email,
@@ -472,7 +473,7 @@ export class EmailNotificationService {
         email: teacher.user.email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
+      console.error(`Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email hủy phân công lớp: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -602,6 +603,7 @@ export class EmailNotificationService {
               priority: 2,
               delay: 1000, // Delay 1s giữa các email
               attempts: 3,
+              timeout: 60000, // 60 giây timeout cho mỗi job
               backoff: {
                 type: 'exponential',
                 delay: 2000
@@ -827,6 +829,7 @@ export class EmailNotificationService {
               priority: 2,
               delay: 500,
               attempts: 3,
+              timeout: 60000, // 60 giây timeout cho mỗi job
               backoff: {
                 type: 'exponential',
                 delay: 2000
@@ -928,6 +931,7 @@ export class EmailNotificationService {
         {
           priority: 2,
           attempts: 3,
+          timeout: 60000, // 60 giây timeout cho mỗi job
           backoff: {
             type: 'exponential',
             delay: 2000
@@ -988,6 +992,7 @@ export class EmailNotificationService {
         {
           priority: 2,
           attempts: 3,
+          timeout: 60000, // 60 giây timeout cho mỗi job
           backoff: {
             type: 'exponential',
             delay: 2000
@@ -1049,6 +1054,7 @@ export class EmailNotificationService {
         {
           priority: 2,
           attempts: 3,
+          timeout: 60000, // 60 giây timeout cho mỗi job
           backoff: {
             type: 'exponential',
             delay: 2000,
@@ -1105,6 +1111,7 @@ export class EmailNotificationService {
         {
           priority: 2,
           attempts: 3,
+          timeout: 60000, // 60 giây timeout cho mỗi job
           backoff: {
             type: 'exponential',
             delay: 2000,
@@ -1127,6 +1134,178 @@ export class EmailNotificationService {
         success: false,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Gửi email thông báo thay đổi lịch buổi học cho phụ huynh
+   * @param sessionId ID của buổi học
+   * @param type Loại thay đổi: 'rescheduled' (đổi lịch) hoặc 'cancelled' (hủy)
+   * @param originalDate Ngày cũ (YYYY-MM-DD)
+   * @param originalTime Giờ cũ (HH:mm - HH:mm)
+   * @param newDate Ngày mới (YYYY-MM-DD) - chỉ có khi type = 'rescheduled'
+   * @param newTime Giờ mới (HH:mm - HH:mm) - chỉ có khi type = 'rescheduled'
+   * @param reason Lý do thay đổi (optional)
+   */
+  async sendSessionChangeEmail(
+    sessionId: string,
+    type: 'rescheduled' | 'cancelled',
+    originalDate: string,
+    originalTime: string,
+    newDate?: string,
+    newTime?: string,
+    reason?: string
+  ) {
+    try {
+      // Lấy thông tin buổi học và lớp
+      const session = await this.prisma.classSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          class: {
+            include: {
+              subject: { select: { name: true } },
+              teacher: {
+                include: {
+                  user: { select: { fullName: true } }
+                }
+              },
+              enrollments: {
+                where: { 
+                  status: { in: ['studying', 'not_been_updated'] } // Lấy các enrollment đang học hoặc chưa cập nhật
+                },
+                include: {
+                  student: {
+                    include: {
+                      user: { select: { fullName: true, email: true } },
+                      parent: {
+                        include: {
+                          user: { select: { fullName: true, email: true } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!session || !session.class) {
+        throw new HttpException('Không tìm thấy buổi học', HttpStatus.NOT_FOUND);
+      }
+
+      const className = session.class.name;
+      const subjectName = session.class.subject?.name || '';
+      const teacherName = session.class.teacher?.user?.fullName || '';
+
+      console.log(`[SessionChangeEmail] Lấy thông tin cho session ${sessionId}`);
+      console.log(`  - Lớp: ${className}`);
+      console.log(`  - Số enrollments: ${session.class.enrollments?.length || 0}`);
+
+      // Lấy danh sách phụ huynh (group by email để tránh gửi trùng)
+      const parentEmailMap = new Map<string, {
+        parentName: string;
+        studentNames: string[];
+      }>();
+
+      for (const enrollment of session.class.enrollments || []) {
+        const student = enrollment.student;
+        if (!student) {
+          console.log(`  - Enrollment: Không có student`);
+          continue;
+        }
+
+        const parent = student.parent;
+        if (!parent) {
+          console.log(`  - Student: Không có parent`);
+          continue;
+        }
+
+        const parentUser = parent.user;
+        if (!parentUser) {
+          console.log(`  - Parent: Không có user`);
+          continue;
+        }
+
+        if (!parentUser.email) {
+          console.log(`  - Parent user: Không có email`);
+          continue;
+        }
+
+        const studentName = student.user?.fullName || '';
+        if (parentEmailMap.has(parentUser.email)) {
+          const existing = parentEmailMap.get(parentUser.email)!;
+          existing.studentNames.push(studentName);
+        } else {
+          parentEmailMap.set(parentUser.email, {
+            parentName: parentUser.fullName,
+            studentNames: [studentName]
+          });
+        }
+      }
+
+      console.log(`  - Tổng số phụ huynh có email: ${parentEmailMap.size}`);
+
+      // Nếu không có phụ huynh nào, log và return
+      if (parentEmailMap.size === 0) {
+        console.warn(`Không tìm thấy phụ huynh nào có email cho session ${sessionId}`);
+        return {
+          success: true,
+          message: 'Không có phụ huynh nào để gửi email',
+          sentCount: 0,
+        };
+      }
+
+      // Gửi email cho từng phụ huynh
+      const emailJobs = Array.from(parentEmailMap.entries()).map(([email, data]) => {
+        return this.sessionChangeEmailQueue.add(
+          'send_session_change_notification',
+          {
+            to: email,
+            type,
+            parentName: data.parentName,
+            studentNames: data.studentNames,
+            className,
+            subjectName,
+            teacherName,
+            originalDate,
+            originalTime,
+            newDate: newDate || '',
+            newTime: newTime || '',
+            reason: reason || '',
+            sessionId,
+            classId: session.classId
+          },
+          {
+            priority: 1,
+            attempts: 3,
+            timeout: 60000, // 60 giây timeout cho mỗi job
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+            removeOnComplete: 10,
+            removeOnFail: 5,
+          }
+        );
+      });
+
+      await Promise.all(emailJobs);
+
+      console.log(`Đã thêm ${emailJobs.length} job email thông báo thay đổi lịch vào queue cho session ${sessionId}`);
+
+      return {
+        success: true,
+        message: 'Email jobs đã được thêm vào queue',
+        sentCount: emailJobs.length,
+      };
+    } catch (error: any) {
+      console.error(`Lỗi khi gửi email thông báo thay đổi lịch: ${error.message}`);
+      throw new HttpException(
+        `Lỗi khi gửi email: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 }

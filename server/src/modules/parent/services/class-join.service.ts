@@ -304,204 +304,284 @@ export class ClassJoinService {
     }
 
     // Bắt buộc phải có contractUploadId
-    if (!dto.contractUploadId) {
-      throw new HttpException(
-        { success: false, message: 'Vui lòng chọn hợp đồng cam kết học tập' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // if (!dto.contractUploadId) {
+    //   throw new HttpException(
+    //     { success: false, message: 'Vui lòng chọn hợp đồng cam kết học tập' },
+    //     HttpStatus.BAD_REQUEST,
+    //   );
+    // }
 
-    // Validate contractUploadId: kiểm tra hợp đồng có tồn tại, thuộc về student, có môn học của lớp và chưa hết hạn
-    const contractUpload = await this.prisma.contractUpload.findUnique({
-      where: { id: dto.contractUploadId },
-      include: {
-        student: {
-          select: {
-            id: true,
-            parentId: true,
-          },
-        },
-      },
-    });
-
-    if (!contractUpload) {
-      throw new HttpException(
-        { success: false, message: 'Không tìm thấy hợp đồng cam kết' },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    // Kiểm tra hợp đồng thuộc về student này
-    if (contractUpload.studentId !== dto.studentId) {
-      throw new HttpException(
-        { success: false, message: 'Hợp đồng không thuộc về học sinh này' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra hợp đồng thuộc về parent này
-    if (contractUpload.student?.parentId !== parent.id) {
-      throw new HttpException(
-        { success: false, message: 'Bạn không có quyền sử dụng hợp đồng này' },
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    // Lấy subject của lớp
-    const classSubject = await this.prisma.class.findUnique({
-      where: { id: dto.classId },
-      select: {
-        subjectId: true,
-      },
-    });
-
-    if (!classSubject?.subjectId) {
-      throw new HttpException(
-        { success: false, message: 'Lớp học không có môn học' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra hợp đồng có môn học của lớp không
-    if (!contractUpload.subjectIds || !contractUpload.subjectIds.includes(classSubject.subjectId)) {
-      throw new HttpException(
-        { success: false, message: 'Hợp đồng cam kết không bao gồm môn học của lớp này' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra hợp đồng chưa hết hạn
-    const now = new Date();
-    if (contractUpload.expiredAt && contractUpload.expiredAt < now) {
-      throw new HttpException(
-        { success: false, message: 'Hợp đồng cam kết đã hết hạn. Vui lòng upload hợp đồng mới' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra học sinh đã enrolled vào lớp này chưa
-    const existingEnrollment = await this.prisma.enrollment.findFirst({
-      where: {
-        studentId: dto.studentId,
-        classId: dto.classId,
-        status: { in: ['studying', 'not_been_updated'] },
-      },
-    });
-
-    if (existingEnrollment) {
-      throw new HttpException(
-        { success: false, message: 'Học sinh đã đăng ký lớp học này rồi' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra đã có request pending chưa
-    const existingRequest = await this.prisma.studentClassRequest.findFirst({
-      where: {
-        studentId: dto.studentId,
-        classId: dto.classId,
-        status: 'pending',
-      },
-    });
-
-    if (existingRequest) {
-      throw new HttpException(
-        { success: false, message: 'Đã có yêu cầu tham gia đang chờ xử lý' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Kiểm tra trùng lịch học với các lớp đã đăng ký
-    const scheduleConflict = await this.checkScheduleConflict(
-      dto.studentId,
-      dto.classId,
-      classData.recurringSchedule,
-    );
-
-    if (scheduleConflict.hasConflict) {
-      throw new HttpException(
-        {
-          success: false,
-          message: scheduleConflict.message,
-          conflictDetails: scheduleConflict.conflictDetails,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Tạo request - lưu cả commitmentImageUrl để backward compatible với code cũ
-    const request = await this.prisma.studentClassRequest.create({
-      data: {
-        studentId: dto.studentId,
-        classId: dto.classId,
-        message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
-        contractUploadId: dto.contractUploadId,
-        commitmentImageUrl: contractUpload.uploadedImageUrl, // Lưu URL ảnh hợp đồng để hiển thị
-        status: 'pending',
-      },
-      include: {
-        student: {
+    // Nếu có contractUploadId thì mới tiến hành kiểm tra
+    if (dto.contractUploadId) {
+      // Validate contractUploadId: kiểm tra hợp đồng có tồn tại, thuộc về student, có môn học của lớp và chưa hết hạn
+      let contractUpload: any = null;
+      if (dto.contractUploadId) {
+        contractUpload = await this.prisma.contractUpload.findUnique({
+          where: { id: dto.contractUploadId },
           include: {
-            user: {
+            student: {
               select: {
-                fullName: true,
-                email: true,
+                id: true,
+                parentId: true,
               },
             },
           },
-        },
-        class: {
-          include: {
-            subject: true,
-            teacher: {
-              include: {
-                user: true,
-              },
-            },
-          },
-        },
-      },
-    });
+        });
 
-    // Tạo alert thông báo cho center owner/manager
-    try {
-      await this.alertService.createStudentClassRequestAlert({
-        id: request.id,
-        studentId: request.student.id,
-        studentName: request.student.user.fullName,
-        classId: request.class.id,
-        className: request.class.name,
-        subjectName: request.class.subject?.name || 'N/A',
-        teacherId: request.class.teacher?.id,
-        teacherName: request.class.teacher?.user?.fullName,
+        if (!contractUpload) {
+          throw new HttpException(
+            { success: false, message: 'Không tìm thấy hợp đồng cam kết' },
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        // Kiểm tra hợp đồng thuộc về student này
+        if (contractUpload.studentId !== dto.studentId) {
+          throw new HttpException(
+            { success: false, message: 'Hợp đồng không thuộc về học sinh này' },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Kiểm tra hợp đồng thuộc về parent này
+        if (contractUpload.student?.parentId !== parent.id) {
+          throw new HttpException(
+            { success: false, message: 'Bạn không có quyền sử dụng hợp đồng này' },
+            HttpStatus.FORBIDDEN,
+          );
+        }
+
+        // Lấy subject của lớp
+        const classSubject = await this.prisma.class.findUnique({
+          where: { id: dto.classId },
+          select: {
+            subjectId: true,
+          },
+        });
+
+        if (!classSubject?.subjectId) {
+          throw new HttpException(
+            { success: false, message: 'Lớp học không có môn học' },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Kiểm tra hợp đồng có môn học của lớp không
+        if (!contractUpload.subjectIds || !contractUpload.subjectIds.includes(classSubject.subjectId)) {
+          throw new HttpException(
+            { success: false, message: 'Hợp đồng cam kết không bao gồm môn học của lớp này' },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Kiểm tra hợp đồng chưa hết hạn
+        const now = new Date();
+        if (contractUpload.expiredAt && contractUpload.expiredAt < now) {
+          throw new HttpException(
+            { success: false, message: 'Hợp đồng cam kết đã hết hạn. Vui lòng upload hợp đồng mới' },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      // Kiểm tra học sinh đã enrolled vào lớp này chưa
+      const existingEnrollment = await this.prisma.enrollment.findFirst({
+        where: {
+          studentId: dto.studentId,
+          classId: dto.classId,
+          status: { in: ['studying', 'not_been_updated'] },
+        },
       });
-    } catch (error) {
-      // Log error nhưng không block request
-      console.error('Failed to create alert for student class request:', error);
-    }
 
-    return {
-      success: true,
-      data: {
-        id: request.id,
-        studentId: request.studentId,
-        classId: request.classId,
-        message: request.message,
-        status: request.status,
-        createdAt: request.createdAt.toISOString(),
-        student: {
-          id: request.student.id,
-          fullName: request.student.user.fullName,
-          email: request.student.user.email,
+      if (existingEnrollment) {
+        throw new HttpException(
+          { success: false, message: 'Học sinh đã đăng ký lớp học này rồi' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Kiểm tra đã có request pending chưa
+      const existingRequest = await this.prisma.studentClassRequest.findFirst({
+        where: {
+          studentId: dto.studentId,
+          classId: dto.classId,
+          status: 'pending',
         },
-        class: {
-          id: request.class.id,
-          name: request.class.name,
-          subject: request.class.subject?.name,
+      });
+
+      if (existingRequest) {
+        throw new HttpException(
+          { success: false, message: 'Đã có yêu cầu tham gia đang chờ xử lý' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Kiểm tra trùng lịch học với các lớp đã đăng ký
+      const scheduleConflict = await this.checkScheduleConflict(
+        dto.studentId,
+        dto.classId,
+        classData.recurringSchedule,
+      );
+
+      if (scheduleConflict.hasConflict) {
+        throw new HttpException(
+          {
+            success: false,
+            message: scheduleConflict.message,
+            conflictDetails: scheduleConflict.conflictDetails,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Tạo request - lưu cả commitmentImageUrl nếu có hợp đồng
+      const request = await this.prisma.studentClassRequest.create({
+        data: {
+          studentId: dto.studentId,
+          classId: dto.classId,
+          message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
+          ...(dto.contractUploadId && {
+            contractUploadId: dto.contractUploadId,
+            commitmentImageUrl: contractUpload?.uploadedImageUrl,
+          }),
+          status: 'pending',
         },
-      },
-      message: 'Gửi yêu cầu tham gia lớp học thành công. Vui lòng đợi giáo viên/quản lý phê duyệt.',
-    };
+        include: {
+          student: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          class: {
+            include: {
+              subject: true,
+              teacher: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Tạo alert thông báo cho center owner/manager
+      try {
+        await this.alertService.createStudentClassRequestAlert({
+          id: request.id,
+          studentId: request.student.id,
+          studentName: request.student.user.fullName,
+          classId: request.class.id,
+          className: request.class.name,
+          subjectName: request.class.subject?.name || 'N/A',
+          teacherId: request.class.teacher?.id,
+          teacherName: request.class.teacher?.user?.fullName,
+        });
+      } catch (error) {
+        // Log error nhưng không block request
+        console.error('Failed to create alert for student class request:', error);
+      }
+
+      return {
+        success: true,
+        data: {
+          id: request.id,
+          studentId: request.studentId,
+          classId: request.classId,
+          message: request.message,
+          status: request.status,
+          createdAt: request.createdAt.toISOString(),
+          student: {
+            id: request.student.id,
+            fullName: request.student.user.fullName,
+            email: request.student.user.email,
+          },
+          class: {
+            id: request.class.id,
+            name: request.class.name,
+            subject: request.class.subject?.name,
+          },
+        },
+        message: 'Gửi yêu cầu tham gia lớp học thành công. Vui lòng đợi giáo viên/quản lý phê duyệt.',
+      };
+    } else {
+      // Nếu không có contractUploadId, tạo request mà không có hợp đồng
+      const request = await this.prisma.studentClassRequest.create({
+        data: {
+          studentId: dto.studentId,
+          classId: dto.classId,
+          message: dto.message || `Phụ huynh đăng ký lớp học cho ${student.user.fullName}`,
+          status: 'pending',
+        },
+        include: {
+          student: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          class: {
+            include: {
+              subject: true,
+              teacher: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Tạo alert thông báo cho center owner/manager
+      try {
+        await this.alertService.createStudentClassRequestAlert({
+          id: request.id,
+          studentId: request.student.id,
+          studentName: request.student.user.fullName,
+          classId: request.class.id,
+          className: request.class.name,
+          subjectName: request.class.subject?.name || 'N/A',
+          teacherId: request.class.teacher?.id,
+          teacherName: request.class.teacher?.user?.fullName,
+        });
+      } catch (error) {
+        // Log error nhưng không block request
+        console.error('Failed to create alert for student class request:', error);
+      }
+
+      return {
+        success: true,
+        data: {
+          id: request.id,
+          studentId: request.studentId,
+          classId: request.classId,
+          message: request.message,
+          status: request.status,
+          createdAt: request.createdAt.toISOString(),
+          student: {
+            id: request.student.id,
+            fullName: request.student.user.fullName,
+            email: request.student.user.email,
+          },
+          class: {
+            id: request.class.id,
+            name: request.class.name,
+            subject: request.class.subject?.name,
+          },
+        },
+        message: 'Gửi yêu cầu tham gia lớp học thành công. Vui lòng đợi giáo viên/quản lý phê duyệt.',
+      };
+    }
   }
 
   /**
@@ -841,6 +921,92 @@ export class ClassJoinService {
 
     const normalizedDay = this.normalizeDayOfWeek(day);
     return dayNames[normalizedDay] || day;
+  }
+
+  /**
+   * Hủy yêu cầu tham gia lớp học
+   */
+  async cancelClassRequest(userId: string, requestId: string) {
+    // Verify parent owns this request
+    const parent = await this.prisma.parent.findUnique({
+      where: { userId },
+      include: {
+        students: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new HttpException(
+        { success: false, message: 'Không tìm thấy thông tin phụ huynh' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const studentIds = parent.students.map((s) => s.id);
+
+    // Find the request
+    const request = await this.prisma.studentClassRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+        class: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new HttpException(
+        { success: false, message: 'Không tìm thấy yêu cầu' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Verify this request belongs to this parent's student
+    if (!studentIds.includes(request.studentId)) {
+      throw new HttpException(
+        { success: false, message: 'Bạn không có quyền hủy yêu cầu này' },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Only allow canceling pending or under_review requests
+    if (!['pending', 'under_review'].includes(request.status)) {
+      throw new HttpException(
+        {
+          success: false,
+          message: `Không thể hủy yêu cầu có trạng thái "${request.status}"`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Update request status to cancelled
+    const updatedRequest = await this.prisma.studentClassRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'cancelled',
+        processedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: `Đã hủy yêu cầu tham gia lớp "${request.class.name}" cho ${request.student.user?.fullName || 'học sinh'}`,
+      data: updatedRequest,
+    };
   }
 }
 

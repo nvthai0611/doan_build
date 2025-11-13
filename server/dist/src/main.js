@@ -7,6 +7,7 @@ const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const response_interceptor_1 = require("./common/interceptors/response.interceptor");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
+const email_util_1 = require("./utils/email.util");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const API_PREFIX = 'api/v1';
@@ -79,6 +80,10 @@ async function bootstrap() {
         .build();
     const documentFactory = () => swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup(`${API_PREFIX}/docs`, app, documentFactory);
+    if (process.env.SMTP_USERNAME && process.env.SMTP_PASSWORD) {
+        (0, email_util_1.verifyEmailConnection)().catch(() => {
+        });
+    }
     await app.listen(process.env.PORT ?? 9999);
 }
 bootstrap();

@@ -18,6 +18,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const common_2 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
+const jwt_auth_guard_1 = require("../../../common/guards/jwt-auth.guard");
 const class_join_service_1 = require("../services/class-join.service");
 const join_class_dto_1 = require("../dto/request/join-class.dto");
 let ClassJoinController = class ClassJoinController {
@@ -85,9 +86,30 @@ let ClassJoinController = class ClassJoinController {
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    async cancelRequest(req, requestId) {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                throw new common_1.HttpException({ success: false, message: 'Không tìm thấy thông tin người dùng' }, common_1.HttpStatus.UNAUTHORIZED);
+            }
+            return await this.classJoinService.cancelClassRequest(userId, requestId);
+        }
+        catch (error) {
+            if (error instanceof common_1.HttpException) {
+                throw error;
+            }
+            throw new common_1.HttpException({
+                success: false,
+                message: 'Có lỗi xảy ra khi hủy yêu cầu',
+                error: error.message,
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 };
 exports.ClassJoinController = ClassJoinController;
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Post)('get-class-info'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy thông tin lớp học từ classCode hoặc link' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Lấy thông tin lớp học thành công' }),
@@ -100,6 +122,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClassJoinController.prototype, "getClassInfo", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Post)('request-join'),
     (0, common_2.UseInterceptors)((0, platform_express_1.AnyFilesInterceptor)()),
     (0, swagger_1.ApiOperation)({ summary: 'Gửi yêu cầu tham gia lớp học cho con' }),
@@ -113,11 +137,11 @@ __decorate([
             properties: {
                 classId: { type: 'string', format: 'uuid' },
                 studentId: { type: 'string', format: 'uuid' },
-                contractUploadId: { type: 'string', format: 'uuid', description: 'ID của hợp đồng đã upload (BẮT BUỘC)' },
+                contractUploadId: { type: 'string', format: 'uuid', description: 'ID của hợp đồng đã upload (KHÔNG BẮT BUỘC)' },
                 password: { type: 'string' },
                 message: { type: 'string' },
             },
-            required: ['classId', 'studentId', 'contractUploadId']
+            required: ['classId', 'studentId']
         },
     }),
     openapi.ApiResponse({ status: 201 }),
@@ -128,6 +152,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClassJoinController.prototype, "requestJoinClass", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Get)('my-requests'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách yêu cầu tham gia lớp của parent' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Lấy danh sách yêu cầu thành công' }),
@@ -140,6 +166,21 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, Number, Number]),
     __metadata("design:returntype", Promise)
 ], ClassJoinController.prototype, "getMyRequests", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Patch)('cancel-request/:requestId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Hủy yêu cầu tham gia lớp học' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Hủy yêu cầu thành công' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Không tìm thấy yêu cầu' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Không có quyền hủy yêu cầu này' }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('requestId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], ClassJoinController.prototype, "cancelRequest", null);
 exports.ClassJoinController = ClassJoinController = __decorate([
     (0, swagger_1.ApiTags)('Parent - Class Join'),
     (0, common_1.Controller)('class-join'),

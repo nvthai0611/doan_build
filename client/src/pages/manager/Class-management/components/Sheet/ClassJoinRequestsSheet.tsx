@@ -397,6 +397,13 @@ export const ClassJoinRequestsSheet = ({
                               <div className="text-xs text-gray-500 truncate">
                                 {request.parent?.fullName || 'Phụ huynh'} • {request.parent?.email || 'N/A'} • {request.parent?.phone || 'N/A'}
                               </div>
+                              {!request?.commitmentImageUrl && (
+                                <div className="mt-1">
+                                  <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700">
+                                    Chưa có cam kết
+                                  </Badge>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
@@ -422,13 +429,17 @@ export const ClassJoinRequestsSheet = ({
                         {!!request.message && (
                           <div className="text-xs bg-blue-50 border-l-2 border-blue-400 rounded p-2 mt-1">{request?.message}</div>
                         )}
-                        {request?.commitmentImageUrl && (
+                        {request?.commitmentImageUrl ? (
                           <img
                             src={request?.commitmentImageUrl}
                             className="rounded max-h-[180px] cursor-zoom-in"
                             alt="Bản cam kết"
                             onClick={e => { e.stopPropagation(); window.open(request.commitmentImageUrl, '_blank', 'noopener'); }}
                           />
+                        ) : (
+                          <div className="text-xs bg-amber-50 border-l-2 border-amber-400 rounded p-2 mt-1 text-amber-800">
+                            Chưa có bản cam kết
+                          </div>
                         )}
                       </div>
                     </Popover.Content>

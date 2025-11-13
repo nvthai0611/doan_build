@@ -49,19 +49,19 @@ let StudentLeaveRequestController = class StudentLeaveRequestController {
             }, error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async getAffectedSessions(query) {
+    async getSessionsByClass(query) {
         try {
-            const result = await this.studentLeaveRequestService.getAffectedSessions(query);
+            const result = await this.studentLeaveRequestService.getSessionsByClass(query);
             return {
                 success: true,
                 data: result,
-                message: 'Lấy danh sách buổi học bị ảnh hưởng thành công',
+                message: 'Lấy danh sách buổi học thành công',
             };
         }
         catch (error) {
             throw new common_1.HttpException({
                 success: false,
-                message: 'Có lỗi xảy ra khi lấy danh sách buổi học bị ảnh hưởng',
+                message: 'Có lỗi xảy ra khi lấy danh sách buổi học',
                 error: error.message,
             }, error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -176,26 +176,17 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StudentLeaveRequestController.prototype, "getStudentLeaveRequests", null);
 __decorate([
-    (0, common_1.Get)('affected-sessions'),
-    (0, swagger_1.ApiOperation)({ summary: 'Lấy các buổi học bị ảnh hưởng trong khoảng thời gian nghỉ (tất cả lớp của học sinh)' }),
+    (0, common_1.Get)('sessions-by-class'),
+    (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách buổi học của 1 lớp theo học sinh (để chọn xin nghỉ)' }),
     (0, swagger_1.ApiQuery)({ name: 'studentId', required: true, description: 'ID học sinh' }),
-    (0, swagger_1.ApiQuery)({
-        name: 'startDate',
-        required: true,
-        description: 'Ngày bắt đầu (YYYY-MM-DD)',
-    }),
-    (0, swagger_1.ApiQuery)({
-        name: 'endDate',
-        required: true,
-        description: 'Ngày kết thúc (YYYY-MM-DD)',
-    }),
+    (0, swagger_1.ApiQuery)({ name: 'classId', required: true, description: 'ID lớp học' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Lấy danh sách buổi học thành công' }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [student_leave_request_dto_1.GetAffectedSessionsQueryDto]),
+    __metadata("design:paramtypes", [student_leave_request_dto_1.GetSessionsByClassQueryDto]),
     __metadata("design:returntype", Promise)
-], StudentLeaveRequestController.prototype, "getAffectedSessions", null);
+], StudentLeaveRequestController.prototype, "getSessionsByClass", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Lấy chi tiết đơn nghỉ học' }),

@@ -1,83 +1,67 @@
-import { ClassInformationService } from '../services/class-information.service';
+import { StudentLeaveRequestService } from '../services/student-leave-request.service';
 export declare class ChildClassesController {
-    private readonly classInformationService;
-    constructor(classInformationService: ClassInformationService);
+    private readonly studentLeaveRequestService;
+    constructor(studentLeaveRequestService: StudentLeaveRequestService);
     getAllChildrenClasses(req: any): Promise<{
         success: boolean;
         data: {
             id: string;
             name: string;
-            classCode: string;
-            status: string;
-            progress: number;
-            currentStudents: any;
-            maxStudents: number;
-            description: string;
+            subject: {
+                name: string;
+                description: string | null;
+                id: string;
+                code: string;
+            };
             teacher: {
+                user: {
+                    fullName: string;
+                    email: string;
+                };
+            } & {
+                createdAt: Date;
+                id: string;
+                updatedAt: Date;
+                userId: string;
+                schoolId: string | null;
+                teacherCode: string;
+                subjects: string[];
+            };
+            room: {
+                name: string;
+                createdAt: Date;
+                id: string;
+                isActive: boolean;
+                capacity: number | null;
+                equipment: import("@prisma/client/runtime/library").JsonValue | null;
+            };
+            grade: {
+                name: string;
+                description: string | null;
+                level: number;
+                id: string;
+                isActive: boolean;
+            };
+            sessions: {
+                status: string;
+                id: string;
+                sessionDate: Date;
+                startTime: string;
+                endTime: string;
+            }[];
+            student: {
                 id: string;
                 user: {
                     fullName: string;
                     email: string;
                 };
             };
-            room: {
-                name: string;
-            };
-            subject: {
-                name: string;
-                code: string;
-            };
-            grade: {
-                name: string;
-                level: number;
-            };
-            schedule: any[];
-            startDate: Date;
-            endDate: any;
-            studentName: string;
-            enrolledAt: Date;
-            totalSessions: number;
-            completedSessions: number;
         }[];
         message: string;
     }>;
     getChildClasses(req: any, studentId: string): Promise<{
         success: boolean;
-        data: {
-            id: string;
-            name: string;
-            classCode: string;
-            status: string;
-            progress: number;
-            currentStudents: any;
-            maxStudents: number;
-            description: string;
-            teacher: {
-                id: string;
-                user: {
-                    fullName: string;
-                    email: string;
-                };
-            };
-            room: {
-                name: string;
-            };
-            subject: {
-                name: string;
-                code: string;
-            };
-            grade: {
-                name: string;
-                level: number;
-            };
-            schedule: any[];
-            startDate: Date;
-            endDate: any;
-            studentName: string;
-            enrolledAt: Date;
-            totalSessions: number;
-            completedSessions: number;
-        }[];
+        data: any;
         message: string;
     }>;
 }

@@ -27,7 +27,7 @@ __decorate([
 ], JoinClassByCodeDto.prototype, "codeOrLink", void 0);
 class RequestJoinClassDto {
     static _OPENAPI_METADATA_FACTORY() {
-        return { classId: { required: true, type: () => String }, studentId: { required: true, type: () => String }, contractUploadId: { required: true, type: () => String }, password: { required: false, type: () => String }, message: { required: false, type: () => String }, commitmentImageUrl: { required: false, type: () => String } };
+        return { classId: { required: true, type: () => String }, studentId: { required: true, type: () => String }, contractUploadId: { required: false, type: () => String }, password: { required: false, type: () => String }, message: { required: false, type: () => String }, commitmentImageUrl: { required: false, type: () => String } };
     }
 }
 exports.RequestJoinClassDto = RequestJoinClassDto;
@@ -44,9 +44,9 @@ __decorate([
     __metadata("design:type", String)
 ], RequestJoinClassDto.prototype, "studentId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Contract Upload ID (ID của hợp đồng đã upload trước) - BẮT BUỘC' }),
+    (0, swagger_1.ApiProperty)({ description: 'Contract Upload ID (ID của hợp đồng đã upload trước) - KHÔNG BẮT BUỘC', required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)('4', { message: 'Contract Upload ID không hợp lệ' }),
-    (0, class_validator_1.IsNotEmpty)({ message: 'Contract Upload ID không được để trống' }),
     __metadata("design:type", String)
 ], RequestJoinClassDto.prototype, "contractUploadId", void 0);
 __decorate([

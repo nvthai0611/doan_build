@@ -17,7 +17,7 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../../db/prisma.service");
 const bull_1 = require("@nestjs/bull");
 let EmailNotificationService = class EmailNotificationService {
-    constructor(prisma, emailNotificationQueue, teacherAccountQueue, classAssignTeacherQueue, enrollmentEmailQueue, classStatusChangeEmailQueue, classRequestEmailQueue) {
+    constructor(prisma, emailNotificationQueue, teacherAccountQueue, classAssignTeacherQueue, enrollmentEmailQueue, classStatusChangeEmailQueue, classRequestEmailQueue, sessionChangeEmailQueue) {
         this.prisma = prisma;
         this.emailNotificationQueue = emailNotificationQueue;
         this.teacherAccountQueue = teacherAccountQueue;
@@ -25,6 +25,7 @@ let EmailNotificationService = class EmailNotificationService {
         this.enrollmentEmailQueue = enrollmentEmailQueue;
         this.classStatusChangeEmailQueue = classStatusChangeEmailQueue;
         this.classRequestEmailQueue = classRequestEmailQueue;
+        this.sessionChangeEmailQueue = sessionChangeEmailQueue;
     }
     getStatusLabel(status) {
         const statusLabels = {
@@ -148,6 +149,7 @@ let EmailNotificationService = class EmailNotificationService {
                         priority: 1,
                         delay: 2000,
                         attempts: 3,
+                        timeout: 60000,
                         backoff: {
                             type: 'exponential',
                             delay: 2000
@@ -227,7 +229,7 @@ let EmailNotificationService = class EmailNotificationService {
     }
     async sendTeacherAccountEmail(teacherId, teacherName, username, email, password, teacherCode) {
         try {
-            console.log(`📧 Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
+            console.log(`Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
             await this.teacherAccountQueue.add('send_teacher_account_email', {
                 to: email,
                 teacherName,
@@ -237,7 +239,7 @@ let EmailNotificationService = class EmailNotificationService {
                 teacherCode,
                 teacherId,
             });
-            console.log(`✅ Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
+            console.log(`Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
             return {
                 success: true,
                 message: 'Email job đã được thêm vào queue',
@@ -246,7 +248,7 @@ let EmailNotificationService = class EmailNotificationService {
             };
         }
         catch (error) {
-            console.error(`❌ Lỗi khi thêm job email tài khoản: ${error.message}`);
+            console.error(`Lỗi khi thêm job email tài khoản: ${error.message}`);
             throw new common_1.HttpException(`Không thể gửi email tài khoản: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -275,7 +277,6 @@ let EmailNotificationService = class EmailNotificationService {
             if (!teacher) {
                 throw new common_1.HttpException('Không tìm thấy giáo viên', common_1.HttpStatus.NOT_FOUND);
             }
-            console.log(`📧 Thêm job gửi email phân công lớp cho giáo viên: ${teacher.user.fullName}`);
             await this.classAssignTeacherQueue.add('send_class_assign_teacher_email', {
                 to: teacher.user.email,
                 teacherId: teacher.id,
@@ -286,7 +287,7 @@ let EmailNotificationService = class EmailNotificationService {
                 startDate: classData.actualStartDate ? new Date(classData.actualStartDate).toLocaleDateString('vi-VN') : undefined,
                 schedule: classData.recurringSchedule,
             });
-            console.log(`✅ Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
+            console.log(`Đã thêm job gửi email phân công lớp vào queue cho: ${teacher.user.email}`);
             return {
                 success: true,
                 message: 'Email job đã được thêm vào queue',
@@ -296,7 +297,7 @@ let EmailNotificationService = class EmailNotificationService {
             };
         }
         catch (error) {
-            console.error(`❌ Lỗi khi thêm job email phân công lớp: ${error.message}`);
+            console.error(`Lỗi khi thêm job email phân công lớp: ${error.message}`);
             throw new common_1.HttpException(`Không thể gửi email phân công lớp: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -326,7 +327,7 @@ let EmailNotificationService = class EmailNotificationService {
             if (!teacher) {
                 throw new common_1.HttpException('Không tìm thấy giáo viên', common_1.HttpStatus.NOT_FOUND);
             }
-            console.log(`📧 Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
+            console.log(`Thêm job gửi email hủy phân công lớp cho giáo viên: ${teacher.user.fullName}`);
             await this.classAssignTeacherQueue.add('send_class_remove_teacher_email', {
                 to: teacher.user.email,
                 teacherId: teacher.id,
@@ -345,7 +346,7 @@ let EmailNotificationService = class EmailNotificationService {
             };
         }
         catch (error) {
-            console.error(`❌ Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
+            console.error(`Lỗi khi thêm job email hủy phân công lớp: ${error.message}`);
             throw new common_1.HttpException(`Không thể gửi email hủy phân công lớp: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -436,6 +437,7 @@ let EmailNotificationService = class EmailNotificationService {
                         priority: 2,
                         delay: 1000,
                         attempts: 3,
+                        timeout: 60000,
                         backoff: {
                             type: 'exponential',
                             delay: 2000
@@ -614,6 +616,7 @@ let EmailNotificationService = class EmailNotificationService {
                         priority: 2,
                         delay: 500,
                         attempts: 3,
+                        timeout: 60000,
                         backoff: {
                             type: 'exponential',
                             delay: 2000
@@ -683,6 +686,7 @@ let EmailNotificationService = class EmailNotificationService {
             }, {
                 priority: 2,
                 attempts: 3,
+                timeout: 60000,
                 backoff: {
                     type: 'exponential',
                     delay: 2000
@@ -722,6 +726,7 @@ let EmailNotificationService = class EmailNotificationService {
             }, {
                 priority: 2,
                 attempts: 3,
+                timeout: 60000,
                 backoff: {
                     type: 'exponential',
                     delay: 2000
@@ -754,6 +759,7 @@ let EmailNotificationService = class EmailNotificationService {
             }, {
                 priority: 2,
                 attempts: 3,
+                timeout: 60000,
                 backoff: {
                     type: 'exponential',
                     delay: 2000,
@@ -785,6 +791,7 @@ let EmailNotificationService = class EmailNotificationService {
             }, {
                 priority: 2,
                 attempts: 3,
+                timeout: 60000,
                 backoff: {
                     type: 'exponential',
                     delay: 2000,
@@ -807,6 +814,132 @@ let EmailNotificationService = class EmailNotificationService {
             };
         }
     }
+    async sendSessionChangeEmail(sessionId, type, originalDate, originalTime, newDate, newTime, reason) {
+        try {
+            const session = await this.prisma.classSession.findUnique({
+                where: { id: sessionId },
+                include: {
+                    class: {
+                        include: {
+                            subject: { select: { name: true } },
+                            teacher: {
+                                include: {
+                                    user: { select: { fullName: true } }
+                                }
+                            },
+                            enrollments: {
+                                where: {
+                                    status: { in: ['studying', 'not_been_updated'] }
+                                },
+                                include: {
+                                    student: {
+                                        include: {
+                                            user: { select: { fullName: true, email: true } },
+                                            parent: {
+                                                include: {
+                                                    user: { select: { fullName: true, email: true } }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!session || !session.class) {
+                throw new common_1.HttpException('Không tìm thấy buổi học', common_1.HttpStatus.NOT_FOUND);
+            }
+            const className = session.class.name;
+            const subjectName = session.class.subject?.name || '';
+            const teacherName = session.class.teacher?.user?.fullName || '';
+            console.log(`[SessionChangeEmail] Lấy thông tin cho session ${sessionId}`);
+            console.log(`  - Lớp: ${className}`);
+            console.log(`  - Số enrollments: ${session.class.enrollments?.length || 0}`);
+            const parentEmailMap = new Map();
+            for (const enrollment of session.class.enrollments || []) {
+                const student = enrollment.student;
+                if (!student) {
+                    console.log(`  - Enrollment: Không có student`);
+                    continue;
+                }
+                const parent = student.parent;
+                if (!parent) {
+                    console.log(`  - Student: Không có parent`);
+                    continue;
+                }
+                const parentUser = parent.user;
+                if (!parentUser) {
+                    console.log(`  - Parent: Không có user`);
+                    continue;
+                }
+                if (!parentUser.email) {
+                    console.log(`  - Parent user: Không có email`);
+                    continue;
+                }
+                const studentName = student.user?.fullName || '';
+                if (parentEmailMap.has(parentUser.email)) {
+                    const existing = parentEmailMap.get(parentUser.email);
+                    existing.studentNames.push(studentName);
+                }
+                else {
+                    parentEmailMap.set(parentUser.email, {
+                        parentName: parentUser.fullName,
+                        studentNames: [studentName]
+                    });
+                }
+            }
+            console.log(`  - Tổng số phụ huynh có email: ${parentEmailMap.size}`);
+            if (parentEmailMap.size === 0) {
+                console.warn(`Không tìm thấy phụ huynh nào có email cho session ${sessionId}`);
+                return {
+                    success: true,
+                    message: 'Không có phụ huynh nào để gửi email',
+                    sentCount: 0,
+                };
+            }
+            const emailJobs = Array.from(parentEmailMap.entries()).map(([email, data]) => {
+                return this.sessionChangeEmailQueue.add('send_session_change_notification', {
+                    to: email,
+                    type,
+                    parentName: data.parentName,
+                    studentNames: data.studentNames,
+                    className,
+                    subjectName,
+                    teacherName,
+                    originalDate,
+                    originalTime,
+                    newDate: newDate || '',
+                    newTime: newTime || '',
+                    reason: reason || '',
+                    sessionId,
+                    classId: session.classId
+                }, {
+                    priority: 1,
+                    attempts: 3,
+                    timeout: 60000,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 2000,
+                    },
+                    removeOnComplete: 10,
+                    removeOnFail: 5,
+                });
+            });
+            await Promise.all(emailJobs);
+            console.log(`Đã thêm ${emailJobs.length} job email thông báo thay đổi lịch vào queue cho session ${sessionId}`);
+            return {
+                success: true,
+                message: 'Email jobs đã được thêm vào queue',
+                sentCount: emailJobs.length,
+            };
+        }
+        catch (error) {
+            console.error(`Lỗi khi gửi email thông báo thay đổi lịch: ${error.message}`);
+            throw new common_1.HttpException(`Lỗi khi gửi email: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 };
 exports.EmailNotificationService = EmailNotificationService;
 exports.EmailNotificationService = EmailNotificationService = __decorate([
@@ -817,6 +950,7 @@ exports.EmailNotificationService = EmailNotificationService = __decorate([
     __param(4, (0, bull_1.InjectQueue)('enrollment_email')),
     __param(5, (0, bull_1.InjectQueue)('class_status_change_email')),
     __param(6, (0, bull_1.InjectQueue)('class_request_email')),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService, Object, Object, Object, Object, Object, Object])
+    __param(7, (0, bull_1.InjectQueue)('session_change_email')),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService, Object, Object, Object, Object, Object, Object, Object])
 ], EmailNotificationService);
 //# sourceMappingURL=email-notification.service.js.map

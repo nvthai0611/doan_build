@@ -41,7 +41,7 @@ let ContractsManageController = class ContractsManageController {
             throw new common_1.HttpException(error.message || 'Error', error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async upload(req, file, contractType, expiryDate, notes) {
+    async upload(req, file, contractType, startDate, expiryDate, notes, teacherSalaryPercent) {
         try {
             const userId = req.user?.userId;
             if (!userId) {
@@ -51,7 +51,11 @@ let ContractsManageController = class ContractsManageController {
             if (!teacher) {
                 throw new common_1.HttpException('Teacher not found', common_1.HttpStatus.UNAUTHORIZED);
             }
-            const data = await this.service.createForTeacher(teacher.id, file, contractType, expiryDate, notes);
+            const salaryPercent = parseFloat(teacherSalaryPercent);
+            if (isNaN(salaryPercent) || salaryPercent < 0 || salaryPercent > 100) {
+                throw new common_1.HttpException('teacherSalaryPercent must be between 0 and 100', common_1.HttpStatus.BAD_REQUEST);
+            }
+            const data = await this.service.createForTeacher(teacher.id, file, contractType, startDate, expiryDate, notes, salaryPercent);
             return { success: true, data };
         }
         catch (error) {
@@ -95,11 +99,13 @@ __decorate([
             type: 'object',
             properties: {
                 contractType: { type: 'string' },
+                startDate: { type: 'string', format: 'date' },
                 expiryDate: { type: 'string', format: 'date' },
                 notes: { type: 'string' },
+                teacherSalaryPercent: { type: 'number', description: '% lương giáo viên (0-100)' },
                 file: { type: 'string', format: 'binary' },
             },
-            required: ['file', 'expiryDate'],
+            required: ['file', 'startDate', 'expiryDate', 'teacherSalaryPercent'],
         },
     }),
     (0, swagger_1.ApiOperation)({ summary: 'Upload a contract file' }),
@@ -107,10 +113,12 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.UploadedFile)()),
     __param(2, (0, common_1.Body)('contractType')),
-    __param(3, (0, common_1.Body)('expiryDate')),
-    __param(4, (0, common_1.Body)('notes')),
+    __param(3, (0, common_1.Body)('startDate')),
+    __param(4, (0, common_1.Body)('expiryDate')),
+    __param(5, (0, common_1.Body)('notes')),
+    __param(6, (0, common_1.Body)('teacherSalaryPercent')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object, String, String, String]),
+    __metadata("design:paramtypes", [Object, Object, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ContractsManageController.prototype, "upload", null);
 __decorate([

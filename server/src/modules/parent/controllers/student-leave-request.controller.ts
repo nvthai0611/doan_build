@@ -19,7 +19,7 @@ import {
   CreateStudentLeaveRequestDto,
   UpdateStudentLeaveRequestDto,
   GetStudentLeaveRequestsQueryDto,
-  GetAffectedSessionsQueryDto,
+  GetSessionsByClassQueryDto,
 } from '../dto/student-leave-request/student-leave-request.dto';
 
 @ApiTags('Parent - Student Leave Requests')
@@ -89,35 +89,25 @@ export class StudentLeaveRequestController {
     }
   }
 
-  @Get('affected-sessions')
-  @ApiOperation({ summary: 'Lấy các buổi học bị ảnh hưởng trong khoảng thời gian nghỉ (tất cả lớp của học sinh)' })
+  @Get('sessions-by-class')
+  @ApiOperation({ summary: 'Lấy danh sách buổi học của 1 lớp theo học sinh (để chọn xin nghỉ)' })
   @ApiQuery({ name: 'studentId', required: true, description: 'ID học sinh' })
-  @ApiQuery({
-    name: 'startDate',
-    required: true,
-    description: 'Ngày bắt đầu (YYYY-MM-DD)',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    required: true,
-    description: 'Ngày kết thúc (YYYY-MM-DD)',
-  })
+  @ApiQuery({ name: 'classId', required: true, description: 'ID lớp học' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách buổi học thành công' })
-  async getAffectedSessions(@Query() query: GetAffectedSessionsQueryDto) {
+  async getSessionsByClass(@Query() query: GetSessionsByClassQueryDto) {
     try {
-      const result =
-        await this.studentLeaveRequestService.getAffectedSessions(query);
+      const result = await this.studentLeaveRequestService.getSessionsByClass(query);
 
       return {
         success: true,
         data: result,
-        message: 'Lấy danh sách buổi học bị ảnh hưởng thành công',
+        message: 'Lấy danh sách buổi học thành công',
       };
     } catch (error) {
       throw new HttpException(
         {
           success: false,
-          message: 'Có lỗi xảy ra khi lấy danh sách buổi học bị ảnh hưởng',
+          message: 'Có lỗi xảy ra khi lấy danh sách buổi học',
           error: error.message,
         },
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,

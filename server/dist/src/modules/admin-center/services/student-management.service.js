@@ -19,6 +19,7 @@ const cloudinary_service_1 = require("../../cloudinary/cloudinary.service");
 const STUDENT_USER_SELECT = {
     id: true,
     email: true,
+    username: true,
     fullName: true,
     phone: true,
     avatar: true,
@@ -68,7 +69,7 @@ let StudentManagementService = class StudentManagementService {
             school: student.school
         };
     }
-    async createStudent(createStudentData) {
+    async createStudent(createStudentData, context) {
         try {
             if (!(0, validate_util_1.checkId)(createStudentData.schoolId)) {
                 throw new common_1.HttpException('Invalid school ID', common_1.HttpStatus.BAD_REQUEST);
@@ -78,6 +79,25 @@ let StudentManagementService = class StudentManagementService {
             });
             if (!school) {
                 throw new common_1.HttpException('Trường học không tồn tại', common_1.HttpStatus.NOT_FOUND);
+            }
+            if (context?.createdByRole === 'parent') {
+                if (!context.parentUserId) {
+                    throw new common_1.HttpException('Thiếu thông tin người dùng', common_1.HttpStatus.UNAUTHORIZED);
+                }
+                const parent = await this.prisma.parent.findUnique({
+                    where: { userId: context.parentUserId },
+                    include: { user: { select: { username: true } } }
+                });
+                if (!parent) {
+                    throw new common_1.HttpException('Không tìm thấy phụ huynh', common_1.HttpStatus.NOT_FOUND);
+                }
+                const childCount = await this.prisma.student.count({ where: { parentId: parent.id } });
+                const generatedUsername = `${parent.user.username}_${childCount + 1}`;
+                createStudentData.username = generatedUsername;
+                createStudentData.parentId = parent.id;
+            }
+            if (!createStudentData.username) {
+                throw new common_1.HttpException('Username là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
             }
             const existingUser = await this.prisma.user.findUnique({
                 where: { username: createStudentData.username }

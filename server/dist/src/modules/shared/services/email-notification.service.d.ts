@@ -8,7 +8,8 @@ export declare class EmailNotificationService {
     private readonly enrollmentEmailQueue;
     private readonly classStatusChangeEmailQueue;
     private readonly classRequestEmailQueue;
-    constructor(prisma: PrismaService, emailNotificationQueue: Queue, teacherAccountQueue: Queue, classAssignTeacherQueue: Queue, enrollmentEmailQueue: Queue, classStatusChangeEmailQueue: Queue, classRequestEmailQueue: Queue);
+    private readonly sessionChangeEmailQueue;
+    constructor(prisma: PrismaService, emailNotificationQueue: Queue, teacherAccountQueue: Queue, classAssignTeacherQueue: Queue, enrollmentEmailQueue: Queue, classStatusChangeEmailQueue: Queue, classRequestEmailQueue: Queue, sessionChangeEmailQueue: Queue);
     private getStatusLabel;
     sendStudentAbsenceEmail(studentIds: string[], sessionId: string, teacherId: string): Promise<{
         success: boolean;
@@ -160,5 +161,10 @@ export declare class EmailNotificationService {
         error: any;
         message?: undefined;
         to?: undefined;
+    }>;
+    sendSessionChangeEmail(sessionId: string, type: 'rescheduled' | 'cancelled', originalDate: string, originalTime: string, newDate?: string, newTime?: string, reason?: string): Promise<{
+        success: boolean;
+        message: string;
+        sentCount: number;
     }>;
 }

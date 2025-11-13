@@ -18,6 +18,7 @@ export class ClassInformationService {
         },
       },
     });
+    console.log('[Parent][ClassInformationService] parent lookup', { parentUserId, studentId, hasParent: !!parent, studentCount: parent?.students?.length });
 
     if (!parent) {
       throw new HttpException(
@@ -37,10 +38,10 @@ export class ClassInformationService {
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
         studentId: studentId,
-        status: 'studying', // Chỉ lấy lớp đang học
+        status: { in: ['studying', 'approved'] },
         class: {
           status: {
-            in: ['ready', 'active'], // Bao gồm cả lớp ready và active
+            in: ['ready', 'active'],
           },
         },
       },
@@ -102,6 +103,66 @@ export class ClassInformationService {
         enrolledAt: 'desc',
       },
     });
+    console.log('[Parent][ClassInformationService] enrollments found:', enrollments.length);
+
+    // Get class IDs to fetch active transfers
+    const classIds = enrollments.map(e => e.class.id);
+    console.log('[Parent][ClassInformationService] classIds:', classIds);
+    
+    // Fetch active teacher transfers for all classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: classIds },
+        status: { in: ['approved', 'auto_created'] },
+        effectiveDate: { lte: today },
+        OR: [
+          { substituteEndDate: null },
+          { substituteEndDate: { gte: today } }
+        ]
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+    console.log('[Parent][ClassInformationService] activeTransfers count:', activeTransfers.length);
+
+    // Create map: classId -> active transfer
+    const transferMap = new Map();
+    activeTransfers.forEach(transfer => {
+      if (!transferMap.has(transfer.fromClassId)) {
+        transferMap.set(transfer.fromClassId, transfer);
+      }
+    });
+
+    // Helper to format date as YYYY-MM-DD in local timezone
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    };
 
     // Transform data to frontend format
     const classes = enrollments.map((enrollment) => {
@@ -137,6 +198,34 @@ export class ClassInformationService {
 
       const schedule = Array.from(scheduleMap.values());
 
+      // Get active transfer for this class from TeacherClassTransfer
+      const activeTransfer = transferMap.get(classData.id);
+
+      // Determine primary teacher (original teacher)
+      const activePrimaryTeacher = activeTransfer && activeTransfer.teacher
+        ? {
+            id: activeTransfer.teacher.id,
+            fullName: activeTransfer.teacher.user?.fullName || null,
+          }
+        : classData.teacher
+        ? {
+            id: classData.teacher.id,
+            fullName: classData.teacher.user?.fullName || null,
+          }
+        : null;
+
+      // Determine substitute teacher from transfer
+      const activeSubstituteTeacher = activeTransfer && activeTransfer.replacementTeacher
+        ? {
+            id: activeTransfer.replacementTeacher.id,
+            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+            until: activeTransfer.substituteEndDate
+              ? formatLocalDate(activeTransfer.substituteEndDate)
+              : null,
+          }
+        : null;
+
       return {
         id: classData.id,
         name: classData.name,
@@ -171,6 +260,8 @@ export class ClassInformationService {
         } : null,
 
         schedule: schedule,
+        activePrimaryTeacher: activePrimaryTeacher,
+        activeSubstituteTeacher: activeSubstituteTeacher,
 
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],
@@ -186,7 +277,161 @@ export class ClassInformationService {
       };
     });
 
-    return classes;
+    // Get pending class requests (StudentClassRequest)
+    const pendingRequests = await this.prisma.studentClassRequest.findMany({
+      where: {
+        studentId: studentId,
+        status: {
+          in: ['pending', 'under_review'], // Only show pending and under review requests
+        },
+      },
+      include: {
+        class: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            room: {
+              select: {
+                name: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
+            grade: {
+              select: {
+                name: true,
+                level: true,
+              },
+            },
+            sessions: {
+              select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+              },
+              orderBy: {
+                sessionDate: 'asc',
+              },
+            },
+          },
+        },
+        student: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Transform pending requests to similar format
+    const pendingClasses = pendingRequests.map((request) => {
+      const classData = request.class;
+      const totalSessions = classData.sessions.length;
+      const completedSessions = classData.sessions.filter(
+        (s) => s.status === 'completed',
+      ).length;
+      const progress =
+        totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+      // Get schedule from sessions
+      const scheduleMap = new Map();
+
+      classData.sessions.forEach((session) => {
+        const date = new Date(session.sessionDate);
+        const dayIndex = date.getDay();
+        const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+        const dayOfWeek = dayNames[dayIndex];
+        const key = `${dayOfWeek}-${session.startTime}-${session.endTime}`;
+
+        if (!scheduleMap.has(key)) {
+          scheduleMap.set(key, {
+            dayOfWeek: dayOfWeek,
+            startTime: session.startTime,
+            endTime: session.endTime,
+          });
+        }
+      });
+
+      const schedule = Array.from(scheduleMap.values());
+
+      return {
+        id: request.id, // ID của StudentClassRequest (để có thể cancel)
+        classId: classData.id, // ID của Class
+        name: classData.name,
+        classCode: classData.classCode || '',
+        status: classData.status,
+        progress: progress,
+        currentStudents: classData['currentStudents'] || 0,
+        maxStudents: classData['maxStudents'] || 0,
+        description: classData.description || '',
+
+        teacher: classData.teacher ? {
+          id: classData.teacher.id,
+          user: {
+            fullName: classData.teacher.user.fullName,
+            email: classData.teacher.user.email,
+          }
+        } : null,
+
+        room: classData.room ? {
+          name: classData.room.name,
+        } : null,
+
+        subject: classData.subject ? {
+          name: classData.subject.name,
+          code: classData.subject['code'],
+        } : null,
+
+        grade: classData.grade ? {
+          name: classData.grade.name,
+          level: classData.grade.level,
+        } : null,
+
+        schedule: schedule,
+
+        // Dates
+        startDate: classData.actualStartDate || classData['expectedStartDate'],
+        endDate: classData.actualEndDate || classData['expectedEndDate'],
+
+        // Student info
+        studentName: request.student.user.fullName,
+
+        // Request info
+        requestStatus: request.status,
+        requestedAt: request.createdAt,
+        requestMessage: request.message,
+
+        // Stats
+        totalSessions: totalSessions,
+        completedSessions: completedSessions,
+      };
+    });
+
+    return {
+      enrolledClasses: classes,
+      pendingRequests: pendingClasses,
+    };
   }
 
   /**
@@ -294,6 +539,63 @@ export class ClassInformationService {
       },
     });
 
+    // Get class IDs to fetch active transfers
+    const classIds = enrollments.map(e => e.class.id);
+    
+    // Fetch active teacher transfers for all classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+      where: {
+        fromClassId: { in: classIds },
+        status: { in: ['approved', 'auto_created'] },
+        effectiveDate: { lte: today },
+        OR: [
+          { substituteEndDate: null },
+          { substituteEndDate: { gte: today } }
+        ]
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        replacementTeacher: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        effectiveDate: 'desc',
+      },
+    });
+
+    // Create map: classId -> active transfer
+    const transferMap = new Map();
+    activeTransfers.forEach(transfer => {
+      if (!transferMap.has(transfer.fromClassId)) {
+        transferMap.set(transfer.fromClassId, transfer);
+      }
+    });
+
+    // Helper to format date as YYYY-MM-DD in local timezone
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    };
+
     // Transform data
     const classes = enrollments.map((enrollment) => {
       const classData = enrollment.class;
@@ -327,6 +629,34 @@ export class ClassInformationService {
       });
 
       const schedule = Array.from(scheduleMap.values());
+
+      // Get active transfer for this class from TeacherClassTransfer
+      const activeTransfer = transferMap.get(classData.id);
+
+      // Determine primary teacher (original teacher)
+      const activePrimaryTeacher = activeTransfer && activeTransfer.teacher
+        ? {
+            id: activeTransfer.teacher.id,
+            fullName: activeTransfer.teacher.user?.fullName || null,
+          }
+        : classData.teacher
+        ? {
+            id: classData.teacher.id,
+            fullName: classData.teacher.user?.fullName || null,
+          }
+        : null;
+
+      // Determine substitute teacher from transfer
+      const activeSubstituteTeacher = activeTransfer && activeTransfer.replacementTeacher
+        ? {
+            id: activeTransfer.replacementTeacher.id,
+            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate as Date) : null,
+            until: activeTransfer.substituteEndDate
+              ? formatLocalDate(activeTransfer.substituteEndDate)
+              : null,
+          }
+        : null;
 
       return {
         id: classData.id,
@@ -362,6 +692,8 @@ export class ClassInformationService {
         } : null,
 
         schedule: schedule,
+        activePrimaryTeacher: activePrimaryTeacher,
+        activeSubstituteTeacher: activeSubstituteTeacher,
 
         // Dates
         startDate: classData.actualStartDate || classData['expectedStartDate'],

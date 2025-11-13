@@ -63,6 +63,8 @@ interface WeeklySchedulePickerProps {
   onSlotsChange: (slots: ScheduleSlot[]) => void;   // Callback khi slots thay đổi
   defaultDuration?: number;                         // Thời lượng mặc định (phút), default = 90
   expectedStartDate?: string;                       // Ngày khai giảng dự kiến (YYYY-MM-DD), nếu có sẽ lấy lịch từ ngày này đến 31/05 năm sau
+  teacherId?: string;                              // ID của giáo viên (nếu có, sẽ disable các slot trùng với lịch dạy của giáo viên)
+  excludeClassId?: string;                         // ID của lớp cần loại trừ khi check conflict (khi đang edit lịch của lớp này)
 }
 
 // ==================== CONSTANTS ====================
@@ -85,6 +87,8 @@ export const WeeklySchedulePicker = ({
   onSlotsChange,        // Callback để update slots cho parent
   defaultDuration = 90, // Thời lượng mặc định = 90 phút (1.5 giờ)
   expectedStartDate,    // Ngày dự kiến bắt đầu lớp học (optional)
+  teacherId,            // ID của giáo viên (optional)
+  excludeClassId,       // ID của lớp cần loại trừ (optional)
 }: WeeklySchedulePickerProps) => {
   
   // ===== LOCAL STATES =====
@@ -105,16 +109,32 @@ export const WeeklySchedulePicker = ({
   // ===== FETCH ROOMS DATA =====
   // Sử dụng React Query để fetch danh sách phòng học từ API
   // React Query tự động handle caching, loading states, và error handling
-  const { data: roomsData, isLoading: roomsLoading } = useQuery({
-    queryKey: ['rooms'],              // Unique key cho cache
-    queryFn: async () => {            // Function fetch data
-      const response = await apiClient.get('/rooms');
-      return response;
+  const { data: roomsData, isLoading: roomsLoading, error: roomsError } = useQuery({
+    queryKey: ['rooms'],              
+    queryFn: async () => {            
+      try {
+        const response = await apiClient.get('/rooms');
+        return response;
+      } catch (error) {
+        console.error('Error fetching rooms:', error);
+        return [];
+      }
     },
   });
 
   // Extract mảng rooms từ response (với fallback là empty array)
   const rooms = (roomsData as any)?.data || [];
+  
+  // Debug: Log để kiểm tra
+  useEffect(() => {
+    if (roomsData) {
+      console.log('Rooms data:', roomsData);
+      console.log('Rooms array:', rooms);
+    }
+    if (roomsError) {
+      console.error('Error fetching rooms:', roomsError);
+    }
+  }, [roomsData, rooms, roomsError]);
 
   // ===== CALCULATE DATE RANGE =====
   /**
@@ -217,6 +237,7 @@ export const WeeklySchedulePicker = ({
   const allClasses: Array<{
     classId: string;
     className: string;
+    teacherId: string | null;  // Thêm teacherId
     teacherName: string;
     subjectName: string;
     roomId: string | null;
@@ -227,9 +248,49 @@ export const WeeklySchedulePicker = ({
     schedules: Array<{ day: string; startTime: string; endTime: string; roomId?: string }>;
   }> = (classesData as any)?.data || [];
   
-  // Backend đã filter rồi, không cần filter lại ở frontend
-  // filteredClasses = allClasses (backend đã trả về danh sách đã được filter)
-  const filteredClasses = allClasses;
+  // Filter classes: loại bỏ class hiện tại nếu đang edit (excludeClassId)
+  // Lịch cũ của class hiện tại sẽ hiển thị trong selectedSlots (màu xanh, có thể toggle)
+  // Không hiển thị trong occupiedSlots (màu đỏ, disabled)
+  const filteredClasses = useMemo(() => {
+    if (!excludeClassId) {
+      return allClasses;
+    }
+    // Loại bỏ class hiện tại khỏi filteredClasses để không hiển thị trong occupiedSlots
+    return allClasses.filter((cls: any) => cls.classId !== excludeClassId);
+  }, [allClasses, excludeClassId]);
+
+  // Filter mảng classes của giáo viên từ allClasses
+  // Filter theo teacherId và excludeClassId ở frontend
+  const teacherClasses = useMemo(() => {
+    if (!teacherId) {
+      return [];
+    }
+    
+    // Filter: chỉ lấy lớp có teacherId khớp và loại trừ excludeClassId
+    const filtered = allClasses.filter((cls: any) => {
+      // Nếu có excludeClassId, loại trừ lớp đó
+      if (excludeClassId && cls.classId === excludeClassId) {
+        return false;
+      }
+      // Check teacherId khớp với giáo viên hiện tại
+      return cls.teacherId === teacherId;
+    });
+    
+    console.log('[WeeklySchedulePicker] Teacher classes filtered:', {
+      teacherId,
+      excludeClassId,
+      allClassesCount: allClasses.length,
+      filteredCount: filtered.length,
+      filtered: filtered.map((cls: any) => ({
+        classId: cls.classId,
+        className: cls.className,
+        teacherId: cls.teacherId,
+        schedules: cls.schedules,
+      })),
+    });
+    
+    return filtered;
+  }, [allClasses, teacherId, excludeClassId]);
   
   // ===== HELPER: Format date =====
   /**
@@ -326,6 +387,76 @@ export const WeeklySchedulePicker = ({
     return map;
   }, [filteredClasses]);  // Chỉ rebuild map khi filteredClasses thay đổi
 
+  // ===== BUILD TEACHER OCCUPIED SLOTS MAP =====
+  /**
+   * Tạo một Map để tra cứu nhanh xem một time slot có bị chiếm bởi lịch dạy của giáo viên không
+   * Key format: "{day}-{time}" → VD: "monday-08:00" (không phụ thuộc vào phòng)
+   * Value: Class info object với className, subjectName, dates, etc.
+   * 
+   * Dùng để disable tất cả các phòng trong khoảng thời gian giáo viên đang dạy
+   */
+  const teacherOccupiedSlots = useMemo(() => {
+    const map = new Map<string, { 
+      className: string; 
+      subjectName: string;
+      actualStartDate: string | null;
+      actualEndDate: string | null;
+      expectedStartDate: string | null;
+    }>();
+    
+    // Nếu không có teacherId hoặc không có classes thì return empty map
+    if (!teacherId || !teacherClasses || teacherClasses.length === 0) {
+      console.log('[WeeklySchedulePicker] No teacher classes to build occupied slots:', { teacherId, teacherClassesCount: teacherClasses?.length || 0 });
+      return map;
+    }
+    
+    // Loop qua tất cả classes của giáo viên để build map từ recurringSchedule
+    teacherClasses.forEach((cls) => {
+      // Skip lớp không có schedules
+      if (!cls.schedules || cls.schedules.length === 0) {
+        return;
+      }
+      
+      // Loop qua từng schedule trong recurringSchedule
+      cls.schedules.forEach((schedule) => {
+        // Validate schedule
+        if (!schedule.day || !schedule.startTime || !schedule.endTime) {
+          return;
+        }
+        const dayValue = schedule.day.toLowerCase(); // 'monday', 'tuesday', etc.
+        const startTime = schedule.startTime;  // VD: "08:00"
+        const endTime = schedule.endTime;      // VD: "10:00"
+        
+        // Loop qua tất cả TIME_SLOTS (07:00, 07:30, 08:00, ..., 21:00)
+        TIME_SLOTS.forEach((timeSlot) => {
+          // Check xem timeSlot có nằm trong range [startTime, endTime) không
+          if (timeSlot >= startTime && timeSlot < endTime) {
+            // Tạo unique key format: "day-time" (không có roomName vì disable tất cả phòng)
+            const key = `${dayValue}-${timeSlot}`;
+            // Store class info vào map với key này (override nếu có conflict để lưu thông tin mới nhất)
+            // Nhưng thực ra chỉ cần biết có conflict hay không, không cần override
+            map.set(key, {
+              className: cls.className,
+              subjectName: cls.subjectName,
+              actualStartDate: cls.actualStartDate,
+              actualEndDate: cls.actualEndDate,
+              expectedStartDate: cls.expectedStartDate,
+            });
+          }
+        });
+      });
+    });
+    
+    console.log('[WeeklySchedulePicker] Teacher occupied slots built:', {
+      teacherId,
+      teacherClassesCount: teacherClasses.length,
+      occupiedSlotsCount: map.size,
+      sampleKeys: Array.from(map.keys()).slice(0, 10),
+    });
+    
+    return map;
+  }, [teacherId, teacherClasses]);  // Chỉ rebuild map khi teacherId hoặc teacherClasses thay đổi
+
   // ===== HELPER FUNCTIONS =====
   
   /**
@@ -420,15 +551,20 @@ export const WeeklySchedulePicker = ({
     }
     
     // ===== STEP 2: CHECK IF REMOVING EXISTING SELECTION =====
-    // Tìm xem slot này có phải là start time của một slot đã chọn không
-    const existingIndex = selectedSlots.findIndex(
-      (slot) => slot.day === day && slot.startTime === startTime && slot.roomId === roomId
-    );
+    // Tìm xem timeSlot được click có nằm trong range [startTime, endTime) của slot đã chọn không
+    // Nếu có → user muốn bỏ chọn slot đó (toggle behavior)
+    const existingSlot = selectedSlots.find((slot) => {
+      // Chỉ check slots cùng ngày và cùng phòng
+      if (slot.day !== day || slot.roomId !== roomId) return false;
+      // Check xem startTime được click có nằm trong range [slot.startTime, slot.endTime) không
+      const isInRange = startTime >= slot.startTime && startTime < slot.endTime;
+        return isInRange;
+    });
 
-    if (existingIndex !== -1) {
-      // Tìm thấy → user muốn bỏ chọn
+    if (existingSlot) {
+      // Tìm thấy → user muốn bỏ chọn (click vào bất kỳ ô nào trong slot đã chọn)
       // Remove slot khỏi array
-      const newSlots = selectedSlots.filter((_, index) => index !== existingIndex);
+      const newSlots = selectedSlots.filter((slot) => slot.id !== existingSlot.id);
       // Update state thông qua callback
       onSlotsChange(newSlots);
       return;
@@ -564,6 +700,34 @@ export const WeeklySchedulePicker = ({
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="w-6 h-6 animate-spin" />
+      </div>
+    );
+  }
+
+  // ===== ERROR STATE =====
+  // Hiển thị error message nếu có lỗi khi fetch rooms
+  if (roomsError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+          <AlertDescription className="text-red-800 dark:text-red-200">
+            ❌ Lỗi khi tải danh sách phòng học. Vui lòng thử lại sau.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // ===== NO ROOMS STATE =====
+  // Hiển thị thông báo nếu không có phòng nào
+  if (!rooms || rooms.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Alert className="bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            ⚠️ Không tìm thấy phòng học nào trong hệ thống. Vui lòng tạo phòng học trước khi chọn lịch.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -752,10 +916,17 @@ export const WeeklySchedulePicker = ({
                           // Build key để tra cứu trong occupiedSlots map
                           const key = `${day.value}-${timeSlot}-${room.name}`;
                           
-                          // Check 3 states:
-                          const occupiedSession = occupiedSlots.get(key);  // Có lớp học không?
+                          // Build key để tra cứu trong teacherOccupiedSlots map (không có roomName)
+                          const teacherKey = `${day.value}-${timeSlot}`;
+                          
+                          // Check 4 states:
+                          const occupiedSession = occupiedSlots.get(key);  // Có lớp học ở phòng này không?
+                          const teacherOccupied = teacherOccupiedSlots.get(teacherKey);  // Giáo viên đang dạy ở thời gian này không?
                           const isSelected = isSlotSelected(day.value, timeSlot, room.id);  // Là start time đã chọn không?
                           const isBlocked = isTimeBlocked(day.value, timeSlot, room.id);    // Bị block bởi duration không?
+                          
+                          // Nếu giáo viên đang dạy ở thời gian này, coi như occupied cho tất cả phòng
+                          const isTeacherBusy = !!teacherOccupied;
                           // ===== STEP 2: Render cell với styling động =====
                           return (
                             <td
@@ -765,35 +936,59 @@ export const WeeklySchedulePicker = ({
                                 // Base classes: luôn có
                                 'border-2 p-3 text-xs transition-all duration-150',
                                 {
-                                  // STATE 1: Occupied - Đã có lớp học (PRIORITY CAO NHẤT)
+                                  // STATE 1: Occupied - Đã có lớp học ở phòng này (PRIORITY CAO NHẤT)
                                   // → Màu đỏ, cursor not-allowed, hover đỏ đậm hơn
                                   'bg-red-100 dark:bg-red-900/30 cursor-not-allowed hover:bg-red-200 dark:hover:bg-red-900/40':
                                     occupiedSession,
                                   
+                                  // STATE 1b: Teacher Occupied - Giáo viên đang dạy ở thời gian này (PRIORITY CAO)
+                                  // → Màu cam, cursor not-allowed, disable tất cả phòng
+                                  'bg-orange-100 dark:bg-orange-900/30 cursor-not-allowed hover:bg-orange-200 dark:hover:bg-orange-900/40':
+                                    isTeacherBusy && !occupiedSession,
+                                  
                                   // STATE 2: Selected - Là start time đã chọn
                                   // → Màu xanh đậm, cursor pointer (có thể click để bỏ), hover xanh đậm hơn
                                   'bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 cursor-pointer':
-                                    isSelected && !occupiedSession,
+                                    isSelected && !occupiedSession && !isTeacherBusy,
                                   
                                   // STATE 3: Blocked - Bị block bởi duration của slot khác
                                   // → Màu xanh nhạt, cursor not-allowed
                                   'bg-green-50 dark:bg-green-900/10 cursor-not-allowed':
-                                    !isSelected && isBlocked && !occupiedSession,
+                                    !isSelected && isBlocked && !occupiedSession && !isTeacherBusy,
                                   
                                   // STATE 4: Available - Trống, có thể chọn
                                   // → Màu trắng, cursor pointer, hover xanh dương nhạt
                                   // STATE 5: Disabled - Ở phòng khác khi đã chọn phòng
                                   // → Màu xám, cursor not-allowed
                                   'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                                    !occupiedSession && !isBlocked && !(selectedSlots.length > 0 && selectedSlots[0].roomId !== room.id),
+                                    !occupiedSession && !isBlocked && !isTeacherBusy && !(selectedSlots.length > 0 && selectedSlots[0].roomId !== room.id),
                                   'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50':
                                     selectedSlots.length > 0 && selectedSlots[0].roomId !== room.id,
                                 }
                               )}
-                              // Click handler: chỉ cho phép click nếu không occupied, không blocked, và phòng không bị disable
-                              onClick={() =>
-                                (!isRoomDisabled && !occupiedSession && !isBlocked) && handleSlotClick(day.value, timeSlot, room.id, room.name)
-                              }
+                              // Click handler: 
+                              // - Cho phép click nếu không occupied, không teacher busy, và phòng không bị disable
+                              // - Cho phép click vào các ô bị blocked NẾU chúng nằm trong range của slot đã chọn (để toggle)
+                              onClick={() => {
+                                if (isRoomDisabled || occupiedSession || isTeacherBusy) return;
+                                
+                                // Check xem timeSlot này có nằm trong range của slot đã chọn không
+                                const isInSelectedRange = selectedSlots.some((slot) => {
+                                  return slot.day === day.value && 
+                                         slot.roomId === room.id && 
+                                         timeSlot >= slot.startTime && 
+                                         timeSlot < slot.endTime;
+                                });
+                                
+                                // Cho phép click nếu:
+                                // 1. Không bị blocked (slot trống)
+                                // 2. HOẶC nằm trong range của slot đã chọn (để toggle - bất kể có bị blocked hay không)
+                                const canClick = !isBlocked || isInSelectedRange;
+                                
+                                if (canClick) {
+                                  handleSlotClick(day.value, timeSlot, room.id, room.name);
+                                }
+                              }}
                               // Tooltip hiển thị thông tin khi hover
                               title={
                                 occupiedSession
@@ -804,6 +999,15 @@ export const WeeklySchedulePicker = ({
                                         ? `Dự kiến: ${formatDate(occupiedSession.expectedStartDate)}`
                                         : '';
                                       return `${occupiedSession.className} - ${occupiedSession.teacherName || 'Chưa có GV'}${dateInfo ? `\n${dateInfo}` : ''}`;
+                                    })()
+                                  : isTeacherBusy
+                                  ? (() => {
+                                      const dateInfo = teacherOccupied!.actualStartDate 
+                                        ? `Bắt đầu: ${formatDate(teacherOccupied!.actualStartDate)}${teacherOccupied!.actualEndDate ? ` | Kết thúc: ${formatDate(teacherOccupied!.actualEndDate)}` : ''}`
+                                        : teacherOccupied!.expectedStartDate
+                                        ? `Dự kiến: ${formatDate(teacherOccupied!.expectedStartDate)}`
+                                        : '';
+                                      return `Giáo viên đang dạy: ${teacherOccupied!.className} - ${teacherOccupied!.subjectName}${dateInfo ? `\n${dateInfo}` : ''}`;
                                     })()
                                   : isSelected
                                   ? 'Click để bỏ chọn'
@@ -816,8 +1020,29 @@ export const WeeklySchedulePicker = ({
                             >
                               {/* ===== STEP 3: Render nội dung cell theo state ===== */}
                               
-                              {/* CASE 1: Có lớp học → Hiển thị tên lớp, giáo viên và ngày */}
-                              {occupiedSession ? (
+                              {/* CASE 1a: Giáo viên đang dạy → Hiển thị thông tin lớp giáo viên đang dạy */}
+                              {isTeacherBusy && !occupiedSession ? (
+                                <div className="text-[11px] leading-tight min-h-[32px]">
+                                  <div className="font-semibold truncate text-orange-800 dark:text-orange-200">
+                                    {teacherOccupied!.className}
+                                  </div>
+                                  <div className="text-orange-700 dark:text-orange-300 truncate">
+                                    GV: {teacherOccupied!.subjectName}
+                                  </div>
+                                  {teacherOccupied!.actualStartDate && (
+                                    <div className="text-[10px] text-orange-600 dark:text-orange-400 truncate mt-0.5">
+                                      {formatDate(teacherOccupied!.actualStartDate)}
+                                      {teacherOccupied!.actualEndDate ? ` - ${formatDate(teacherOccupied!.actualEndDate)}` : ''}
+                                    </div>
+                                  )}
+                                  {!teacherOccupied!.actualStartDate && teacherOccupied!.expectedStartDate && (
+                                    <div className="text-[10px] text-orange-600 dark:text-orange-400 truncate mt-0.5">
+                                      Dự kiến: {formatDate(teacherOccupied!.expectedStartDate)}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : occupiedSession ? (
+                                /* CASE 1: Có lớp học → Hiển thị tên lớp, giáo viên và ngày */
                                 <div className="text-[11px] leading-tight min-h-[32px]">
                                   <div className="font-semibold truncate">
                                     {occupiedSession.className}
@@ -837,10 +1062,8 @@ export const WeeklySchedulePicker = ({
                                     </div>
                                   )}
                                 </div>
-                              ) 
-                              
+                              ) : isSelected ? (
                               /* CASE 2: Là start time đã chọn → Hiển thị dấu ✓ */
-                              : isSelected ? (
                                 <div className="text-center text-green-700 dark:text-green-300 font-bold text-base min-h-[32px] flex items-center justify-center">
                                   ✓
                                 </div>

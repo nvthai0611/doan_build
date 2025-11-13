@@ -4,7 +4,7 @@ export declare class JoinClassByCodeDto {
 export declare class RequestJoinClassDto {
     classId: string;
     studentId: string;
-    contractUploadId: string;
+    contractUploadId?: string;
     password?: string;
     message?: string;
     commitmentImageUrl?: string;

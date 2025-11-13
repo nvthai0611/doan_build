@@ -226,7 +226,7 @@ export function ParentRegister() {
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate("/auth/login/family")
+        navigate("/auth?portal=family")
       }, 2000)
     } catch (err: any) {
       console.error("Registration error:", err)
@@ -642,7 +642,7 @@ export function ParentRegister() {
             <div className="grid grid-cols-2 gap-4 pt-2">
               <Button
                 type="button"
-                onClick={() => navigate("/auth/login/family")}
+                onClick={() => navigate("/auth?portal=family")}
                 variant="outline"
                 className="h-11 rounded-xl border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
               >

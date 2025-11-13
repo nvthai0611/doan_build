@@ -94,6 +94,57 @@ let ParentOverviewService = class ParentOverviewService {
         if (!parent) {
             throw new common_1.HttpException('Không tìm thấy thông tin phụ huynh', common_1.HttpStatus.NOT_FOUND);
         }
+        const formatLocalDate = (date) => {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        };
+        const allClassIds = [];
+        for (const student of parent.students) {
+            for (const enrollment of student.enrollments) {
+                allClassIds.push(enrollment.class.id);
+            }
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const activeTransfers = await this.prisma.teacherClassTransfer.findMany({
+            where: {
+                fromClassId: { in: allClassIds },
+                status: { in: ['approved', 'auto_created'] },
+                effectiveDate: { lte: today },
+                OR: [
+                    { substituteEndDate: null },
+                    { substituteEndDate: { gte: today } }
+                ]
+            },
+            include: {
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+                replacementTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                effectiveDate: 'desc',
+            },
+        });
+        const transferMap = new Map();
+        activeTransfers.forEach(transfer => {
+            if (!transferMap.has(transfer.fromClassId)) {
+                transferMap.set(transfer.fromClassId, transfer);
+            }
+        });
         const upcomingLessons = [];
         const activeClasses = [];
         for (const student of parent.students) {
@@ -172,11 +223,25 @@ let ParentOverviewService = class ParentOverviewService {
                     const dateStr = `${sessionDate.getDate().toString().padStart(2, '0')}/${(sessionDate.getMonth() + 1).toString().padStart(2, '0')}/${sessionDate.getFullYear()}`;
                     nextClassInfo = `${dayOfWeek}, ${dateStr} (${nextSession.startTime} - ${nextSession.endTime})`;
                 }
+                const activeTransfer = transferMap.get(classData.id);
+                let teacherDisplay = classData.teacher?.user?.fullName || 'Chưa phân công';
+                let substituteTeacher = null;
+                if (activeTransfer && activeTransfer.replacementTeacher) {
+                    teacherDisplay = activeTransfer.replacementTeacher.user?.fullName || teacherDisplay;
+                    substituteTeacher = {
+                        id: activeTransfer.replacementTeacher.id,
+                        fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+                        from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate) : null,
+                        until: activeTransfer.substituteEndDate ? formatLocalDate(activeTransfer.substituteEndDate) : null,
+                    };
+                }
                 activeClasses.push({
                     id: classData.id,
                     name: classData.name,
                     subject: classData.subject.name,
-                    teacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+                    teacher: teacherDisplay,
+                    originalTeacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+                    substituteTeacher: substituteTeacher,
                     room: classData.room?.name || 'Chưa phân phòng',
                     progress,
                     schedule: scheduleText,
@@ -185,13 +250,27 @@ let ParentOverviewService = class ParentOverviewService {
                 });
                 classData.sessions.forEach((session) => {
                     const attendance = session.attendances.find((a) => a.studentId === student.id);
+                    const activeTransfer = transferMap.get(classData.id);
+                    let sessionTeacher = classData.teacher?.user?.fullName || 'Chưa phân công';
+                    let sessionSubstituteTeacher = null;
+                    if (activeTransfer && activeTransfer.replacementTeacher) {
+                        sessionTeacher = activeTransfer.replacementTeacher.user?.fullName || sessionTeacher;
+                        sessionSubstituteTeacher = {
+                            id: activeTransfer.replacementTeacher.id,
+                            fullName: activeTransfer.replacementTeacher.user?.fullName || null,
+                            from: activeTransfer.effectiveDate ? formatLocalDate(activeTransfer.effectiveDate) : null,
+                            until: activeTransfer.substituteEndDate ? formatLocalDate(activeTransfer.substituteEndDate) : null,
+                        };
+                    }
                     upcomingLessons.push({
                         id: session.id,
                         className: classData.name,
                         subject: classData.subject.name,
                         time: `${session.startTime} - ${session.endTime}`,
                         room: classData.room?.name || 'Chưa phân phòng',
-                        teacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+                        teacher: sessionTeacher,
+                        originalTeacher: classData.teacher?.user?.fullName || 'Chưa phân công',
+                        substituteTeacher: sessionSubstituteTeacher,
                         status: session.status === 'has_not_happened'
                             ? 'Chưa diễn ra'
                             : session.status === 'happening'

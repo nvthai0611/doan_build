@@ -12,9 +12,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScheduleManagementService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../../db/prisma.service");
+const email_notification_service_1 = require("../../shared/services/email-notification.service");
 let ScheduleManagementService = class ScheduleManagementService {
-    constructor(prisma) {
+    constructor(prisma, emailNotificationService) {
         this.prisma = prisma;
+        this.emailNotificationService = emailNotificationService;
     }
     mapSessionToClientShape(session) {
         return {
@@ -39,13 +41,13 @@ let ScheduleManagementService = class ScheduleManagementService {
             where: {
                 sessionDate: new Date(date),
                 status: {
-                    notIn: ['end', 'cancelled']
+                    notIn: ['end', 'cancelled'],
                 },
                 class: {
                     status: {
-                        in: ['active', 'ready', 'suspended']
-                    }
-                }
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
             },
             orderBy: { startTime: 'asc' },
             include: {
@@ -59,10 +61,10 @@ let ScheduleManagementService = class ScheduleManagementService {
                             select: {
                                 user: {
                                     select: {
-                                        fullName: true
-                                    }
-                                }
-                            }
+                                        fullName: true,
+                                    },
+                                },
+                            },
                         },
                         _count: { select: { enrollments: true } },
                     },
@@ -79,13 +81,13 @@ let ScheduleManagementService = class ScheduleManagementService {
             where: {
                 sessionDate: { gte: start, lte: end },
                 status: {
-                    notIn: ['end', 'cancelled']
+                    notIn: ['end', 'cancelled'],
                 },
                 class: {
                     status: {
-                        in: ['active', 'ready', 'suspended']
-                    }
-                }
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
             },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
             include: {
@@ -99,10 +101,10 @@ let ScheduleManagementService = class ScheduleManagementService {
                             select: {
                                 user: {
                                     select: {
-                                        fullName: true
-                                    }
-                                }
-                            }
+                                        fullName: true,
+                                    },
+                                },
+                            },
                         },
                         _count: { select: { enrollments: true } },
                     },
@@ -121,13 +123,13 @@ let ScheduleManagementService = class ScheduleManagementService {
             where: {
                 sessionDate: { gte: firstDay, lt: firstDayNextMonth },
                 status: {
-                    notIn: ['end', 'cancelled']
+                    notIn: ['end', 'cancelled'],
                 },
                 class: {
                     status: {
-                        in: ['active', 'ready', 'suspended']
-                    }
-                }
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
             },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
             include: {
@@ -141,10 +143,10 @@ let ScheduleManagementService = class ScheduleManagementService {
                             select: {
                                 user: {
                                     select: {
-                                        fullName: true
-                                    }
-                                }
-                            }
+                                        fullName: true,
+                                    },
+                                },
+                            },
                         },
                         _count: { select: { enrollments: true } },
                     },
@@ -157,35 +159,37 @@ let ScheduleManagementService = class ScheduleManagementService {
         const classes = await this.prisma.class.findMany({
             where: {
                 status: {
-                    in: ['active', 'ready', 'suspended']
+                    in: ['active', 'ready', 'suspended'],
                 },
                 recurringSchedule: {
-                    not: null
-                }
+                    not: null,
+                },
             },
             select: {
                 id: true,
                 name: true,
                 recurringSchedule: true,
+                teacherId: true,
                 room: {
                     select: {
                         id: true,
-                        name: true
-                    }
+                        name: true,
+                    },
                 },
                 teacher: {
                     select: {
+                        id: true,
                         user: {
                             select: {
-                                fullName: true
-                            }
-                        }
-                    }
+                                fullName: true,
+                            },
+                        },
+                    },
                 },
                 subject: {
                     select: {
-                        name: true
-                    }
+                        name: true,
+                    },
                 },
                 expectedStartDate: true,
                 actualStartDate: true,
@@ -198,6 +202,7 @@ let ScheduleManagementService = class ScheduleManagementService {
             return {
                 classId: cls.id,
                 className: cls.name,
+                teacherId: cls.teacherId || cls.teacher?.id || null,
                 teacherName: cls.teacher?.user?.fullName || '',
                 subjectName: cls.subject?.name || '',
                 roomId: cls.room?.id || null,
@@ -257,13 +262,13 @@ let ScheduleManagementService = class ScheduleManagementService {
                             select: {
                                 id: true,
                                 name: true,
-                            }
+                            },
                         },
                         grade: {
                             select: {
                                 id: true,
                                 name: true,
-                            }
+                            },
                         },
                         teacher: {
                             select: {
@@ -275,23 +280,23 @@ let ScheduleManagementService = class ScheduleManagementService {
                                         email: true,
                                         phone: true,
                                         avatar: true,
-                                    }
-                                }
-                            }
+                                    },
+                                },
+                            },
                         },
                         _count: {
                             select: {
                                 enrollments: true,
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 room: {
                     select: {
                         id: true,
                         name: true,
                         capacity: true,
-                    }
+                    },
                 },
                 teacher: {
                     select: {
@@ -303,9 +308,9 @@ let ScheduleManagementService = class ScheduleManagementService {
                                 email: true,
                                 phone: true,
                                 avatar: true,
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 attendances: {
                     select: {
@@ -322,13 +327,13 @@ let ScheduleManagementService = class ScheduleManagementService {
                                         fullName: true,
                                         email: true,
                                         avatar: true,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
         if (!session) {
             throw new common_1.NotFoundException('Không tìm thấy buổi học');
@@ -354,7 +359,7 @@ let ScheduleManagementService = class ScheduleManagementService {
     async getSessionAttendance(sessionId) {
         const session = await this.prisma.classSession.findUnique({
             where: { id: sessionId },
-            select: { id: true, classId: true }
+            select: { id: true, classId: true },
         });
         if (!session) {
             throw new common_1.NotFoundException('Không tìm thấy buổi học');
@@ -375,9 +380,9 @@ let ScheduleManagementService = class ScheduleManagementService {
                                 email: true,
                                 phone: true,
                                 avatar: true,
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 recordedByTeacher: {
                     select: {
@@ -386,20 +391,20 @@ let ScheduleManagementService = class ScheduleManagementService {
                             select: {
                                 id: true,
                                 fullName: true,
-                            }
-                        }
-                    }
-                }
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
                 student: {
                     user: {
-                        fullName: 'asc'
-                    }
-                }
-            }
+                        fullName: 'asc',
+                    },
+                },
+            },
         });
-        return attendances.map(attendance => ({
+        return attendances.map((attendance) => ({
             id: attendance.id.toString(),
             sessionId: attendance.sessionId,
             studentId: attendance.studentId,
@@ -423,20 +428,131 @@ let ScheduleManagementService = class ScheduleManagementService {
         }));
     }
     async updateSession(sessionId, body) {
+        const oldSession = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: {
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+                cancellationReason: true,
+            },
+        });
+        if (!oldSession) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
         const session = await this.prisma.classSession.update({
             where: { id: sessionId },
             data: body,
         });
+        try {
+            const oldDate = oldSession.sessionDate ?
+                (oldSession.sessionDate instanceof Date ?
+                    oldSession.sessionDate.toISOString().split('T')[0] :
+                    new Date(oldSession.sessionDate).toISOString().split('T')[0]) : '';
+            const oldTime = oldSession.startTime && oldSession.endTime ?
+                `${oldSession.startTime} - ${oldSession.endTime}` : '';
+            let newDate = oldDate;
+            if (body.sessionDate) {
+                if (typeof body.sessionDate === 'string') {
+                    newDate = body.sessionDate.split('T')[0];
+                }
+                else if (body.sessionDate instanceof Date) {
+                    newDate = body.sessionDate.toISOString().split('T')[0];
+                }
+                else {
+                    newDate = new Date(body.sessionDate).toISOString().split('T')[0];
+                }
+            }
+            let newTime = oldTime;
+            if (body.startTime || body.endTime) {
+                const finalStartTime = body.startTime || oldSession.startTime || '';
+                const finalEndTime = body.endTime || oldSession.endTime || '';
+                if (finalStartTime && finalEndTime) {
+                    newTime = `${finalStartTime} - ${finalEndTime}`;
+                }
+            }
+            if (body.status === 'day_off' && oldSession.status !== 'day_off') {
+                await this.emailNotificationService.sendSessionChangeEmail(sessionId, 'cancelled', oldDate, oldTime, undefined, undefined, body.cancellationReason || oldSession.cancellationReason || 'Không có lý do');
+            }
+            else if ((body.sessionDate && oldDate !== newDate) ||
+                (body.startTime && oldSession.startTime !== body.startTime) ||
+                (body.endTime && oldSession.endTime !== body.endTime)) {
+                await this.emailNotificationService.sendSessionChangeEmail(sessionId, 'rescheduled', oldDate, oldTime, newDate, newTime, body.reason || '');
+            }
+        }
+        catch (emailError) {
+            console.error('Lỗi khi gửi email thông báo thay đổi lịch:', emailError);
+        }
         return session;
     }
+    async checkScheduleConflict(sessionId, sessionDate, startTime, endTime) {
+        const currentSession = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: { roomId: true, sessionDate: true },
+        });
+        if (!currentSession) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
+        if (!currentSession.roomId) {
+            return { hasConflict: false, conflicts: [] };
+        }
+        const [year, month, day] = sessionDate.split('-').map(Number);
+        const targetDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        const parseTimeToMinutes = (time) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+        const newStartMinutes = parseTimeToMinutes(startTime);
+        const newEndMinutes = parseTimeToMinutes(endTime);
+        const conflictingSessions = await this.prisma.classSession.findMany({
+            where: {
+                id: { not: sessionId },
+                roomId: currentSession.roomId,
+                sessionDate: targetDate,
+                status: { notIn: ['cancelled', 'end'] },
+            },
+            select: {
+                id: true,
+                startTime: true,
+                endTime: true,
+                notes: true,
+                class: {
+                    select: {
+                        name: true,
+                        classCode: true,
+                    },
+                },
+            },
+        });
+        const conflicts = conflictingSessions.filter((session) => {
+            const sessionStartMinutes = parseTimeToMinutes(session.startTime);
+            const sessionEndMinutes = parseTimeToMinutes(session.endTime);
+            return (newStartMinutes < sessionEndMinutes &&
+                sessionStartMinutes < newEndMinutes);
+        });
+        return {
+            hasConflict: conflicts.length > 0,
+            conflicts: conflicts.map((c) => ({
+                id: c.id,
+                className: c.class?.name || '',
+                classCode: c.class?.classCode || '',
+                notes: c.notes || '',
+                startTime: c.startTime,
+                endTime: c.endTime,
+            })),
+        };
+    }
     async getTeachersInSessionsToday(query) {
-        const { startDate, endDate, search, attendanceStatus, page = 1, limit = 10, classId, sessionStatus } = query;
+        const { startDate, endDate, search, attendanceStatus, page = 1, limit = 10, classId, sessionStatus, } = query;
         const pageNum = typeof page === 'string' ? parseInt(page, 10) : Number(page);
         const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : Number(limit);
         let dateStart;
         let dateEnd;
         if (startDate && endDate) {
-            const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+            const [startYear, startMonth, startDay] = startDate
+                .split('-')
+                .map(Number);
             const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
             dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
             dateEnd = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999));
@@ -480,10 +596,7 @@ let ScheduleManagementService = class ScheduleManagementService {
             where,
             skip,
             take: limitNum,
-            orderBy: [
-                { sessionDate: 'asc' },
-                { startTime: 'asc' },
-            ],
+            orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
             include: {
                 teacher: {
                     include: {
@@ -553,7 +666,9 @@ let ScheduleManagementService = class ScheduleManagementService {
             const isSubstitute = session.substituteTeacherId &&
                 session.substituteEndDate &&
                 new Date(session.substituteEndDate) >= session.sessionDate;
-            const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
+            const teacher = isSubstitute
+                ? session.substituteTeacher
+                : session.teacher;
             const role = isSubstitute ? 'GV thay thế' : 'Giáo Viên';
             return {
                 id: session.id,
@@ -599,6 +714,7 @@ let ScheduleManagementService = class ScheduleManagementService {
 exports.ScheduleManagementService = ScheduleManagementService;
 exports.ScheduleManagementService = ScheduleManagementService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        email_notification_service_1.EmailNotificationService])
 ], ScheduleManagementService);
 //# sourceMappingURL=schedule-management.service.js.map

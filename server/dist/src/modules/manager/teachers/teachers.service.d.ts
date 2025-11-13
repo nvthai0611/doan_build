@@ -9,15 +9,15 @@ export declare class TeachersService {
         success: boolean;
         data: ({
             user: {
-                role: string;
-                email: string;
-                createdAt: Date;
                 fullName: string;
-                isActive: boolean;
-                phone: string;
-                updatedAt: Date;
                 username: string;
+                email: string;
+                phone: string;
+                createdAt: Date;
+                role: string;
                 id: string;
+                updatedAt: Date;
+                isActive: boolean;
             };
             _count: {
                 leaveRequests: number;
@@ -27,26 +27,26 @@ export declare class TeachersService {
                 documents: number;
             };
             leaveRequests: {
-                createdAt: Date;
-                id: string;
                 status: string;
                 startDate: Date;
-                reason: string;
                 endDate: Date;
-                approvedAt: Date;
+                createdAt: Date;
+                id: string;
                 requestType: string;
+                reason: string;
+                approvedAt: Date;
             }[];
             classes: ({
                 subject: {
-                    id: string;
                     name: string;
                     description: string;
+                    id: string;
                     code: string;
                 };
                 room: {
-                    isActive: boolean;
-                    id: string;
                     name: string;
+                    id: string;
+                    isActive: boolean;
                     capacity: number;
                     equipment: import("@prisma/client/runtime/library").JsonValue;
                 };
@@ -56,10 +56,11 @@ export declare class TeachersService {
                     assessments: number;
                 };
                 enrollments: {
+                    status: string;
                     student: {
                         user: {
-                            email: string;
                             fullName: string;
+                            email: string;
                             phone: string;
                         };
                         grade: string;
@@ -67,51 +68,48 @@ export declare class TeachersService {
                         studentCode: string;
                     };
                     id: bigint;
-                    status: string;
                     enrolledAt: Date;
                 }[];
             } & {
-                academicYear: string | null;
-                password: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                id: string;
                 name: string;
                 description: string | null;
-                subjectId: string;
+                password: string | null;
+                status: string;
                 gradeId: string | null;
-                maxStudents: number | null;
+                subjectId: string;
                 roomId: string | null;
                 teacherId: string | null;
-                status: string;
+                feeStructureId: string | null;
+                createdAt: Date;
+                academicYear: string | null;
+                id: string;
+                updatedAt: Date;
+                classCode: string | null;
+                maxStudents: number | null;
                 recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                 expectedStartDate: Date | null;
                 actualStartDate: Date | null;
                 actualEndDate: Date | null;
-                feeStructureId: string | null;
-                classCode: string | null;
                 feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                 feePeriod: string | null;
                 feeCurrency: string | null;
                 feeLockedAt: Date | null;
             })[];
             contracts: {
-                createdAt: Date;
-                id: bigint;
                 status: string;
                 startDate: Date;
                 endDate: Date;
-                terms: import("@prisma/client/runtime/library").JsonValue;
+                createdAt: Date;
+                id: bigint;
                 salary: import("@prisma/client/runtime/library").Decimal;
+                terms: import("@prisma/client/runtime/library").JsonValue;
             }[];
             payrolls: {
-                id: bigint;
                 status: string;
+                id: bigint;
                 totalAmount: import("@prisma/client/runtime/library").Decimal;
-                paidAt: Date;
                 periodStart: Date;
                 periodEnd: Date;
-                baseSalary: import("@prisma/client/runtime/library").Decimal;
                 bonuses: import("@prisma/client/runtime/library").Decimal;
                 deductions: import("@prisma/client/runtime/library").Decimal;
                 hourlyRate: import("@prisma/client/runtime/library").Decimal;
@@ -125,8 +123,8 @@ export declare class TeachersService {
             }[];
         } & {
             createdAt: Date;
-            updatedAt: Date;
             id: string;
+            updatedAt: Date;
             userId: string;
             schoolId: string | null;
             teacherCode: string;
@@ -146,15 +144,15 @@ export declare class TeachersService {
         success: boolean;
         data: {
             user: {
-                role: string;
-                email: string;
-                createdAt: Date;
                 fullName: string;
-                isActive: boolean;
-                phone: string;
-                updatedAt: Date;
                 username: string;
+                email: string;
+                phone: string;
+                createdAt: Date;
+                role: string;
                 id: string;
+                updatedAt: Date;
+                isActive: boolean;
             };
             _count: {
                 leaveRequests: number;
@@ -164,26 +162,26 @@ export declare class TeachersService {
                 documents: number;
             };
             leaveRequests: {
-                createdAt: Date;
-                id: string;
                 status: string;
                 startDate: Date;
-                reason: string;
                 endDate: Date;
-                approvedAt: Date;
+                createdAt: Date;
+                id: string;
                 requestType: string;
+                reason: string;
+                approvedAt: Date;
             }[];
             classes: ({
                 subject: {
-                    id: string;
                     name: string;
                     description: string;
+                    id: string;
                     code: string;
                 };
                 room: {
-                    isActive: boolean;
-                    id: string;
                     name: string;
+                    id: string;
+                    isActive: boolean;
                     capacity: number;
                     equipment: import("@prisma/client/runtime/library").JsonValue;
                 };
@@ -193,10 +191,11 @@ export declare class TeachersService {
                     assessments: number;
                 };
                 enrollments: {
+                    status: string;
                     student: {
                         user: {
-                            email: string;
                             fullName: string;
+                            email: string;
                             phone: string;
                         };
                         grade: string;
@@ -204,51 +203,48 @@ export declare class TeachersService {
                         studentCode: string;
                     };
                     id: bigint;
-                    status: string;
                     enrolledAt: Date;
                 }[];
             } & {
-                academicYear: string | null;
-                password: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                id: string;
                 name: string;
                 description: string | null;
-                subjectId: string;
+                password: string | null;
+                status: string;
                 gradeId: string | null;
-                maxStudents: number | null;
+                subjectId: string;
                 roomId: string | null;
                 teacherId: string | null;
-                status: string;
+                feeStructureId: string | null;
+                createdAt: Date;
+                academicYear: string | null;
+                id: string;
+                updatedAt: Date;
+                classCode: string | null;
+                maxStudents: number | null;
                 recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                 expectedStartDate: Date | null;
                 actualStartDate: Date | null;
                 actualEndDate: Date | null;
-                feeStructureId: string | null;
-                classCode: string | null;
                 feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                 feePeriod: string | null;
                 feeCurrency: string | null;
                 feeLockedAt: Date | null;
             })[];
             contracts: {
-                createdAt: Date;
-                id: bigint;
                 status: string;
                 startDate: Date;
                 endDate: Date;
-                terms: import("@prisma/client/runtime/library").JsonValue;
+                createdAt: Date;
+                id: bigint;
                 salary: import("@prisma/client/runtime/library").Decimal;
+                terms: import("@prisma/client/runtime/library").JsonValue;
             }[];
             payrolls: {
-                id: bigint;
                 status: string;
+                id: bigint;
                 totalAmount: import("@prisma/client/runtime/library").Decimal;
-                paidAt: Date;
                 periodStart: Date;
                 periodEnd: Date;
-                baseSalary: import("@prisma/client/runtime/library").Decimal;
                 bonuses: import("@prisma/client/runtime/library").Decimal;
                 deductions: import("@prisma/client/runtime/library").Decimal;
                 hourlyRate: import("@prisma/client/runtime/library").Decimal;
@@ -262,8 +258,8 @@ export declare class TeachersService {
             }[];
         } & {
             createdAt: Date;
-            updatedAt: Date;
             id: string;
+            updatedAt: Date;
             userId: string;
             schoolId: string | null;
             teacherCode: string;
@@ -281,19 +277,15 @@ export declare class TeachersService {
     remove(id: string): Promise<string>;
     getTeacherContracts(teacherId: string): Promise<{
         id: string;
-        parentId: string | null;
-        teacherId: string | null;
-        status: string | null;
-        startDate: Date | null;
-        studentId: string | null;
-        note: string | null;
-        enrollmentId: bigint | null;
-        uploadedAt: Date;
         contractType: string;
-        subjectIds: string[];
         uploadedImageUrl: string;
-        uploadedImageName: string | null;
-        expiredAt: Date | null;
+        uploadedImageName: string;
+        uploadedAt: Date;
+        startDate: Date;
+        expiryDate: Date;
+        teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
+        notes: string;
+        status: string;
     }[]>;
     deleteTeacherContract(teacherId: string, contractId: string): Promise<{
         success: boolean;

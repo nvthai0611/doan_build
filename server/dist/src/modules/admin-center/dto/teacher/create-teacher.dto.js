@@ -15,25 +15,40 @@ const class_validator_1 = require("class-validator");
 const constants_1 = require("../../../../common/constants");
 class CreateTeacherDto {
     static _OPENAPI_METADATA_FACTORY() {
-        return { email: { required: true, type: () => String }, fullName: { required: true, type: () => String }, username: { required: true, type: () => String }, phone: { required: false, type: () => String }, role: { required: true, type: () => String }, subjects: { required: false, type: () => [String] }, contractEnd: { required: false, type: () => String }, isActive: { required: false, type: () => Boolean }, gender: { required: false, enum: require("../../../../common/constants").Gender }, birthDate: { required: false, type: () => String }, notes: { required: false, type: () => String }, schoolName: { required: false, type: () => String }, schoolAddress: { required: false, type: () => String }, contractImage: { required: false, type: () => Object }, contractImageUrl: { required: false, type: () => String } };
+        return { email: { required: true, type: () => String, pattern: "/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/" }, fullName: { required: true, type: () => String, minLength: 5 }, username: { required: true, type: () => String, minLength: 3, maxLength: 20, pattern: "/^[a-zA-Z0-9_]+$/" }, phone: { required: false, type: () => String, pattern: "/^[0-9]{10,11}$/" }, role: { required: true, type: () => String }, subjects: { required: false, type: () => [String] }, contractEnd: { required: false, type: () => String }, isActive: { required: false, type: () => Boolean }, gender: { required: false, enum: require("../../../../common/constants").Gender }, birthDate: { required: false, type: () => String }, notes: { required: false, type: () => String }, schoolName: { required: false, type: () => String }, schoolAddress: { required: false, type: () => String }, contractImage: { required: false, type: () => Object }, contractImageUrl: { required: false, type: () => String } };
     }
 }
 exports.CreateTeacherDto = CreateTeacherDto;
 __decorate([
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsEmail)({}, { message: 'Email không hợp lệ' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Email không được để trống' }),
+    (0, class_validator_1.Matches)(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+        message: 'Định dạng email không hợp lệ',
+    }),
     __metadata("design:type", String)
 ], CreateTeacherDto.prototype, "email", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsString)({ message: 'Họ và tên phải là chuỗi' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Họ và tên không được để trống' }),
+    (0, class_validator_1.MinLength)(5, { message: 'Họ và tên phải có ít nhất 5 ký tự' }),
     __metadata("design:type", String)
 ], CreateTeacherDto.prototype, "fullName", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsString)({ message: 'Tên đăng nhập phải là chuỗi' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Tên đăng nhập không được để trống' }),
+    (0, class_validator_1.MinLength)(3, { message: 'Tên đăng nhập phải có ít nhất 3 ký tự' }),
+    (0, class_validator_1.MaxLength)(20, { message: 'Tên đăng nhập không được quá 20 ký tự' }),
+    (0, class_validator_1.Matches)(/^[a-zA-Z0-9_]+$/, {
+        message: 'Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới',
+    }),
     __metadata("design:type", String)
 ], CreateTeacherDto.prototype, "username", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsString)({ message: 'Số điện thoại phải là chuỗi' }),
+    (0, class_validator_1.Matches)(/^[0-9]{10,11}$/, {
+        message: 'Số điện thoại phải có 10-11 chữ số và chỉ chứa số',
+    }),
     __metadata("design:type", String)
 ], CreateTeacherDto.prototype, "phone", void 0);
 __decorate([

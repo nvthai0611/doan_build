@@ -155,6 +155,9 @@ export function ContractsList({ contracts, onDelete }: ContractsListProps) {
                       <p>Ngày bắt đầu: {contract.startDate ? formatDate(contract.startDate) : 'Chưa có'}</p>
                       <p>Tải lên: {formatDate(contract.uploadedAt || contract.uploadDate)}</p>
                       <p>Hết hạn: {formatDate(contract.expiryDate)}</p>
+                      {contract.teacherSalaryPercent !== null && contract.teacherSalaryPercent !== undefined && (
+                        <p className="font-medium text-foreground">Phần trăm lương: {contract.teacherSalaryPercent}%</p>
+                      )}
                       {contract.notes && <p className="text-xs italic">Ghi chú: {contract.notes}</p>}
                     </div>
                   </div>

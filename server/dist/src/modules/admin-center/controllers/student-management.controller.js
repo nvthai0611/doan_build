@@ -28,20 +28,23 @@ let StudentManagementController = class StudentManagementController {
     async countByStatus() {
         return this.studentManagementService.getCountByStatus();
     }
-    async createStudent(createStudentDto, applicationFile) {
+    async createStudent(createStudentDto, applicationFile, req) {
         try {
             if (!createStudentDto.fullName) {
                 throw new common_1.HttpException('Họ tên là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
             }
-            if (!createStudentDto.username) {
-                throw new common_1.HttpException('Username là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
+            const isParentCaller = req?.user?.role === 'parent';
+            if (!isParentCaller) {
+                if (!createStudentDto.username) {
+                    throw new common_1.HttpException('Username là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
+                }
+                const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+                if (!usernameRegex.test(createStudentDto.username)) {
+                    throw new common_1.HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', common_1.HttpStatus.BAD_REQUEST);
+                }
             }
             if (!createStudentDto.schoolId) {
                 throw new common_1.HttpException('School ID là bắt buộc', common_1.HttpStatus.BAD_REQUEST);
-            }
-            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-            if (!usernameRegex.test(createStudentDto.username)) {
-                throw new common_1.HttpException('Username chỉ chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự', common_1.HttpStatus.BAD_REQUEST);
             }
             if (applicationFile) {
                 createStudentDto.applicationFile = applicationFile;
@@ -55,7 +58,10 @@ let StudentManagementController = class StudentManagementController {
                     }
                 }
             }
-            return await this.studentManagementService.createStudent(createStudentDto);
+            const context = isParentCaller
+                ? { createdByRole: 'parent', parentUserId: req?.user?.userId }
+                : { createdByRole: 'center_owner' };
+            return await this.studentManagementService.createStudent(createStudentDto, context);
         }
         catch (error) {
             if (error instanceof common_1.HttpException) {
@@ -301,8 +307,9 @@ __decorate([
     openapi.ApiResponse({ status: 201, type: Object }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], StudentManagementController.prototype, "createStudent", null);
 __decorate([

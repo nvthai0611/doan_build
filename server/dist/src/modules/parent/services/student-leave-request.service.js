@@ -262,13 +262,8 @@ let StudentLeaveRequestService = class StudentLeaveRequestService {
         if (!parentUserId || !(0, validate_util_1.checkId)(parentUserId)) {
             throw new common_1.HttpException('ID phụ huynh không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
         }
-        const start = new Date(dto.startDate);
-        const end = new Date(dto.endDate);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            throw new common_1.HttpException('Định dạng ngày không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
-        }
-        if (end < start) {
-            throw new common_1.HttpException('Ngày kết thúc phải sau ngày bắt đầu', common_1.HttpStatus.BAD_REQUEST);
+        if (!dto.sessionIds || dto.sessionIds.length === 0) {
+            throw new common_1.HttpException('Vui lòng chọn ít nhất 1 buổi học', common_1.HttpStatus.BAD_REQUEST);
         }
         const parent = await this.prisma.parent.findUnique({
             where: { userId: parentUserId },
@@ -281,33 +276,58 @@ let StudentLeaveRequestService = class StudentLeaveRequestService {
         if (!studentIds.includes(dto.studentId)) {
             throw new common_1.HttpException('Không có quyền tạo đơn cho học sinh này', common_1.HttpStatus.FORBIDDEN);
         }
-        const enrollments = await this.prisma.enrollment.findMany({
-            where: {
-                studentId: dto.studentId,
-            },
-            select: {
-                classId: true,
-            },
+        const enrollment = await this.prisma.enrollment.findFirst({
+            where: { studentId: dto.studentId, classId: dto.classId },
+            select: { id: true },
         });
-        if (enrollments.length === 0) {
-            throw new common_1.HttpException('Học sinh chưa ghi danh vào lớp học nào', common_1.HttpStatus.BAD_REQUEST);
+        if (!enrollment) {
+            throw new common_1.HttpException('Học sinh không thuộc lớp đã chọn', common_1.HttpStatus.FORBIDDEN);
         }
-        const classIds = enrollments.map((e) => e.classId);
         const sessions = await this.prisma.classSession.findMany({
+            where: { id: { in: dto.sessionIds }, classId: dto.classId },
+            select: { id: true, sessionDate: true },
+            orderBy: { sessionDate: 'asc' },
+        });
+        if (sessions.length === 0) {
+            throw new common_1.HttpException('Không tìm thấy buổi học hợp lệ', common_1.HttpStatus.BAD_REQUEST);
+        }
+        const conflictingSessions = await this.prisma.leaveRequestAffectedSession.findMany({
             where: {
-                classId: { in: classIds },
-                sessionDate: {
-                    gte: start,
-                    lte: end,
-                },
-                class: {
-                    status: 'active',
+                sessionId: { in: dto.sessionIds },
+                leaveRequest: {
+                    requestType: 'student_leave',
+                    studentId: dto.studentId,
+                    status: { in: ['pending', 'approved'] },
                 },
             },
-            select: {
-                id: true,
+            include: {
+                session: {
+                    select: {
+                        sessionDate: true,
+                        startTime: true,
+                        endTime: true,
+                        class: { select: { name: true } },
+                    },
+                },
             },
         });
+        if (conflictingSessions.length > 0) {
+            const detail = conflictingSessions
+                .map((conflict) => {
+                const date = conflict.session?.sessionDate
+                    ? new Date(conflict.session.sessionDate).toLocaleDateString('vi-VN')
+                    : '';
+                const time = [conflict.session?.startTime, conflict.session?.endTime]
+                    .filter(Boolean)
+                    .join(' - ');
+                const className = conflict.session?.class?.name ? ` • ${conflict.session.class.name}` : '';
+                return `${date} ${time}${className}`.trim();
+            })
+                .join('; ');
+            throw new common_1.HttpException(`Các buổi sau đã có đơn nghỉ đang chờ duyệt/đã duyệt: ${detail}`, common_1.HttpStatus.CONFLICT);
+        }
+        const start = sessions[0].sessionDate;
+        const end = sessions[sessions.length - 1].sessionDate;
         const leaveRequest = await this.prisma.leaveRequest.create({
             data: {
                 requestType: 'student_leave',
@@ -320,9 +340,7 @@ let StudentLeaveRequestService = class StudentLeaveRequestService {
                 notes: null,
                 approvedAt: null,
                 affectedSessions: {
-                    create: sessions.map((session) => ({
-                        sessionId: session.id,
-                    })),
+                    create: sessions.map((s) => ({ sessionId: s.id })),
                 },
             },
             include: {
@@ -415,58 +433,62 @@ let StudentLeaveRequestService = class StudentLeaveRequestService {
         if (leaveRequest.status !== 'pending') {
             throw new common_1.HttpException('Chỉ có thể sửa đơn đang chờ duyệt', common_1.HttpStatus.BAD_REQUEST);
         }
-        const enrollments = await this.prisma.enrollment.findMany({
-            where: {
-                studentId: leaveRequest.studentId,
-            },
-            select: {
-                classId: true,
-            },
-        });
-        if (enrollments.length === 0) {
-            throw new common_1.HttpException('Học sinh chưa ghi danh vào lớp học nào', common_1.HttpStatus.BAD_REQUEST);
-        }
-        const classIds = enrollments.map((e) => e.classId);
-        const newStartDate = dto.startDate ? new Date(dto.startDate) : leaveRequest.startDate;
-        const newEndDate = dto.endDate ? new Date(dto.endDate) : leaveRequest.endDate;
-        if (newEndDate < newStartDate) {
-            throw new common_1.HttpException('Ngày kết thúc phải sau ngày bắt đầu', common_1.HttpStatus.BAD_REQUEST);
-        }
-        const oldStartDateStr = leaveRequest.startDate.toISOString().split('T')[0];
-        const oldEndDateStr = leaveRequest.endDate.toISOString().split('T')[0];
-        const newStartDateStr = newStartDate.toISOString().split('T')[0];
-        const newEndDateStr = newEndDate.toISOString().split('T')[0];
-        const datesChanged = oldStartDateStr !== newStartDateStr ||
-            oldEndDateStr !== newEndDateStr;
-        if (datesChanged) {
+        if (dto.sessionIds && dto.sessionIds.length > 0) {
             await this.prisma.leaveRequestAffectedSession.deleteMany({
                 where: { leaveRequestId },
             });
             const newSessions = await this.prisma.classSession.findMany({
+                where: { id: { in: dto.sessionIds } },
+                select: { id: true, sessionDate: true, classId: true },
+                orderBy: { sessionDate: 'asc' },
+            });
+            if (newSessions.length === 0) {
+                throw new common_1.HttpException('Không tìm thấy buổi học hợp lệ', common_1.HttpStatus.BAD_REQUEST);
+            }
+            const conflictingSessions = await this.prisma.leaveRequestAffectedSession.findMany({
                 where: {
-                    classId: { in: classIds },
-                    sessionDate: {
-                        gte: newStartDate,
-                        lte: newEndDate,
-                    },
-                    class: {
-                        status: 'active',
+                    sessionId: { in: newSessions.map((s) => s.id) },
+                    leaveRequest: {
+                        requestType: 'student_leave',
+                        studentId: leaveRequest.studentId,
+                        status: { in: ['pending', 'approved'] },
+                        id: { not: leaveRequestId },
                     },
                 },
-                select: {
-                    id: true,
+                include: {
+                    session: {
+                        select: {
+                            sessionDate: true,
+                            startTime: true,
+                            endTime: true,
+                            class: { select: { name: true } },
+                        },
+                    },
                 },
             });
+            if (conflictingSessions.length > 0) {
+                const detail = conflictingSessions
+                    .map((conflict) => {
+                    const date = conflict.session?.sessionDate
+                        ? new Date(conflict.session.sessionDate).toLocaleDateString('vi-VN')
+                        : '';
+                    const time = [conflict.session?.startTime, conflict.session?.endTime]
+                        .filter(Boolean)
+                        .join(' - ');
+                    const className = conflict.session?.class?.name ? ` • ${conflict.session.class.name}` : '';
+                    return `${date} ${time}${className}`.trim();
+                })
+                    .join('; ');
+                throw new common_1.HttpException(`Các buổi sau đã có đơn nghỉ đang chờ duyệt/đã duyệt: ${detail}`, common_1.HttpStatus.CONFLICT);
+            }
             const updated = await this.prisma.leaveRequest.update({
                 where: { id: leaveRequestId },
                 data: {
-                    startDate: newStartDate,
-                    endDate: newEndDate,
+                    startDate: newSessions[0].sessionDate,
+                    endDate: newSessions[newSessions.length - 1].sessionDate,
                     reason: dto.reason || leaveRequest.reason,
                     affectedSessions: {
-                        create: newSessions.map((session) => ({
-                            sessionId: session.id,
-                        })),
+                        create: newSessions.map((s) => ({ sessionId: s.id })),
                     },
                 },
                 include: {
@@ -702,58 +724,71 @@ let StudentLeaveRequestService = class StudentLeaveRequestService {
             })),
         }));
     }
-    async getAffectedSessions(query) {
-        const start = new Date(query.startDate);
-        const end = new Date(query.endDate);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            throw new common_1.HttpException('Định dạng ngày không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
+    async getAllChildrenClasses(parentUserId) {
+        if (!parentUserId || !(0, validate_util_1.checkId)(parentUserId)) {
+            throw new common_1.HttpException('ID phụ huynh không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
         }
-        if (end < start) {
-            throw new common_1.HttpException('Ngày kết thúc phải sau ngày bắt đầu', common_1.HttpStatus.BAD_REQUEST);
+        const parent = await this.prisma.parent.findUnique({
+            where: { userId: parentUserId },
+            include: { students: true },
+        });
+        if (!parent) {
+            throw new common_1.HttpException('Không tìm thấy thông tin phụ huynh', common_1.HttpStatus.NOT_FOUND);
         }
+        const studentIds = parent.students.map((s) => s.id);
+        if (studentIds.length === 0)
+            return [];
         const enrollments = await this.prisma.enrollment.findMany({
             where: {
-                studentId: query.studentId,
+                studentId: { in: studentIds },
+                status: { in: ['studying', 'approved'] },
+                class: { status: { in: ['ready', 'active'] } },
             },
-            select: {
-                classId: true,
-            },
-        });
-        if (enrollments.length === 0) {
-            return [];
-        }
-        const classIds = enrollments.map((e) => e.classId);
-        const sessions = await this.prisma.classSession.findMany({
-            where: {
-                classId: { in: classIds },
-                sessionDate: {
-                    gte: start,
-                    lte: end,
-                },
+            include: {
+                student: { include: { user: { select: { fullName: true, email: true } } } },
                 class: {
-                    status: 'active',
+                    include: {
+                        subject: true,
+                        teacher: { include: { user: { select: { fullName: true, email: true } } } },
+                        room: true,
+                        grade: true,
+                        sessions: {
+                            select: { id: true, sessionDate: true, startTime: true, endTime: true, status: true },
+                            orderBy: { sessionDate: 'asc' },
+                        },
+                    },
                 },
             },
+            orderBy: { enrolledAt: 'desc' },
+        });
+        return enrollments.map((e) => ({
+            id: e.class.id,
+            name: e.class.name,
+            subject: e.class.subject,
+            teacher: e.class.teacher,
+            room: e.class.room,
+            grade: e.class.grade,
+            sessions: e.class.sessions,
+            student: { id: e.student.id, user: e.student.user },
+        }));
+    }
+    async getSessionsByClass(query) {
+        const enrollment = await this.prisma.enrollment.findFirst({
+            where: { studentId: query.studentId, classId: query.classId },
+            select: { id: true },
+        });
+        if (!enrollment) {
+            throw new common_1.HttpException('Học sinh không thuộc lớp đã chọn', common_1.HttpStatus.FORBIDDEN);
+        }
+        const sessions = await this.prisma.classSession.findMany({
+            where: { classId: query.classId },
             select: {
                 id: true,
                 sessionDate: true,
                 startTime: true,
                 endTime: true,
-                class: {
-                    select: {
-                        name: true,
-                        subject: {
-                            select: {
-                                name: true,
-                            },
-                        },
-                    },
-                },
-                room: {
-                    select: {
-                        name: true,
-                    },
-                },
+                room: { select: { name: true } },
+                class: { select: { name: true, subject: { select: { name: true } } } },
             },
             orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
         });

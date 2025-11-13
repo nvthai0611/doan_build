@@ -24,8 +24,8 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
   const { data: child, isLoading: childLoading } = useQuery({
     queryKey: ["parent-child", childId],
     queryFn: () => parentChildService.getChildById(childId),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   // Fetch grades for all classes
@@ -61,8 +61,8 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
       const data = await res.json()
       return data?.data ?? data
     },
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   const isLoading = childLoading || gradesLoading || attendancesLoading
@@ -93,16 +93,6 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
           <span>Thông tin học sinh</span>
         </div>
       </div>
-
-      {/* Loading state */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
-          </div>
-        </div>
-      )}
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-6 border-b">
@@ -161,6 +151,16 @@ export function ChildDetailView({ childId, onBack }: ChildDetailViewProps) {
           Phản hồi giáo viên
         </button>
       </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === "info" && child && <ChildGeneralInfo child={child} />}

@@ -101,14 +101,12 @@ let TeachersService = class TeachersService {
                             id: true,
                             periodStart: true,
                             periodEnd: true,
-                            baseSalary: true,
                             teachingHours: true,
                             hourlyRate: true,
                             bonuses: true,
                             deductions: true,
                             totalAmount: true,
                             status: true,
-                            paidAt: true,
                         },
                         orderBy: {
                             periodStart: 'desc'
@@ -254,14 +252,12 @@ let TeachersService = class TeachersService {
                             id: true,
                             periodStart: true,
                             periodEnd: true,
-                            baseSalary: true,
                             teachingHours: true,
                             hourlyRate: true,
                             bonuses: true,
                             deductions: true,
                             totalAmount: true,
                             status: true,
-                            paidAt: true,
                         },
                         orderBy: {
                             periodStart: 'desc'
@@ -338,13 +334,38 @@ let TeachersService = class TeachersService {
             if (!teacher) {
                 throw new Error('Không tìm thấy giáo viên');
             }
-            const contracts = await this.prisma.contractUpload.findMany({
+            const contractUploads = await this.prisma.contractUpload.findMany({
                 where: {
                     teacherId: teacherId,
                 },
                 orderBy: {
                     uploadedAt: 'desc',
                 },
+            });
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const contracts = contractUploads.map((u) => {
+                let status = 'active';
+                if (u.expiredAt) {
+                    if (u.expiredAt < now) {
+                        status = 'expired';
+                    }
+                    else if (u.expiredAt <= thirtyDaysFromNow) {
+                        status = 'expiring_soon';
+                    }
+                }
+                return {
+                    id: u.id,
+                    contractType: u.contractType,
+                    uploadedImageUrl: u.uploadedImageUrl,
+                    uploadedImageName: u.uploadedImageName,
+                    uploadedAt: u.uploadedAt,
+                    startDate: u.startDate,
+                    expiryDate: u.expiredAt,
+                    teacherSalaryPercent: u.teacherSalaryPercent,
+                    notes: u.note,
+                    status,
+                };
             });
             return contracts;
         }
