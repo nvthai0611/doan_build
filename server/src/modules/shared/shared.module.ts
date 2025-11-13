@@ -15,6 +15,7 @@ import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.pro
 import { EnrollmentEmailProcessor } from './consumer/enrollment-email.processor';
 import { ClassStatusChangeProcessor } from './consumer/class-status-change.processor';
 import { ClassRequestEmailProcessor } from './consumer/class-request-email.processor';
+import { SessionChangeEmailProcessor } from './consumer/session-change-email.processor';
 import { PublicClassesController } from './controllers/public-classes.controller';
 import { PublicClassesService } from './services/public-classes.service';
 import { PublicShowcasesController } from './controllers/public-showcases.controller';
@@ -68,6 +69,10 @@ const DEFAULT_BULL_JOB_OPTIONS = {
       name: 'class_request_email',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
     }),
+    BullModule.registerQueue({
+      name: 'session_change_email',
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
+    }),
   ],
   controllers:[
     // Shared controllers can be added here
@@ -93,7 +98,8 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     ClassAssignTeacherProcessor,
     EnrollmentEmailProcessor,
     ClassStatusChangeProcessor,
-    ClassRequestEmailProcessor
+    ClassRequestEmailProcessor,
+    SessionChangeEmailProcessor
   ],
   exports: [
     StudentSharedService, 

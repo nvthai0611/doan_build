@@ -24,6 +24,7 @@ export class TeacherManagementService {
   ) { }
 
   async createTeacher(createTeacherDto: CreateTeacherDto) {
+    // Tăng timeout cho transaction vì có upload image và gửi email (30 giây)
     return await this.prisma.$transaction(async (prisma) => {
       // Check if email or username already exists
       const existingUser = await prisma.user.findFirst({
@@ -37,6 +38,17 @@ export class TeacherManagementService {
 
       if (existingUser) {
         throw new BadRequestException('Email hoặc username đã tồn tại');
+      }
+
+      // Check if phone already exists (if provided)
+      if (createTeacherDto.phone) {
+        const existingPhone = await prisma.user.findFirst({
+          where: { phone: createTeacherDto.phone },
+        });
+
+        if (existingPhone) {
+          throw new BadRequestException('Số điện thoại đã được sử dụng');
+        }
       }
 
 
@@ -130,30 +142,32 @@ export class TeacherManagementService {
 
       // Handle contract image upload if provided
       if (createTeacherDto.contractImage) {
+        let uploadResult = null;
         try {
-          // Upload image to Cloudinary
-          const uploadResult = await this.cloudinaryService.uploadImage(
+          // Upload image to Cloudinary (có thể mất thời gian)
+          uploadResult = await this.cloudinaryService.uploadImage(
             createTeacherDto.contractImage,
             'teachers',
           );
+        } catch (uploadError) {
+          // Log lỗi upload nhưng không throw, sẽ lưu filename tạm
+          console.error('Error uploading contract image to Cloudinary:', uploadError);
+        }
+
+        // Tạo contractUpload record trong transaction
+        try {
           await prisma.contractUpload.create({
             data: {
               teacherId: teacher.id,
               contractType: 'teacher_contract',
-              uploadedImageUrl: uploadResult.secure_url, // Save Cloudinary URL
-              uploadedImageName: createTeacherDto.contractImage.originalname,
+              uploadedImageUrl: uploadResult?.secure_url || createTeacherDto.contractImage.filename || 'temp-filename',
+              uploadedImageName: createTeacherDto.contractImage.originalname || 'contract-image',
             },
           });
-        } catch (error) {
-          await prisma.contractUpload.create({
-            data: {
-              teacherId: teacher.id,
-              contractType: 'teacher_contract',
-              uploadedImageUrl:
-                createTeacherDto.contractImage.filename || 'temp-filename',
-              uploadedImageName: createTeacherDto.contractImage.originalname,
-            },
-          });
+        } catch (dbError) {
+          // Nếu transaction đã hết hạn, log lỗi nhưng không throw
+          // Vì teacher đã được tạo thành công
+          console.error('Error creating contractUpload record:', dbError);
         }
       }
 
@@ -172,6 +186,9 @@ export class TeacherManagementService {
       }
 
       return this.formatTeacherResponse(teacher);
+    }, {
+      timeout: 30000, // 30 giây - đủ thời gian cho upload image và gửi email
+      maxWait: 10000, // 10 giây - thời gian tối đa chờ transaction bắt đầu
     });
   }
 
