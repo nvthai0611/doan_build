@@ -7,36 +7,46 @@ import { PrismaService } from '../../../db/prisma.service';
  * Interface lưu thông tin lỗi khi xử lý từng giai đoạn
  */
 interface ErrorDetail {
-  itemId: string;      // ID của item bị lỗi
-  itemName: string;    // Tên item bị lỗi
-  error: string;       // Nội dung lỗi
+  itemId: string; // ID của item bị lỗi
+  itemName: string; // Tên item bị lỗi
+  error: string; // Nội dung lỗi
 }
 
 /**
  * Interface định nghĩa điều khoản hợp đồng
  */
 interface ContractTerms {
-  payoutRate: number;  // Tỷ lệ hoa hồng thanh toán cho giáo viên
-  [key: string]: any;  // Các thuộc tính khác
+  payoutRate: number; // Tỷ lệ hoa hồng thanh toán cho giáo viên
+  [key: string]: any; // Các thuộc tính khác
 }
 
 /**
  * Interface lưu metadata của bảng lương
  */
 interface PayrollMetadata {
-  totalSessions: number;           // Tổng số buổi học
-  totalSessionPayouts: number | string;  // Tổng tiền từ các buổi học
-  backPayCount: number;            // Số lượng khoản truy lĩnh
-  backPayTotal: number | string;   // Tổng tiền truy lĩnh
-  processedAt: string;             // Thời điểm xử lý
+  totalSessions: number; // Tổng số buổi học
+  totalSessionPayouts: number | string; // Tổng tiền từ các buổi học
+  backPayCount: number; // Số lượng khoản truy lĩnh
+  backPayTotal: number | string; // Tổng tiền truy lĩnh
+  processedAt: string; // Thời điểm xử lý
 }
 
+//  Interface cho chi tiết truy lĩnh
+interface BackPayDetail {
+  feeRecordId: string;    // ID của hóa đơn gốc
+  sessionDate: string;    // Ngày của buổi học được truy lĩnh
+  sessionId: string;      // ID của buổi học
+  description: string;    // Mô tả ngắn gọn
+  revenuePerSession: number; // Doanh thu (đã chia) của buổi đó
+  payoutRate: number;     // % rate đã áp dụng
+  payoutAmount: number;   // Số tiền GV nhận được
+}
 /**
  * Map lưu thông tin truy lĩnh cho từng giáo viên
  * Key: teacherId
  * Value: { amount: tổng tiền truy lĩnh, details: mảng mô tả chi tiết }
  */
-type BackPayMap = Map<string, { amount: Prisma.Decimal; details: string[] }>;
+type BackPayMap = Map<string, { amount: Prisma.Decimal; details: BackPayDetail[] }>;
 
 @Injectable()
 export class PayrollCronService {
@@ -46,12 +56,6 @@ export class PayrollCronService {
 
   /**
    * CRON JOB CHÍNH - Chạy lúc 2h sáng ngày 10 hàng tháng
-   * Nhiệm vụ: Tạo bảng lương cho giáo viên của tháng trước
-   * 
-   * Quy trình gồm 3 giai đoạn:
-   * 1. Tính lương cho các buổi học trong tháng (chỉ tính học sinh đã trả tiền)
-   * 2. Tính tiền truy lĩnh từ các hóa đơn nợ cũ được thanh toán trong tháng này
-   * 3. Gộp tất cả vào bảng lương tổng hợp (Payroll)
    */
   @Cron('0 2 10 * *')
   async handleGenerateTeacherPayroll() {
@@ -62,17 +66,14 @@ export class PayrollCronService {
     let successCount = 0;
     let failedCount = 0;
 
-    // Tạo record theo dõi việc thực thi cron job
-    const cronExecutionId = await this.createCronExecution('teacher_payroll_generation');
+    const cronExecutionId =
+      await this.createCronExecution('teacher_payroll_generation');
 
     try {
       // === THIẾT LẬP KHOẢNG THỜI GIAN ===
       const now = new Date();
-      // Ngày đầu tháng trước (VD: 1/10 nếu đang là 10/11)
       const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      // Ngày cuối tháng trước (VD: 31/10 nếu đang là 10/11)
       const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      // Hạn thanh toán hóa đơn: ngày 7 của tháng hiện tại
       const billDueDate = new Date(now.getFullYear(), now.getMonth(), 7);
 
       this.logger.log(
@@ -80,30 +81,28 @@ export class PayrollCronService {
           lastDayOfLastMonth.toISOString().split('T')[0]
         }`,
       );
+      //Xóa bỏ vì nhỡ đâu server hẹo thì nó vẫn chạy được cho những người sau nhưng phải check
+      // // === KIỂM TRA THÁNG ĐÃ CHỐT SỔ CHƯA ===
+      // const existingPayroll = await this.prisma.payroll.findFirst({
+      //   where: {
+      //     periodStart: firstDayOfLastMonth,
+      //     periodEnd: lastDayOfLastMonth,
+      //   },
+      // });
 
-      // === KIỂM TRA THÁNG ĐÃ CHỐT SỔ CHƯA ===
-      const existingPayroll = await this.prisma.payroll.findFirst({
-        where: {
-          periodStart: firstDayOfLastMonth,
-          periodEnd: lastDayOfLastMonth,
-        },
-      });
-
-      if (existingPayroll) {
-        this.logger.log('Tháng này đã chốt sổ. Bỏ qua...');
-        await this.updateCronExecution(cronExecutionId, {
-          status: 'completed',
-          totalItems: 0,
-          successCount: 0,
-          failedCount: 0,
-          durationMs: Date.now() - startTime,
-        });
-        return;
-      }
+      // if (existingPayroll) {
+      //   this.logger.log('Tháng này đã chốt sổ. Bỏ qua...');
+      //   await this.updateCronExecution(cronExecutionId, {
+      //     status: 'completed',
+      //     totalItems: 0,
+      //     successCount: 0,
+      //     failedCount: 0,
+      //     durationMs: Date.now() - startTime,
+      //   });
+      //   return;
+      // }
 
       // === GIAI ĐOẠN 1: TÍNH LƯƠNG CHO CÁC BUỔI HỌC ===
-      // Tính lương cho tất cả buổi học trong tháng trước
-      // Chỉ tính cho những học sinh đã trả tiền bill kỳ này
       this.logger.log('Giai đoạn 1: Tính lương cho các buổi học...');
       let phase1Count = 0;
       try {
@@ -125,8 +124,6 @@ export class PayrollCronService {
       }
 
       // === GIAI ĐOẠN 2: TÍNH TIỀN TRUY LĨNH ===
-      // Tính tiền cho các hóa đơn nợ cũ được thanh toán trong tháng này
-      // Áp dụng tỷ lệ hoa hồng HIỆN TẠI của giáo viên
       this.logger.log('Giai đoạn 2: Tính truy lĩnh nợ cũ (fee-based)...');
       let backPayMap: BackPayMap = new Map();
       try {
@@ -147,8 +144,6 @@ export class PayrollCronService {
       }
 
       // === GIAI ĐOẠN 3: GỘP VÀO BẢNG LƯƠNG TỔNG HỢP ===
-      // Tạo bảng lương (Payroll) cho mỗi giáo viên
-      // Bao gồm: lương buổi học + tiền truy lĩnh
       this.logger.log('Giai đoạn 3: Gộp Payroll tổng hợp...');
       let phase3Count = 0;
       try {
@@ -204,21 +199,16 @@ export class PayrollCronService {
 
   /**
    * GIAI ĐOẠN 1: TÍNH LƯƠNG CHO CÁC BUỔI HỌC
-   * 
-   * Logic:
-   * 1. Lấy tất cả buổi học trong khoảng thời gian
-   * 2. Lấy tỷ lệ hoa hồng của tất cả giáo viên từ hợp đồng
-   * 3. Lấy danh sách học sinh đã trả tiền bill kỳ này
-   * 4. Với mỗi buổi học:
-   *    - Đếm số học sinh đã trả tiền và có điểm danh
-   *    - Tính doanh thu thực tế = số học sinh * học phí/buổi
-   *    - Tính lương GV = doanh thu * tỷ lệ hoa hồng
-   *    - Tạo record TeacherSessionPayout
-   * 
-   * @param startDate Ngày bắt đầu kỳ lương
-   * @param endDate Ngày kết thúc kỳ lương
-   * @param billDueDate Hạn thanh toán hóa đơn
-   * @returns Số lượng TeacherSessionPayout được tạo
+   * (SỬA) Logic:
+   * 1. Lấy tất cả buổi học
+   * 2. Lấy tỷ lệ hoa hồng
+   * 3. (SỬA) Lấy HÓA ĐƠN (FeeRecord) đã trả tiền, bao gồm SỐ TIỀN THỰC THU
+   * 4. (SỬA) Tạo Map "classId:studentId" -> số tiền thực thu
+   * 5. Với mỗi buổi học:
+   *    - Lấy tất cả HS có điểm danh
+   *    - (SỬA) Tính tổng doanh thu thực tế = TỔNG(số tiền thực thu của HS đi học)
+   *    - Tính lương GV = tổng doanh thu thực tế * tỷ lệ hoa hồng
+   *    - Tạo record TeacherSessionPayout
    */
   private async processCurrentMonthSessions(
     startDate: Date,
@@ -229,12 +219,13 @@ export class PayrollCronService {
     const sessions = await this.prisma.classSession.findMany({
       where: {
         sessionDate: { gte: startDate, lte: endDate },
+        status: 'end'
       },
       select: {
         id: true,
         sessionDate: true,
-        teacherId: true,              // GV chính thức
-        substituteTeacherId: true,    // GV thay thế (nếu có)
+        teacherId: true,
+        substituteTeacherId: true,
         classId: true,
         class: {
           select: {
@@ -251,14 +242,21 @@ export class PayrollCronService {
       return 0;
     }
 
+    // === ĐẾM SỐ BUỔI HỌC THỰC TẾ CỦA MỖI LỚP ===
+    // Map: classId -> số buổi học
+    const sessionCountByClass = new Map<string, number>();
+    for (const session of sessions) {
+      const count = sessionCountByClass.get(session.classId) || 0;
+      sessionCountByClass.set(session.classId, count + 1);
+    }
+
     // === LẤY TỶ LỆ HOA HỒNG CỦA TẤT CẢ GIÁO VIÊN ===
-    // Lấy từ hợp đồng còn hiệu lực (status = 'active')
     const teacherContractUploads = await this.prisma.contractUpload.findMany({
       where: {
         status: 'active',
-        expiredAt: { gte: startDate },      // Hợp đồng còn hạn
-        teacherId: { not: null },            // Là hợp đồng giáo viên
-        teacherSalaryPercent: { not: null }, // Có tỷ lệ hoa hồng
+        expiredAt: { gte: startDate },
+        teacherId: { not: null },
+        teacherSalaryPercent: { not: null },
       },
       select: {
         teacherId: true,
@@ -266,7 +264,6 @@ export class PayrollCronService {
       },
     });
 
-    // Tạo Map: teacherId -> tỷ lệ hoa hồng
     const teacherPayoutRateMap = new Map<string, Prisma.Decimal>();
     teacherContractUploads.forEach((upload) => {
       if (upload.teacherId && upload.teacherSalaryPercent) {
@@ -277,96 +274,122 @@ export class PayrollCronService {
       }
     });
 
-    // === LẤY DANH SÁCH HỌC SINH ĐÃ TRẢ TIỀN ===
-    // Chỉ tính lương cho buổi học có học sinh đã trả bill kỳ này
-    const allPaidStudents = await this.prisma.feeRecord.findMany({
+    // ===  LẤY HÓA ĐƠN ĐÃ TRẢ TIỀN (BAO GỒM SỐ TIỀN THỰC THU) ===
+    const allPaidFeeRecords = await this.prisma.feeRecord.findMany({
       where: {
         classId: { in: sessions.map((s) => s.classId) },
-        dueDate: billDueDate,  // Bill của kỳ này
-        status: 'paid',        // Đã thanh toán
+        dueDate: billDueDate,
+        status: 'paid',
       },
-      select: { classId: true, studentId: true },
+      select: {
+        classId: true,
+        studentId: true,
+        amount: true, // Phí gốc
+        totalAmount: true, // Phí thực thu sau khi trừ scholarship
+      },
     });
 
-    // Tạo Map: classId -> Set<studentId> đã trả tiền
-    const paidStudentsByClass = new Map<string, Set<string>>();
-    allPaidStudents.forEach((record) => {
-      if (!paidStudentsByClass.has(record.classId)) {
-        paidStudentsByClass.set(record.classId, new Set());
+    // === (SỬA) TẠO MAP DOANH THU THỰC TẾ (ĐÃ CHIA TRUNG BÌNH) ===
+    // Map: "classId:studentId" -> Số tiền thực thu TRÊN MỖI BUỔI HỌC
+    const paidStudentRevenueMap = new Map<string, Prisma.Decimal>();
+    allPaidFeeRecords.forEach((record) => {
+      // 1. Lấy số tiền thực thu của cả HĐ
+      const actualRevenue = record.totalAmount || record.amount;
+
+      // 2. Lấy số buổi học của HĐ này
+      const sessionCount = sessionCountByClass.get(record.classId);
+
+      // 3. Chia trung bình
+      let revenuePerSession = new Prisma.Decimal(0);
+      if (sessionCount && sessionCount > 0) {
+        revenuePerSession = actualRevenue.dividedBy(sessionCount);
+      } else {
+         // Nếu không tìm thấy buổi học nào (lỗi dữ liệu?),
+         // thì tạm coi là 1 để tránh lỗi chia cho 0
+        revenuePerSession = actualRevenue; 
+        this.logger.warn(`Lớp ${record.classId} có HĐ đã trả nhưng không có session.`)
       }
-      paidStudentsByClass.get(record.classId)!.add(record.studentId);
+
+      // 4. Lưu số tiền ĐÃ CHIA vào Map
+      paidStudentRevenueMap.set(
+        `${record.classId}:${record.studentId}`,
+        revenuePerSession,
+      );
     });
 
     // === XỬ LÝ TỪNG BUỔI HỌC ===
     let payoutCount = 0;
     for (const session of sessions) {
       try {
-        // 1. Xác định người nhận lương (GV thay thế hoặc GV chính)
+        // 1. Xác định người nhận lương
         const personToPayId = session.substituteTeacherId || session.teacherId;
-        if (!personToPayId) {
-          this.logger.warn(`Buổi ${session.id} không có GV`);
-          continue;
-        }
+        if (!personToPayId) continue;
 
-        // 2. Lấy học phí/buổi
-        const sessionFee =
+        // 2. Lấy học phí/buổi (GỐC)
+        const baseSessionFee = // (SỬA) Đổi tên biến để rõ nghĩa
           session.class.feeAmount ||
           session.class.feeStructure?.amount ||
           new Prisma.Decimal(0);
         const period = session.class.feePeriod || session.class.feeStructure?.period;
 
         // 3. Chỉ tính cho lớp tính phí theo buổi
-        if (period !== 'per_session' || sessionFee.isZero()) {
-          this.logger.debug(`Buổi ${session.id} không tính theo buổi`);
-          continue;
-        }
+        if (period !== 'per_session' || baseSessionFee.isZero()) continue;
 
         // 4. Lấy tỷ lệ hoa hồng của GV
         const payoutRate = teacherPayoutRateMap.get(personToPayId);
-        if (!payoutRate || payoutRate.isZero()) {
-          this.logger.warn(
-            `GV ${personToPayId} (Buổi ${session.id}) không có hợp đồng hợp lệ với teacherSalaryPercent`,
-          );
-          continue;
-        }
+        if (!payoutRate || payoutRate.isZero()) continue;
 
-        // 5. Lấy danh sách học sinh đã trả tiền của lớp này
-        const paidStudentIds = paidStudentsByClass.get(session.classId) || new Set();
-
-        // 6. Đếm số học sinh có điểm danh VÀ đã trả tiền
+        // 5.  Lấy TẤT CẢ học sinh có điểm danh (kể cả chưa trả tiền)
         const attendances = await this.prisma.studentSessionAttendance.findMany({
           where: {
             sessionId: session.id,
-            status: { not: 'excused' },              // Không tính học sinh nghỉ có phép
-            studentId: { in: Array.from(paidStudentIds) }, // Chỉ tính HS đã trả tiền
+            status: { not: 'excused' }, // Không tính nghỉ có phép
           },
           select: { studentId: true },
         });
 
-        const paidStudentCount = attendances.length;
-
-        if (paidStudentCount === 0) {
-          this.logger.debug(`Buổi ${session.id} không có HS trả tiền`);
+        if (attendances.length === 0) {
+          this.logger.debug(`Buổi ${session.id} không có HS đi học`);
           continue;
         }
 
-        // 7. Tính toán lương
-        // Doanh thu thực tế = số HS đã trả tiền * học phí/buổi
-        const actualRevenue = new Prisma.Decimal(paidStudentCount).times(sessionFee);
-        // Lương GV = doanh thu * tỷ lệ hoa hồng
-        const teacherPayout = actualRevenue.times(payoutRate);
+        // 6. Tính tổng DOANH THU THỰC TẾ của buổi học
+        let sessionActualRevenue = new Prisma.Decimal(0);
+        let paidStudentCount = 0;
+
+        for (const attendance of attendances) {
+          const key = `${session.classId}:${attendance.studentId}`;
+          // Lấy doanh thu thực tế của học sinh này từ Map
+          const revenueFromStudent = paidStudentRevenueMap.get(key);
+
+          // Nếu HS này vừa đi học, VỪA có trong map HĐ đã trả
+          if (revenueFromStudent) {
+            // Cộng doanh thu thực tế (đã trừ scholarship), không phải đếm 1
+            sessionActualRevenue = sessionActualRevenue.plus(revenueFromStudent);
+            paidStudentCount++;
+          }
+          // Nếu không, HS này đi học nhưng chưa trả tiền -> không cộng
+        }
+
+        if (paidStudentCount === 0) {
+          this.logger.debug(`Buổi ${session.id} không có HS (đã trả tiền) tham gia`);
+          continue;
+        }
+
+        // 7. Tính toán lương dựa trên DOANH THU THỰC TẾ
+        const teacherPayout = sessionActualRevenue.times(payoutRate);
 
         // 8. Tạo record TeacherSessionPayout
         await this.prisma.teacherSessionPayout.create({
           data: {
             sessionId: session.id,
             teacherId: personToPayId,
-            status: 'calculated',             // Trạng thái: đã tính toán
-            sessionFeePerStudent: sessionFee,
+            status: 'calculated',
+            sessionFeePerStudent: baseSessionFee, //  Lưu phí GỐC để tham khảo
             studentCount: paidStudentCount,
-            totalRevenue: actualRevenue,
+            totalRevenue: sessionActualRevenue, //  Lưu doanh thu THỰC TẾ
             payoutRate,
-            teacherPayout,
+            teacherPayout: teacherPayout, //  Lưu lương THỰC TẾ
           },
         });
 
@@ -379,50 +402,42 @@ export class PayrollCronService {
     return payoutCount;
   }
 
-  /**
-   * GIAI ĐOẠN 2: TÍNH TIỀN TRUY LĨNH
-   * 
-   * Logic:
-   * 1. Tìm các hóa đơn CŨ (dueDate < startDate) được thanh toán trong tháng này
-   * 2. Lấy tỷ lệ hoa hồng HIỆN TẠI của tất cả giáo viên
-   * 3. Lấy mapping Class -> Teacher
-   * 4. Với mỗi hóa đơn cũ:
-   *    - Tìm giáo viên của lớp đó
-   *    - Lấy tỷ lệ hoa hồng hiện tại của GV
-   *    - Tính tiền truy lĩnh = Tổng tiền hóa đơn * Tỷ lệ hoa hồng
-   * 
-   * ⚠️ LƯU Ý: Đang áp dụng tỷ lệ hoa hồng HIỆN TẠI (tháng 11)
-   *           cho hóa đơn tháng 9, 10...
-   *           Có thể cần điều chỉnh nếu muốn dùng tỷ lệ của tháng cũ
-   * 
-   * @param startDate Ngày bắt đầu kỳ lương
-   * @param endDate Ngày kết thúc kỳ lương
-   * @returns Map chứa thông tin truy lĩnh của từng giáo viên
+ /**
+   * GIAI ĐOẠN 2: TÍNH TIỀN TRUY LĨNH (SESSION-BASED)
+   * * Logic:
+   * 1. Tìm các hóa đơn CŨ (FeeRecord) được thanh toán trong kỳ này.
+   * 2. Với MỖI hóa đơn:
+   *    a. Suy luận ra kỳ nợ (ví dụ: bill T10 -> nợ T9).
+   *    b. Tìm TẤT CẢ buổi học (ClassSession) trong kỳ nợ đó.
+   *    c. Chia trung bình (prorate) số tiền thực thu của hóa đơn cho từng buổi học.
+   *    d. Với MỖI buổi học:
+   *        i.  Tìm người dạy (GV chính hoặc GV thay thế).
+   *        ii. Lấy % rate LỊCH SỬ của người đó.
+   *        iii.Tính lương và cộng dồn vào `backPayMap` cho ĐÚNG người.
    */
   private async processBackPayments(
     startDate: Date,
     endDate: Date,
   ): Promise<BackPayMap> {
-    // === TÌM CÁC HÓA ĐƠN CŨ ĐƯỢC THANH TOÁN TRONG KỲ NÀY ===
+    // === 1. TÌM CÁC HÓA ĐƠN CŨ ĐƯỢC THANH TOÁN ===
     const backPayments = await this.prisma.feeRecordPayment.findMany({
       where: {
         payment: {
-          paidAt: { gte: startDate, lte: endDate },  // Thanh toán trong tháng này
+          paidAt: { gte: startDate, lte: endDate },
         },
         feeRecord: {
-          dueDate: { lt: startDate },  // Hóa đơn của tháng trước đó
-          status: 'paid',              // Đã thanh toán
+          dueDate: { lt: startDate },
+          status: 'paid',
         },
       },
       select: {
         feeRecord: {
           select: {
             id: true,
-            studentId: true,
             classId: true,
-            amount: true,    // Tổng tiền hóa đơn
-            dueDate: true,
-            notes: true,
+            totalAmount: true,
+            amount: true,
+            dueDate: true, // Quan trọng để suy luận kỳ nợ
           },
         },
       },
@@ -433,120 +448,126 @@ export class PayrollCronService {
       return new Map();
     }
 
-    // === LẤY TỶ LỆ HOA HỒNG HIỆN TẠI CỦA TẤT CẢ GIÁO VIÊN ===
-    const teacherContractUploads = await this.prisma.contractUpload.findMany({
-      where: {
-        status: 'active',
-        expiredAt: { gte: startDate },      // Hợp đồng còn hạn
-        teacherId: { not: null },
-        teacherSalaryPercent: { not: null },
-      },
-      select: {
-        teacherId: true,
-        teacherSalaryPercent: true,
-      },
-    });
-
-    // Tạo Map: teacherId -> tỷ lệ hoa hồng
-    const teacherPayoutRateMap = new Map<string, Prisma.Decimal>();
-    teacherContractUploads.forEach((upload) => {
-      if (upload.teacherId && upload.teacherSalaryPercent) {
-        teacherPayoutRateMap.set(
-          upload.teacherId,
-          new Prisma.Decimal(upload.teacherSalaryPercent),
-        );
-      }
-    });
-
-    // === LẤY MAPPING: CLASS -> TEACHER ===
-    const classIdsInBackPay = [
-      ...new Set(backPayments.map((p) => p.feeRecord?.classId).filter(Boolean)),
-    ] as string[];
-
-    const classes = await this.prisma.class.findMany({
-      where: { id: { in: classIdsInBackPay } },
-      select: { id: true, teacherId: true },
-    });
-
-    // Tạo Map: classId -> teacherId
-    const classTeacherMap = new Map<string, string>();
-    classes.forEach((c) => {
-      if (c.teacherId) {
-        classTeacherMap.set(c.id, c.teacherId);
-      }
-    });
-
-    // === TÍNH TOÁN TRUY LĨNH CHO TỪNG GIÁO VIÊN ===
+    // === TẠO CACHE ĐỂ LƯU CONTRACT LỊCH SỬ ===
+    // Map: "teacherId:YYYY-MM-DD" -> payoutRate
+    // Dùng để tránh query N+1 khi lặp qua các buổi học
+    const historicalRateCache = new Map<string, Prisma.Decimal>();
     const backPayMap: BackPayMap = new Map();
 
+    // === 2. LẶP QUA TỪNG HÓA ĐƠN ĐÃ TRẢ ===
     for (const payment of backPayments) {
       const { feeRecord } = payment;
       if (!feeRecord || !feeRecord.classId) continue;
 
-      // 1. Tìm giáo viên của lớp này
-      const teacherId = classTeacherMap.get(feeRecord.classId);
-      if (!teacherId) {
-        this.logger.debug(
-          `Không tìm thấy GV cho Lớp ${feeRecord.classId} (HĐ ${feeRecord.id})`,
-        );
-        continue;
+      try {
+        const actualFeeRecordAmount = feeRecord.totalAmount || feeRecord.amount;
+
+        // === 3. SUY LUẬN KỲ NỢ TỪ `dueDate` ===
+        // Quy tắc: dueDate 7/10 -> kỳ nợ là Tháng 9
+        const billingStart = new Date(feeRecord.dueDate.getFullYear(), feeRecord.dueDate.getMonth() - 1, 1);
+        const billingEnd = new Date(feeRecord.dueDate.getFullYear(), feeRecord.dueDate.getMonth(), 0);
+
+        // === 4. TÌM TẤT CẢ BUỔI HỌC TRONG KỲ NỢ ===
+        const sessionsInDebtPeriod = await this.prisma.classSession.findMany({
+          where: {
+            classId: feeRecord.classId,
+            sessionDate: { gte: billingStart, lte: billingEnd },
+            status: 'end', // Chỉ các buổi thực dạy
+          },
+          select: {
+            id: true,
+            sessionDate: true,
+            teacherId: true,
+            substituteTeacherId: true,
+          },
+        });
+
+        const sessionCount = sessionsInDebtPeriod.length;
+        if (sessionCount === 0) {
+          this.logger.warn(
+            `HĐ ${feeRecord.id} đã trả tiền nhưng không tìm thấy buổi học nào trong kỳ ${billingStart.toISOString().split('T')[0]}`,
+          );
+          continue;
+        }
+
+        // === 5. CHIA TRUNG BÌNH SỐ TIỀN ===
+        // (Giống hệt Giai đoạn 1)
+        const revenuePerSession = actualFeeRecordAmount.dividedBy(sessionCount);
+
+        // === 6. LẶP QUA TỪNG BUỔI HỌC ĐỂ TRẢ LƯƠNG ĐÚNG NGƯỜI ===
+        for (const session of sessionsInDebtPeriod) {
+          // 6a. Tìm ĐÚNG người dạy (GV chính hoặc GV thay thế)
+          const personToPayId = session.substituteTeacherId || session.teacherId;
+          if (!personToPayId) {
+            this.logger.warn(`Buổi ${session.id} (nợ cũ) không có GV`);
+            continue;
+          }
+
+          // 6b. Lấy % rate LỊCH SỬ của người này
+          const billingDateKey = billingStart.toISOString().split('T')[0]; // Dùng ngày đầu kỳ nợ làm key
+          const cacheKey = `${personToPayId}:${billingDateKey}`;
+
+          let payoutRate = historicalRateCache.get(cacheKey);
+
+          if (!payoutRate) {
+            const historicalContract = await this.prisma.contractUpload.findFirst({
+              where: {
+                teacherId: personToPayId,
+                teacherSalaryPercent: { not: null },
+                // Tìm HĐ có hiệu lực tại thời điểm kỳ nợ
+                expiredAt: { gte: billingStart }, 
+                // (Có thể thêm startDate: { lte: billingStart } nếu bạn có)
+              },
+              select: { teacherSalaryPercent: true },
+              orderBy: { expiredAt: 'desc' },
+            });
+
+            if (historicalContract?.teacherSalaryPercent) {
+              payoutRate = new Prisma.Decimal(historicalContract.teacherSalaryPercent);
+              historicalRateCache.set(cacheKey, payoutRate);
+            } else {
+              this.logger.warn(
+                `GV ${personToPayId} không có HĐ hợp lệ cho kỳ ${billingDateKey} (session ${session.id})`,
+              );
+              continue;
+            }
+          }
+
+          if (payoutRate.isZero()) continue;
+
+          // 6c. Tính lương cho buổi này và cho đúng người
+          const teacherPayout = revenuePerSession.times(payoutRate);
+          const sessionDateStr = session.sessionDate.toISOString().split('T')[0];
+          const detailObject: BackPayDetail = {
+            feeRecordId: feeRecord.id,
+            sessionId: session.id,
+            sessionDate: sessionDateStr,
+            description: `Truy lĩnh buổi ${sessionDateStr} (từ HĐ ${feeRecord.id})`,
+            revenuePerSession: revenuePerSession.toNumber(),
+            payoutRate: payoutRate.toNumber(),
+            payoutAmount: teacherPayout.toNumber(),
+          };
+          // 6d. Cộng dồn vào `backPayMap`
+          if (!backPayMap.has(personToPayId)) {
+            backPayMap.set(personToPayId, { amount: new Prisma.Decimal(0), details: [] });
+          }
+          const existing = backPayMap.get(personToPayId)!;
+          existing.amount = existing.amount.plus(teacherPayout);
+          existing.details.push(detailObject);
+
+        } // Kết thúc lặp qua các buổi học
+      } catch (error) {
+         this.logger.error(`Lỗi xử lý back-payment cho HĐ ${feeRecord.id}:`, error);
       }
-
-      // 2. Lấy tỷ lệ hoa hồng HIỆN TẠI của GV
-      // ⚠️ Đang dùng rate tháng 11 cho hóa đơn tháng 9
-      const payoutRate = teacherPayoutRateMap.get(teacherId);
-      if (!payoutRate || payoutRate.isZero()) {
-        this.logger.warn(
-          `GV ${teacherId} không có payoutRate hợp lệ cho truy lĩnh (HĐ ${feeRecord.id})`,
-        );
-        continue;
-      }
-
-      // 3. Tính tiền truy lĩnh
-      // Công thức: Tổng tiền hóa đơn * Tỷ lệ hoa hồng
-      const teacherPayout = feeRecord.amount.times(payoutRate);
-      const dueDateStr = feeRecord.dueDate.toISOString().split('T')[0];
-      const detail = `Truy lĩnh HĐ ${dueDateStr}: ${teacherPayout.toFixed(
-        0,
-      )} VND (từ ${feeRecord.amount.toFixed(0)} VND)`;
-
-      // 4. Cộng dồn vào Map
-      if (!backPayMap.has(teacherId)) {
-        backPayMap.set(teacherId, { amount: new Prisma.Decimal(0), details: [] });
-      }
-
-      const existing = backPayMap.get(teacherId)!;
-      existing.amount = existing.amount.plus(teacherPayout);
-      existing.details.push(detail);
-
-      this.logger.debug(
-        `Truy lĩnh cho GV ${teacherId} từ Lớp ${
-          feeRecord.classId
-        }: ${teacherPayout.toFixed(0)} VND`,
-      );
-    }
+    } // Kết thúc lặp qua các hóa đơn
 
     return backPayMap;
   }
 
   /**
    * GIAI ĐOẠN 3: GỘP VÀO BẢNG LƯƠNG TỔNG HỢP
-   * 
-   * Logic:
-   * 1. Lấy tất cả TeacherSessionPayout đã tính (status = 'calculated')
-   * 2. Gộp theo teacherId
-   * 3. Với mỗi giáo viên:
-   *    - Tính tổng lương từ buổi học
-   *    - Cộng thêm tiền truy lĩnh (nếu có)
-   *    - Tạo bảng lương Payroll
-   *    - Cập nhật status các TSP thành 'batched'
-   * 4. Với giáo viên chỉ có truy lĩnh (không có buổi học):
-   *    - Tạo Payroll chỉ chứa tiền truy lĩnh
-   * 
-   * @param startDate Ngày bắt đầu kỳ lương
-   * @param endDate Ngày kết thúc kỳ lương
-   * @param backPayMap Map chứa thông tin truy lĩnh
-   * @returns Số lượng Payroll được tạo
+   * (Không thay đổi) - Hàm này sẽ tự động đúng
+   * vì GĐ1 và GĐ2 đã cung cấp `teacherPayout` chính xác.
    */
   private async aggregatePayrolls(
     startDate: Date,
@@ -556,7 +577,7 @@ export class PayrollCronService {
     // === LẤY TẤT CẢ TSP ĐÃ TÍNH TOÁN ===
     const pendingPayouts = await this.prisma.teacherSessionPayout.findMany({
       where: {
-        status: 'calculated',  // Đã tính toán nhưng chưa gộp vào Payroll
+        status: 'calculated',
         session: {
           sessionDate: { gte: startDate, lte: endDate },
         },
@@ -567,8 +588,8 @@ export class PayrollCronService {
     const payrollDataMap = new Map<
       string,
       {
-        payouts: typeof pendingPayouts;  // Danh sách TSP
-        totalAmount: Prisma.Decimal;     // Tổng tiền từ buổi học
+        payouts: typeof pendingPayouts;
+        totalAmount: Prisma.Decimal;
       }
     >();
 
@@ -588,13 +609,22 @@ export class PayrollCronService {
 
     // === TẠO PAYROLL CHO GV CÓ BUỔI HỌC ===
     for (const [teacherId, data] of payrollDataMap.entries()) {
-      // Lấy thông tin truy lĩnh (nếu có)
+
+      // KIỂM TRA IDEMPOTENCY CHO TỪNG GIÁO VIÊN
+      //Đây là cho trường hợp đã chạy nhưng sập server
+      const existing = await this.prisma.payroll.findFirst({
+        where: { teacherId, periodStart: startDate, periodEnd: endDate },
+      });
+      if (existing) {
+        this.logger.log(`Payroll cho GV ${teacherId} đã tồn tại. Bỏ qua.`);
+        continue; // Bỏ qua GV này, tiếp tục vòng lặp
+      }
+
       const backPay = backPayMap.get(teacherId) || {
         amount: new Prisma.Decimal(0),
         details: [],
       };
 
-      // Tạo metadata
       const metadata: PayrollMetadata = {
         totalSessions: data.payouts.length,
         totalSessionPayouts: data.totalAmount.toFixed(0),
@@ -603,20 +633,18 @@ export class PayrollCronService {
         processedAt: new Date().toISOString(),
       };
 
-      // Tạo Payroll
       const newPayroll = await this.prisma.payroll.create({
         data: {
           teacherId,
           periodStart: startDate,
           periodEnd: endDate,
-          totalAmount: data.totalAmount.plus(backPay.amount),  // Lương buổi học + Truy lĩnh
-          bonuses: backPay.amount,                             // Truy lĩnh lưu vào bonuses
+          totalAmount: data.totalAmount.plus(backPay.amount),
+          bonuses: backPay.amount,
           computedDetails: this.buildComputedDetails(metadata, backPay.details),
-          status: 'pending',  // Chờ duyệt
+          status: 'pending',
         },
       });
 
-      // Cập nhật status các TSP thành 'batched'
       const payoutIds = data.payouts.map((p) => p.id);
       await this.prisma.teacherSessionPayout.updateMany({
         where: { id: { in: payoutIds } },
@@ -632,9 +660,16 @@ export class PayrollCronService {
     }
 
     // === TẠO PAYROLL CHO GV CHỈ CÓ TRUY LĨNH ===
-    // (Không có buổi học trong tháng này)
     for (const [teacherId, backPay] of backPayMap.entries()) {
       if (!payrollDataMap.has(teacherId)) {
+        // KIỂM TRA IDEMPOTENCY CHO TỪNG GIÁO VIÊN
+        const existing = await this.prisma.payroll.findFirst({
+          where: { teacherId, periodStart: startDate, periodEnd: endDate },
+        });
+        if (existing) {
+          this.logger.log(`Payroll (truy lĩnh) cho GV ${teacherId} đã tồn tại. Bỏ qua.`);
+          continue; // Bỏ qua GV này, tiếp tục vòng lặp
+        }
         const metadata: PayrollMetadata = {
           totalSessions: 0,
           totalSessionPayouts: '0',
@@ -667,13 +702,10 @@ export class PayrollCronService {
     return payrollCount;
   }
 
-  /**
-   * Tạo object computedDetails cho Payroll
-   * Chứa metadata và chi tiết truy lĩnh
-   */
+
   private buildComputedDetails(
     metadata: PayrollMetadata,
-    backPayDetails: string[],
+    backPayDetails: BackPayDetail[],
   ): Record<string, any> {
     return {
       metadata,
@@ -681,10 +713,7 @@ export class PayrollCronService {
     };
   }
 
-  /**
-   * Tạo record theo dõi việc thực thi Cron Job
-   * @returns ID của record
-   */
+
   private async createCronExecution(jobType: string): Promise<string> {
     const execution = await this.prisma.cronJobExecution.create({
       data: {
@@ -698,9 +727,6 @@ export class PayrollCronService {
     return execution.id;
   }
 
-  /**
-   * Cập nhật kết quả thực thi Cron Job
-   */
   private async updateCronExecution(
     id: string,
     data: {
@@ -720,7 +746,6 @@ export class PayrollCronService {
       failedCount: data.failedCount ?? 0,
       errorMessage: data.errorMessage ?? null,
       durationMs: data.durationMs,
-      // Nếu đã hoàn thành (thành công/lỗi/thất bại) thì ghi thời điểm
       completedAt: ['completed', 'completed_with_errors', 'failed'].includes(
         data.status,
       )

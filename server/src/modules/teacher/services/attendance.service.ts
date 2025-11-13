@@ -232,12 +232,7 @@ export class AttendanceService {
     this.validateAttendanceTime(session.sessionDate);
 
     try {
-      console.log(`Processing attendance for ${records.length} students`, {
-        sessionId,
-        teacherId,
-        recordsCount: records.length,
-      });
-
+      
       // Xử lý approve leave requests TRƯỚC transaction
       const excusedStudents = records
         .filter((r) => r.status === 'excused')
@@ -330,9 +325,7 @@ export class AttendanceService {
     }
 
     try {
-      console.log(
-        `Approving leave requests for ${studentIds.length} students in session ${sessionId}`,
-      );
+      
 
       // Lấy tất cả đơn xin nghỉ pending
       const affectedSessions =
@@ -370,9 +363,7 @@ export class AttendanceService {
         },
       });
 
-      console.log(
-        `Successfully approved ${updated.count} leave requests for session ${sessionId}`,
-      );
+      
     } catch (error: any) {
       console.error(
         `Error approving leave requests for session ${sessionId}:`,

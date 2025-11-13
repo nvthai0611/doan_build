@@ -172,8 +172,8 @@ export class BillCronService {
               studentId,
               classId,
               feeStructureId: classInfo.feeStructureId,
-              amount: totalAmount,
-              totalAmount: totalBeforeDiscount,
+              amount: totalBeforeDiscount,
+              totalAmount: totalAmount,
               scholarship: scholarshipAmount,
               dueDate,
               status: 'calculated', // ✅ NEW: Admin-only status
