@@ -45,6 +45,10 @@ export class LeaveRequestsService {
         where.startDate.lte = new Date(toDate);
       }
     } 
+
+    where.AND = [
+      { requestType: { not: 'student_leave' } }
+    ];
     
     const total = await this.prisma.leaveRequest.count({ where });
     

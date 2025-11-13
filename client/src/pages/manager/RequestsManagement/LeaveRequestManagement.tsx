@@ -178,15 +178,22 @@ export default function LeaveRequestManagement() {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {(item.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+              {(item.teacherInfo?.fullName || 'U')
+                .split(' ')
+                .map((n) => n[0])
+                .join('')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{item.teacherInfo?.fullName || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">{item.teacherInfo?.email || 'No email'}</p>
+            <p className="font-medium text-sm">
+              {item.teacherInfo?.fullName || 'Unknown'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {item.teacherInfo?.email || 'No email'}
+            </p>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'requestType',
@@ -194,11 +201,17 @@ export default function LeaveRequestManagement() {
       render: (item: LeaveRequest) => (
         <Badge
           variant="secondary"
-          className={requestTypeColors[item.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+          className={
+            requestTypeColors[
+              item.type as keyof typeof requestTypeColors
+            ] || requestTypeColors.other
+          }
         >
-          {requestTypeLabels[item.requestType as keyof typeof requestTypeLabels] || item.requestType}
+          {requestTypeLabels[
+            item.type as keyof typeof requestTypeLabels
+          ] || item.type}
         </Badge>
-      )
+      ),
     },
     {
       key: 'leavePeriod',
@@ -206,9 +219,11 @@ export default function LeaveRequestManagement() {
       render: (item: LeaveRequest) => (
         <div className="text-sm">
           <p className="font-medium">{formatDate(item.startDate)}</p>
-          <p className="text-muted-foreground">đến {formatDate(item.endDate)}</p>
+          <p className="text-muted-foreground">
+            đến {formatDate(item.endDate)}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'reason',
@@ -219,7 +234,7 @@ export default function LeaveRequestManagement() {
             {item.reason}
           </p>
         </div>
-      )
+      ),
     },
     {
       key: 'affectedSessions',
@@ -230,7 +245,7 @@ export default function LeaveRequestManagement() {
             {item.affectedSessions?.length || 0}
           </span>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -243,7 +258,7 @@ export default function LeaveRequestManagement() {
           {getStatusIcon(item.status)}
           {statusLabels[item.status] || item.status}
         </Badge>
-      )
+      ),
     },
     {
       key: 'createdAt',
@@ -252,47 +267,45 @@ export default function LeaveRequestManagement() {
         <span className="text-sm text-muted-foreground">
           {formatDateTime(item.createdAt)}
         </span>
-      )
+      ),
     },
     {
       key: 'actions',
       header: 'Thao tác',
       render: (item: LeaveRequest) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item.id)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => handleApprove(item.id)}
-                  className="text-green-600"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Duyệt đơn
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleReject(item.id)}
-                  className="text-red-600"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  ]
+        <div>
+          <div className="flex items-center gap-2">
+            <div
+              className="cursor-pointer flex items-center gap-2 bg-blue-500 text-white px-2 py-1 rounded-md"
+              onClick={() => handleViewDetails(item.id)}
+            >
+              <Eye className="h-4 w-4 cursor-pointer" />
+              Xem
+            </div>
+          </div>
+          {item.status === 'pending' && (
+            <>
+              <div className="h-1 w-full bg-gray-200" />
+              <div
+                onClick={() => handleApprove(item.id)}
+                className="text-green-600 flex items-center gap-2 cursor-pointer bg-green-500 text-white px-2 py-1 rounded-md"
+              >
+                <CheckCircle className="h-4 w-4 cursor-pointer" />
+                Duyệt đơn
+              </div>
+              <div
+                onClick={() => handleReject(item.id)}
+                className="text-red-600 flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md"
+              >
+                <XCircle className="h-4 w-4 cursor-pointer" />
+                Từ chối
+              </div>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -359,7 +372,7 @@ export default function LeaveRequestManagement() {
       <LeaveRequestDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        request={selectedRequest}
+        request={selectedRequest as any}
         onApprove={handleApprove}
         onReject={handleReject}
       />

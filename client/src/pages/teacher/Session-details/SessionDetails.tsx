@@ -93,7 +93,7 @@ export default function SessionDetails() {
         setLoading(true)
         setError(null)
         const data = await teacherScheduleService.getSessionDetail(sessionId)
-        console.log(data)
+        //console.log(data)
         setSession(data)
       } catch (e) {
         console.error(e)
