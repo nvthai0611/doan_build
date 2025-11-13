@@ -31,13 +31,6 @@ export class SessionChangeEmailProcessor {
       classId,
     } = job.data;
 
-    console.log(
-      `[SessionChangeEmail] Job ${job.id} - ${type.toUpperCase()} - session ${sessionId}\n` +
-      `   - Gửi tới: ${to}\n` +
-      `   - Phụ huynh: ${parentName}\n` +
-      `   - Học sinh: ${studentNames.join(', ')}`
-    );
-
     try {
       if (!to || !to.includes('@')) {
         throw new Error('Email phụ huynh không hợp lệ');
@@ -59,8 +52,8 @@ export class SessionChangeEmailProcessor {
 
       const subject =
         type === 'cancelled'
-          ? `⛔ Thông báo nghỉ buổi học - ${className}`
-          : `🔁 Cập nhật lịch buổi học - ${className}`;
+          ? `Thông báo nghỉ buổi học - ${className}`
+          : `Cập nhật lịch buổi học - ${className}`;
 
       await emailUtil(to, subject, html);
 

@@ -27,6 +27,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
   removeOnFail: 5,      // Giữ lại 5 job thất bại gần nhất
   attempts: 3,          // Số lần thử lại nếu job thất bại
+  timeout: 60000,       // Timeout 60 giây cho mỗi job (production cần thời gian dài hơn)
   backoff: {
     type: 'exponential', // Độ trễ tăng theo hàm mũ khi thử lại
     delay: 2000,         // Độ trễ ban đầu (2 giây)
