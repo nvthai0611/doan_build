@@ -236,7 +236,7 @@ const saveMutation = useMutation({
     
     // response = { data: {...}, message: '...' }
     toast.success(
-      response?.message || 'Cập nhật trạng thái điểm danh thành công!',
+      response?.message || 'Điểm danh thành công!',
       { duration: 3000 }
     )
   },
