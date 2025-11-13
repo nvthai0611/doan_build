@@ -5,10 +5,14 @@ import {
   QueryScheduleWeekDto,
 } from '../dto/schedule/query-schedule.dto';
 import { PrismaService } from 'src/db/prisma.service';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
 
 @Injectable()
 export class ScheduleManagementService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailNotificationService: EmailNotificationService
+  ) {}
 
   private mapSessionToClientShape(session: any) {
     return {
@@ -508,10 +512,95 @@ export class ScheduleManagementService {
    * Cập nhật buổi học
    */
   async updateSession(sessionId: string, body: any) {
+    // Lấy thông tin session cũ trước khi update
+    const oldSession = await this.prisma.classSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        sessionDate: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        cancellationReason: true,
+      },
+    });
+
+    if (!oldSession) {
+      throw new NotFoundException('Không tìm thấy buổi học');
+    }
+
+    // Update session
     const session = await this.prisma.classSession.update({
       where: { id: sessionId },
       data: body,
     });
+
+    // Kiểm tra thay đổi và gửi email
+    try {
+      // Format old date
+      const oldDate = oldSession.sessionDate ? 
+        (oldSession.sessionDate instanceof Date ? 
+          oldSession.sessionDate.toISOString().split('T')[0] : 
+          new Date(oldSession.sessionDate).toISOString().split('T')[0]) : '';
+      
+      // Format old time
+      const oldTime = oldSession.startTime && oldSession.endTime ? 
+        `${oldSession.startTime} - ${oldSession.endTime}` : '';
+
+      // Format new date
+      let newDate = oldDate;
+      if (body.sessionDate) {
+        if (typeof body.sessionDate === 'string') {
+          newDate = body.sessionDate.split('T')[0];
+        } else if (body.sessionDate instanceof Date) {
+          newDate = body.sessionDate.toISOString().split('T')[0];
+        } else {
+          newDate = new Date(body.sessionDate).toISOString().split('T')[0];
+        }
+      }
+
+      // Format new time
+      let newTime = oldTime;
+      if (body.startTime || body.endTime) {
+        const finalStartTime = body.startTime || oldSession.startTime || '';
+        const finalEndTime = body.endTime || oldSession.endTime || '';
+        if (finalStartTime && finalEndTime) {
+          newTime = `${finalStartTime} - ${finalEndTime}`;
+        }
+      }
+
+      // Kiểm tra nếu hủy buổi học (status = day_off)
+      if (body.status === 'day_off' && oldSession.status !== 'day_off') {
+        await this.emailNotificationService.sendSessionChangeEmail(
+          sessionId,
+          'cancelled',
+          oldDate,
+          oldTime,
+          undefined,
+          undefined,
+          body.cancellationReason || oldSession.cancellationReason || 'Không có lý do'
+        );
+      }
+      // Kiểm tra nếu thay đổi thời gian hoặc ngày
+      else if (
+        (body.sessionDate && oldDate !== newDate) ||
+        (body.startTime && oldSession.startTime !== body.startTime) ||
+        (body.endTime && oldSession.endTime !== body.endTime)
+      ) {
+        await this.emailNotificationService.sendSessionChangeEmail(
+          sessionId,
+          'rescheduled',
+          oldDate,
+          oldTime,
+          newDate,
+          newTime,
+          body.reason || ''
+        );
+      }
+    } catch (emailError) {
+      // Log lỗi nhưng không throw - vì session đã được update thành công
+      console.error('Lỗi khi gửi email thông báo thay đổi lịch:', emailError);
+    }
+
     return session;
   }
 
