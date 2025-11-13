@@ -317,7 +317,7 @@ export class EmailNotificationService {
     teacherCode: string
   ) {
     try {
-      console.log(`📧 Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
+      console.log(`Thêm job gửi email tài khoản cho giáo viên: ${teacherName}`);
 
       await this.teacherAccountQueue.add('send_teacher_account_email', {
         to: email,
@@ -329,7 +329,7 @@ export class EmailNotificationService {
         teacherId,
       });
 
-      console.log(`✅ Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
+      console.log(`Đã thêm job gửi email tài khoản vào queue cho: ${email}`);
 
       return {
         success: true,
@@ -338,7 +338,7 @@ export class EmailNotificationService {
         email,
       };
     } catch (error: any) {
-      console.error(`❌ Lỗi khi thêm job email tài khoản: ${error.message}`);
+      console.error(`Lỗi khi thêm job email tài khoản: ${error.message}`);
       throw new HttpException(
         `Không thể gửi email tài khoản: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
