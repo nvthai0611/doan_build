@@ -12,6 +12,8 @@ export interface ScheduleData {
   notes?: string
   type: "regular" | "exam" | "makeup"
   teacherId: string
+  substituteTeacher: string
+  isSubstitute: boolean
   createdAt: string
   updatedAt: string
 }
