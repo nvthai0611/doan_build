@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   QueryScheduleDto,
   QueryScheduleMonthDto,
@@ -528,10 +532,90 @@ export class ScheduleManagementService {
       throw new NotFoundException('Không tìm thấy buổi học');
     }
 
+    // Chuẩn hóa dữ liệu update
+    const updateData: any = { ...body };
+
+    // Chuẩn hóa sessionDate thành UTC midnight
+    if (body.sessionDate) {
+      if (typeof body.sessionDate === 'string') {
+        const [year, month, day] = body.sessionDate.split('-').map(Number);
+        updateData.sessionDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      } else if (body.sessionDate instanceof Date) {
+        // Đảm bảo đưa về UTC midnight
+        updateData.sessionDate = new Date(Date.UTC(
+          body.sessionDate.getUTCFullYear(),
+          body.sessionDate.getUTCMonth(),
+          body.sessionDate.getUTCDate(),
+          0,
+          0,
+          0,
+          0,
+        ));
+      } else {
+        const parsed = new Date(body.sessionDate);
+        updateData.sessionDate = new Date(Date.UTC(
+          parsed.getUTCFullYear(),
+          parsed.getUTCMonth(),
+          parsed.getUTCDate(),
+          0,
+          0,
+          0,
+          0,
+        ));
+      }
+    }
+
+    // Xác định thông tin dùng để check conflict trước khi update
+    const hasDateTimeChanges =
+      body.sessionDate !== undefined ||
+      body.startTime !== undefined ||
+      body.endTime !== undefined;
+
+    if (hasDateTimeChanges) {
+      const targetDateStr = (() => {
+        if (typeof body.sessionDate === 'string') {
+          return body.sessionDate;
+        }
+        if (body.sessionDate instanceof Date) {
+          return body.sessionDate.toISOString().split('T')[0];
+        }
+        if (body.sessionDate) {
+          return new Date(body.sessionDate).toISOString().split('T')[0];
+        }
+        if (oldSession.sessionDate instanceof Date) {
+          return oldSession.sessionDate.toISOString().split('T')[0];
+        }
+        return new Date(oldSession.sessionDate as any).toISOString().split('T')[0];
+      })();
+
+      const finalStartTime = body.startTime || oldSession.startTime;
+      const finalEndTime = body.endTime || oldSession.endTime;
+
+      if (!finalStartTime || !finalEndTime) {
+        throw new BadRequestException('Thiếu giờ bắt đầu hoặc giờ kết thúc để kiểm tra trùng lịch.');
+      }
+
+      const conflictResult = await this.checkScheduleConflict(
+        sessionId,
+        targetDateStr,
+        finalStartTime,
+        finalEndTime,
+      );
+
+      if (conflictResult.hasConflict) {
+        throw new BadRequestException({
+          success: false,
+          error: 'SCHEDULE_CONFLICT',
+          message: 'Lịch học bị trùng, vui lòng chọn khung giờ khác.',
+          conflicts: conflictResult.conflicts,
+        });
+      }
+    }
+
     // Update session
     const session = await this.prisma.classSession.update({
       where: { id: sessionId },
-      data: body,
+      data: updateData,
     });
 
     // Kiểm tra thay đổi và gửi email
@@ -548,28 +632,28 @@ export class ScheduleManagementService {
 
       // Format new date
       let newDate = oldDate;
-      if (body.sessionDate) {
-        if (typeof body.sessionDate === 'string') {
-          newDate = body.sessionDate.split('T')[0];
-        } else if (body.sessionDate instanceof Date) {
-          newDate = body.sessionDate.toISOString().split('T')[0];
+      if (updateData.sessionDate) {
+        if (updateData.sessionDate instanceof Date) {
+          newDate = updateData.sessionDate.toISOString().split('T')[0];
+        } else if (typeof updateData.sessionDate === 'string') {
+          newDate = updateData.sessionDate.split('T')[0];
         } else {
-          newDate = new Date(body.sessionDate).toISOString().split('T')[0];
+          newDate = new Date(updateData.sessionDate).toISOString().split('T')[0];
         }
       }
 
       // Format new time
       let newTime = oldTime;
-      if (body.startTime || body.endTime) {
-        const finalStartTime = body.startTime || oldSession.startTime || '';
-        const finalEndTime = body.endTime || oldSession.endTime || '';
+      if (updateData.startTime || updateData.endTime) {
+        const finalStartTime = updateData.startTime || oldSession.startTime || '';
+        const finalEndTime = updateData.endTime || oldSession.endTime || '';
         if (finalStartTime && finalEndTime) {
           newTime = `${finalStartTime} - ${finalEndTime}`;
         }
       }
 
       // Kiểm tra nếu hủy buổi học (status = day_off)
-      if (body.status === 'day_off' && oldSession.status !== 'day_off') {
+      if (updateData.status === 'day_off' && oldSession.status !== 'day_off') {
         await this.emailNotificationService.sendSessionChangeEmail(
           sessionId,
           'cancelled',
@@ -582,9 +666,9 @@ export class ScheduleManagementService {
       }
       // Kiểm tra nếu thay đổi thời gian hoặc ngày
       else if (
-        (body.sessionDate && oldDate !== newDate) ||
-        (body.startTime && oldSession.startTime !== body.startTime) ||
-        (body.endTime && oldSession.endTime !== body.endTime)
+        (updateData.sessionDate && oldDate !== newDate) ||
+        (updateData.startTime && oldSession.startTime !== updateData.startTime) ||
+        (updateData.endTime && oldSession.endTime !== updateData.endTime)
       ) {
         await this.emailNotificationService.sendSessionChangeEmail(
           sessionId,
@@ -593,7 +677,7 @@ export class ScheduleManagementService {
           oldTime,
           newDate,
           newTime,
-          body.reason || ''
+          updateData.reason || ''
         );
       }
     } catch (emailError) {
