@@ -4,7 +4,7 @@ export declare class StudentManagementController {
     constructor(studentManagementService: StudentManagementService);
     getAllStudents(query: any): Promise<StudentResponse>;
     countByStatus(): Promise<StudentResponse>;
-    createStudent(createStudentDto: any, applicationFile: Express.Multer.File): Promise<StudentResponse>;
+    createStudent(createStudentDto: any, applicationFile: Express.Multer.File, req: any): Promise<StudentResponse>;
     findParentByEmail(email: string): Promise<StudentResponse>;
     toggleStudentStatus(studentId: string): Promise<StudentResponse>;
     updateStudentStatus(studentId: string, updateStudentStatusDto: any): Promise<StudentResponse>;

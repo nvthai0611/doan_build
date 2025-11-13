@@ -172,14 +172,35 @@ export const SelectStudentSheet = ({
       if (failedCount === 0) {
         toast.success(`✅ Đã thêm ${successCount} học viên thành công!`);
       } else if (successCount > 0) {
+        // Hiển thị chi tiết lỗi, đặc biệt là schedule conflicts
+        const failedReasons = result.failed?.map((f: any) => {
+          if (f.reason?.includes('Lịch học bị trùng')) {
+            return f.reason; // Hiển thị đầy đủ thông tin conflict
+          }
+          return f.reason;
+        }).join('; ') || '';
+        
         toast.warning(
           `Thêm ${successCount}/${totalCount} học viên thành công. ${failedCount} thất bại.`,
           {
-            description: result.failed?.map((f: any) => f.reason).join(', ').substring(0, 100)
+            description: failedReasons.length > 200 
+              ? failedReasons.substring(0, 200) + '...' 
+              : failedReasons,
+            duration: 8000, // Hiển thị lâu hơn để user đọc được
           }
         );
       } else {
-        toast.error(`Không thể thêm học viên. Vui lòng thử lại.`);
+        // Tất cả đều thất bại - hiển thị chi tiết
+        const failedReasons = result.failed?.map((f: any) => f.reason).join('; ') || '';
+        toast.error(
+          `Không thể thêm học viên. ${failedCount} thất bại.`,
+          {
+            description: failedReasons.length > 300 
+              ? failedReasons.substring(0, 300) + '...' 
+              : failedReasons,
+            duration: 10000, // Hiển thị lâu hơn cho lỗi quan trọng
+          }
+        );
       }
 
       // Reset and close on success
@@ -191,8 +212,22 @@ export const SelectStudentSheet = ({
         onSubmit?.(selected);
       }
     } catch (error: any) {
-      const errorMessage = error?.response?.message || error?.message || 'Có lỗi xảy ra khi thêm học viên';
-      toast.error(errorMessage);
+      // Xử lý lỗi schedule conflict từ backend
+      const errorData = error?.response?.data;
+      if (errorData?.conflicts && Array.isArray(errorData.conflicts)) {
+        const conflictMessages = errorData.conflicts
+          .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
+          .join('; ');
+        toast.error('Lịch học bị trùng', {
+          description: conflictMessages,
+          duration: 10000,
+        });
+      } else {
+        const errorMessage = errorData?.message || error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi thêm học viên';
+        toast.error(errorMessage, {
+          duration: 8000,
+        });
+      }
       console.error('Bulk enroll error:', error);
       setShowCapacityWarning(false);
       setPendingSubmit(false);

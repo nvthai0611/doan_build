@@ -16,7 +16,7 @@ const teacher_account_template_1 = require("../template-email/teacher-account-te
 let TeacherAccountProcessor = class TeacherAccountProcessor {
     async handleSendTeacherAccountEmail(job) {
         const startTime = Date.now();
-        console.log(`📧 [Job ${job.id}] Bắt đầu gửi email tài khoản giáo viên\n` +
+        console.log(`[Job ${job.id}] Bắt đầu gửi email tài khoản giáo viên\n` +
             `   - Giáo viên: ${job.data.teacherName}\n` +
             `   - Email: ${job.data.to}`);
         const { to, teacherName, username, email, password, teacherCode, teacherId, } = job.data;
@@ -28,7 +28,7 @@ let TeacherAccountProcessor = class TeacherAccountProcessor {
             const emailSubject = `🎓 Chào mừng đến với Trung tâm - Thông tin tài khoản của bạn`;
             await (0, email_util_1.default)(to, emailSubject, emailHtml);
             const duration = Date.now() - startTime;
-            console.log(`✅ [Job ${job.id}] Email tài khoản đã gửi thành công trong ${duration}ms\n` +
+            console.log(`[Job ${job.id}] Email tài khoản đã gửi thành công trong ${duration}ms\n` +
                 `   - Giáo viên: ${teacherName}\n` +
                 `   - Email: ${to}\n` +
                 `   - TeacherId: ${teacherId}`);
@@ -42,7 +42,7 @@ let TeacherAccountProcessor = class TeacherAccountProcessor {
         }
         catch (error) {
             const duration = Date.now() - startTime;
-            console.error(`❌ [Job ${job.id}] Lỗi sau ${duration}ms\n` +
+            console.error(`[Job ${job.id}] Lỗi sau ${duration}ms\n` +
                 `   - Giáo viên: ${teacherName}\n` +
                 `   - Email: ${to}\n` +
                 `   - Lỗi: ${error.message}\n` +

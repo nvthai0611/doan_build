@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class QueryTeacherDto {
@@ -24,7 +31,6 @@ export class QueryTeacherDto {
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
   @Min(1)
-  @Max(100)
   limit?: number = 10;
 
   @IsOptional()
@@ -43,5 +49,4 @@ export class QueryTeacherDto {
   @IsOptional()
   @IsString()
   birthYear?: string;
-
 }

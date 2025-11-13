@@ -33,7 +33,13 @@ let MiddlewareCenterOwner = class MiddlewareCenterOwner {
                     message: 'Token không hợp lệ hoặc đã hết hạn.'
                 });
             }
-            if (payload.role !== 'center_owner') {
+            const url = req.originalUrl || req.url || '';
+            const isStudentCreateRoute = req.method === 'POST' && /\/admin-center\/student-management(\/)?$/i.test(url.split('?')[0]);
+            if (payload.role === 'center_owner') {
+            }
+            else if (payload.role === 'parent' && isStudentCreateRoute) {
+            }
+            else {
                 return res.status(403).json({
                     success: false,
                     message: 'Bạn không có quyền truy cập. Chỉ chủ trung tâm mới được phép.'
@@ -41,7 +47,7 @@ let MiddlewareCenterOwner = class MiddlewareCenterOwner {
             }
             req.user = {
                 ...payload,
-                isCenterOwner: true,
+                isCenterOwner: payload.role === 'center_owner',
             };
             next();
         }

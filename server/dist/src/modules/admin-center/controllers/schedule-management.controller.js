@@ -39,7 +39,10 @@ let ScheduleManagementController = class ScheduleManagementController {
         if (!Number.isInteger(yearNum) || yearNum < 1970 || yearNum > 3000) {
             throw new Error('year must be an integer between 1970 and 3000');
         }
-        const data = await this.scheduleService.getScheduleByMonth({ month: monthNum, year: yearNum });
+        const data = await this.scheduleService.getScheduleByMonth({
+            month: monthNum,
+            year: yearNum,
+        });
         return { data, message: 'Lấy lịch theo tháng thành công' };
     }
     async getSessionById(sessionId) {
@@ -53,18 +56,25 @@ let ScheduleManagementController = class ScheduleManagementController {
     async getAllActiveClassesWithSchedules(query) {
         const expectedStartDate = query?.expectedStartDate;
         const data = await this.scheduleService.getAllActiveClassesWithSchedules(expectedStartDate);
-        return { data, message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công' };
+        return {
+            data,
+            message: 'Lấy danh sách lớp đang hoạt động kèm lịch học thành công',
+        };
     }
     async updateSession(sessionId, body) {
         const data = await this.scheduleService.updateSession(sessionId, body);
         return { data, message: 'Cập nhật buổi học thành công' };
+    }
+    async checkScheduleConflict(sessionId, sessionDate, startTime, endTime) {
+        const data = await this.scheduleService.checkScheduleConflict(sessionId, sessionDate, startTime, endTime);
+        return { data, message: 'Kiểm tra xung đột lịch học thành công' };
     }
     async getTeachersInSessionsToday(query) {
         const result = await this.scheduleService.getTeachersInSessionsToday(query);
         return {
             success: true,
             ...result,
-            message: 'Lấy danh sách giáo viên tham gia buổi học thành công'
+            message: 'Lấy danh sách giáo viên tham gia buổi học thành công',
         };
     }
 };
@@ -118,7 +128,9 @@ __decorate([
 ], ScheduleManagementController.prototype, "getSessionAttendance", null);
 __decorate([
     (0, common_1.Get)('classes/active-schedules'),
-    (0, swagger_1.ApiOperation)({ summary: 'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Lấy tất cả lớp đang hoạt động/đang tuyển sinh/tạm dừng kèm lịch học của chúng',
+    }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
@@ -137,8 +149,23 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ScheduleManagementController.prototype, "updateSession", null);
 __decorate([
+    (0, common_1.Get)('sessions/:id/check-conflict'),
+    (0, swagger_1.ApiOperation)({ summary: 'Kiểm tra xung đột lịch học tại phòng học' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'ID của buổi học', type: 'string' }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('sessionDate')),
+    __param(2, (0, common_1.Query)('startTime')),
+    __param(3, (0, common_1.Query)('endTime')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ScheduleManagementController.prototype, "checkScheduleConflict", null);
+__decorate([
     (0, common_1.Get)('teachers-in-sessions'),
-    (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Lấy danh sách giáo viên tham gia buổi học theo ngày (cho trang Buổi học hôm nay)',
+    }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),

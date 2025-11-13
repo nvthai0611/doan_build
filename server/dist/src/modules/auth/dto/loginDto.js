@@ -16,14 +16,14 @@ class LoginDto {
 exports.LoginDto = LoginDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)({ message: 'Email hoặc tên đăng nhập không được để trống' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Email/Username hoặc mật khẩu không chính xác' }),
     __metadata("design:type", String)
 ], LoginDto.prototype, "identifier", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)({ message: 'Mật khẩu không được để trống' }),
-    (0, class_validator_1.MinLength)(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' }),
-    (0, class_validator_1.MaxLength)(16, { message: 'Mật khẩu không được quá 16 ký tự' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Email/Username hoặc mật khẩu không chính xác' }),
+    (0, class_validator_1.MinLength)(6, { message: 'Email/Username hoặc mật khẩu không chính xác' }),
+    (0, class_validator_1.MaxLength)(16, { message: 'Email/Username hoặc mật khẩu không chính xác' }),
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);
 //# sourceMappingURL=loginDto.js.map

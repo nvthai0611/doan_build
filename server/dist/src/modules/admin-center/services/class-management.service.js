@@ -108,7 +108,10 @@ let ClassManagementService = class ClassManagementService {
             if (status && status !== 'all')
                 where.status = status;
             if (gradeId) {
-                const gradeValues = gradeId.split(',').map((id) => id.trim()).filter((id) => id);
+                const gradeValues = gradeId
+                    .split(',')
+                    .map((id) => id.trim())
+                    .filter((id) => id);
                 const isUUID = (value) => {
                     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                     return uuidRegex.test(value);
@@ -123,7 +126,9 @@ let ClassManagementService = class ClassManagementService {
                     }
                 }
                 else {
-                    const gradeLevels = gradeValues.map((val) => parseInt(val)).filter((val) => !isNaN(val));
+                    const gradeLevels = gradeValues
+                        .map((val) => parseInt(val))
+                        .filter((val) => !isNaN(val));
                     if (gradeLevels.length === 1) {
                         where.grade = { level: gradeLevels[0] };
                     }
@@ -388,6 +393,179 @@ let ClassManagementService = class ClassManagementService {
             }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    async findAllWithTeacher(queryDto) {
+        try {
+            const { status, gradeId, subjectId, roomId, teacherId, search, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', } = queryDto;
+            const skip = (page - 1) * limit;
+            const take = limit;
+            const where = {
+                status: { not: 'deleted' },
+            };
+            if (status && status !== 'all') {
+                where.status = status;
+            }
+            if (gradeId) {
+                const isValidUUID = (value) => {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    return uuidRegex.test(value);
+                };
+                if (isValidUUID(gradeId)) {
+                    where.gradeId = gradeId;
+                }
+            }
+            if (subjectId && subjectId !== 'all') {
+                const isValidUUID = (value) => {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    return uuidRegex.test(value);
+                };
+                if (isValidUUID(subjectId)) {
+                    where.subjectId = subjectId;
+                }
+            }
+            if (roomId && roomId !== 'all') {
+                where.roomId = roomId;
+            }
+            if (teacherId && teacherId !== 'all') {
+                where.teacherId = teacherId;
+            }
+            if (search && search.trim()) {
+                const searchConditions = {
+                    OR: [
+                        { name: { contains: search.trim(), mode: 'insensitive' } },
+                        { classCode: { contains: search.trim(), mode: 'insensitive' } },
+                        {
+                            teacher: {
+                                user: {
+                                    fullName: { contains: search.trim(), mode: 'insensitive' },
+                                },
+                            },
+                        },
+                    ],
+                };
+                if (where.AND) {
+                    where.AND.push(searchConditions);
+                }
+                else {
+                    where.AND = [searchConditions];
+                }
+            }
+            const total = await this.prisma.class.count({ where });
+            const orderBy = {};
+            if (sortBy && sortOrder) {
+                orderBy[sortBy] = sortOrder;
+            }
+            else {
+                orderBy.createdAt = 'desc';
+            }
+            const classes = await this.prisma.class.findMany({
+                where,
+                skip,
+                take,
+                orderBy,
+                include: {
+                    subject: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    grade: {
+                        select: {
+                            id: true,
+                            name: true,
+                            level: true,
+                        },
+                    },
+                    room: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    teacher: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    email: true,
+                                    phone: true,
+                                    avatar: true,
+                                },
+                            },
+                        },
+                    },
+                    enrollments: {
+                        where: {
+                            status: 'studying',
+                        },
+                        select: {
+                            id: true,
+                            status: true,
+                        },
+                    },
+                },
+            });
+            const transformedClasses = classes.map((cls) => ({
+                id: cls.id,
+                name: cls.name,
+                code: cls.classCode,
+                status: cls.status,
+                subjectId: cls.subjectId,
+                subjectName: cls.subject?.name || null,
+                gradeId: cls.gradeId,
+                gradeName: cls.grade?.name || null,
+                gradeLevel: cls.grade?.level || null,
+                roomId: cls.roomId,
+                roomName: cls.room?.name || null,
+                teacherId: cls.teacher?.id || null,
+                teacherName: cls.teacher?.user?.fullName || null,
+                teacherEmail: cls.teacher?.user?.email || null,
+                teacherPhone: cls.teacher?.user?.phone || null,
+                teacherAvatar: cls.teacher?.user?.avatar || null,
+                teacher: cls.teacher
+                    ? {
+                        id: cls.teacher.id,
+                        userId: cls.teacher.userId,
+                        name: cls.teacher.user.fullName,
+                        email: cls.teacher.user.email,
+                        phone: cls.teacher.user.phone,
+                        avatar: cls.teacher.user.avatar,
+                    }
+                    : null,
+                maxStudents: cls.maxStudents,
+                currentStudents: cls.enrollments.length,
+                expectedStartDate: cls.expectedStartDate,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
+                academicYear: cls.academicYear,
+                recurringSchedule: cls.recurringSchedule,
+                description: cls.description,
+                createdAt: cls.createdAt,
+                updatedAt: cls.updatedAt,
+            }));
+            return {
+                success: true,
+                message: 'Lấy danh sách lớp học thành công',
+                data: transformedClasses,
+                meta: {
+                    total: total,
+                    page: page,
+                    limit: limit,
+                    totalPages: Math.ceil(total / limit),
+                },
+            };
+        }
+        catch (error) {
+            throw new common_1.HttpException({
+                success: false,
+                message: 'Có lỗi xảy ra khi lấy danh sách lớp học cho chuyển lớp',
+                error: error.message,
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
     async findOne(id) {
         try {
             if (!this.isValidUUID(id)) {
@@ -418,7 +596,7 @@ let ClassManagementService = class ClassManagementService {
                     enrollments: {
                         where: {
                             status: {
-                                in: ['not_been_updated', 'studying'],
+                                in: ['studying'],
                             },
                         },
                         include: {
@@ -612,6 +790,14 @@ let ClassManagementService = class ClassManagementService {
                     feeCurrency = 'VND';
                 }
             }
+            let classStatus = constants_1.ClassStatus.READY;
+            const recurringSchedule = createClassDto.recurringSchedule || null;
+            if (!recurringSchedule ||
+                !recurringSchedule.schedules ||
+                !Array.isArray(recurringSchedule.schedules) ||
+                recurringSchedule.schedules.length === 0) {
+                classStatus = constants_1.ClassStatus.DRAFT;
+            }
             const newClass = await this.prisma.class.create({
                 data: {
                     name: createClassDto.name,
@@ -622,8 +808,8 @@ let ClassManagementService = class ClassManagementService {
                     roomId: createClassDto.roomId || null,
                     teacherId: createClassDto.teacherId || null,
                     description: createClassDto.description || null,
-                    status: constants_1.DEFAULT_STATUS.CLASS,
-                    recurringSchedule: createClassDto.recurringSchedule || null,
+                    status: classStatus,
+                    recurringSchedule: recurringSchedule,
                     academicYear: academicYear,
                     feeStructureId: feeStructureId,
                     feeAmount: feeAmount,
@@ -815,7 +1001,9 @@ let ClassManagementService = class ClassManagementService {
                 },
             });
             [];
-            const isStatusChangedToActive = (existingClass.status === 'ready' || existingClass.status === 'suspended') && updateClassDto.status === 'active';
+            const isStatusChangedToActive = (existingClass.status === 'ready' ||
+                existingClass.status === 'suspended') &&
+                updateClassDto.status === 'active';
             if (isStatusChangedToActive) {
                 try {
                     const existingSessionsCount = await this.prisma.classSession.count({
@@ -914,6 +1102,28 @@ let ClassManagementService = class ClassManagementService {
                     message: 'Không tìm thấy lớp học',
                 }, common_1.HttpStatus.NOT_FOUND);
             }
+            if (existingClass.status === constants_1.ClassStatus.READY &&
+                status === constants_1.ClassStatus.ACTIVE) {
+                const hasTeacher = existingClass.teacherId && existingClass.teacher;
+                const recurringSchedule = existingClass.recurringSchedule;
+                const hasSchedule = recurringSchedule &&
+                    recurringSchedule.schedules &&
+                    Array.isArray(recurringSchedule.schedules) &&
+                    recurringSchedule.schedules.length > 0;
+                const missingRequirements = [];
+                if (!hasTeacher) {
+                    missingRequirements.push('giáo viên phụ trách');
+                }
+                if (!hasSchedule) {
+                    missingRequirements.push('lịch học');
+                }
+                if (missingRequirements.length > 0) {
+                    throw new common_1.HttpException({
+                        success: false,
+                        message: `Không thể chuyển lớp sang trạng thái "Đang hoạt động" khi chưa có ${missingRequirements.join(' và ')}. Vui lòng bổ sung đầy đủ thông tin trước.`,
+                    }, common_1.HttpStatus.BAD_REQUEST);
+                }
+            }
             const result = await this.prisma.$transaction(async (tx) => {
                 const updateData = { status };
                 if (status === 'active' && !existingClass.feeLockedAt) {
@@ -986,7 +1196,9 @@ let ClassManagementService = class ClassManagementService {
                     updatedSessionsCount,
                 };
             });
-            const isStatusChangedToActive = (existingClass.status === 'ready' || existingClass.status === 'suspended') && status === 'active';
+            const isStatusChangedToActive = (existingClass.status === 'ready' ||
+                existingClass.status === 'suspended') &&
+                status === 'active';
             if (isStatusChangedToActive) {
                 try {
                     const existingSessionsCount = await this.prisma.classSession.count({
@@ -1024,7 +1236,9 @@ let ClassManagementService = class ClassManagementService {
                             console.log(`Auto-calculated endDate: ${sessionEndDate.toLocaleDateString('vi-VN')}`);
                         }
                     }
-                    if (sessionStartDate && sessionEndDate && result.class.recurringSchedule) {
+                    if (sessionStartDate &&
+                        sessionEndDate &&
+                        result.class.recurringSchedule) {
                         console.log(`Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`);
                         await this.generateSessions(id, {
                             startDate: sessionStartDate.toISOString().split('T')[0],
@@ -1101,7 +1315,7 @@ let ClassManagementService = class ClassManagementService {
             }
             this.emailNotificationService
                 .sendClassStatusChangeEmailToParents(id, existingClass.status, status)
-                .catch(error => {
+                .catch((error) => {
                 console.error('❌ Lỗi khi gửi email thông báo status:', error);
             });
             return {
@@ -1389,7 +1603,7 @@ let ClassManagementService = class ClassManagementService {
                 });
                 const existingLinks = await this.prisma.holidayPeriodSession.findMany({
                     where: {
-                        sessionId: { in: dayOffSessions.map(s => s.id) },
+                        sessionId: { in: dayOffSessions.map((s) => s.id) },
                     },
                     select: { sessionId: true, holidayPeriodId: true },
                 });
@@ -1588,9 +1802,15 @@ let ClassManagementService = class ClassManagementService {
                 const isSubstitute = session.substituteTeacherId &&
                     session.substituteEndDate &&
                     new Date(session.substituteEndDate) >= session.sessionDate;
-                const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
-                const teacherName = teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
-                const originalTeacherName = session.teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
+                const teacher = isSubstitute
+                    ? session.substituteTeacher
+                    : session.teacher;
+                const teacherName = teacher?.user?.fullName ||
+                    session.class.teacher?.user?.fullName ||
+                    null;
+                const originalTeacherName = session.teacher?.user?.fullName ||
+                    session.class.teacher?.user?.fullName ||
+                    null;
                 return {
                     id: session.id,
                     topic: session.notes || `Buổi ${index + 1}`,
@@ -1776,6 +1996,21 @@ let ClassManagementService = class ClassManagementService {
                 updateData.recurringSchedule = {
                     schedules: schedules,
                 };
+                const firstSchedule = body.schedules[0];
+                if (firstSchedule?.roomId) {
+                    const room = await this.prisma.room.findUnique({
+                        where: { id: firstSchedule.roomId },
+                    });
+                    if (room) {
+                        updateData.roomId = firstSchedule.roomId;
+                    }
+                    else {
+                        console.warn(`Room ID ${firstSchedule.roomId} không tồn tại, bỏ qua cập nhật roomId`);
+                    }
+                }
+                if (isDraft) {
+                    updateData.status = constants_1.ClassStatus.READY;
+                }
             }
             else if (isDraft) {
                 updateData.recurringSchedule = null;
@@ -1824,7 +2059,13 @@ let ClassManagementService = class ClassManagementService {
                     'Đã xóa lịch học. Lớp cần có lịch học trước khi chuyển sang trạng thái sẵn sàng (ready)';
             }
             else if (hasSchedules) {
-                message = 'Cập nhật lịch học thành công';
+                if (isDraft) {
+                    message =
+                        'Cập nhật lịch học thành công. Lớp đã tự động chuyển sang trạng thái "Sẵn sàng" (ready)';
+                }
+                else {
+                    message = 'Cập nhật lịch học thành công';
+                }
             }
             return {
                 success: true,
@@ -2060,22 +2301,6 @@ let ClassManagementService = class ClassManagementService {
                     message: 'Giáo viên đã được phân công cho lớp này',
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
-            let hasSchedule = false;
-            if (classItem.recurringSchedule !== null &&
-                classItem.recurringSchedule !== undefined) {
-                if (Array.isArray(classItem.recurringSchedule)) {
-                    hasSchedule = classItem.recurringSchedule.length > 0;
-                }
-                else if (typeof classItem.recurringSchedule === 'object') {
-                    hasSchedule = Object.keys(classItem.recurringSchedule).length > 0;
-                }
-            }
-            if (!hasSchedule) {
-                throw new common_1.HttpException({
-                    success: false,
-                    message: 'Vui lòng cập nhật lịch học trước khi phân công giáo viên',
-                }, common_1.HttpStatus.BAD_REQUEST);
-            }
             const scheduleConflict = await this.checkTeacherScheduleConflict(body.teacherId, classId, classItem.recurringSchedule, classItem.roomId);
             if (scheduleConflict.hasConflict) {
                 throw new common_1.HttpException({
@@ -2119,6 +2344,11 @@ let ClassManagementService = class ClassManagementService {
             catch (emailError) {
                 console.error('Failed to queue email notification:', emailError);
             }
+            const recurringSchedule = updatedClass.recurringSchedule;
+            const hasSchedule = recurringSchedule &&
+                recurringSchedule.schedules &&
+                Array.isArray(recurringSchedule.schedules) &&
+                recurringSchedule.schedules.length > 0;
             return {
                 success: true,
                 message: successMessage,
@@ -2390,7 +2620,8 @@ let ClassManagementService = class ClassManagementService {
             if (conflictResult?.data?.incompatibleSubject) {
                 throw new common_1.HttpException({
                     success: false,
-                    message: conflictResult?.data?.subjectMessage || 'Giáo viên thay thế không phù hợp môn học',
+                    message: conflictResult?.data?.subjectMessage ||
+                        'Giáo viên thay thế không phù hợp môn học',
                 }, common_1.HttpStatus.BAD_REQUEST);
             }
             if (conflictResult?.data?.hasConflict) {
@@ -2455,8 +2686,7 @@ let ClassManagementService = class ClassManagementService {
                             },
                         },
                         data: {
-                            teacherId: body.replacementTeacherId,
-                            substituteTeacherId: classItem.teacherId,
+                            substituteTeacherId: body.replacementTeacherId,
                             substituteEndDate: substituteEndDate,
                         },
                     });
@@ -2506,8 +2736,14 @@ let ClassManagementService = class ClassManagementService {
         try {
             const { replacementTeacherId, effectiveDate, substituteEndDate } = params;
             const [classItem, teacher] = await Promise.all([
-                this.prisma.class.findUnique({ where: { id: classId }, include: { subject: true } }),
-                this.prisma.teacher.findUnique({ where: { id: replacementTeacherId }, include: { user: true } }),
+                this.prisma.class.findUnique({
+                    where: { id: classId },
+                    include: { subject: true },
+                }),
+                this.prisma.teacher.findUnique({
+                    where: { id: replacementTeacherId },
+                    include: { user: true },
+                }),
             ]);
             if (!classItem) {
                 throw new common_1.HttpException({ success: false, message: 'Không tìm thấy lớp học' }, common_1.HttpStatus.NOT_FOUND);
@@ -2517,7 +2753,9 @@ let ClassManagementService = class ClassManagementService {
             }
             let incompatibleSubject = false;
             let subjectMessage = null;
-            if (classItem.subjectId && classItem.subject?.name && Array.isArray(teacher.subjects)) {
+            if (classItem.subjectId &&
+                classItem.subject?.name &&
+                Array.isArray(teacher.subjects)) {
                 const canTeach = teacher.subjects.includes(classItem.subject.name);
                 if (!canTeach) {
                     incompatibleSubject = true;
@@ -2528,7 +2766,13 @@ let ClassManagementService = class ClassManagementService {
                 return {
                     success: true,
                     message: 'Giáo viên đang không hoạt động',
-                    data: { hasConflict: true, conflicts: [], incompatibleSubject, subjectMessage, inactive: true },
+                    data: {
+                        hasConflict: true,
+                        conflicts: [],
+                        incompatibleSubject,
+                        subjectMessage,
+                        inactive: true,
+                    },
                 };
             }
             const startDate = effectiveDate ? new Date(effectiveDate) : new Date();
@@ -2552,7 +2796,12 @@ let ClassManagementService = class ClassManagementService {
                 return {
                     success: true,
                     message: 'Không có buổi học trong khoảng thời gian áp dụng',
-                    data: { hasConflict: false, conflicts: [], incompatibleSubject, subjectMessage },
+                    data: {
+                        hasConflict: false,
+                        conflicts: [],
+                        incompatibleSubject,
+                        subjectMessage,
+                    },
                 };
             }
             const conflicts = [];
@@ -2562,9 +2811,24 @@ let ClassManagementService = class ClassManagementService {
                         sessionDate: s.sessionDate,
                         teacherId: replacementTeacherId,
                         OR: [
-                            { AND: [{ startTime: { lte: s.startTime } }, { endTime: { gt: s.startTime } }] },
-                            { AND: [{ startTime: { lt: s.endTime } }, { endTime: { gte: s.endTime } }] },
-                            { AND: [{ startTime: { gte: s.startTime } }, { endTime: { lte: s.endTime } }] },
+                            {
+                                AND: [
+                                    { startTime: { lte: s.startTime } },
+                                    { endTime: { gt: s.startTime } },
+                                ],
+                            },
+                            {
+                                AND: [
+                                    { startTime: { lt: s.endTime } },
+                                    { endTime: { gte: s.endTime } },
+                                ],
+                            },
+                            {
+                                AND: [
+                                    { startTime: { gte: s.startTime } },
+                                    { endTime: { lte: s.endTime } },
+                                ],
+                            },
                         ],
                     },
                     select: { id: true, classId: true, startTime: true, endTime: true },
@@ -2584,19 +2848,30 @@ let ClassManagementService = class ClassManagementService {
             }
             return {
                 success: true,
-                message: conflicts.length ? 'Phát hiện xung đột lịch' : 'Không có xung đột',
-                data: { hasConflict: conflicts.length > 0, conflicts, incompatibleSubject, subjectMessage },
+                message: conflicts.length
+                    ? 'Phát hiện xung đột lịch'
+                    : 'Không có xung đột',
+                data: {
+                    hasConflict: conflicts.length > 0,
+                    conflicts,
+                    incompatibleSubject,
+                    subjectMessage,
+                },
             };
         }
         catch (error) {
             if (error instanceof common_1.HttpException)
                 throw error;
-            throw new common_1.HttpException({ success: false, message: 'Lỗi kiểm tra xung đột', error: error.message }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new common_1.HttpException({
+                success: false,
+                message: 'Lỗi kiểm tra xung đột',
+                error: error.message,
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     async getTransferRequests(params) {
         try {
-            const { status, classId, teacherId, page = 1, limit = 10, } = params;
+            const { status, classId, teacherId, page = 1, limit = 10 } = params;
             const where = {};
             if (status)
                 where.status = status;
@@ -2767,8 +3042,7 @@ let ClassManagementService = class ClassManagementService {
                             },
                         },
                         data: {
-                            teacherId: replacementTeacherId,
-                            substituteTeacherId: transfer.teacherId,
+                            substituteTeacherId: transfer.replacementTeacherId,
                             substituteEndDate: substituteEndDate,
                         },
                     });
@@ -3213,7 +3487,8 @@ let ClassManagementService = class ClassManagementService {
             const assignedSchedules = this.parseRecurringSchedule(assignedClass.recurringSchedule, assignedClass.roomId);
             for (const newSchedule of newSchedules) {
                 for (const assignedSchedule of assignedSchedules) {
-                    if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(assignedSchedule.day)) {
+                    if (this.normalizeDayOfWeek(newSchedule.day) ===
+                        this.normalizeDayOfWeek(assignedSchedule.day)) {
                         if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, assignedSchedule.startTime, assignedSchedule.endTime)) {
                             conflicts.push({
                                 assignedClass: {
@@ -3246,7 +3521,9 @@ let ClassManagementService = class ClassManagementService {
         if (!schedule) {
             return [];
         }
-        if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+        if (typeof schedule === 'object' &&
+            schedule.schedules &&
+            Array.isArray(schedule.schedules)) {
             return schedule.schedules.map((s) => ({
                 day: s.day || s.dayOfWeek || '',
                 startTime: s.startTime || '',

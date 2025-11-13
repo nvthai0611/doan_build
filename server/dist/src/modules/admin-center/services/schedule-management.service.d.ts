@@ -1,8 +1,10 @@
 import { QueryScheduleDto, QueryScheduleMonthDto, QueryScheduleWeekDto } from '../dto/schedule/query-schedule.dto';
 import { PrismaService } from 'src/db/prisma.service';
+import { EmailNotificationService } from '../../shared/services/email-notification.service';
 export declare class ScheduleManagementService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private emailNotificationService;
+    constructor(prisma: PrismaService, emailNotificationService: EmailNotificationService);
     private mapSessionToClientShape;
     getScheduleByDay(queryDto: QueryScheduleDto): Promise<{
         id: any;
@@ -46,6 +48,7 @@ export declare class ScheduleManagementService {
     getAllActiveClassesWithSchedules(expectedStartDate?: string): Promise<{
         classId: string;
         className: string;
+        teacherId: string;
         teacherName: string;
         subjectName: string;
         roomId: string;
@@ -68,45 +71,45 @@ export declare class ScheduleManagementService {
         cancellationReason: string;
         createdAt: Date;
         class: {
-            id: string;
-            classCode: string;
             name: string;
-            grade: {
+            teacher: {
+                user: {
+                    fullName: string;
+                    email: string;
+                    phone: string;
+                    id: string;
+                    avatar: string;
+                };
                 id: string;
-                name: string;
             };
             subject: {
-                id: string;
                 name: string;
-            };
-            teacher: {
                 id: string;
-                user: {
-                    id: string;
-                    email: string;
-                    fullName: string;
-                    avatar: string;
-                    phone: string;
-                };
             };
+            grade: {
+                name: string;
+                id: string;
+            };
+            id: string;
             _count: {
                 enrollments: number;
             };
+            classCode: string;
         };
         room: {
-            id: string;
             name: string;
+            id: string;
             capacity: number;
         };
         teacher: {
-            id: string;
             user: {
-                id: string;
-                email: string;
                 fullName: string;
-                avatar: string;
+                email: string;
                 phone: string;
+                id: string;
+                avatar: string;
             };
+            id: string;
         };
         attendanceCount: number;
     }>;
@@ -128,31 +131,42 @@ export declare class ScheduleManagementService {
             id: string;
             studentCode: string;
             user: {
-                id: string;
-                email: string;
                 fullName: string;
-                avatar: string;
+                email: string;
                 phone: string;
+                id: string;
+                avatar: string;
             };
         };
         thaiDoHoc: any;
         kyNangLamViecNhom: any;
     }[]>;
     updateSession(sessionId: string, body: any): Promise<{
-        createdAt: Date;
-        id: string;
+        status: string;
         roomId: string | null;
         teacherId: string | null;
-        status: string;
+        createdAt: Date;
         academicYear: string;
+        id: string;
+        notes: string | null;
         classId: string;
         substituteTeacherId: string | null;
         substituteEndDate: Date | null;
         sessionDate: Date;
         startTime: string;
         endTime: string;
-        notes: string | null;
         cancellationReason: string | null;
+    }>;
+    checkScheduleConflict(sessionId: string, sessionDate: string, startTime: string, endTime: string): Promise<{
+        hasConflict: boolean;
+        conflicts: {
+            id: string;
+            className: string;
+            classCode: string;
+            notes: string;
+            startTime: string;
+            endTime: string;
+        }[];
     }>;
     getTeachersInSessionsToday(query: any): Promise<{
         data: {

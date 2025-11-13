@@ -65,45 +65,45 @@ export declare class ScheduleManagementController {
             cancellationReason: string;
             createdAt: Date;
             class: {
-                id: string;
-                classCode: string;
                 name: string;
-                grade: {
+                teacher: {
+                    user: {
+                        fullName: string;
+                        email: string;
+                        phone: string;
+                        id: string;
+                        avatar: string;
+                    };
                     id: string;
-                    name: string;
                 };
                 subject: {
-                    id: string;
                     name: string;
-                };
-                teacher: {
                     id: string;
-                    user: {
-                        id: string;
-                        email: string;
-                        fullName: string;
-                        avatar: string;
-                        phone: string;
-                    };
                 };
+                grade: {
+                    name: string;
+                    id: string;
+                };
+                id: string;
                 _count: {
                     enrollments: number;
                 };
+                classCode: string;
             };
             room: {
-                id: string;
                 name: string;
+                id: string;
                 capacity: number;
             };
             teacher: {
-                id: string;
                 user: {
-                    id: string;
-                    email: string;
                     fullName: string;
-                    avatar: string;
+                    email: string;
                     phone: string;
+                    id: string;
+                    avatar: string;
                 };
+                id: string;
             };
             attendanceCount: number;
         };
@@ -128,11 +128,11 @@ export declare class ScheduleManagementController {
                 id: string;
                 studentCode: string;
                 user: {
-                    id: string;
-                    email: string;
                     fullName: string;
-                    avatar: string;
+                    email: string;
                     phone: string;
+                    id: string;
+                    avatar: string;
                 };
             };
             thaiDoHoc: any;
@@ -144,6 +144,7 @@ export declare class ScheduleManagementController {
         data: {
             classId: string;
             className: string;
+            teacherId: string;
             teacherName: string;
             subjectName: string;
             roomId: string;
@@ -157,20 +158,34 @@ export declare class ScheduleManagementController {
     }>;
     updateSession(sessionId: string, body: any): Promise<{
         data: {
-            createdAt: Date;
-            id: string;
+            status: string;
             roomId: string | null;
             teacherId: string | null;
-            status: string;
+            createdAt: Date;
             academicYear: string;
+            id: string;
+            notes: string | null;
             classId: string;
             substituteTeacherId: string | null;
             substituteEndDate: Date | null;
             sessionDate: Date;
             startTime: string;
             endTime: string;
-            notes: string | null;
             cancellationReason: string | null;
+        };
+        message: string;
+    }>;
+    checkScheduleConflict(sessionId: string, sessionDate: string, startTime: string, endTime: string): Promise<{
+        data: {
+            hasConflict: boolean;
+            conflicts: {
+                id: string;
+                className: string;
+                classCode: string;
+                notes: string;
+                startTime: string;
+                endTime: string;
+            }[];
         };
         message: string;
     }>;

@@ -83,6 +83,15 @@ export declare class StudentManagementController {
                 capacity: number;
             };
             status: string;
+            teacher: {
+                id: string;
+                fullName: string;
+            };
+            substituteTeacher: {
+                id: string;
+                fullName: string;
+            };
+            substituteEndDate: string;
             class: {
                 id: string;
                 name: string;

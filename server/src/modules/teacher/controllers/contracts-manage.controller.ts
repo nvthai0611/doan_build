@@ -22,7 +22,7 @@ export class ContractsManageController {
   constructor(
     private readonly service: ContractsManageService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'Get contract uploads for teacher' })
@@ -53,21 +53,25 @@ export class ContractsManageController {
       type: 'object',
       properties: {
         contractType: { type: 'string' },
-         expiryDate: { type: 'string', format: 'date' },
-         notes: { type: 'string' },
+        startDate: { type: 'string', format: 'date' },
+        expiryDate: { type: 'string', format: 'date' },
+        notes: { type: 'string' },
+        teacherSalaryPercent: { type: 'number', description: '% lương giáo viên (0-100)' },
         file: { type: 'string', format: 'binary' },
       },
-       required: ['file', 'expiryDate'],
+      required: ['file', 'startDate', 'expiryDate', 'teacherSalaryPercent'],
     },
   })
   @ApiOperation({ summary: 'Upload a contract file' })
-   async upload(
-     @Req() req: any, 
-     @UploadedFile() file: Express.Multer.File, 
-     @Body('contractType') contractType: string,
-     @Body('expiryDate') expiryDate: string,
-     @Body('notes') notes: string,
-   ) {
+  async upload(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('contractType') contractType: string,
+    @Body('startDate') startDate: string,
+    @Body('expiryDate') expiryDate: string,
+    @Body('notes') notes: string,
+    @Body('teacherSalaryPercent') teacherSalaryPercent: string,
+  ) {
     try {
       const userId = req.user?.userId;
       if (!userId) {
@@ -79,7 +83,13 @@ export class ContractsManageController {
         throw new HttpException('Teacher not found', HttpStatus.UNAUTHORIZED);
       }
 
-       const data = await this.service.createForTeacher(teacher.id, file, contractType, expiryDate, notes);
+      // Validate teacherSalaryPercent
+      const salaryPercent = parseFloat(teacherSalaryPercent);
+      if (isNaN(salaryPercent) || salaryPercent < 0 || salaryPercent > 100) {
+        throw new HttpException('teacherSalaryPercent must be between 0 and 100', HttpStatus.BAD_REQUEST);
+      }
+
+      const data = await this.service.createForTeacher(teacher.id, file, contractType, startDate, expiryDate, notes, salaryPercent);
       return { success: true, data };
     } catch (error) {
       throw new HttpException(error.message || 'Error', error.status || HttpStatus.INTERNAL_SERVER_ERROR);

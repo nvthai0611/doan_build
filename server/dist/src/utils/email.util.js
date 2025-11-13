@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifyEmailConnection = verifyEmailConnection;
 exports.default = emailUtil;
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
@@ -16,16 +17,49 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false,
     },
-    connectionTimeout: 60000,
-    greetingTimeout: 30000,
-    socketTimeout: 60000,
+    connectionTimeout: 30000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
 });
+let isVerified = false;
+let verifyPromise = null;
+async function verifyEmailConnection() {
+    if (isVerified) {
+        return true;
+    }
+    if (verifyPromise) {
+        return verifyPromise;
+    }
+    verifyPromise = (async () => {
+        try {
+            if (!SMTP_USERNAME || !SMTP_PASSWORD) {
+                throw new Error('Thiếu cấu hình SMTP_USERNAME hoặc SMTP_PASSWORD.');
+            }
+            await transporter.verify();
+            isVerified = true;
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+        finally {
+            verifyPromise = null;
+        }
+    })();
+    return verifyPromise;
+}
 async function emailUtil(to, subject, html) {
     try {
         if (!SMTP_USERNAME || !SMTP_PASSWORD) {
             throw new Error('Thiếu cấu hình SMTP_USERNAME hoặc SMTP_PASSWORD.');
         }
-        await transporter.verify();
+        if (!isVerified && !verifyPromise) {
+            verifyEmailConnection().catch(() => {
+            });
+        }
         const info = await transporter.sendMail({
             from: `"${SMTP_FROMNAME}" <${SMTP_FROMEMAIL || SMTP_USERNAME}>`,
             to,
@@ -35,6 +69,9 @@ async function emailUtil(to, subject, html) {
         return info;
     }
     catch (error) {
+        if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+            isVerified = false;
+        }
         throw new Error(error.message || 'Không thể gửi email, vui lòng kiểm tra cấu hình.');
     }
 }

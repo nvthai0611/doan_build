@@ -15,12 +15,12 @@ export declare class PublicClassesController {
             pendingRequests: number;
             completedSessionsCount: number;
             subject: {
-                id: string;
                 name: string;
+                id: string;
             };
             grade: {
-                id: string;
                 name: string;
+                id: string;
             };
             teacher: {
                 id: string;
@@ -45,16 +45,16 @@ export declare class PublicClassesController {
     getSubjects(): Promise<{
         success: boolean;
         data: {
-            id: string;
             name: string;
+            id: string;
         }[];
         message: string;
     }>;
     getGrades(): Promise<{
         success: boolean;
         data: {
-            id: string;
             name: string;
+            id: string;
         }[];
         message: string;
     }>;

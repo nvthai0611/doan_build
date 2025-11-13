@@ -103,4 +103,19 @@ export declare class ClassJoinController {
             totalPages: number;
         };
     }>;
+    cancelRequest(req: any, requestId: string): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            status: string;
+            createdAt: Date;
+            message: string | null;
+            id: string;
+            studentId: string;
+            classId: string;
+            contractUploadId: string | null;
+            commitmentImageUrl: string | null;
+            processedAt: Date | null;
+        };
+    }>;
 }

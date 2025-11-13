@@ -5,7 +5,7 @@ import { UpdateTeacherDto } from './dto/update-teacher.dto';
 
 @Injectable()
 export class TeachersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(createTeacherDto: CreateTeacherDto) {
     return 'This action adds a new teacher';
@@ -335,13 +335,40 @@ export class TeachersService {
       }
 
       // Get all contracts for this teacher
-      const contracts = await this.prisma.contractUpload.findMany({
+      const contractUploads = await this.prisma.contractUpload.findMany({
         where: {
           teacherId: teacherId,
         },
         orderBy: {
           uploadedAt: 'desc',
         },
+      });
+
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const contracts = contractUploads.map((u) => {
+        let status = 'active';
+        if (u.expiredAt) {
+          if (u.expiredAt < now) {
+            status = 'expired';
+          } else if (u.expiredAt <= thirtyDaysFromNow) {
+            status = 'expiring_soon';
+          }
+        }
+
+        return {
+          id: u.id,
+          contractType: u.contractType,
+          uploadedImageUrl: u.uploadedImageUrl,
+          uploadedImageName: u.uploadedImageName,
+          uploadedAt: u.uploadedAt,
+          startDate: u.startDate,
+          expiryDate: u.expiredAt,
+          teacherSalaryPercent: u.teacherSalaryPercent,
+          notes: u.note,
+          status,
+        };
       });
 
       return contracts;

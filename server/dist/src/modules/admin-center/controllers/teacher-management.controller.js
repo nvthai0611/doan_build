@@ -25,7 +25,6 @@ let TeacherManagementController = class TeacherManagementController {
         this.teacherManagementService = teacherManagementService;
     }
     create(createTeacherDto, file) {
-        console.log("Raw body:", createTeacherDto);
         if (file) {
             createTeacherDto.contractImage = file;
         }
@@ -64,8 +63,12 @@ let TeacherManagementController = class TeacherManagementController {
     getTeacherContracts(id) {
         return this.teacherManagementService.getTeacherContracts(id);
     }
-    uploadContractForTeacher(teacherId, file, contractType, expiryDate, notes) {
-        return this.teacherManagementService.uploadContractForTeacher(teacherId, file, contractType, expiryDate, notes);
+    uploadContractForTeacher(teacherId, file, contractType, startDate, expiryDate, teacherSalaryPercent, notes) {
+        const salaryPercent = parseFloat(teacherSalaryPercent);
+        if (isNaN(salaryPercent) || salaryPercent < 0 || salaryPercent > 100) {
+            throw new common_1.HttpException('teacherSalaryPercent must be between 0 and 100', common_1.HttpStatus.BAD_REQUEST);
+        }
+        return this.teacherManagementService.uploadContractForTeacher(teacherId, file, contractType, startDate, expiryDate, notes, salaryPercent);
     }
     deleteTeacherContract(teacherId, contractId) {
         return this.teacherManagementService.deleteTeacherContract(teacherId, contractId);
@@ -172,10 +175,12 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFile)()),
     __param(2, (0, common_1.Body)('contractType')),
-    __param(3, (0, common_1.Body)('expiryDate')),
-    __param(4, (0, common_1.Body)('notes')),
+    __param(3, (0, common_1.Body)('startDate')),
+    __param(4, (0, common_1.Body)('expiryDate')),
+    __param(5, (0, common_1.Body)('teacherSalaryPercent')),
+    __param(6, (0, common_1.Body)('notes')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String, String, String]),
+    __metadata("design:paramtypes", [String, Object, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], TeacherManagementController.prototype, "uploadContractForTeacher", null);
 __decorate([

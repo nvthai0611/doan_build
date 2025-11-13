@@ -571,61 +571,68 @@ export const ClassManagement = () => {
         },
         {
             key: 'actions',
-            header: '',
+            header: 'Thao tác',
             align: 'center',
-            width: '80px',
+            width: '140px',
             render: (item: any) => (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem 
-                            className="gap-2 cursor-pointer" 
-                            onClick={() => handleView(item)}
-                        >
-                            <Eye className="w-4 h-4" />
-                            Xem chi tiết
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            className="gap-2 cursor-pointer"
-                            onClick={() => handleEditSchedule(item)}
-                        >
-                            <Edit className="w-4 h-4" />
-                            Sửa lịch học
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            className="gap-2 cursor-pointer"
-                            onClick={() => handleViewLessons(item)}
-                        >
-                            <Edit className="w-4 h-4" />
-                            Chương trình học
-                        </DropdownMenuItem>
-                        {/* <DropdownMenuItem 
-                            className="gap-2 cursor-pointer"
-                            onClick={() => handleAssignTeacher(item)}
-                        >
-                            <UserPlus className="w-4 h-4" />
-                            Cập nhật chương trình học theo khoá học
-                        </DropdownMenuItem> */}
-                        <DropdownMenuItem 
-                            className="gap-2 cursor-pointer text-blue-600 hover:text-blue-700 focus:text-blue-700"
-                            onClick={() => handleCloneClass(item)}
-                        >
-                            <Copy className="w-4 h-4" />
-                            Clone lớp học
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            className="gap-2 cursor-pointer text-red-600 hover:text-red-700 focus:text-red-700"
-                            onClick={() => handleDeleteClass(item)}
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Xoá
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <TooltipProvider delayDuration={300}>
+                    <div className="flex items-center justify-center gap-2">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleView(item)}
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Xem chi tiết</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleEditSchedule(item)}
+                                >
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Sửa lịch học</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                                    onClick={() => handleCloneClass(item)}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Clone lớp học</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700"
+                                    onClick={() => handleDeleteClass(item)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Xoá lớp học</TooltipContent>
+                        </Tooltip>
+                    </div>
+                </TooltipProvider>
             )
         }
     ]

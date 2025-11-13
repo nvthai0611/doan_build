@@ -185,11 +185,11 @@ client.interceptors.response.use(
         TokenStorage.clear();
         
         // Lưu current URL để redirect về sau
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/login')) {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
           sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
         }
         
-        window.location.href = '/auth/login';
+        window.location.href = 'http://localhost:5173/auth';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

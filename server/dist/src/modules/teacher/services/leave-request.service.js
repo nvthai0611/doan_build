@@ -244,36 +244,56 @@ let LeaveRequestService = class LeaveRequestService {
             where,
             skip,
             take: limit,
-            include: {
-                affectedSessions: {
-                    include: {
-                        session: {
-                            include: {
-                                class: {
-                                    include: {
-                                        subject: true,
-                                    },
-                                },
-                                room: true,
-                            },
-                        },
-                        replacementTeacher: {
-                            include: {
-                                user: true,
-                            },
-                        },
-                    },
-                },
+            select: {
+                id: true,
+                requestType: true,
+                reason: true,
+                startDate: true,
+                endDate: true,
+                status: true,
+                createdAt: true,
+                createdBy: true,
                 createdByUser: {
                     select: {
                         fullName: true,
                         email: true,
                     },
                 },
+                approvedBy: true,
                 approvedByUser: {
                     select: {
                         fullName: true,
                         email: true,
+                    },
+                },
+                affectedSessions: {
+                    select: {
+                        id: true,
+                        notes: true,
+                        session: {
+                            select: {
+                                id: true,
+                                sessionDate: true,
+                                startTime: true,
+                                endTime: true,
+                                notes: true,
+                                class: {
+                                    select: {
+                                        name: true,
+                                        subject: {
+                                            select: {
+                                                name: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                room: {
+                                    select: {
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -290,6 +310,36 @@ let LeaveRequestService = class LeaveRequestService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+    }
+    async cancelLeaveRequest(teacherId, leaveRequestId) {
+        if (!teacherId || !(0, validate_util_1.checkId)(teacherId)) {
+            throw new common_1.HttpException('ID giáo viên không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
+        }
+        if (!leaveRequestId || !(0, validate_util_1.checkId)(leaveRequestId)) {
+            throw new common_1.HttpException('ID đơn xin nghỉ không hợp lệ', common_1.HttpStatus.BAD_REQUEST);
+        }
+        const leaveRequest = await this.prisma.leaveRequest.findUnique({
+            where: { id: leaveRequestId },
+            include: {
+                teacher: true,
+            },
+        });
+        if (!leaveRequest) {
+            throw new common_1.HttpException('Không tìm thấy đơn xin nghỉ', common_1.HttpStatus.NOT_FOUND);
+        }
+        if (leaveRequest.teacherId !== teacherId) {
+            throw new common_1.HttpException('Không có quyền hủy đơn này', common_1.HttpStatus.FORBIDDEN);
+        }
+        if (leaveRequest.status !== 'pending') {
+            throw new common_1.HttpException('Chỉ có thể hủy đơn đang chờ duyệt', common_1.HttpStatus.BAD_REQUEST);
+        }
+        await this.prisma.leaveRequest.update({
+            where: { id: leaveRequestId },
+            data: {
+                status: 'cancelled',
+            },
+        });
+        return { success: true };
     }
 };
 exports.LeaveRequestService = LeaveRequestService;

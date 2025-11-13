@@ -32,6 +32,8 @@ export interface TeachingSession {
   originalTeacher?: string // Giáo viên chính
   substituteTeacher?: string | null // Giáo viên thay thế
   isSubstitute?: boolean // Có phải giáo viên thay thế không
+  substituteStartDate?: string | null // Ngày bắt đầu dạy thay (YYYY-MM-DD)
+  substituteEndDate?: string | null // Ngày kết thúc dạy thay (YYYY-MM-DD)
   students: Student[]
   attendanceWarnings: string[]
   description?: string

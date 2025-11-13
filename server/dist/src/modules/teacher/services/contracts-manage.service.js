@@ -44,18 +44,29 @@ let ContractsManageService = ContractsManageService_1 = class ContractsManageSer
                 uploadedImageUrl: u.uploadedImageUrl,
                 uploadedImageName: u.uploadedImageName,
                 uploadedAt: u.uploadedAt,
+                startDate: u.startDate,
                 expiryDate: u.expiredAt,
+                teacherSalaryPercent: u.teacherSalaryPercent,
                 notes: u.note,
                 status,
             };
         });
     }
-    async createForTeacher(teacherId, file, contractType, expiryDate, notes) {
+    async createForTeacher(teacherId, file, contractType, startDate, expiryDate, notes, teacherSalaryPercent) {
         if (!file) {
             throw new common_1.BadRequestException('File is required');
         }
+        if (!startDate) {
+            throw new common_1.BadRequestException('Start date is required');
+        }
         if (!expiryDate) {
             throw new common_1.BadRequestException('Expiry date is required');
+        }
+        if (teacherSalaryPercent === undefined || teacherSalaryPercent === null) {
+            throw new common_1.BadRequestException('teacherSalaryPercent is required');
+        }
+        if (teacherSalaryPercent < 0 || teacherSalaryPercent > 100) {
+            throw new common_1.BadRequestException('teacherSalaryPercent must be between 0 and 100');
         }
         let uploadResult;
         try {
@@ -77,15 +88,18 @@ let ContractsManageService = ContractsManageService_1 = class ContractsManageSer
         else if (expiredAt <= thirtyDaysFromNow) {
             status = 'expiring_soon';
         }
+        const startDateObj = new Date(startDate);
         const created = await this.prisma.contractUpload.create({
             data: {
                 teacherId,
                 contractType: contractType || 'other',
                 uploadedImageUrl: uploadResult.secure_url,
                 uploadedImageName: file.originalname,
+                startDate: startDateObj,
                 expiredAt,
                 note: notes || null,
                 status,
+                teacherSalaryPercent,
             },
         });
         return {

@@ -21,7 +21,7 @@ class QueryTeacherDto {
         this.sortOrder = 'desc';
     }
     static _OPENAPI_METADATA_FACTORY() {
-        return { search: { required: false, type: () => String }, role: { required: false, type: () => String }, status: { required: false, type: () => String }, page: { required: false, type: () => Number, default: 1, minimum: 1 }, limit: { required: false, type: () => Number, default: 10, minimum: 1, maximum: 100 }, sortBy: { required: false, type: () => String, default: "createdAt" }, sortOrder: { required: false, type: () => Object, default: "desc" }, gender: { required: false, type: () => String }, birthYear: { required: false, type: () => String } };
+        return { search: { required: false, type: () => String }, role: { required: false, type: () => String }, status: { required: false, type: () => String }, page: { required: false, type: () => Number, default: 1, minimum: 1 }, limit: { required: false, type: () => Number, default: 10, minimum: 1 }, sortBy: { required: false, type: () => String, default: "createdAt" }, sortOrder: { required: false, type: () => Object, default: "desc" }, gender: { required: false, type: () => String }, birthYear: { required: false, type: () => String } };
     }
 }
 exports.QueryTeacherDto = QueryTeacherDto;
@@ -52,7 +52,6 @@ __decorate([
     (0, class_transformer_1.Transform)(({ value }) => parseInt(value)),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(1),
-    (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
 ], QueryTeacherDto.prototype, "limit", void 0);
 __decorate([

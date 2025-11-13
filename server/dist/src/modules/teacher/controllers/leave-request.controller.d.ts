@@ -33,123 +33,45 @@ export declare class LeaveRequestController {
     getMyLeaveRequests(req: any, page?: string, limit?: string, status?: string, requestType?: string): Promise<{
         success: boolean;
         data: {
-            data: ({
-                affectedSessions: ({
+            data: {
+                status: string;
+                startDate: Date;
+                endDate: Date;
+                createdAt: Date;
+                id: string;
+                requestType: string;
+                reason: string;
+                createdBy: string;
+                approvedBy: string;
+                affectedSessions: {
+                    id: string;
+                    notes: string;
                     session: {
                         class: {
-                            subject: {
-                                id: string;
-                                name: string;
-                                description: string | null;
-                                code: string;
-                            };
-                        } & {
-                            academicYear: string | null;
-                            password: string | null;
-                            createdAt: Date;
-                            updatedAt: Date;
-                            id: string;
                             name: string;
-                            description: string | null;
-                            subjectId: string;
-                            gradeId: string | null;
-                            maxStudents: number | null;
-                            roomId: string | null;
-                            teacherId: string | null;
-                            status: string;
-                            recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
-                            expectedStartDate: Date | null;
-                            actualStartDate: Date | null;
-                            actualEndDate: Date | null;
-                            feeStructureId: string | null;
-                            classCode: string | null;
-                            feeAmount: import("@prisma/client/runtime/library").Decimal | null;
-                            feePeriod: string | null;
-                            feeCurrency: string | null;
-                            feeLockedAt: Date | null;
+                            subject: {
+                                name: string;
+                            };
                         };
                         room: {
-                            createdAt: Date;
-                            isActive: boolean;
-                            id: string;
                             name: string;
-                            capacity: number | null;
-                            equipment: import("@prisma/client/runtime/library").JsonValue | null;
                         };
-                    } & {
-                        academicYear: string;
-                        createdAt: Date;
                         id: string;
-                        roomId: string | null;
-                        teacherId: string | null;
-                        status: string;
-                        classId: string;
-                        substituteTeacherId: string | null;
-                        substituteEndDate: Date | null;
+                        notes: string;
                         sessionDate: Date;
                         startTime: string;
                         endTime: string;
-                        notes: string | null;
-                        cancellationReason: string | null;
                     };
-                    replacementTeacher: {
-                        user: {
-                            role: string;
-                            email: string | null;
-                            password: string;
-                            createdAt: Date;
-                            fullName: string | null;
-                            isActive: boolean;
-                            avatar: string | null;
-                            phone: string | null;
-                            roleId: string | null;
-                            updatedAt: Date;
-                            username: string;
-                            id: string;
-                            gender: import(".prisma/client").$Enums.Gender | null;
-                            birthDate: Date | null;
-                        };
-                    } & {
-                        createdAt: Date;
-                        updatedAt: Date;
-                        id: string;
-                        userId: string;
-                        schoolId: string | null;
-                        teacherCode: string;
-                        subjects: string[];
-                    };
-                } & {
-                    createdAt: Date;
-                    id: string;
-                    sessionId: string;
-                    notes: string | null;
-                    replacementTeacherId: string | null;
-                    leaveRequestId: string;
-                })[];
+                }[];
                 approvedByUser: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
                 createdByUser: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
-            } & {
-                createdAt: Date;
-                id: string;
-                teacherId: string | null;
-                status: string;
-                startDate: Date;
-                studentId: string | null;
-                notes: string | null;
-                reason: string;
-                endDate: Date;
-                approvedBy: string | null;
-                approvedAt: Date | null;
-                requestType: string;
-                createdBy: string;
-                imageUrl: string | null;
-            })[];
+            }[];
             meta: {
                 total: number;
                 page: number;
@@ -166,81 +88,81 @@ export declare class LeaveRequestController {
                 session: {
                     class: {
                         subject: {
-                            id: string;
                             name: string;
                             description: string | null;
+                            id: string;
                             code: string;
                         };
                     } & {
-                        academicYear: string | null;
-                        password: string | null;
-                        createdAt: Date;
-                        updatedAt: Date;
-                        id: string;
                         name: string;
                         description: string | null;
-                        subjectId: string;
+                        password: string | null;
+                        status: string;
                         gradeId: string | null;
-                        maxStudents: number | null;
+                        subjectId: string;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        feeStructureId: string | null;
+                        createdAt: Date;
+                        academicYear: string | null;
+                        id: string;
+                        updatedAt: Date;
+                        classCode: string | null;
+                        maxStudents: number | null;
                         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                         expectedStartDate: Date | null;
                         actualStartDate: Date | null;
                         actualEndDate: Date | null;
-                        feeStructureId: string | null;
-                        classCode: string | null;
                         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                         feePeriod: string | null;
                         feeCurrency: string | null;
                         feeLockedAt: Date | null;
                     };
                     room: {
-                        createdAt: Date;
-                        isActive: boolean;
-                        id: string;
                         name: string;
+                        createdAt: Date;
+                        id: string;
+                        isActive: boolean;
                         capacity: number | null;
                         equipment: import("@prisma/client/runtime/library").JsonValue | null;
                     };
                 } & {
-                    academicYear: string;
-                    createdAt: Date;
-                    id: string;
+                    status: string;
                     roomId: string | null;
                     teacherId: string | null;
-                    status: string;
+                    createdAt: Date;
+                    academicYear: string;
+                    id: string;
+                    notes: string | null;
                     classId: string;
                     substituteTeacherId: string | null;
                     substituteEndDate: Date | null;
                     sessionDate: Date;
                     startTime: string;
                     endTime: string;
-                    notes: string | null;
                     cancellationReason: string | null;
                 };
                 replacementTeacher: {
                     user: {
-                        role: string;
+                        fullName: string | null;
+                        gender: import(".prisma/client").$Enums.Gender | null;
+                        username: string;
                         email: string | null;
                         password: string;
+                        phone: string | null;
+                        birthDate: Date | null;
                         createdAt: Date;
-                        fullName: string | null;
+                        role: string;
+                        id: string;
+                        updatedAt: Date;
                         isActive: boolean;
                         avatar: string | null;
-                        phone: string | null;
                         roleId: string | null;
-                        updatedAt: Date;
-                        username: string;
-                        id: string;
-                        gender: import(".prisma/client").$Enums.Gender | null;
-                        birthDate: Date | null;
                     };
                 } & {
                     createdAt: Date;
-                    updatedAt: Date;
                     id: string;
+                    updatedAt: Date;
                     userId: string;
                     schoolId: string | null;
                     teacherCode: string;
@@ -249,27 +171,31 @@ export declare class LeaveRequestController {
             } & {
                 createdAt: Date;
                 id: string;
-                sessionId: string;
                 notes: string | null;
-                replacementTeacherId: string | null;
+                sessionId: string;
                 leaveRequestId: string;
+                replacementTeacherId: string | null;
             })[];
         } & {
+            status: string;
+            teacherId: string | null;
+            startDate: Date;
+            endDate: Date;
             createdAt: Date;
             id: string;
-            teacherId: string | null;
-            status: string;
-            startDate: Date;
-            studentId: string | null;
             notes: string | null;
+            studentId: string | null;
+            requestType: string;
             reason: string;
-            endDate: Date;
+            createdBy: string;
             approvedBy: string | null;
             approvedAt: Date | null;
-            requestType: string;
-            createdBy: string;
             imageUrl: string | null;
         };
+        message: string;
+    }>;
+    cancelLeaveRequest(req: any, id: string): Promise<{
+        success: boolean;
         message: string;
     }>;
 }

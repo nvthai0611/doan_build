@@ -95,6 +95,29 @@ let LeaveRequestController = class LeaveRequestController {
             throw new Error(error.message);
         }
     }
+    async cancelLeaveRequest(req, id) {
+        try {
+            const teacherId = req.user?.teacherId;
+            if (!teacherId) {
+                throw new common_1.HttpException({ success: false, message: 'Không tìm thấy thông tin giáo viên' }, common_1.HttpStatus.UNAUTHORIZED);
+            }
+            await this.leaveRequestService.cancelLeaveRequest(teacherId, id);
+            return {
+                success: true,
+                message: 'Hủy đơn xin nghỉ thành công',
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.HttpException) {
+                throw error;
+            }
+            throw new common_1.HttpException({
+                success: false,
+                message: 'Có lỗi xảy ra khi hủy đơn xin nghỉ',
+                error: error.message,
+            }, error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 };
 exports.LeaveRequestController = LeaveRequestController;
 __decorate([
@@ -184,6 +207,29 @@ __decorate([
     __metadata("design:paramtypes", [Object, leave_request_dto_1.LeaveRequestDto]),
     __metadata("design:returntype", Promise)
 ], LeaveRequestController.prototype, "createLeaveRequest", null);
+__decorate([
+    (0, common_1.Patch)(':id/cancel'),
+    (0, swagger_1.ApiOperation)({ summary: 'Hủy đơn xin nghỉ' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'ID của đơn xin nghỉ' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Hủy đơn thành công',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 400,
+        description: 'Chỉ có thể hủy đơn đang chờ duyệt',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 404,
+        description: 'Không tìm thấy đơn xin nghỉ',
+    }),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], LeaveRequestController.prototype, "cancelLeaveRequest", null);
 exports.LeaveRequestController = LeaveRequestController = __decorate([
     (0, swagger_1.ApiTags)('Teacher - Leave Requests'),
     (0, common_1.Controller)('leave-request'),

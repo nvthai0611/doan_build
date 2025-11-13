@@ -6,7 +6,12 @@ import { QueryClassDto } from '../dto/class/query-class.dto';
 import { EmailQueueService } from '../../shared/services/email-queue.service';
 import { EmailNotificationService } from '../../shared/services/email-notification.service';
 import { generateQNCode } from '../../../utils/function.util';
-import { DEFAULT_STATUS, ClassStatus, EnrollmentStatus, SessionStatus } from '../../../common/constants';
+import {
+  DEFAULT_STATUS,
+  ClassStatus,
+  EnrollmentStatus,
+  SessionStatus,
+} from '../../../common/constants';
 import { DataTransformer } from '../../../../core/transformer';
 
 @Injectable()
@@ -87,7 +92,7 @@ export class ClassManagementService {
         equals: name,
         mode: 'insensitive',
       },
-      academicYear: academicYear,   
+      academicYear: academicYear,
       status: { notIn: ['deleted', 'cancelled'] },
     };
 
@@ -155,16 +160,20 @@ export class ClassManagementService {
 
       // Filter by gradeId or grade level
       if (gradeId) {
-        const gradeValues = gradeId.split(',').map((id: string) => id.trim()).filter((id: string) => id);
-        
+        const gradeValues = gradeId
+          .split(',')
+          .map((id: string) => id.trim())
+          .filter((id: string) => id);
+
         // Check if values are UUIDs or grade levels (numbers)
         const isUUID = (value: string) => {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           return uuidRegex.test(value);
         };
-        
+
         const allAreUUIDs = gradeValues.every((val) => isUUID(val));
-        
+
         if (allAreUUIDs) {
           // Filter by gradeId (UUID)
           if (gradeValues.length === 1) {
@@ -174,7 +183,9 @@ export class ClassManagementService {
           }
         } else {
           // Filter by grade level (numbers like 6, 7, 8, 9)
-          const gradeLevels = gradeValues.map((val) => parseInt(val)).filter((val) => !isNaN(val));
+          const gradeLevels = gradeValues
+            .map((val) => parseInt(val))
+            .filter((val) => !isNaN(val));
           if (gradeLevels.length === 1) {
             where.grade = { level: gradeLevels[0] };
           } else if (gradeLevels.length > 1) {
@@ -185,7 +196,8 @@ export class ClassManagementService {
 
       // Helper function to validate UUID
       const isValidUUID = (value: string): boolean => {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         return uuidRegex.test(value);
       };
 
@@ -210,12 +222,12 @@ export class ClassManagementService {
       // - Lớp bắt đầu <= endDate VÀ lớp kết thúc >= startDate
       if (startDate || endDate) {
         where.AND = where.AND || [];
-        
+
         if (startDate && endDate) {
           // Có cả startDate và endDate: tìm lớp có khoảng thời gian giao với khoảng này
           const startDateObj = new Date(startDate + 'T00:00:00.000Z');
           const endDateObj = new Date(endDate + 'T23:59:59.999Z');
-          
+
           // Lớp bắt đầu <= endDate (sử dụng actualStartDate hoặc expectedStartDate)
           // VÀ lớp kết thúc >= startDate (sử dụng actualEndDate hoặc ước tính)
           where.AND.push({
@@ -313,7 +325,7 @@ export class ClassManagementService {
             },
           ],
         };
-        
+
         // Combine search with other conditions
         if (where.AND) {
           where.AND.push(searchConditions);
@@ -339,7 +351,7 @@ export class ClassManagementService {
           subject: true,
           room: true,
           grade: true,
-          
+
           teacher: {
             select: {
               id: true,
@@ -474,7 +486,7 @@ export class ClassManagementService {
       //   if (!aIsCurrentYear && bIsCurrentYear) return 1;
       //   return 0;
       // });
-      
+
       return {
         success: true,
         message: 'Lấy danh sách lớp học thành công',
@@ -491,6 +503,237 @@ export class ClassManagementService {
         {
           success: false,
           message: 'Có lỗi xảy ra khi lấy danh sách lớp học',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Lấy danh sách lớp học với đầy đủ thông tin giáo viên (dùng cho chuyển lớp)
+   * Logic riêng, không dùng lại findAll
+   */
+  async findAllWithTeacher(queryDto: QueryClassDto) {
+    try {
+      const {
+        status,
+        gradeId,
+        subjectId,
+        roomId,
+        teacherId,
+        search,
+        page = 1,
+        limit = 10,
+        sortBy = 'createdAt',
+        sortOrder = 'desc',
+      } = queryDto;
+
+      const skip = (page - 1) * limit;
+      const take = limit;
+
+      const where: any = {
+        status: { not: 'deleted' }, // Loại bỏ lớp đã xóa
+      };
+
+      // Filter theo status
+      if (status && status !== 'all') {
+        where.status = status;
+      }
+
+      // Filter theo gradeId (UUID)
+      if (gradeId) {
+        const isValidUUID = (value: string): boolean => {
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          return uuidRegex.test(value);
+        };
+
+        if (isValidUUID(gradeId)) {
+          where.gradeId = gradeId;
+        }
+      }
+
+      if (subjectId && subjectId !== 'all') {
+        const isValidUUID = (value: string): boolean => {
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          return uuidRegex.test(value);
+        };
+
+        if (isValidUUID(subjectId)) {
+          where.subjectId = subjectId;
+        }
+      }
+
+      if (roomId && roomId !== 'all') {
+        where.roomId = roomId;
+      }
+
+      if (teacherId && teacherId !== 'all') {
+        where.teacherId = teacherId;
+      }
+
+      if (search && search.trim()) {
+        const searchConditions = {
+          OR: [
+            { name: { contains: search.trim(), mode: 'insensitive' } }, // Tên lớp
+            { classCode: { contains: search.trim(), mode: 'insensitive' } }, // Mã lớp
+            {
+              teacher: {
+                user: {
+                  fullName: { contains: search.trim(), mode: 'insensitive' }, // Tên giáo viên
+                },
+              },
+            },
+          ],
+        };
+
+        if (where.AND) {
+          where.AND.push(searchConditions);
+        } else {
+          where.AND = [searchConditions];
+        }
+      }
+
+      const total = await this.prisma.class.count({ where });
+
+      const orderBy: any = {};
+      if (sortBy && sortOrder) {
+        orderBy[sortBy] = sortOrder;
+      } else {
+        orderBy.createdAt = 'desc';
+      }
+
+      const classes = await this.prisma.class.findMany({
+        where,
+        skip,
+        take,
+        orderBy,
+        include: {
+          // Subject info
+          subject: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          // Grade info
+          grade: {
+            select: {
+              id: true,
+              name: true,
+              level: true,
+            },
+          },
+          // Room info
+          room: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          // Teacher info - QUAN TRỌNG: Lấy đầy đủ thông tin giáo viên
+          teacher: {
+            select: {
+              id: true,
+              userId: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          // Enrollments - CHỈ LẤY ENROLLMENT HỢP LỆ (status = 'studying')
+          enrollments: {
+            where: {
+              status: 'studying', // Chỉ lấy học sinh đang học
+            },
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      // === TRANSFORM DATA ===
+      const transformedClasses = classes.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        code: cls.classCode,
+        status: cls.status,
+
+        // Subject
+        subjectId: cls.subjectId,
+        subjectName: cls.subject?.name || null,
+
+        // Grade
+        gradeId: cls.gradeId,
+        gradeName: cls.grade?.name || null,
+        gradeLevel: cls.grade?.level || null,
+
+        // Room
+        roomId: cls.roomId,
+        roomName: cls.room?.name || null,
+
+        // Teacher - QUAN TRỌNG: Flat structure để dễ dùng
+        teacherId: cls.teacher?.id || null,
+        teacherName: cls.teacher?.user?.fullName || null, // Tên giáo viên
+        teacherEmail: cls.teacher?.user?.email || null,
+        teacherPhone: cls.teacher?.user?.phone || null,
+        teacherAvatar: cls.teacher?.user?.avatar || null,
+        teacher: cls.teacher
+          ? {
+              id: cls.teacher.id,
+              userId: cls.teacher.userId,
+              name: cls.teacher.user.fullName,
+              email: cls.teacher.user.email,
+              phone: cls.teacher.user.phone,
+              avatar: cls.teacher.user.avatar,
+            }
+          : null,
+
+        // Enrollment counts
+        maxStudents: cls.maxStudents,
+        currentStudents: cls.enrollments.length, // Số học sinh ĐANG HỌC (status = 'studying')
+
+        // Dates
+        expectedStartDate: cls.expectedStartDate,
+        actualStartDate: cls.actualStartDate,
+        actualEndDate: cls.actualEndDate,
+
+        // Other
+        academicYear: cls.academicYear,
+        recurringSchedule: cls.recurringSchedule,
+        description: cls.description,
+
+        // Timestamps
+        createdAt: cls.createdAt,
+        updatedAt: cls.updatedAt,
+      }));
+
+      return {
+        success: true,
+        message: 'Lấy danh sách lớp học thành công',
+        data: transformedClasses,
+        meta: {
+          total: total,
+          page: page,
+          limit: limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách lớp học cho chuyển lớp',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -533,7 +776,7 @@ export class ClassManagementService {
           enrollments: {
             where: {
               status: {
-                in: ['not_been_updated', 'studying'],
+                in: ['studying'],
               },
             },
             include: {
@@ -757,7 +1000,7 @@ export class ClassManagementService {
       let feeAmount: number | null = null;
       let feePeriod: string | null = null;
       let feeCurrency: string = 'VND';
-      
+
       if (createClassDto.gradeId && createClassDto.subjectId) {
         // Lấy thông tin grade và subject để tạo tên
         const grade = await this.prisma.grade.findUnique({
@@ -801,6 +1044,20 @@ export class ClassManagementService {
         }
       }
 
+      // Xác định status: mặc định là 'ready', chỉ set 'draft' nếu thiếu lịch học
+      let classStatus = ClassStatus.READY;
+      const recurringSchedule = createClassDto.recurringSchedule || null;
+
+      // Kiểm tra nếu thiếu lịch học (null, undefined, hoặc schedules array rỗng)
+      if (
+        !recurringSchedule ||
+        !recurringSchedule.schedules ||
+        !Array.isArray(recurringSchedule.schedules) ||
+        recurringSchedule.schedules.length === 0
+      ) {
+        classStatus = ClassStatus.DRAFT;
+      }
+
       const newClass = await this.prisma.class.create({
         data: {
           name: createClassDto.name,
@@ -811,8 +1068,8 @@ export class ClassManagementService {
           roomId: createClassDto.roomId || null,
           teacherId: createClassDto.teacherId || null,
           description: createClassDto.description || null,
-          status: DEFAULT_STATUS.CLASS,
-          recurringSchedule: createClassDto.recurringSchedule || null,
+          status: classStatus,
+          recurringSchedule: recurringSchedule,
           academicYear: academicYear,
           feeStructureId: feeStructureId,
           feeAmount: feeAmount,
@@ -1062,7 +1319,9 @@ export class ClassManagementService {
 
       // AUTO-GEN SESSIONS: Nếu status chuyển từ ready → active hoặc suspended → active, tự động gen sessions (chỉ khi chưa có sessions)
       const isStatusChangedToActive =
-        (existingClass.status === 'ready' || existingClass.status === 'suspended') && updateClassDto.status === 'active';
+        (existingClass.status === 'ready' ||
+          existingClass.status === 'suspended') &&
+        updateClassDto.status === 'active';
 
       if (isStatusChangedToActive) {
         try {
@@ -1157,7 +1416,10 @@ export class ClassManagementService {
   }
 
   // Cập nhật trạng thái lớp học (API riêng)
-  async updateStatus(id: string, updateStatusDto: { status: string; startDate?: string; endDate?: string }) {
+  async updateStatus(
+    id: string,
+    updateStatusDto: { status: string; startDate?: string; endDate?: string },
+  ) {
     try {
       // Validate UUID
       if (!this.isValidUUID(id)) {
@@ -1171,7 +1433,7 @@ export class ClassManagementService {
       }
 
       const { status, startDate, endDate } = updateStatusDto;
-      
+
       // Check class exists
       const existingClass = await this.prisma.class.findUnique({
         where: { id },
@@ -1199,16 +1461,50 @@ export class ClassManagementService {
         );
       }
 
+      // Validation: Nếu chuyển từ ready sang active, phải có giáo viên và lịch học
+      if (
+        existingClass.status === ClassStatus.READY &&
+        status === ClassStatus.ACTIVE
+      ) {
+        const hasTeacher = existingClass.teacherId && existingClass.teacher;
+
+        // Kiểm tra lịch học (recurringSchedule là JSON type, cần cast)
+        const recurringSchedule = existingClass.recurringSchedule as any;
+        const hasSchedule =
+          recurringSchedule &&
+          recurringSchedule.schedules &&
+          Array.isArray(recurringSchedule.schedules) &&
+          recurringSchedule.schedules.length > 0;
+
+        const missingRequirements = [];
+        if (!hasTeacher) {
+          missingRequirements.push('giáo viên phụ trách');
+        }
+        if (!hasSchedule) {
+          missingRequirements.push('lịch học');
+        }
+
+        if (missingRequirements.length > 0) {
+          throw new HttpException(
+            {
+              success: false,
+              message: `Không thể chuyển lớp sang trạng thái "Đang hoạt động" khi chưa có ${missingRequirements.join(' và ')}. Vui lòng bổ sung đầy đủ thông tin trước.`,
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
       // Thực hiện update trong transaction
       const result = await this.prisma.$transaction(async (tx) => {
         // Chuẩn bị data để update
         const updateData: any = { status };
-        
+
         // Nếu chuyển sang 'active' và feeLockedAt chưa được set, thì khóa học phí
         if (status === 'active' && !existingClass.feeLockedAt) {
           updateData.feeLockedAt = new Date();
         }
-        
+
         // Update class status và feeLockedAt nếu cần
         const updatedClass = await tx.class.update({
           where: { id },
@@ -1253,7 +1549,7 @@ export class ClassManagementService {
         // Nếu chuyển sang cancelled, update tất cả enrollments sang stopped
         if (status === 'cancelled') {
           console.log(status);
-          
+
           // Update tất cả enrollments có status là studying hoặc not_been_updated
           // sang stopped (ngưng học)
           const updateResult = await tx.enrollment.updateMany({
@@ -1279,23 +1575,25 @@ export class ClassManagementService {
               },
             },
             data: {
-              status: 'cancelled', 
+              status: 'cancelled',
             },
           });
           updatedSessionsCount = sessionsUpdateResult.count;
         }
-        
+
         return {
           class: updatedClass,
           updatedEnrollmentsCount,
           updatedSessionsCount,
         };
       });
-      
+
       // AUTO-GEN SESSIONS: Nếu chuyển từ ready → active hoặc suspended → active, tự động gen sessions (chỉ khi chưa có sessions)
-      const isStatusChangedToActive = 
-        (existingClass.status === 'ready' || existingClass.status === 'suspended') && status === 'active';
-      
+      const isStatusChangedToActive =
+        (existingClass.status === 'ready' ||
+          existingClass.status === 'suspended') &&
+        status === 'active';
+
       if (isStatusChangedToActive) {
         try {
           // Kiểm tra xem lớp đã có sessions chưa
@@ -1305,14 +1603,15 @@ export class ClassManagementService {
 
           // Nếu đã có sessions rồi thì không tạo lại, chỉ chuyển status
           if (existingSessionsCount > 0) {
-            const statusLabel = {
-              draft: 'Lớp nháp',
-              ready: 'Sẵn sàng',
-              active: 'Đang hoạt động',
-              completed: 'Đã hoàn thành',
-              suspended: 'Tạm dừng',
-              cancelled: 'Đã hủy',
-            }[status] || status;
+            const statusLabel =
+              {
+                draft: 'Lớp nháp',
+                ready: 'Sẵn sàng',
+                active: 'Đang hoạt động',
+                completed: 'Đã hoàn thành',
+                suspended: 'Tạm dừng',
+                cancelled: 'Đã hủy',
+              }[status] || status;
 
             return {
               success: true,
@@ -1325,10 +1624,9 @@ export class ClassManagementService {
 
           // Nếu chưa có sessions, tiến hành tạo mới
           // Xác định ngày bắt đầu - ưu tiên từ request, sau đó là từ updatedClass
-          const sessionStartDate =
-            startDate
-              ? new Date(startDate)
-              : result.class.actualStartDate || result.class.expectedStartDate;
+          const sessionStartDate = startDate
+            ? new Date(startDate)
+            : result.class.actualStartDate || result.class.expectedStartDate;
           let sessionEndDate: Date | null = null;
 
           if (endDate) {
@@ -1346,7 +1644,11 @@ export class ClassManagementService {
             }
           }
 
-          if (sessionStartDate && sessionEndDate && result.class.recurringSchedule) {
+          if (
+            sessionStartDate &&
+            sessionEndDate &&
+            result.class.recurringSchedule
+          ) {
             // Tự động gen sessions
             console.log(
               `Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
@@ -1359,14 +1661,15 @@ export class ClassManagementService {
             });
 
             // Chuẩn bị message
-            const statusLabel = {
-              draft: 'Lớp nháp',
-              ready: 'Sẵn sàng',
-              active: 'Đang hoạt động',
-              completed: 'Đã hoàn thành',
-              suspended: 'Tạm dừng',
-              cancelled: 'Đã hủy',
-            }[status] || status;
+            const statusLabel =
+              {
+                draft: 'Lớp nháp',
+                ready: 'Sẵn sàng',
+                active: 'Đang hoạt động',
+                completed: 'Đã hoàn thành',
+                suspended: 'Tạm dừng',
+                cancelled: 'Đã hủy',
+              }[status] || status;
 
             let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Đã tạo lịch học từ ${sessionStartDate.toLocaleDateString('vi-VN')} đến ${sessionEndDate.toLocaleDateString('vi-VN')}.`;
 
@@ -1379,14 +1682,15 @@ export class ClassManagementService {
             };
           } else {
             // Thiếu thông tin để gen sessions
-            const statusLabel = {
-              draft: 'Lớp nháp',
-              ready: 'Sẵn sàng',
-              active: 'Đang hoạt động',
-              completed: 'Đã hoàn thành',
-              suspended: 'Tạm dừng',
-              cancelled: 'Đã hủy',
-            }[status] || status;
+            const statusLabel =
+              {
+                draft: 'Lớp nháp',
+                ready: 'Sẵn sàng',
+                active: 'Đang hoạt động',
+                completed: 'Đã hoàn thành',
+                suspended: 'Tạm dừng',
+                cancelled: 'Đã hủy',
+              }[status] || status;
 
             let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.`;
 
@@ -1402,15 +1706,16 @@ export class ClassManagementService {
         } catch (error) {
           // Nếu gen sessions lỗi, vẫn return success nhưng có warning
           console.error('Error auto-generating sessions:', error);
-          
-          const statusLabel = {
-            draft: 'Lớp nháp',
-            ready: 'Sẵn sàng',
-            active: 'Đang hoạt động',
-            completed: 'Đã hoàn thành',
-            suspended: 'Tạm dừng',
-            cancelled: 'Đã hủy',
-          }[status] || status;
+
+          const statusLabel =
+            {
+              draft: 'Lớp nháp',
+              ready: 'Sẵn sàng',
+              active: 'Đang hoạt động',
+              completed: 'Đã hoàn thành',
+              suspended: 'Tạm dừng',
+              cancelled: 'Đã hủy',
+            }[status] || status;
 
           let message = `Đã chuyển trạng thái lớp sang "${statusLabel}" nhưng có lỗi khi tạo lịch học tự động`;
 
@@ -1425,14 +1730,15 @@ export class ClassManagementService {
       }
 
       // Chuẩn bị message cho các trường hợp khác (không phải ready -> active)
-      const statusLabel = {
-        draft: 'Lớp nháp',
-        ready: 'Sẵn sàng',
-        active: 'Đang hoạt động',
-        completed: 'Đã hoàn thành',
-        suspended: 'Tạm dừng',
-        cancelled: 'Đã hủy',
-      }[status] || status;
+      const statusLabel =
+        {
+          draft: 'Lớp nháp',
+          ready: 'Sẵn sàng',
+          active: 'Đang hoạt động',
+          completed: 'Đã hoàn thành',
+          suspended: 'Tạm dừng',
+          cancelled: 'Đã hủy',
+        }[status] || status;
 
       let message = `Đã chuyển trạng thái lớp sang "${statusLabel}"`;
       if (existingClass.status === 'active' && status === 'completed') {
@@ -1442,7 +1748,7 @@ export class ClassManagementService {
       // Gửi email thông báo cho phụ huynh (không await để không block response)
       this.emailNotificationService
         .sendClassStatusChangeEmailToParents(id, existingClass.status, status)
-        .catch(error => {
+        .catch((error) => {
           console.error('❌ Lỗi khi gửi email thông báo status:', error);
           // Không throw để không ảnh hưởng đến response
         });
@@ -1793,7 +2099,7 @@ export class ClassManagementService {
       // ============================================================
       // LOGIC XỬ LÝ NGÀY NGHỈ: Kiểm tra và đánh dấu sessions trùng với holiday
       // ============================================================
-      
+
       // Bước 1: Lấy tất cả các kỳ nghỉ đang active có overlap với khoảng thời gian generate sessions
       // Mục đích: Tìm các ngày nghỉ có thể ảnh hưởng đến các buổi học sắp được tạo
       const holidays = await this.prisma.holidayPeriod.findMany({
@@ -1817,7 +2123,7 @@ export class ClassManagementService {
         // Lấy ngày của session và reset về 00:00:00 để so sánh chính xác (bỏ qua giờ phút)
         const sessionDate = new Date(session.sessionDate);
         sessionDate.setHours(0, 0, 0, 0);
-        
+
         // Tìm kỳ nghỉ mà session này rơi vào (session date nằm trong khoảng startDate và endDate của holiday)
         const matchingHoliday = holidays.find((holiday) => {
           // Reset về 00:00:00 để so sánh chính xác
@@ -1825,7 +2131,7 @@ export class ClassManagementService {
           holidayStart.setHours(0, 0, 0, 0);
           const holidayEnd = new Date(holiday.endDate);
           holidayEnd.setHours(0, 0, 0, 0);
-          
+
           // Kiểm tra xem session date có nằm trong khoảng holiday không
           return sessionDate >= holidayStart && sessionDate <= holidayEnd;
         });
@@ -1871,7 +2177,7 @@ export class ClassManagementService {
         // Lấy tất cả các links đã tồn tại để tránh tạo duplicate
         const existingLinks = await this.prisma.holidayPeriodSession.findMany({
           where: {
-            sessionId: { in: dayOffSessions.map(s => s.id) }, // Chỉ check links của các sessions này
+            sessionId: { in: dayOffSessions.map((s) => s.id) }, // Chỉ check links của các sessions này
           },
           select: { sessionId: true, holidayPeriodId: true },
         });
@@ -1882,14 +2188,14 @@ export class ClassManagementService {
           // Reset ngày về 00:00:00 để so sánh chính xác
           const sessionDate = new Date(session.sessionDate);
           sessionDate.setHours(0, 0, 0, 0);
-          
+
           // Tìm holiday mà session này thuộc về
           const matchingHoliday = holidays.find((holiday) => {
             const holidayStart = new Date(holiday.startDate);
             holidayStart.setHours(0, 0, 0, 0);
             const holidayEnd = new Date(holiday.endDate);
             holidayEnd.setHours(0, 0, 0, 0);
-            
+
             // Kiểm tra session date có nằm trong khoảng holiday không
             return sessionDate >= holidayStart && sessionDate <= holidayEnd;
           });
@@ -2009,7 +2315,6 @@ export class ClassManagementService {
         sortOrder = 'desc',
       } = query;
 
-      
       const skip = (page - 1) * limit;
       const take = parseInt(limit);
 
@@ -2130,15 +2435,24 @@ export class ClassManagementService {
       // Transform data to match frontend expectations
       const transformedSessions = sessions.map((session, index) => {
         const studentCount = sessionStudentCounts[index] || 0;
-        
+
         // Xác định giáo viên: nếu có giáo viên thay thế và ngày thay thế còn hiệu lực thì dùng giáo viên thay thế
-        const isSubstitute = session.substituteTeacherId && 
-                            session.substituteEndDate && 
-                            new Date(session.substituteEndDate) >= session.sessionDate;
-        const teacher = isSubstitute ? session.substituteTeacher : session.teacher;
-        const teacherName = teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
-        const originalTeacherName = session.teacher?.user?.fullName || session.class.teacher?.user?.fullName || null;
-        
+        const isSubstitute =
+          session.substituteTeacherId &&
+          session.substituteEndDate &&
+          new Date(session.substituteEndDate) >= session.sessionDate;
+        const teacher = isSubstitute
+          ? session.substituteTeacher
+          : session.teacher;
+        const teacherName =
+          teacher?.user?.fullName ||
+          session.class.teacher?.user?.fullName ||
+          null;
+        const originalTeacherName =
+          session.teacher?.user?.fullName ||
+          session.class.teacher?.user?.fullName ||
+          null;
+
         return {
           id: session.id,
           topic: session.notes || `Buổi ${index + 1}`,
@@ -2359,7 +2673,8 @@ export class ClassManagementService {
         throw new HttpException(
           {
             success: false,
-            message: 'Lớp đã có buổi học, không thể cập nhật lịch học. Để thay đổi lịch học vui lòng xóa toàn bộ lịch học.',
+            message:
+              'Lớp đã có buổi học, không thể cập nhật lịch học. Để thay đổi lịch học vui lòng xóa toàn bộ lịch học.',
           },
           HttpStatus.BAD_REQUEST,
         );
@@ -2399,6 +2714,29 @@ export class ClassManagementService {
         updateData.recurringSchedule = {
           schedules: schedules,
         };
+
+        // Lấy roomId từ schedule đầu tiên nếu có để cập nhật vào class.roomId
+        const firstSchedule = body.schedules[0];
+        if (firstSchedule?.roomId) {
+          // Validate roomId tồn tại
+          const room = await this.prisma.room.findUnique({
+            where: { id: firstSchedule.roomId },
+          });
+
+          if (room) {
+            updateData.roomId = firstSchedule.roomId;
+          } else {
+            // Nếu roomId không hợp lệ, log warning nhưng vẫn tiếp tục
+            console.warn(
+              `Room ID ${firstSchedule.roomId} không tồn tại, bỏ qua cập nhật roomId`,
+            );
+          }
+        }
+
+        // Nếu lớp đang ở trạng thái draft và có lịch học hợp lệ, tự động chuyển sang ready
+        if (isDraft) {
+          updateData.status = ClassStatus.READY;
+        }
       } else if (isDraft) {
         // Nếu là draft và không có schedules, set null
         updateData.recurringSchedule = null;
@@ -2459,7 +2797,12 @@ export class ClassManagementService {
         message =
           'Đã xóa lịch học. Lớp cần có lịch học trước khi chuyển sang trạng thái sẵn sàng (ready)';
       } else if (hasSchedules) {
-        message = 'Cập nhật lịch học thành công';
+        if (isDraft) {
+          message =
+            'Cập nhật lịch học thành công. Lớp đã tự động chuyển sang trạng thái "Sẵn sàng" (ready)';
+        } else {
+          message = 'Cập nhật lịch học thành công';
+        }
       }
 
       return {
@@ -2532,7 +2875,7 @@ export class ClassManagementService {
           HttpStatus.BAD_REQUEST,
         );
       }
-      if(existingClass.status === 'completed') {
+      if (existingClass.status === 'completed') {
         throw new HttpException(
           {
             success: false,
@@ -2827,32 +3170,6 @@ export class ClassManagementService {
         );
       }
 
-      // Kiểm tra xem lớp đã có lịch học chưa
-      // recurringSchedule có thể là: null, undefined, array rỗng [], hoặc object rỗng {}
-      let hasSchedule = false;
-
-      if (
-        classItem.recurringSchedule !== null &&
-        classItem.recurringSchedule !== undefined
-      ) {
-        if (Array.isArray(classItem.recurringSchedule)) {
-          hasSchedule = classItem.recurringSchedule.length > 0;
-        } else if (typeof classItem.recurringSchedule === 'object') {
-          hasSchedule = Object.keys(classItem.recurringSchedule).length > 0;
-        }
-      }
-
-      // Nếu chưa có lịch học thì không cho phép phán công giáo viên
-      if (!hasSchedule) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Vui lòng cập nhật lịch học trước khi phân công giáo viên',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
       // Kiểm tra trùng lịch học với các lớp đã được phân công cho giáo viên
       const scheduleConflict = await this.checkTeacherScheduleConflict(
         body.teacherId,
@@ -2918,6 +3235,14 @@ export class ClassManagementService {
         // Log lỗi email nhưng không làm fail toàn bộ operation
         console.error('Failed to queue email notification:', emailError);
       }
+
+      // Tính toán hasSchedule từ updatedClass để trả về metadata
+      const recurringSchedule = updatedClass.recurringSchedule as any;
+      const hasSchedule =
+        recurringSchedule &&
+        recurringSchedule.schedules &&
+        Array.isArray(recurringSchedule.schedules) &&
+        recurringSchedule.schedules.length > 0;
 
       return {
         success: true,
@@ -3259,7 +3584,8 @@ export class ClassManagementService {
             throw new HttpException(
               {
                 success: false,
-                message: 'Ngày kết thúc giáo viên thay thế phải sau ngày bắt đầu có hiệu lực',
+                message:
+                  'Ngày kết thúc giáo viên thay thế phải sau ngày bắt đầu có hiệu lực',
               },
               HttpStatus.BAD_REQUEST,
             );
@@ -3298,7 +3624,8 @@ export class ClassManagementService {
           {
             success: false,
             message:
-              conflictResult?.data?.subjectMessage || 'Giáo viên thay thế không phù hợp môn học',
+              conflictResult?.data?.subjectMessage ||
+              'Giáo viên thay thế không phù hợp môn học',
           },
           HttpStatus.BAD_REQUEST,
         );
@@ -3308,7 +3635,8 @@ export class ClassManagementService {
         throw new HttpException(
           {
             success: false,
-            message: 'Giáo viên thay thế đang có xung đột lịch trong khoảng áp dụng',
+            message:
+              'Giáo viên thay thế đang có xung đột lịch trong khoảng áp dụng',
             data: conflictResult.data.conflicts,
           },
           HttpStatus.BAD_REQUEST,
@@ -3372,8 +3700,7 @@ export class ClassManagementService {
               },
             },
             data: {
-              teacherId: body.replacementTeacherId,
-              substituteTeacherId: classItem.teacherId,
+              substituteTeacherId: body.replacementTeacherId,
               substituteEndDate: substituteEndDate,
             },
           });
@@ -3427,15 +3754,25 @@ export class ClassManagementService {
   // Validate conflict for teacher transfer
   async validateTransferConflict(
     classId: string,
-    params: { replacementTeacherId: string; effectiveDate?: string; substituteEndDate?: string },
+    params: {
+      replacementTeacherId: string;
+      effectiveDate?: string;
+      substituteEndDate?: string;
+    },
   ) {
     try {
       const { replacementTeacherId, effectiveDate, substituteEndDate } = params;
 
       // Verify class and teacher exist
       const [classItem, teacher] = await Promise.all([
-        this.prisma.class.findUnique({ where: { id: classId }, include: { subject: true } }),
-        this.prisma.teacher.findUnique({ where: { id: replacementTeacherId }, include: { user: true } }),
+        this.prisma.class.findUnique({
+          where: { id: classId },
+          include: { subject: true },
+        }),
+        this.prisma.teacher.findUnique({
+          where: { id: replacementTeacherId },
+          include: { user: true },
+        }),
       ]);
 
       if (!classItem) {
@@ -3454,8 +3791,14 @@ export class ClassManagementService {
       // Subject compatibility (reuse assign logic)
       let incompatibleSubject = false;
       let subjectMessage: string | null = null;
-      if (classItem.subjectId && classItem.subject?.name && Array.isArray((teacher as any).subjects)) {
-        const canTeach = (teacher as any).subjects.includes(classItem.subject.name);
+      if (
+        classItem.subjectId &&
+        classItem.subject?.name &&
+        Array.isArray((teacher as any).subjects)
+      ) {
+        const canTeach = (teacher as any).subjects.includes(
+          classItem.subject.name,
+        );
         if (!canTeach) {
           incompatibleSubject = true;
           subjectMessage = `Giáo viên không thể dạy môn ${classItem.subject.name}`;
@@ -3467,7 +3810,13 @@ export class ClassManagementService {
         return {
           success: true,
           message: 'Giáo viên đang không hoạt động',
-          data: { hasConflict: true, conflicts: [], incompatibleSubject, subjectMessage, inactive: true },
+          data: {
+            hasConflict: true,
+            conflicts: [],
+            incompatibleSubject,
+            subjectMessage,
+            inactive: true,
+          },
         };
       }
 
@@ -3496,7 +3845,12 @@ export class ClassManagementService {
         return {
           success: true,
           message: 'Không có buổi học trong khoảng thời gian áp dụng',
-          data: { hasConflict: false, conflicts: [], incompatibleSubject, subjectMessage },
+          data: {
+            hasConflict: false,
+            conflicts: [],
+            incompatibleSubject,
+            subjectMessage,
+          },
         };
       }
 
@@ -3508,9 +3862,24 @@ export class ClassManagementService {
             sessionDate: s.sessionDate,
             teacherId: replacementTeacherId,
             OR: [
-              { AND: [{ startTime: { lte: s.startTime } }, { endTime: { gt: s.startTime } }] },
-              { AND: [{ startTime: { lt: s.endTime } }, { endTime: { gte: s.endTime } }] },
-              { AND: [{ startTime: { gte: s.startTime } }, { endTime: { lte: s.endTime } }] },
+              {
+                AND: [
+                  { startTime: { lte: s.startTime } },
+                  { endTime: { gt: s.startTime } },
+                ],
+              },
+              {
+                AND: [
+                  { startTime: { lt: s.endTime } },
+                  { endTime: { gte: s.endTime } },
+                ],
+              },
+              {
+                AND: [
+                  { startTime: { gte: s.startTime } },
+                  { endTime: { lte: s.endTime } },
+                ],
+              },
             ],
           },
           select: { id: true, classId: true, startTime: true, endTime: true },
@@ -3531,13 +3900,24 @@ export class ClassManagementService {
 
       return {
         success: true,
-        message: conflicts.length ? 'Phát hiện xung đột lịch' : 'Không có xung đột',
-        data: { hasConflict: conflicts.length > 0, conflicts, incompatibleSubject, subjectMessage },
+        message: conflicts.length
+          ? 'Phát hiện xung đột lịch'
+          : 'Không có xung đột',
+        data: {
+          hasConflict: conflicts.length > 0,
+          conflicts,
+          incompatibleSubject,
+          subjectMessage,
+        },
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
       throw new HttpException(
-        { success: false, message: 'Lỗi kiểm tra xung đột', error: error.message },
+        {
+          success: false,
+          message: 'Lỗi kiểm tra xung đột',
+          error: error.message,
+        },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -3546,13 +3926,7 @@ export class ClassManagementService {
   // Lấy danh sách transfer requests
   async getTransferRequests(params: any) {
     try {
-      const {
-        status,
-        classId,
-        teacherId,
-        page = 1,
-        limit = 10,
-      } = params;
+      const { status, classId, teacherId, page = 1, limit = 10 } = params;
 
       const where: any = {};
       if (status) where.status = status;
@@ -3623,11 +3997,7 @@ export class ClassManagementService {
   }
 
   // Duyệt yêu cầu chuyển giáo viên
-  async approveTransfer(
-    transferId: string,
-    body: any,
-    approvedBy: string,
-  ) {
+  async approveTransfer(transferId: string, body: any, approvedBy: string) {
     try {
       // Find transfer request
       const transfer = await this.prisma.teacherClassTransfer.findUnique({
@@ -3764,8 +4134,7 @@ export class ClassManagementService {
               },
             },
             data: {
-              teacherId: replacementTeacherId,
-              substituteTeacherId: transfer.teacherId,
+              substituteTeacherId: transfer.replacementTeacherId,
               substituteEndDate: substituteEndDate,
             },
           });
@@ -4268,7 +4637,11 @@ export class ClassManagementService {
     newClassId: string,
     newClassSchedule: any,
     newClassRoomId: string | null,
-  ): Promise<{ hasConflict: boolean; message: string; conflictDetails?: any[] }> {
+  ): Promise<{
+    hasConflict: boolean;
+    message: string;
+    conflictDetails?: any[];
+  }> {
     // Nếu lớp mới không có lịch học thì không cần kiểm tra
     if (!newClassSchedule) {
       return { hasConflict: false, message: '' };
@@ -4300,7 +4673,10 @@ export class ClassManagementService {
     }
 
     // Parse lịch học của lớp mới
-    const newSchedules = this.parseRecurringSchedule(newClassSchedule, newClassRoomId);
+    const newSchedules = this.parseRecurringSchedule(
+      newClassSchedule,
+      newClassRoomId,
+    );
     if (newSchedules.length === 0) {
       return { hasConflict: false, message: '' };
     }
@@ -4313,15 +4689,28 @@ export class ClassManagementService {
         continue;
       }
 
-      const assignedSchedules = this.parseRecurringSchedule(assignedClass.recurringSchedule, assignedClass.roomId);
+      const assignedSchedules = this.parseRecurringSchedule(
+        assignedClass.recurringSchedule,
+        assignedClass.roomId,
+      );
 
       // So sánh từng slot lịch học của lớp mới với từng slot của lớp đã được phân công
       for (const newSchedule of newSchedules) {
         for (const assignedSchedule of assignedSchedules) {
           // Kiểm tra cùng ngày trong tuần
-          if (this.normalizeDayOfWeek(newSchedule.day) === this.normalizeDayOfWeek(assignedSchedule.day)) {
+          if (
+            this.normalizeDayOfWeek(newSchedule.day) ===
+            this.normalizeDayOfWeek(assignedSchedule.day)
+          ) {
             // Kiểm tra overlap thời gian cứ trùng lịch là conflict
-            if (this.isTimeOverlapping(newSchedule.startTime, newSchedule.endTime, assignedSchedule.startTime, assignedSchedule.endTime)) {
+            if (
+              this.isTimeOverlapping(
+                newSchedule.startTime,
+                newSchedule.endTime,
+                assignedSchedule.startTime,
+                assignedSchedule.endTime,
+              )
+            ) {
               conflicts.push({
                 assignedClass: {
                   id: assignedClass.id,
@@ -4359,26 +4748,35 @@ export class ClassManagementService {
 
   /**
    * Parse recurringSchedule từ nhiều định dạng khác nhau
-   * 
+   *
    * Hỗ trợ các format:
    * 1. Object có property schedules (format chính):
    *    { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...] }
    * 2. Array trực tiếp:
    *    [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...]
-   * 
+   *
    * roomId có thể có trong schedule item hoặc dùng classRoomId (roomId của class)
    */
   private parseRecurringSchedule(
     schedule: any,
     classRoomId: string | null = null,
-  ): Array<{ day: string; startTime: string; endTime: string; roomId: string | null }> {
+  ): Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+    roomId: string | null;
+  }> {
     if (!schedule) {
       return [];
     }
 
     // Trường hợp 1: Object có property schedules (format chính)
     // Format: { schedules: [{ day: "monday", startTime: "18:00", endTime: "20:00", roomId: "..." }, ...] }
-    if (typeof schedule === 'object' && schedule.schedules && Array.isArray(schedule.schedules)) {
+    if (
+      typeof schedule === 'object' &&
+      schedule.schedules &&
+      Array.isArray(schedule.schedules)
+    ) {
       return schedule.schedules.map((s: any) => ({
         day: s.day || s.dayOfWeek || '',
         startTime: s.startTime || '',
@@ -4411,9 +4809,9 @@ export class ClassManagementService {
 
   /**
    * Kiểm tra hai khoảng thời gian có overlap (trùng) không
-   * 
+   *
    * Công thức: start1 < end2 && end1 > start2
-   * 
+   *
    * Giải thích:
    * - Hai khoảng thời gian overlap khi chúng có phần chung
    * - Điều kiện 1: start1 < end2 → Khoảng 1 bắt đầu trước khi khoảng 2 kết thúc

@@ -11,11 +11,13 @@ export declare class ContractsManageService {
         uploadedImageUrl: string;
         uploadedImageName: string;
         uploadedAt: Date;
+        startDate: Date;
         expiryDate: Date;
+        teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
         notes: string;
         status: string;
     }[]>;
-    createForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, expiryDate?: string, notes?: string): Promise<{
+    createForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, startDate?: string, expiryDate?: string, notes?: string, teacherSalaryPercent?: number): Promise<{
         id: string;
         contractType: string;
         uploadedImageUrl: string;

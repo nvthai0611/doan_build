@@ -39,9 +39,9 @@ export const DAY_NAMES = [
 export const SUBJECT_COLORS: { [key: string]: string } = {
   "Toán học": "bg-purple-500 text-white",
   "Vật lý": "bg-blue-500 text-white", 
-  "Hóa học": "bg-green-500 text-white",
-  "Tiếng Anh": "bg-yellow-500 text-white",
-  "Ngữ văn": "bg-pink-500 text-white",
+  "Hóa học": "bg-purple-500 text-white",
+  "Tiếng Anh": "bg-purple-500 text-white",
+  "Ngữ văn": "bg-purple-500 text-white",
 } as const
 
 // Status colors mapping - aligned with SESSION_STATUS_COLORS from constants.ts

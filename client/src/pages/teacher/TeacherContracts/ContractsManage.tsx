@@ -60,7 +60,7 @@ export default function ContractsPage() {
     }).catch((e) => console.error(e))
   }
 
-    const activeContracts = contracts.filter((c) => c.status === "active").length
+  const activeContracts = contracts.filter((c) => c.status === "active").length
   const expiringContracts = contracts.filter((c) => c.status === "expiring_soon").length
   const expiredContracts = contracts.filter((c) => c.status === "expired").length
 

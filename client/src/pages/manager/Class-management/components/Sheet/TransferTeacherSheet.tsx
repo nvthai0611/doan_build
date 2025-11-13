@@ -149,7 +149,7 @@ export const TransferTeacherSheet = ({
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       onOpenChange(false);
       //refresh page
-      window.location.reload();
+      //window.location.reload();
     },
     onError: (error: any) => {
       toast({
@@ -379,7 +379,8 @@ export const TransferTeacherSheet = ({
           <Alert className="bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:border-cyan-800">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm text-cyan-800 dark:text-cyan-200">
-              Việc chuyển giáo viên sẽ được áp dụng ngay cho các buổi học trong phạm vi đã chọn.
+              Việc chuyển giáo viên sẽ được áp dụng ngay cho các buổi học trong
+              phạm vi đã chọn.
             </AlertDescription>
           </Alert>
 
@@ -387,31 +388,47 @@ export const TransferTeacherSheet = ({
           {selectedTeacherId && conflictInfo && (
             <Alert
               className={
-                conflictInfo.hasConflict || conflictInfo.incompatibleSubject || conflictInfo.inactive
+                conflictInfo.hasConflict ||
+                conflictInfo.incompatibleSubject ||
+                conflictInfo.inactive
                   ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
                   : 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
               }
             >
               <AlertCircle
                 className={
-                  conflictInfo.hasConflict || conflictInfo.incompatibleSubject || conflictInfo.inactive
+                  conflictInfo.hasConflict ||
+                  conflictInfo.incompatibleSubject ||
+                  conflictInfo.inactive
                     ? 'h-4 w-4 text-red-600'
                     : 'h-4 w-4 text-emerald-600'
                 }
               />
               <AlertDescription className="text-sm space-y-1">
-                {conflictInfo.inactive && <p>Giáo viên này đang bị vô hiệu hóa, không thể chuyển.</p>}
+                {conflictInfo.inactive && (
+                  <p>Giáo viên này đang bị vô hiệu hóa, không thể chuyển.</p>
+                )}
                 {conflictInfo.incompatibleSubject && (
-                  <p>{conflictInfo.subjectMessage || 'Giáo viên không phù hợp môn học của lớp.'}</p>
+                  <p>
+                    {conflictInfo.subjectMessage ||
+                      'Giáo viên không phù hợp môn học của lớp.'}
+                  </p>
                 )}
                 {conflictInfo.hasConflict && (
                   <p>
-                    Phát hiện {conflictInfo.conflicts.length} xung đột lịch trong khoảng áp dụng. Vui lòng chọn giáo viên khác hoặc điều chỉnh thời gian.
+                    Phát hiện {conflictInfo.conflicts.length} xung đột lịch
+                    trong khoảng áp dụng. Vui lòng chọn giáo viên khác hoặc điều
+                    chỉnh thời gian.
                   </p>
                 )}
-                {!conflictInfo.hasConflict && !conflictInfo.incompatibleSubject && !conflictInfo.inactive && (
-                  <p>Không phát hiện vấn đề nào với giáo viên này trong khoảng áp dụng.</p>
-                )}
+                {!conflictInfo.hasConflict &&
+                  !conflictInfo.incompatibleSubject &&
+                  !conflictInfo.inactive && (
+                    <p>
+                      Không phát hiện vấn đề nào với giáo viên này trong khoảng
+                      áp dụng.
+                    </p>
+                  )}
               </AlertDescription>
             </Alert>
           )}
@@ -622,7 +639,14 @@ export const TransferTeacherSheet = ({
             }
             className="w-full"
           >
-            {transferMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> + 'Đang xử lý...' : 'Chuyển giáo viên'}
+            {transferMutation.isPending ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang xử lý...
+              </span>
+            ) : (
+              'Chuyển giáo viên'
+            )}
           </Button>
         </div>
       </SheetContent>

@@ -218,42 +218,7 @@ export const ShareClassSheet = ({
             </div>
           </div>
 
-          {/* QR Code */}
-          <div className="space-y-4 border-t pt-6">
-            <h3 className="text-sm font-semibold">Mã QR của lớp học</h3>
-            
-            <div className="space-y-2 bg-blue-50 p-3 rounded-lg">
-              <div className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
-                  1
-                </div>
-                <p className="text-xs text-gray-700">Mở ứng dụng camera trên máy điện thoại</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
-                  2
-                </div>
-                <p className="text-xs text-gray-700">Di chuyển camera và quét mã QR để đăng ký nhanh</p>
-              </div>
-            </div>
-
-            <div className="flex justify-center">
-              {qrCodeDataUrl ? (
-                <img 
-                  src={qrCodeDataUrl} 
-                  alt="QR Code" 
-                  className="w-48 h-48 border rounded-lg"
-                />
-              ) : (
-                <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded-lg border">
-                  <QrCode className="h-16 w-16 text-gray-400" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-center gap-2 pt-2">
-            </div>
-          </div>
+     
             </>
           ) : (
             /* Hiển thị khi tắt chia sẻ */

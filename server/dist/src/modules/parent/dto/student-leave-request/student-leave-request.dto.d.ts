@@ -1,13 +1,12 @@
 export declare class CreateStudentLeaveRequestDto {
     studentId: string;
-    startDate: string;
-    endDate: string;
+    classId: string;
+    sessionIds: string[];
     reason: string;
 }
 export declare class UpdateStudentLeaveRequestDto {
-    startDate?: string;
-    endDate?: string;
     reason?: string;
+    sessionIds?: string[];
 }
 export declare class GetStudentLeaveRequestsQueryDto {
     page?: number;
@@ -16,8 +15,7 @@ export declare class GetStudentLeaveRequestsQueryDto {
     studentId?: string;
     classId?: string;
 }
-export declare class GetAffectedSessionsQueryDto {
+export declare class GetSessionsByClassQueryDto {
     studentId: string;
-    startDate: string;
-    endDate: string;
+    classId: string;
 }

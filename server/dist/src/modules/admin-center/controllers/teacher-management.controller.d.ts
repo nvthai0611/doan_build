@@ -162,11 +162,13 @@ export declare class TeacherManagementController {
             originalTeacher: string;
             substituteTeacher: string;
             isSubstitute: boolean;
+            substituteStartDate: string;
+            substituteEndDate: string;
             students: {
                 id: string;
                 name: string;
                 avatar: any;
-                status: "present" | "excused" | "absent";
+                status: "absent" | "present" | "excused";
             }[];
             attendanceWarnings: string[];
             description: string;
@@ -199,13 +201,15 @@ export declare class TeacherManagementController {
             uploadedImageUrl: string;
             uploadedImageName: string;
             uploadedAt: Date;
+            startDate: Date;
             expiryDate: Date;
+            teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
             notes: string;
             status: string;
         }[];
         message: string;
     }>;
-    uploadContractForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, expiryDate: string, notes?: string): Promise<{
+    uploadContractForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, startDate: string, expiryDate: string, teacherSalaryPercent: string, notes?: string): Promise<{
         success: boolean;
         data: {
             id: string;

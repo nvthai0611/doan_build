@@ -2,23 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { 
-  Users, 
-  GraduationCap, 
   Calendar, 
-  DollarSign, 
   Star, 
-  ChevronLeft, 
-  ChevronRight,
-  CheckCircle,
-  Clock,
-  UserX,
+
   AlertCircle,
   FileText,
-  TrendingUp,
-  Loader2
+ 
 } from "lucide-react"
 import { classService } from "../../../../services/center-owner/class-management/class.service"
 import Loading from "../../../../components/Loading/LoadingPage"

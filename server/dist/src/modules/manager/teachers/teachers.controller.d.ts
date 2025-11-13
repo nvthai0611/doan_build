@@ -12,19 +12,15 @@ export declare class TeachersController {
     remove(id: string): Promise<string>;
     getTeacherContracts(id: string): Promise<{
         id: string;
-        parentId: string | null;
-        teacherId: string | null;
-        status: string | null;
-        startDate: Date | null;
-        studentId: string | null;
-        note: string | null;
-        enrollmentId: bigint | null;
-        uploadedAt: Date;
         contractType: string;
-        subjectIds: string[];
         uploadedImageUrl: string;
-        uploadedImageName: string | null;
-        expiredAt: Date | null;
+        uploadedImageName: string;
+        uploadedAt: Date;
+        startDate: Date;
+        expiryDate: Date;
+        teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
+        notes: string;
+        status: string;
     }[]>;
     deleteTeacherContract(teacherId: string, contractId: string): Promise<{
         success: boolean;

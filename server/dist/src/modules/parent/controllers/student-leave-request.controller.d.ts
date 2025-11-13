@@ -1,5 +1,5 @@
 import { StudentLeaveRequestService } from '../services/student-leave-request.service';
-import { CreateStudentLeaveRequestDto, UpdateStudentLeaveRequestDto, GetStudentLeaveRequestsQueryDto, GetAffectedSessionsQueryDto } from '../dto/student-leave-request/student-leave-request.dto';
+import { CreateStudentLeaveRequestDto, UpdateStudentLeaveRequestDto, GetStudentLeaveRequestsQueryDto, GetSessionsByClassQueryDto } from '../dto/student-leave-request/student-leave-request.dto';
 export declare class StudentLeaveRequestController {
     private readonly studentLeaveRequestService;
     constructor(studentLeaveRequestService: StudentLeaveRequestService);
@@ -19,19 +19,19 @@ export declare class StudentLeaveRequestController {
                 classes: any[];
                 student: {
                     user: {
-                        email: string;
                         fullName: string;
+                        email: string;
                     };
                 } & {
-                    grade: string | null;
                     createdAt: Date;
-                    updatedAt: Date;
+                    grade: string | null;
                     id: string;
+                    parentId: string | null;
+                    updatedAt: Date;
                     userId: string;
                     studentCode: string | null;
                     address: string | null;
                     schoolId: string;
-                    parentId: string | null;
                     scholarshipId: string | null;
                 };
                 affectedSessions: ({
@@ -39,98 +39,98 @@ export declare class StudentLeaveRequestController {
                         class: {
                             teacher: {
                                 user: {
-                                    email: string;
                                     fullName: string;
+                                    email: string;
                                 };
                             } & {
                                 createdAt: Date;
-                                updatedAt: Date;
                                 id: string;
+                                updatedAt: Date;
                                 userId: string;
                                 schoolId: string | null;
                                 teacherCode: string;
                                 subjects: string[];
                             };
                             subject: {
-                                id: string;
                                 name: string;
                                 description: string | null;
+                                id: string;
                                 code: string;
                             };
                         } & {
-                            academicYear: string | null;
-                            password: string | null;
-                            createdAt: Date;
-                            updatedAt: Date;
-                            id: string;
                             name: string;
                             description: string | null;
-                            subjectId: string;
+                            password: string | null;
+                            status: string;
                             gradeId: string | null;
-                            maxStudents: number | null;
+                            subjectId: string;
                             roomId: string | null;
                             teacherId: string | null;
-                            status: string;
+                            feeStructureId: string | null;
+                            createdAt: Date;
+                            academicYear: string | null;
+                            id: string;
+                            updatedAt: Date;
+                            classCode: string | null;
+                            maxStudents: number | null;
                             recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                             expectedStartDate: Date | null;
                             actualStartDate: Date | null;
                             actualEndDate: Date | null;
-                            feeStructureId: string | null;
-                            classCode: string | null;
                             feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                             feePeriod: string | null;
                             feeCurrency: string | null;
                             feeLockedAt: Date | null;
                         };
                         room: {
-                            createdAt: Date;
-                            isActive: boolean;
-                            id: string;
                             name: string;
+                            createdAt: Date;
+                            id: string;
+                            isActive: boolean;
                             capacity: number | null;
                             equipment: import("@prisma/client/runtime/library").JsonValue | null;
                         };
                     } & {
-                        academicYear: string;
-                        createdAt: Date;
-                        id: string;
+                        status: string;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        createdAt: Date;
+                        academicYear: string;
+                        id: string;
+                        notes: string | null;
                         classId: string;
                         substituteTeacherId: string | null;
                         substituteEndDate: Date | null;
                         sessionDate: Date;
                         startTime: string;
                         endTime: string;
-                        notes: string | null;
                         cancellationReason: string | null;
                     };
                 } & {
                     createdAt: Date;
                     id: string;
-                    sessionId: string;
                     notes: string | null;
-                    replacementTeacherId: string | null;
+                    sessionId: string;
                     leaveRequestId: string;
+                    replacementTeacherId: string | null;
                 })[];
                 approvedByUser: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
+                status: string;
+                teacherId: string | null;
+                startDate: Date;
+                endDate: Date;
                 createdAt: Date;
                 id: string;
-                teacherId: string | null;
-                status: string;
-                startDate: Date;
-                studentId: string | null;
                 notes: string | null;
+                studentId: string | null;
+                requestType: string;
                 reason: string;
-                endDate: Date;
+                createdBy: string;
                 approvedBy: string | null;
                 approvedAt: Date | null;
-                requestType: string;
-                createdBy: string;
                 imageUrl: string | null;
             }[];
             meta: {
@@ -149,7 +149,7 @@ export declare class StudentLeaveRequestController {
         };
         message: string;
     }>;
-    getAffectedSessions(query: GetAffectedSessionsQueryDto): Promise<{
+    getSessionsByClass(query: GetSessionsByClassQueryDto): Promise<{
         success: boolean;
         data: {
             id: string;
@@ -167,19 +167,19 @@ export declare class StudentLeaveRequestController {
             classes: any[];
             student: {
                 user: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
             } & {
-                grade: string | null;
                 createdAt: Date;
-                updatedAt: Date;
+                grade: string | null;
                 id: string;
+                parentId: string | null;
+                updatedAt: Date;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
                 schoolId: string;
-                parentId: string | null;
                 scholarshipId: string | null;
             };
             affectedSessions: ({
@@ -187,98 +187,98 @@ export declare class StudentLeaveRequestController {
                     class: {
                         teacher: {
                             user: {
-                                email: string;
                                 fullName: string;
+                                email: string;
                             };
                         } & {
                             createdAt: Date;
-                            updatedAt: Date;
                             id: string;
+                            updatedAt: Date;
                             userId: string;
                             schoolId: string | null;
                             teacherCode: string;
                             subjects: string[];
                         };
                         subject: {
-                            id: string;
                             name: string;
                             description: string | null;
+                            id: string;
                             code: string;
                         };
                     } & {
-                        academicYear: string | null;
-                        password: string | null;
-                        createdAt: Date;
-                        updatedAt: Date;
-                        id: string;
                         name: string;
                         description: string | null;
-                        subjectId: string;
+                        password: string | null;
+                        status: string;
                         gradeId: string | null;
-                        maxStudents: number | null;
+                        subjectId: string;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        feeStructureId: string | null;
+                        createdAt: Date;
+                        academicYear: string | null;
+                        id: string;
+                        updatedAt: Date;
+                        classCode: string | null;
+                        maxStudents: number | null;
                         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                         expectedStartDate: Date | null;
                         actualStartDate: Date | null;
                         actualEndDate: Date | null;
-                        feeStructureId: string | null;
-                        classCode: string | null;
                         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                         feePeriod: string | null;
                         feeCurrency: string | null;
                         feeLockedAt: Date | null;
                     };
                     room: {
-                        createdAt: Date;
-                        isActive: boolean;
-                        id: string;
                         name: string;
+                        createdAt: Date;
+                        id: string;
+                        isActive: boolean;
                         capacity: number | null;
                         equipment: import("@prisma/client/runtime/library").JsonValue | null;
                     };
                 } & {
-                    academicYear: string;
-                    createdAt: Date;
-                    id: string;
+                    status: string;
                     roomId: string | null;
                     teacherId: string | null;
-                    status: string;
+                    createdAt: Date;
+                    academicYear: string;
+                    id: string;
+                    notes: string | null;
                     classId: string;
                     substituteTeacherId: string | null;
                     substituteEndDate: Date | null;
                     sessionDate: Date;
                     startTime: string;
                     endTime: string;
-                    notes: string | null;
                     cancellationReason: string | null;
                 };
             } & {
                 createdAt: Date;
                 id: string;
-                sessionId: string;
                 notes: string | null;
-                replacementTeacherId: string | null;
+                sessionId: string;
                 leaveRequestId: string;
+                replacementTeacherId: string | null;
             })[];
             approvedByUser: {
-                email: string;
                 fullName: string;
+                email: string;
             };
+            status: string;
+            teacherId: string | null;
+            startDate: Date;
+            endDate: Date;
             createdAt: Date;
             id: string;
-            teacherId: string | null;
-            status: string;
-            startDate: Date;
-            studentId: string | null;
             notes: string | null;
+            studentId: string | null;
+            requestType: string;
             reason: string;
-            endDate: Date;
+            createdBy: string;
             approvedBy: string | null;
             approvedAt: Date | null;
-            requestType: string;
-            createdBy: string;
             imageUrl: string | null;
         };
         message: string;
@@ -289,19 +289,19 @@ export declare class StudentLeaveRequestController {
             classes: any[];
             student: {
                 user: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
             } & {
-                grade: string | null;
                 createdAt: Date;
-                updatedAt: Date;
+                grade: string | null;
                 id: string;
+                parentId: string | null;
+                updatedAt: Date;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
                 schoolId: string;
-                parentId: string | null;
                 scholarshipId: string | null;
             };
             affectedSessions: ({
@@ -309,94 +309,94 @@ export declare class StudentLeaveRequestController {
                     class: {
                         teacher: {
                             user: {
-                                email: string;
                                 fullName: string;
+                                email: string;
                             };
                         } & {
                             createdAt: Date;
-                            updatedAt: Date;
                             id: string;
+                            updatedAt: Date;
                             userId: string;
                             schoolId: string | null;
                             teacherCode: string;
                             subjects: string[];
                         };
                         subject: {
-                            id: string;
                             name: string;
                             description: string | null;
+                            id: string;
                             code: string;
                         };
                     } & {
-                        academicYear: string | null;
-                        password: string | null;
-                        createdAt: Date;
-                        updatedAt: Date;
-                        id: string;
                         name: string;
                         description: string | null;
-                        subjectId: string;
+                        password: string | null;
+                        status: string;
                         gradeId: string | null;
-                        maxStudents: number | null;
+                        subjectId: string;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        feeStructureId: string | null;
+                        createdAt: Date;
+                        academicYear: string | null;
+                        id: string;
+                        updatedAt: Date;
+                        classCode: string | null;
+                        maxStudents: number | null;
                         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                         expectedStartDate: Date | null;
                         actualStartDate: Date | null;
                         actualEndDate: Date | null;
-                        feeStructureId: string | null;
-                        classCode: string | null;
                         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                         feePeriod: string | null;
                         feeCurrency: string | null;
                         feeLockedAt: Date | null;
                     };
                     room: {
-                        createdAt: Date;
-                        isActive: boolean;
-                        id: string;
                         name: string;
+                        createdAt: Date;
+                        id: string;
+                        isActive: boolean;
                         capacity: number | null;
                         equipment: import("@prisma/client/runtime/library").JsonValue | null;
                     };
                 } & {
-                    academicYear: string;
-                    createdAt: Date;
-                    id: string;
+                    status: string;
                     roomId: string | null;
                     teacherId: string | null;
-                    status: string;
+                    createdAt: Date;
+                    academicYear: string;
+                    id: string;
+                    notes: string | null;
                     classId: string;
                     substituteTeacherId: string | null;
                     substituteEndDate: Date | null;
                     sessionDate: Date;
                     startTime: string;
                     endTime: string;
-                    notes: string | null;
                     cancellationReason: string | null;
                 };
             } & {
                 createdAt: Date;
                 id: string;
-                sessionId: string;
                 notes: string | null;
-                replacementTeacherId: string | null;
+                sessionId: string;
                 leaveRequestId: string;
+                replacementTeacherId: string | null;
             })[];
+            status: string;
+            teacherId: string | null;
+            startDate: Date;
+            endDate: Date;
             createdAt: Date;
             id: string;
-            teacherId: string | null;
-            status: string;
-            startDate: Date;
-            studentId: string | null;
             notes: string | null;
+            studentId: string | null;
+            requestType: string;
             reason: string;
-            endDate: Date;
+            createdBy: string;
             approvedBy: string | null;
             approvedAt: Date | null;
-            requestType: string;
-            createdBy: string;
             imageUrl: string | null;
         };
         message: string;
@@ -407,19 +407,19 @@ export declare class StudentLeaveRequestController {
             classes: any[];
             student: {
                 user: {
-                    email: string;
                     fullName: string;
+                    email: string;
                 };
             } & {
-                grade: string | null;
                 createdAt: Date;
-                updatedAt: Date;
+                grade: string | null;
                 id: string;
+                parentId: string | null;
+                updatedAt: Date;
                 userId: string;
                 studentCode: string | null;
                 address: string | null;
                 schoolId: string;
-                parentId: string | null;
                 scholarshipId: string | null;
             };
             affectedSessions: ({
@@ -427,94 +427,94 @@ export declare class StudentLeaveRequestController {
                     class: {
                         teacher: {
                             user: {
-                                email: string;
                                 fullName: string;
+                                email: string;
                             };
                         } & {
                             createdAt: Date;
-                            updatedAt: Date;
                             id: string;
+                            updatedAt: Date;
                             userId: string;
                             schoolId: string | null;
                             teacherCode: string;
                             subjects: string[];
                         };
                         subject: {
-                            id: string;
                             name: string;
                             description: string | null;
+                            id: string;
                             code: string;
                         };
                     } & {
-                        academicYear: string | null;
-                        password: string | null;
-                        createdAt: Date;
-                        updatedAt: Date;
-                        id: string;
                         name: string;
                         description: string | null;
-                        subjectId: string;
+                        password: string | null;
+                        status: string;
                         gradeId: string | null;
-                        maxStudents: number | null;
+                        subjectId: string;
                         roomId: string | null;
                         teacherId: string | null;
-                        status: string;
+                        feeStructureId: string | null;
+                        createdAt: Date;
+                        academicYear: string | null;
+                        id: string;
+                        updatedAt: Date;
+                        classCode: string | null;
+                        maxStudents: number | null;
                         recurringSchedule: import("@prisma/client/runtime/library").JsonValue | null;
                         expectedStartDate: Date | null;
                         actualStartDate: Date | null;
                         actualEndDate: Date | null;
-                        feeStructureId: string | null;
-                        classCode: string | null;
                         feeAmount: import("@prisma/client/runtime/library").Decimal | null;
                         feePeriod: string | null;
                         feeCurrency: string | null;
                         feeLockedAt: Date | null;
                     };
                     room: {
-                        createdAt: Date;
-                        isActive: boolean;
-                        id: string;
                         name: string;
+                        createdAt: Date;
+                        id: string;
+                        isActive: boolean;
                         capacity: number | null;
                         equipment: import("@prisma/client/runtime/library").JsonValue | null;
                     };
                 } & {
-                    academicYear: string;
-                    createdAt: Date;
-                    id: string;
+                    status: string;
                     roomId: string | null;
                     teacherId: string | null;
-                    status: string;
+                    createdAt: Date;
+                    academicYear: string;
+                    id: string;
+                    notes: string | null;
                     classId: string;
                     substituteTeacherId: string | null;
                     substituteEndDate: Date | null;
                     sessionDate: Date;
                     startTime: string;
                     endTime: string;
-                    notes: string | null;
                     cancellationReason: string | null;
                 };
             } & {
                 createdAt: Date;
                 id: string;
-                sessionId: string;
                 notes: string | null;
-                replacementTeacherId: string | null;
+                sessionId: string;
                 leaveRequestId: string;
+                replacementTeacherId: string | null;
             })[];
+            status: string;
+            teacherId: string | null;
+            startDate: Date;
+            endDate: Date;
             createdAt: Date;
             id: string;
-            teacherId: string | null;
-            status: string;
-            startDate: Date;
-            studentId: string | null;
             notes: string | null;
+            studentId: string | null;
+            requestType: string;
             reason: string;
-            endDate: Date;
+            createdBy: string;
             approvedBy: string | null;
             approvedAt: Date | null;
-            requestType: string;
-            createdBy: string;
             imageUrl: string | null;
         };
         message: string;

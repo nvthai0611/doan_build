@@ -166,11 +166,13 @@ export declare class TeacherManagementService {
             originalTeacher: string;
             substituteTeacher: string;
             isSubstitute: boolean;
+            substituteStartDate: string;
+            substituteEndDate: string;
             students: {
                 id: string;
                 name: string;
                 avatar: any;
-                status: "present" | "excused" | "absent";
+                status: "absent" | "present" | "excused";
             }[];
             attendanceWarnings: string[];
             description: string;
@@ -184,6 +186,7 @@ export declare class TeacherManagementService {
     private formatTeacherResponse;
     private mapRoleToVietnamese;
     private formatDate;
+    private formatDateYYYYMMDD;
     validateTeachersData(teachersData: any[]): Promise<{
         message: string;
         successCount: number;
@@ -206,13 +209,15 @@ export declare class TeacherManagementService {
             uploadedImageUrl: string;
             uploadedImageName: string;
             uploadedAt: Date;
+            startDate: Date;
             expiryDate: Date;
+            teacherSalaryPercent: import("@prisma/client/runtime/library").Decimal;
             notes: string;
             status: string;
         }[];
         message: string;
     }>;
-    uploadContractForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, expiryDate?: string, notes?: string): Promise<{
+    uploadContractForTeacher(teacherId: string, file: Express.Multer.File, contractType: string, startDate?: string, expiryDate?: string, notes?: string, teacherSalaryPercent?: number): Promise<{
         success: boolean;
         data: {
             id: string;

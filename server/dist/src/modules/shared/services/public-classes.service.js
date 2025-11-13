@@ -21,13 +21,15 @@ let PublicClassesService = class PublicClassesService {
         const skip = (page - 1) * limit;
         const where = {
             status: { in: ['ready', 'active'] },
-            teacherId: teacherId ? { equals: teacherId } : { not: null },
         };
         if (subjectId) {
             where.subjectId = subjectId;
         }
         if (gradeId) {
             where.gradeId = gradeId;
+        }
+        if (teacherId) {
+            where.teacherId = teacherId;
         }
         const allClasses = await this.prisma.class.findMany({
             where,

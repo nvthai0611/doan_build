@@ -3,10 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.enrollmentNotificationEmailTemplate = void 0;
 const function_util_1 = require("../../../utils/function.util");
 const enrollmentNotificationEmailTemplate = (data) => {
-    const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus, isTransfer, oldClassName, transferReason } = data;
-    const statusMessage = enrollmentStatus === 'studying'
-        ? 'Lớp đã có lịch học, học sinh có thể xem lịch ngay.'
-        : 'Lớp đang chuẩn bị lịch học, chúng tôi sẽ thông báo khi có lịch.';
+    const { studentName, parentName, className, subjectName, teacherName, startDate, schedule, enrollmentStatus, isTransfer, oldClassName, transferReason, } = data;
     const isChuyểnLớp = isTransfer === true;
     return `
 <!DOCTYPE html>
@@ -96,7 +93,8 @@ const enrollmentNotificationEmailTemplate = (data) => {
       
       <p>Chúng tôi xin thông báo học sinh <strong>${studentName}</strong> ${isChuyểnLớp ? 'đã được chuyển lớp học' : 'đã được đăng ký thành công vào lớp học'}.</p>
       
-      ${isChuyểnLớp && oldClassName ? `
+      ${isChuyểnLớp && oldClassName
+        ? `
       <div class="info-box" style="background-color: #ffebee; border-left: 4px solid #f44336;">
         <p style="margin: 0 0 10px 0;"><strong>📚 Lớp cũ:</strong></p>
         <div class="info-row">
@@ -107,7 +105,8 @@ const enrollmentNotificationEmailTemplate = (data) => {
       <div style="text-align: center; font-size: 24px; color: #2196F3; margin: 10px 0;">
         ⬇️
       </div>
-      ` : ''}
+      `
+        : ''}
       
       <div class="info-box" style="border-left-color: ${isChuyểnLớp ? '#2196F3' : '#4CAF50'}; background-color: ${isChuyểnLớp ? '#e8f5e9' : '#f9f9f9'};">
         <div class="info-row">
@@ -120,37 +119,39 @@ const enrollmentNotificationEmailTemplate = (data) => {
         <div class="info-row">
           <span class="label">📚 Môn học:</span> ${subjectName}
         </div>
-        ${teacherName ? `
+        ${teacherName
+        ? `
         <div class="info-row">
           <span class="label">👨‍🏫 Giáo viên:</span> ${teacherName}
         </div>
-        ` : ''}
-        ${startDate ? `
+        `
+        : ''}
+        ${startDate
+        ? `
         <div class="info-row">
           <span class="label">📅 Ngày bắt đầu:</span> ${startDate}
         </div>
-        ` : ''}
+        `
+        : ''}
       </div>
       
-      ${schedule ? `
+      ${schedule
+        ? `
       <div style="background-color: #e0f2fe; padding: 15px; border-radius: 5px; margin: 15px 0;">
         <p style="margin: 0 0 10px 0;"><strong>📅 Lịch học:</strong></p>
         <p style="margin: 5px 0; font-size: 14px;">${(0, function_util_1.formatSchedule)(schedule)}</p>
       </div>
-      ` : ''}
+      `
+        : ''}
       
-      ${transferReason ? `
+      ${transferReason
+        ? `
       <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 4px;">
         <p style="margin: 0 0 10px 0;"><strong>📝 Lý do chuyển lớp:</strong></p>
         <p style="margin: 5px 0;">${transferReason}</p>
       </div>
-      ` : ''}
-      
-      <div class="status-box">
-        <p style="margin: 0; font-size: 15px;">
-          <strong>📌 Trạng thái:</strong> ${statusMessage}
-        </p>
-      </div>
+      `
+        : ''}
       
       <div class="contact">
         <p style="margin: 0 0 10px 0;"><strong>📞 Liên hệ hỗ trợ:</strong></p>

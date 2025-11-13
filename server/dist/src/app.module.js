@@ -56,6 +56,17 @@ exports.AppModule = AppModule = __decorate([
                     port: parseInt(process.env.REDIS_PORT) || 6379,
                     password: process.env.REDIS_PASSWORD || undefined,
                     db: parseInt(process.env.REDIS_DB) || 0,
+                    connectTimeout: 60000,
+                    commandTimeout: 5000,
+                    retryStrategy: (times) => {
+                        const delay = Math.min(times * 50, 2000);
+                        return delay;
+                    },
+                    maxRetriesPerRequest: 3,
+                },
+                settings: {
+                    stalledInterval: 30000,
+                    maxStalledCount: 1,
                 },
             }),
             auth_module_1.AuthModule,

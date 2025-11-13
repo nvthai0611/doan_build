@@ -15,6 +15,7 @@ import { ClassAssignTeacherProcessor } from './consumer/class_assign_teacher.pro
 import { EnrollmentEmailProcessor } from './consumer/enrollment-email.processor';
 import { ClassStatusChangeProcessor } from './consumer/class-status-change.processor';
 import { ClassRequestEmailProcessor } from './consumer/class-request-email.processor';
+import { SessionChangeEmailProcessor } from './consumer/session-change-email.processor';
 import { PublicClassesController } from './controllers/public-classes.controller';
 import { PublicClassesService } from './services/public-classes.service';
 import { PublicShowcasesController } from './controllers/public-showcases.controller';
@@ -26,6 +27,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
   removeOnFail: 5,      // Giữ lại 5 job thất bại gần nhất
   attempts: 3,          // Số lần thử lại nếu job thất bại
+  timeout: 60000,       // Timeout 60 giây cho mỗi job (production cần thời gian dài hơn)
   backoff: {
     type: 'exponential', // Độ trễ tăng theo hàm mũ khi thử lại
     delay: 2000,         // Độ trễ ban đầu (2 giây)
@@ -68,6 +70,10 @@ const DEFAULT_BULL_JOB_OPTIONS = {
       name: 'class_request_email',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
     }),
+    BullModule.registerQueue({
+      name: 'session_change_email',
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
+    }),
   ],
   controllers:[
     // Shared controllers can be added here
@@ -93,7 +99,8 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     ClassAssignTeacherProcessor,
     EnrollmentEmailProcessor,
     ClassStatusChangeProcessor,
-    ClassRequestEmailProcessor
+    ClassRequestEmailProcessor,
+    SessionChangeEmailProcessor
   ],
   exports: [
     StudentSharedService, 

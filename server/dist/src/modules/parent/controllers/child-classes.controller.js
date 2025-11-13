@@ -17,10 +17,10 @@ const openapi = require("@nestjs/swagger");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../../../common/guards/jwt-auth.guard");
-const class_information_service_1 = require("../services/class-information.service");
+const student_leave_request_service_1 = require("../services/student-leave-request.service");
 let ChildClassesController = class ChildClassesController {
-    constructor(classInformationService) {
-        this.classInformationService = classInformationService;
+    constructor(studentLeaveRequestService) {
+        this.studentLeaveRequestService = studentLeaveRequestService;
     }
     async getAllChildrenClasses(req) {
         try {
@@ -28,7 +28,7 @@ let ChildClassesController = class ChildClassesController {
             if (!parentUserId) {
                 throw new common_1.HttpException({ success: false, message: 'Không tìm thấy thông tin phụ huynh' }, common_1.HttpStatus.UNAUTHORIZED);
             }
-            const result = await this.classInformationService.getAllChildrenClasses(parentUserId);
+            const result = await this.studentLeaveRequestService.getAllChildrenClasses(parentUserId);
             return {
                 success: true,
                 data: result,
@@ -49,10 +49,15 @@ let ChildClassesController = class ChildClassesController {
             if (!parentUserId) {
                 throw new common_1.HttpException({ success: false, message: 'Không tìm thấy thông tin phụ huynh' }, common_1.HttpStatus.UNAUTHORIZED);
             }
-            const result = await this.classInformationService.getChildClasses(parentUserId, studentId);
+            const result = await this.studentLeaveRequestService.getChildClasses(parentUserId, studentId);
+            const list = Array.isArray(result)
+                ? result
+                : (result && Array.isArray(result.data))
+                    ? result.data
+                    : [];
             return {
                 success: true,
-                data: result,
+                data: list,
                 message: 'Lấy danh sách lớp học thành công',
             };
         }
@@ -91,6 +96,6 @@ exports.ChildClassesController = ChildClassesController = __decorate([
     (0, swagger_1.ApiTags)('Parent - Child Classes'),
     (0, common_1.Controller)(''),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [class_information_service_1.ClassInformationService])
+    __metadata("design:paramtypes", [student_leave_request_service_1.StudentLeaveRequestService])
 ], ChildClassesController);
 //# sourceMappingURL=child-classes.controller.js.map

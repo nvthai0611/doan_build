@@ -47,6 +47,7 @@ import {
   getWeekContainingToday
 } from "./utils"
 import { useTeachingSessions } from "./hooks"
+import { formatDateString } from "@/utils/format"
 
 /**
  * ===== GIẢI THÍCH CÁCH COMPONENT HOẠT ĐỘNG =====
@@ -233,7 +234,6 @@ export default function ScheduleTab({
     setSelectedSession(session);
     setIsDialogOpen(true)
   }
-  console.log(selectedSession)
   /**
    * Tạo key duy nhất cho một ngày để dùng trong expandedDates
    * 
@@ -958,7 +958,9 @@ export default function ScheduleTab({
                       <div>
                         <strong>Giáo viên phụ trách:</strong>{' '}
                         <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
-                          {selectedSession.teacher}
+                          {selectedSession.isSubstitute 
+                            ? (selectedSession.substituteTeacher || selectedSession.teacher)
+                            : selectedSession.teacher}
                         </span>
                         {selectedSession.isSubstitute && (
                           <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
@@ -969,6 +971,11 @@ export default function ScheduleTab({
                       {selectedSession.isSubstitute && selectedSession.originalTeacher && (
                         <div className="text-xs text-gray-500 ml-6">
                           GV chính: {selectedSession.originalTeacher}
+                        </div>
+                      )}
+                      {selectedSession.isSubstitute && (selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
+                        <div className="text-xs text-orange-600 ml-6 mt-1 font-medium">
+                          Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
                         </div>
                       )}
                     </div>
@@ -1195,7 +1202,9 @@ export default function ScheduleTab({
                       <div>
                         <strong>Giáo viên phụ trách:</strong>{' '}
                         <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
-                          {selectedSession.teacher}
+                          {selectedSession.isSubstitute 
+                            ? (selectedSession.substituteTeacher || selectedSession.teacher)
+                            : selectedSession.teacher}
                         </span>
                         {selectedSession.isSubstitute && (
                           <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
@@ -1206,6 +1215,11 @@ export default function ScheduleTab({
                       {selectedSession.isSubstitute && selectedSession.originalTeacher && (
                         <div className="text-xs text-gray-500 ml-6">
                           GV chính: {selectedSession.originalTeacher}
+                        </div>
+                      )}
+                      {selectedSession.isSubstitute && (selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
+                        <div className="text-xs text-orange-600 ml-6 mt-1 font-medium">
+                          Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
                         </div>
                       )}
                     </div>

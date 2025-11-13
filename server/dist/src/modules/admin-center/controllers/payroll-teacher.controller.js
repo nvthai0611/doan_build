@@ -24,6 +24,15 @@ let PayrollTeacherController = class PayrollTeacherController {
     async getListTeachers(teacherName, email, status, month) {
         return this.PayRollTeacherService.getListTeachers(teacherName, email, status, month);
     }
+    async getPayrollDetails(teacherId, year, classId) {
+        return this.PayRollTeacherService.getAllPayrollsByTeacherId(teacherId, year, classId);
+    }
+    async getPayrollById(payrollId) {
+        return this.PayRollTeacherService.getPayrollById(payrollId);
+    }
+    async getClassSessionsByClass(classId, month, teacherId) {
+        return this.PayRollTeacherService.getClassSessionsByClassId(classId, month, teacherId);
+    }
 };
 exports.PayrollTeacherController = PayrollTeacherController;
 __decorate([
@@ -37,6 +46,34 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], PayrollTeacherController.prototype, "getListTeachers", null);
+__decorate([
+    (0, common_1.Get)('payrolls/:teacherId'),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Param)('teacherId')),
+    __param(1, (0, common_1.Query)('year')),
+    __param(2, (0, common_1.Query)('classId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], PayrollTeacherController.prototype, "getPayrollDetails", null);
+__decorate([
+    (0, common_1.Get)('payroll/:payrollId/detail'),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Param)('payrollId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PayrollTeacherController.prototype, "getPayrollById", null);
+__decorate([
+    (0, common_1.Get)('classes/:classId/sessions'),
+    openapi.ApiResponse({ status: 200 }),
+    __param(0, (0, common_1.Param)('classId')),
+    __param(1, (0, common_1.Query)('month')),
+    __param(2, (0, common_1.Query)('teacherId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], PayrollTeacherController.prototype, "getClassSessionsByClass", null);
 exports.PayrollTeacherController = PayrollTeacherController = __decorate([
     (0, swagger_1.ApiTags)('Admin - Payroll Teacher'),
     (0, common_1.Controller)('payroll-teacher'),
