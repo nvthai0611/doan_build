@@ -4,79 +4,95 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Child } from "../../../../services/parent/child-management/child.types"
+import { useQuery } from "@tanstack/react-query"
+import { parentChildProgressReportService } from "@/services/parent/child-progress/child-progress.service"
+import type { ProgressReportDto } from "@/services/parent/child-progress/child-progress.types"
 
 interface ChildProgressReportsProps {
   child: Child
 }
 
 export function ChildProgressReports({ child }: ChildProgressReportsProps) {
-  const progressReports = [
-    {
-      id: "1",
-      period: "Tháng 9/2025",
-      date: "30/09/2025",
-      subjects: [
-        {
-          name: "Toán học",
-          score: 8.5,
-          trend: "up",
-          comment: "Tiến bộ vượt bậc, nắm vững kiến thức cơ bản",
-        },
-        {
-          name: "Vật lý",
-          score: 7.0,
-          trend: "stable",
-          comment: "Cần tăng cường thực hành và làm bài tập",
-        },
-        {
-          name: "Hóa học",
-          score: 9.0,
-          trend: "up",
-          comment: "Xuất sắc, có khả năng tư duy logic tốt",
-        },
-      ],
-      overallComment:
-        "Học sinh có thái độ học tập tích cực, tham gia đầy đủ các hoạt động lớp. Cần duy trì và phát huy.",
-      teacher: "Nguyễn Văn Giáo",
-    },
-    {
-      id: "2",
-      period: "Tháng 8/2025",
-      date: "31/08/2025",
-      subjects: [
-        {
-          name: "Toán học",
-          score: 7.5,
-          trend: "stable",
-          comment: "Cần chú ý hơn trong giờ học",
-        },
-        {
-          name: "Vật lý",
-          score: 7.2,
-          trend: "up",
-          comment: "Có tiến bộ so với tháng trước",
-        },
-        {
-          name: "Hóa học",
-          score: 8.5,
-          trend: "stable",
-          comment: "Duy trì tốt",
-        },
-      ],
-      overallComment: "Học sinh cần tập trung hơn trong các môn lý thuyết.",
-      teacher: "Nguyễn Văn Giáo",
-    },
-  ]
+  const { data: reports = [], isLoading, isError } = useQuery<{ data: ProgressReportDto[] } | ProgressReportDto[], ProgressReportDto[]>({
+    queryKey: ["child-progress-reports", child.id],
+    queryFn: () => parentChildProgressReportService.getProgressReports(child.id),
+  }) as any
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Đang tải báo cáo tiến độ…</div>
+  }
+  if (isError) {
+    return <div className="text-sm text-red-600">Không thể tải báo cáo tiến độ.</div>
+  }
+
+  // Group reports by period (1 report = 1 subject per class now)
+  const rawReports = ((reports as any)?.data as ProgressReportDto[] | undefined) || (reports as ProgressReportDto[] | undefined) || []
+
+  const groupedByPeriod = rawReports.reduce((acc, r: ProgressReportDto) => {
+    const key = r.periodLabel
+    if (!acc[key]) {
+      acc[key] = {
+        period: r.periodLabel,
+        date: new Date(r.periodEnd).toLocaleDateString('vi-VN'),
+        subjects: [],
+        teachers: new Set<string>()
+      }
+    }
+
+    // Each report represents one class/subject
+    acc[key].subjects.push({
+      name: r.class?.subject?.name || 'Chưa xác định',
+      className: r.class?.name || 'Chưa xác định',
+      score: r.averageScore ?? null,
+      attendanceRate: r.attendanceRate ?? null,
+      trend: r.trend || 'stable',
+      overallComment: r.overallComment
+    })
+
+    if (r.teacher?.user?.fullName) {
+      acc[key].teachers.add(r.teacher.user.fullName)
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  const progressReports = Object.values(groupedByPeriod).map((group: any) => {
+    // Calculate overall average across all subjects in this period
+    const subjectsWithScores = group.subjects.filter((s: any) => s.score !== null)
+    const avgScore = subjectsWithScores.length
+      ? subjectsWithScores.reduce((sum: number, s: any) => sum + s.score, 0) / subjectsWithScores.length
+      : null
+
+    // Calculate overall attendance
+    const subjectsWithAttendance = group.subjects.filter((s: any) => s.attendanceRate !== null)
+    const avgAttendance = subjectsWithAttendance.length
+      ? subjectsWithAttendance.reduce((sum: number, s: any) => sum + s.attendanceRate, 0) / subjectsWithAttendance.length
+      : null
+
+    return {
+      period: group.period,
+      date: group.date,
+      averageScore: avgScore,
+      attendanceRate: avgAttendance,
+      subjects: group.subjects,
+      teachers: Array.from(group.teachers).join(', ')
+    }
+  })
+
+  if (!progressReports.length) {
+    return <div className="text-sm text-muted-foreground">Chưa có báo cáo tiến độ nào.</div>
+  }
 
   return (
     <div className="space-y-6">
-      {progressReports.map((report) => (
-        <Card key={report.id}>
+      {progressReports.map((report, idx) => (
+        <Card key={idx}>
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle>Báo cáo tiến độ - {report.period}</CardTitle>
-                <CardDescription>Ngày lập: {report.date}</CardDescription>
+                <CardDescription>
+                  Ngày lập: {report.date}
+                </CardDescription>
               </div>
               <Button variant="outline" size="sm">
                 Tải xuống PDF
@@ -84,14 +100,14 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Subject Progress */}
             <div className="space-y-4">
               <h4 className="font-semibold">Tiến độ theo môn học</h4>
-              {report.subjects.map((subject, index) => (
+              {report.subjects.map((subject: any, index: number) => (
                 <div key={index} className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <h5 className="font-medium">{subject.name}</h5>
+                      <p className="text-xs text-muted-foreground">Lớp: {subject.className}</p>
                       {subject.trend === "up" && (
                         <Badge variant="outline" className="bg-green-50 text-green-700">
                           ↑ Tiến bộ
@@ -108,18 +124,30 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xl font-bold text-primary">{subject.score}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Điểm: {subject.score !== null ? subject.score.toFixed(1) : '—'} |
+                      Chuyên cần: {subject.attendanceRate ? `${subject.attendanceRate.toFixed(0)}%` : '—'}
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{subject.comment}</p>
+                  {subject.overallComment && (
+                    <div className="text-sm text-muted-foreground mt-2">
+                      <span className="font-medium">Nhận xét:</span> {subject.overallComment}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
 
-            {/* Overall Comment */}
             <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
               <h4 className="font-semibold mb-2">Nhận xét chung</h4>
-              <p className="text-sm">{report.overallComment}</p>
-              <p className="text-sm text-muted-foreground mt-2">Giáo viên chủ nhiệm: {report.teacher}</p>
+              <p className="text-sm">
+                {report.subjects.length > 0 && report.subjects[0].overallComment
+                  ? report.subjects[0].overallComment
+                  : '—'}
+              </p>
+              {report.teachers && (
+                <p className="text-sm text-muted-foreground mt-2">Giáo viên phụ trách: {report.teachers}</p>
+              )}
             </div>
           </CardContent>
         </Card>
