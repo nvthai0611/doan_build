@@ -24,9 +24,9 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 10000, // Giảm từ 60s xuống 10s
-  greetingTimeout: 5000,     // Giảm từ 30s xuống 5s
-  socketTimeout: 10000,       // Giảm từ 60s xuống 10s
+  connectionTimeout: 30000, // 30 giây - tăng cho production
+  greetingTimeout: 10000,   // 10 giây - tăng cho production
+  socketTimeout: 30000,      // 30 giây - tăng cho production
   pool: true,                 // Enable connection pooling để reuse connections
   maxConnections: 5,          // Số lượng connections tối đa trong pool
   maxMessages: 100,          // Số lượng messages tối đa mỗi connection

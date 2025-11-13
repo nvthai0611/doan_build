@@ -18,6 +18,7 @@ export class ClassInformationService {
         },
       },
     });
+    console.log('[Parent][ClassInformationService] parent lookup', { parentUserId, studentId, hasParent: !!parent, studentCount: parent?.students?.length });
 
     if (!parent) {
       throw new HttpException(
@@ -37,10 +38,10 @@ export class ClassInformationService {
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
         studentId: studentId,
-        status: 'studying', // Chỉ lấy lớp đang học
+        status: { in: ['studying', 'approved'] },
         class: {
           status: {
-            in: ['ready', 'active'], // Bao gồm cả lớp ready và active
+            in: ['ready', 'active'],
           },
         },
       },
@@ -102,9 +103,11 @@ export class ClassInformationService {
         enrolledAt: 'desc',
       },
     });
+    console.log('[Parent][ClassInformationService] enrollments found:', enrollments.length);
 
     // Get class IDs to fetch active transfers
     const classIds = enrollments.map(e => e.class.id);
+    console.log('[Parent][ClassInformationService] classIds:', classIds);
     
     // Fetch active teacher transfers for all classes
     const today = new Date();
@@ -146,6 +149,7 @@ export class ClassInformationService {
         effectiveDate: 'desc',
       },
     });
+    console.log('[Parent][ClassInformationService] activeTransfers count:', activeTransfers.length);
 
     // Create map: classId -> active transfer
     const transferMap = new Map();

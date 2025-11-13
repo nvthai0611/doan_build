@@ -1,9 +1,26 @@
 import type React from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { GraduationCap, Users, Shield, Building2 } from "lucide-react"
+import { LoginForm } from "./Login"
+import { ParentStudentLogin } from "./ParentStudentLogin"
+import { AdminLogin } from "./AdminLogin"
 
 export function PortalSelection() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const selectedPortal = searchParams.get("portal")
+
+  if (selectedPortal === "management") {
+    return <LoginForm />
+  }
+
+  if (selectedPortal === "family") {
+    return <ParentStudentLogin />
+  }
+
+  if (selectedPortal === "admin") {
+    return <AdminLogin />
+  }
 
   const portals = [
     {
@@ -12,7 +29,6 @@ export function PortalSelection() {
       description: "Dành cho Chủ trung tâm & Giáo viên",
       icon: Building2,
       gradient: "from-indigo-500 to-purple-600",
-      path: "/auth/login/management",
       bgGradient: "from-indigo-400/30 to-purple-400/30",
     },
     {
@@ -21,7 +37,6 @@ export function PortalSelection() {
       description: "Dành cho Phụ huynh & Học sinh",
       icon: Users,
       gradient: "from-blue-500 to-cyan-600",
-      path: "/auth/login/family",
       bgGradient: "from-blue-400/30 to-cyan-400/30",
     },
     {
@@ -30,7 +45,6 @@ export function PortalSelection() {
       description: "Dành cho Quản trị viên IT",
       icon: Shield,
       gradient: "from-red-500 to-orange-600",
-      path: "/auth/login/admin",
       bgGradient: "from-red-400/30 to-orange-400/30",
     },
   ]
@@ -46,6 +60,24 @@ export function PortalSelection() {
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
+
+      {/* Home Button */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/30 dark:border-slate-700/60 text-gray-700 dark:text-gray-300 hover:bg-white/90 dark:hover:bg-slate-900/90 transition-all shadow-md"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-4 h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h5m10-11v10a1 1 0 01-1 1h-5m0 0V9h-4v12" />
+        </svg>
+        <span className="text-sm font-medium">Về trang chủ</span>
+      </button>
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-6xl">
@@ -72,7 +104,7 @@ export function PortalSelection() {
             return (
               <div
                 key={portal.id}
-                onClick={() => navigate(portal.path)}
+                onClick={() => navigate(`/auth?portal=${portal.id}`, { replace: false })}
                 className="group cursor-pointer transform transition-all duration-500 hover:scale-105"
               >
                 <div className="relative h-full backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 p-8 overflow-hidden hover:shadow-2xl">

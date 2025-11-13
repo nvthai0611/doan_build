@@ -86,6 +86,7 @@ model Teacher {
 
   teacherSessionPayouts TeacherSessionPayout[]
   payrollPayments       PayrollPayment[] // Các giao dịch thanh toán lương đã nhận
+  progressReports       ProgressReport[]              @relation("TeacherProgressReports")
 
   @@map("teachers")
 }
@@ -114,6 +115,7 @@ model Student {
   user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   feedbacks       TeacherFeedback[]
   scholarship     Scholarship?               @relation(fields: [scholarshipId], references: [id])
+  progressReports ProgressReport[]           @relation("StudentProgressReports")
 
   @@index([scholarshipId], map: "idx_student_scholarship")
   @@map("students")
@@ -197,6 +199,7 @@ model Class {
   transfersFrom     TeacherClassTransfer[] @relation("TeacherClassTransferFromClass")
   transfersTo       TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
   feedbacks         TeacherFeedback[]
+  progressReports   ProgressReport[]       @relation("ClassProgressReports")
 
   @@map("classes")
 }
@@ -539,6 +542,52 @@ model StudentReport {
 
   @@map("student_reports")
 }
+
+model ProgressReport {
+  id             String   @id @default(uuid()) @db.Uuid
+  studentId      String   @db.Uuid
+  teacherId      String?  @db.Uuid
+  classId        String?  @db.Uuid
+  reportType     String   @default("MONTHLY") // MONTHLY | MIDTERM | FINAL
+  periodLabel    String   // e.g., "Tháng 10/2025"
+  periodStart    DateTime
+  periodEnd      DateTime
+  averageScore   Float?
+  attendanceRate Float?   // ✅ Thêm: % chuyên cần
+  grade          String?  // ✅ Thêm: Xếp loại học lực (A/B/C...)
+  overallComment String?
+  status         String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  generatedAt    DateTime? // ✅ Thêm: ngày hệ thống tạo báo cáo
+  publishedAt    DateTime? // ✅ Thêm: ngày giáo viên/phụ huynh thấy được
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student     Student  @relation("StudentProgressReports", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher     Teacher? @relation("TeacherProgressReports", fields: [teacherId], references: [id], onDelete: SetNull)
+  class       Class?   @relation("ClassProgressReports", fields: [classId], references: [id], onDelete: SetNull)
+
+  items      ProgressReportItem[]
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@map("progress_reports")
+}
+
+model ProgressReportItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  reportId  String  @db.Uuid
+  subject   String
+  score     Float?
+  trend     String?  // up | stable | down
+  comment   String?
+  rank      Int?     // ✅ Thêm: thứ hạng trong lớp nếu muốn thống kê
+
+  report    ProgressReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("progress_report_items")
+}
+
 
 model AuditLog {
   id          BigInt   @id @default(autoincrement())

@@ -117,7 +117,11 @@ export const centerOwnerScheduleService = {
    */
   updateSession: async (
     sessionId: string,
-    data: Partial<CreateSessionRequest>,
+    data: Partial<CreateSessionRequest> & {
+      status?: string;
+      cancellationReason?: string;
+      sessionDate?: string;
+    },
   ): Promise<ClassSession> => {
     const response = await ApiService.patch<ClassSession>(
       `/admin-center/schedule-management/sessions/${sessionId}`,

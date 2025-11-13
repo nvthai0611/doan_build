@@ -119,6 +119,51 @@ export default function StudentLeaveRequestList() {
   const meta = leaveRequestsResponse?.meta;
   const counts = leaveRequestsResponse?.counts;
 
+  const getSortedSessions = (item: StudentLeaveRequest) => {
+    const sessions = Array.isArray((item as any)?.affectedSessions)
+      ? ((item as any).affectedSessions as any[])
+      : [];
+
+    return [...sessions].sort((a, b) => {
+      const dateA = a?.session?.sessionDate ? new Date(a.session.sessionDate).getTime() : Number.POSITIVE_INFINITY;
+      const dateB = b?.session?.sessionDate ? new Date(b.session.sessionDate).getTime() : Number.POSITIVE_INFINITY;
+      if (dateA !== dateB) return dateA - dateB;
+      const timeA = a?.session?.startTime || '';
+      const timeB = b?.session?.startTime || '';
+      return timeA.localeCompare(timeB);
+    });
+  };
+
+  const formatSessionDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const formatTimeRange = (session: any) => {
+    const start = session?.session?.startTime;
+    const end = session?.session?.endTime;
+    if (!start && !end) return '';
+    if (start && end) return `${start} - ${end}`;
+    return start || end || '';
+  };
+
+  const getClassSummary = (item: StudentLeaveRequest) => {
+    const sessions = getSortedSessions(item);
+    const names = Array.from(
+      new Set(
+        sessions
+          .map((s) => s?.session?.class?.name)
+          .filter((name): name is string => Boolean(name))
+      )
+    );
+    if (names.length === 0) return '—';
+    const display = names.slice(0, 2).join(', ');
+    const extra = names.length > 2 ? ` +${names.length - 2}` : '';
+    return `${display}${extra}`;
+  };
+
   // Table columns
   const columns: Column<StudentLeaveRequest>[] = [
     {
@@ -131,16 +176,21 @@ export default function StudentLeaveRequestList() {
         </div>
       ),
     },
-   
     {
-      key: 'startDate',
-      header: 'Ngày bắt đầu',
-      render: (item) => formatDate(item.startDate),
+      key: 'classSummary',
+      header: 'Lớp/Môn',
+      render: (item) => {
+        const summary = getClassSummary(item);
+        return <span className="text-sm">{summary}</span>;
+      },
     },
     {
-      key: 'endDate',
-      header: 'Ngày kết thúc',
-      render: (item) => formatDate(item.endDate),
+      key: 'sessionCount',
+      header: 'Số buổi',
+      render: (item) => {
+        const count = Array.isArray((item as any)?.affectedSessions) ? (item as any).affectedSessions.length : 0;
+        return <span className="font-medium">{count}</span>;
+      },
     },
     {
       key: 'status',
@@ -164,35 +214,26 @@ export default function StudentLeaveRequestList() {
       header: 'Thao tác',
       align: 'center',
       render: (item) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuItem onClick={() => handleEdit(item)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Chỉnh sửa
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleCancel(item)}
-                  className="text-red-600"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Hủy đơn
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-center gap-2">
+          <Button title="Xem chi tiết" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDetails(item)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          {item.status === 'pending' && (
+            <>
+              <Button title="Chỉnh sửa" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEdit(item)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                title="Hủy đơn"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                onClick={() => handleCancel(item)}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
       ),
     },
   ];

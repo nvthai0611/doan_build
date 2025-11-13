@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -17,13 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { parentStudentLeaveRequestService } from '../../../../services/parent/student-leave-request/student-leave.service';
 import { parentChildService } from '../../../../services/parent/child-management/child.service';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ChildClass, StudentLeaveRequest } from '../../../../services/parent/student-leave-request/student-leave.types';
-import { formatDateForInput } from '../../../../utils/format';
 
 export function StudentLeaveRequestForm() {
   const navigate = useNavigate();
@@ -31,13 +31,17 @@ export function StudentLeaveRequestForm() {
   const isEditMode = Boolean(id);
   
   const [selectedChild, setSelectedChild] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [availableClasses, setAvailableClasses] = useState<ChildClass[]>([]);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
+  const [availableSessions, setAvailableSessions] = useState<any[]>([]);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionsSearch, setSessionsSearch] = useState('');
+  const [sessionsFilterUpcoming, setSessionsFilterUpcoming] = useState(true);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [children, setChildren] = useState<any[]>([]);
-  const [affectedSessions, setAffectedSessions] = useState<any[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [leaveRequestData, setLeaveRequestData] = useState<StudentLeaveRequest | null>(null);
 
@@ -53,9 +57,17 @@ export function StudentLeaveRequestForm() {
         
         // Populate form fields
         setSelectedChild(data.studentId || '');
-        setStartDate(formatDateForInput(data.startDate) || '');
-        setEndDate(formatDateForInput(data.endDate) || '');
         setReason(data.reason || '');
+
+        const firstSession = data.affectedSessions?.[0];
+        const classId = firstSession?.session?.class?.id || data.classes?.[0]?.id || '';
+        if (classId) {
+          setSelectedClass(classId);
+        }
+        if (data.affectedSessions && data.affectedSessions.length) {
+          const preselected = (data.affectedSessions || []).map((s: any) => s.sessionId).filter(Boolean);
+          if (preselected.length) setSelectedSessionIds(preselected as string[]);
+        }
       } catch (error) {
         console.error('Failed to fetch leave request:', error);
         toast.error('Không thể tải thông tin đơn nghỉ học');
@@ -73,7 +85,7 @@ export function StudentLeaveRequestForm() {
     const fetchChildren = async () => {
       try {
         const data = await parentChildService.getChildren();
-        setChildren(data);
+        setChildren(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to fetch children:', error);
         toast.error('Không thể tải danh sách con');
@@ -83,44 +95,77 @@ export function StudentLeaveRequestForm() {
     fetchChildren();
   }, []);
 
-  // Fetch affected sessions from ALL classes when dates are selected
+  // Fetch child classes when child selected
   useEffect(() => {
-    if (!selectedChild || !startDate || !endDate) {
-      setAffectedSessions([]);
-      return;
-    }
+    const loadClasses = async () => {
+      if (!selectedChild) {
+        setAvailableClasses([]);
+        setSelectedClass('');
+        return;
+      }
+      try {
+        const classes = await parentStudentLeaveRequestService.getChildClasses(selectedChild);
+        const normalized = Array.isArray(classes)
+          ? classes
+          : Array.isArray((classes as any)?.data)
+            ? (classes as any).data
+            : [];
+        setAvailableClasses(normalized);
 
-    const fetchAffectedSessions = async () => {
+        if (!isEditMode) {
+          setSelectedClass('');
+        } else if (isEditMode && leaveRequestData) {
+          const firstSession = leaveRequestData.affectedSessions?.[0];
+          const classId = firstSession?.session?.class?.id || leaveRequestData.classes?.[0]?.id || '';
+          if (classId) {
+            setSelectedClass(classId);
+          }
+        }
+      } catch (e) {
+        setAvailableClasses([]);
+      }
+    };
+    loadClasses();
+  }, [selectedChild, isEditMode, leaveRequestData]);
+
+  // Fetch sessions for selected class
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (!selectedChild || !selectedClass) {
+        setAvailableSessions([]);
+        setSelectedSessionIds([]);
+        return;
+      }
       try {
         setIsLoadingSessions(true);
-        const data = await parentStudentLeaveRequestService.getAffectedSessions({
-          studentId: selectedChild,
-          startDate,
-          endDate,
-        });
-        setAffectedSessions(data);
-      } catch (error) {
-        console.error('Failed to fetch affected sessions:', error);
-        setAffectedSessions([]);
+        const sessions = await parentStudentLeaveRequestService.getSessionsByClass({ studentId: selectedChild, classId: selectedClass });
+        const normalized = Array.isArray(sessions)
+          ? sessions
+          : Array.isArray((sessions as any)?.data)
+            ? (sessions as any).data
+            : [];
+        setAvailableSessions(normalized);
+
+        if (isEditMode && leaveRequestData && leaveRequestData.affectedSessions?.length) {
+          const preselected = (leaveRequestData.affectedSessions || []).map((s: any) => s.sessionId).filter(Boolean);
+          if (preselected.length) setSelectedSessionIds(preselected as string[]);
+        }
+      } catch (e) {
+        setAvailableSessions([]);
+        if (!isEditMode) setSelectedSessionIds([]);
       } finally {
         setIsLoadingSessions(false);
       }
     };
-
-    fetchAffectedSessions();
-  }, [selectedChild, startDate, endDate]);
+    loadSessions();
+  }, [selectedChild, selectedClass, isEditMode, leaveRequestData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (!selectedChild || !startDate || !endDate || !reason) {
+    if (!selectedChild || !selectedClass || selectedSessionIds.length === 0 || !reason) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
-      return;
-    }
-
-    if (new Date(endDate) < new Date(startDate)) {
-      toast.error('Ngày kết thúc không được trước ngày bắt đầu');
       return;
     }
 
@@ -130,17 +175,16 @@ export function StudentLeaveRequestForm() {
       if (isEditMode && id) {
         // Update existing leave request (không update studentId)
         await parentStudentLeaveRequestService.updateStudentLeaveRequest(id, {
-          startDate,
-          endDate,
           reason,
+          sessionIds: selectedSessionIds,
         });
         toast.success('Đơn nghỉ học đã được cập nhật thành công!');
       } else {
-        // Create new leave request (tự động nghỉ tất cả lớp)
+        // Create new leave request (theo lớp + buổi học được chọn)
         await parentStudentLeaveRequestService.createStudentLeaveRequest({
           studentId: selectedChild,
-          startDate,
-          endDate,
+          classId: selectedClass,
+          sessionIds: selectedSessionIds,
           reason,
         });
         toast.success('Đơn nghỉ học đã được gửi thành công!');
@@ -148,7 +192,6 @@ export function StudentLeaveRequestForm() {
 
       navigate('/parent/student-leave-requests');
     } catch (error: any) {
-      console.error('Failed to submit leave request:', error);
       toast.error(error?.error || error?.message || `Có lỗi xảy ra khi ${isEditMode ? 'cập nhật' : 'gửi'} đơn nghỉ học`);
     } finally {
       setIsSubmitting(false);
@@ -235,41 +278,63 @@ export function StudentLeaveRequestForm() {
                     )}
                   </div>
 
-                  {/* Date Range */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="startDate" className="text-base font-semibold">
-                        Từ ngày <span className="text-destructive">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="startDate"
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
+                  {/* Class Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="classId" className="text-base font-semibold">
+                      Chọn lớp <span className="text-destructive">*</span>
+                    </Label>
+                    <Select 
+                      value={selectedClass} 
+                      onValueChange={setSelectedClass}
+                      disabled={!selectedChild || isEditMode}
+                    >
+                      <SelectTrigger id="classId">
+                        <SelectValue placeholder="Chọn lớp..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(availableClasses) && availableClasses.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name} {cls.subject?.name ? `- ${cls.subject.name}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedChild && Array.isArray(availableClasses) && availableClasses.length === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">Không tìm thấy lớp nào cho học sinh này.</p>
+                    )}
+                  </div>
+
+                  {/* Session Selection (multi) */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">
+                      Chọn buổi học <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedSessionIds.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">Chưa chọn buổi nào</span>
+                      ) : (
+                        selectedSessionIds.map((id) => {
+                          const s = (availableSessions || []).find((x: any) => x.id === id);
+                          const label = s ? `${s.date} • ${s.time}` : id;
+                          return (
+                            <span key={id} className="text-xs px-2 py-1 rounded border bg-muted/30">
+                              {label}
+                            </span>
+                          );
+                        })
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="endDate" className="text-base font-semibold">
-                        Đến ngày <span className="text-destructive">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="endDate"
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="pl-10"
-                          min={startDate}
-                          required
-                        />
-                      </div>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" disabled={!selectedClass} onClick={() => setSessionsOpen(true)}>
+                        {isLoadingSessions ? 'Đang tải buổi học...' : 'Chọn buổi học'}
+                      </Button>
+                      {selectedSessionIds.length > 0 && (
+                        <Button type="button" variant="ghost" onClick={() => setSelectedSessionIds([])}>
+                          Xóa chọn
+                        </Button>
+                      )}
                     </div>
+                    <p className="text-xs text-muted-foreground">Bạn có thể chọn nhiều buổi. Mặc định chỉ hiển thị buổi sắp tới (tối đa 30).</p>
                   </div>
 
                   {/* Reason */}
@@ -322,61 +387,112 @@ export function StudentLeaveRequestForm() {
             </Card>
           </div>
 
-          {/* Affected Sessions Section */}
+          {/* Helper Section */}
           <div>
             <Card className="shadow-xl border rounded-2xl">
               <CardHeader className="bg-gradient-to-r from-primary to-primary/90 text-primary-foreground pb-8 rounded-t-2xl">
-                <CardTitle className="text-2xl font-bold">
-                  Buổi học bị ảnh hưởng
-                </CardTitle>
-                <CardDescription className="text-primary-foreground/80">
-                  {affectedSessions.length} buổi học từ tất cả các lớp
-                </CardDescription>
+                <CardTitle className="text-2xl font-bold">Hướng dẫn</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Chọn lớp và buổi học cụ thể để xin nghỉ</CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
-                {isLoadingSessions ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : affectedSessions.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    {!startDate || !endDate || !selectedChild
-                      ? 'Vui lòng chọn con và thời gian để xem các buổi học bị ảnh hưởng'
-                      : 'Không có buổi học nào trong khoảng thời gian này'}
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {affectedSessions.map((session, index) => (
-                      <div
-                        key={index}
-                        className="p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">
-                              {session.className || 'Lớp học'}
-                              {session.subjectName && ` - ${session.subjectName}`}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {session.date} - {session.time}
-                            </div>
-                            {session.room && (
-                              <div className="text-xs text-muted-foreground">
-                                Phòng: {session.room}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent className="pt-6 text-sm text-muted-foreground">
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>Chọn con để tải danh sách lớp</li>
+                  <li>Chọn lớp để hiển thị các buổi học</li>
+                  <li>Chọn đúng buổi học muốn xin nghỉ</li>
+                </ul>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
+
+    {/* Dialog chọn buổi */}
+    <Dialog open={sessionsOpen} onOpenChange={setSessionsOpen}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Chọn buổi học</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Tìm buổi theo ngày, giờ, phòng, lớp, môn..."
+              value={sessionsSearch}
+              onChange={(e) => setSessionsSearch(e.target.value)}
+            />
+            <div className="flex items-center gap-2 text-sm">
+              <input
+                id="upcoming"
+                type="checkbox"
+                checked={sessionsFilterUpcoming}
+                onChange={(e) => setSessionsFilterUpcoming(e.target.checked)}
+              />
+              <label htmlFor="upcoming">Chỉ buổi sắp tới</label>
+            </div>
+          </div>
+
+          {(() => {
+            const filtered = (availableSessions || [])
+              .filter((s: any) => {
+                if (!sessionsSearch) return true;
+                const text = `${s.date} ${s.time} ${s.room || ''} ${s.className || ''} ${s.subjectName || ''}`.toLowerCase();
+                return text.includes(sessionsSearch.toLowerCase());
+              })
+              .filter((s: any) => {
+                if (!sessionsFilterUpcoming) return true;
+                try {
+                  const d = new Date(s.date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return d >= today;
+                } catch { return true; }
+              })
+              .slice(0, 30);
+
+            return (
+              <>
+                <div className="max-h-[420px] overflow-auto space-y-1">
+                  {filtered.length === 0 ? (
+                    <div className="text-sm text-muted-foreground py-8 text-center">
+                      Không có buổi nào phù hợp
+                    </div>
+                  ) : (
+                    filtered.map((s: any) => {
+                      const checked = selectedSessionIds.includes(s.id);
+                      const toggle = () => {
+                        setSelectedSessionIds((prev) =>
+                          checked ? prev.filter((x) => x !== s.id) : [...prev, s.id]
+                        );
+                      };
+                      return (
+                        <label key={s.id} className="flex items-center gap-3 p-2 rounded border hover:bg-muted/30 cursor-pointer">
+                          <input type="checkbox" checked={checked} onChange={toggle} />
+                          <div className="text-sm">
+                            <div className="font-medium">{s.date} • {s.time}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {(s.className || '')} {s.subjectName ? `• ${s.subjectName}` : ''} {s.room ? `• Phòng ${s.room}` : ''}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>Đang hiển thị {filtered.length} buổi</span>
+                  <span>Đã chọn {selectedSessionIds.length} buổi</span>
+                </div>
+              </>
+            );
+          })()}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setSessionsOpen(false)}>Đóng</Button>
+            <Button type="button" onClick={() => setSessionsOpen(false)}>Xong</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </div>
   );
 }
 

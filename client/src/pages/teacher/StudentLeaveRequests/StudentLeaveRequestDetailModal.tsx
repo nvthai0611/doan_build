@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  Calendar,
-  Clock,
   User,
   FileText,
   BookOpen,
@@ -19,10 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatDate } from '../../../utils/format';
-import type { TeacherStudentLeaveRequest } from '../../../services/teacher/student-leave-request/student-leave.types';
+import type { TeacherStudentLeaveRequest, AffectedSessionDetail } from '../../../services/teacher/student-leave-request/student-leave.types';
 import { teacherStudentLeaveRequestService } from '../../../services/teacher/student-leave-request/student-leave.service';
 import { toast } from 'sonner';
 
@@ -82,8 +78,6 @@ export default function StudentLeaveRequestDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialLeaveRequest?.id]);
 
-  if (!leaveRequest) return null;
-
   // Helper function to format date with fallback
   const formatDateSafe = (dateStr: string | null | undefined, fallbackText: string = 'Chưa cập nhật') => {
     if (!dateStr) return fallbackText;
@@ -132,6 +126,32 @@ export default function StudentLeaveRequestDetailModal({
       setIsRejecting(false);
     }
   };
+
+  // Prepare sessions for display
+  const sortedSessions = useMemo(() => {
+    const list: AffectedSessionDetail[] = Array.isArray(leaveRequest?.affectedSessions)
+      ? (leaveRequest?.affectedSessions as AffectedSessionDetail[])
+      : [];
+    return [...list].sort((a: AffectedSessionDetail, b: AffectedSessionDetail) => {
+      const da = a.session?.sessionDate ? new Date(a.session.sessionDate).getTime() : Number.POSITIVE_INFINITY;
+      const db = b.session?.sessionDate ? new Date(b.session.sessionDate).getTime() : Number.POSITIVE_INFINITY;
+      if (da !== db) return da - db;
+      const ta = a.session?.startTime || '';
+      const tb = b.session?.startTime || '';
+      return ta.localeCompare(tb);
+    });
+  }, [leaveRequest?.affectedSessions]);
+
+  const sessionCount = sortedSessions.length;
+
+  const formatSessionDate = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('vi-VN');
+  };
+
+  if (!leaveRequest) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -231,6 +251,35 @@ export default function StudentLeaveRequestDetailModal({
                         <p className="text-sm bg-background rounded-md p-3 border">
                           {leaveRequest.reason}
                         </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm pt-1">
+                          <div>
+                            <span className="text-muted-foreground block">Ngày tạo</span>
+                            <span className="font-medium">{formatDateSafe(leaveRequest.createdAt, 'Không xác định')}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block">Trạng thái</span>
+                            <Badge
+                              variant="secondary"
+                              className={statusColors[leaveRequest.status as keyof typeof statusColors]}
+                            >
+                              {statusLabels[leaveRequest.status as keyof typeof statusLabels]}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          {leaveRequest.updatedAt && leaveRequest.updatedAt !== leaveRequest.createdAt && (
+                            <div>
+                              <span className="text-muted-foreground block">Cập nhật cuối</span>
+                              <span className="font-medium">{formatDateSafe(leaveRequest.updatedAt, 'Chưa cập nhật')}</span>
+                            </div>
+                          )}
+                          {leaveRequest.approvedAt && (
+                            <div>
+                              <span className="text-muted-foreground block">Ngày phê duyệt</span>
+                              <span className="font-medium">{formatDateSafe(leaveRequest.approvedAt, 'Chưa phê duyệt')}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       {leaveRequest.notes && (
                         <div className="space-y-2">
@@ -244,16 +293,23 @@ export default function StudentLeaveRequestDetailModal({
                       )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Affected Sessions */}
-                  {leaveRequest.affectedSessions && leaveRequest.affectedSessions.length > 0 && (
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <BookOpen className="h-5 w-5" />
-                        Buổi học bị ảnh hưởng ({leaveRequest.affectedSessions.length})
-                      </h3>
-                      <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                        {leaveRequest.affectedSessions.map((session, index) => (
+                {/* Right Column - Sessions and Approver */}
+                <div className="space-y-6">
+                  {/* All Affected Sessions */}
+                  <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Tất cả buổi học xin nghỉ ({sessionCount})
+                    </h3>
+                    {sessionCount === 0 ? (
+                      <div className="text-sm text-muted-foreground italic">
+                        Không có buổi học nào trong đơn này.
+                      </div>
+                    ) : (
+                      <div className="max-h-[420px] overflow-y-auto space-y-2 pr-2">
+                        {sortedSessions.map((session: AffectedSessionDetail, index: number) => (
                           <div
                             key={index}
                             className="bg-background rounded-md p-3 border flex items-center justify-between hover:bg-muted/50 transition-colors"
@@ -264,12 +320,12 @@ export default function StudentLeaveRequestDetailModal({
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="font-medium text-sm truncate">
-                                  {session.session.class.name || 'Lớp học'}
+                                  {session.session.class?.name || 'Lớp học'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {formatDate(session.session.sessionDate)} - {session.session.startTime} - {session.session.endTime}
+                                  {formatSessionDate(session.session.sessionDate)} - {session.session.startTime} - {session.session.endTime}
                                 </p>
-                                {session.session.class.subject && (
+                                {session.session.class?.subject && (
                                   <p className="text-xs text-muted-foreground">
                                     Môn: {session.session.class.subject.name}
                                   </p>
@@ -282,76 +338,7 @@ export default function StudentLeaveRequestDetailModal({
                           </div>
                         ))}
                       </div>
-                      {leaveRequest.affectedSessions.length > 5 && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Cuộn để xem thêm {leaveRequest.affectedSessions.length - 5} buổi học
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Column - Metadata */}
-                <div className="space-y-6">
-                  {/* Date Information */}
-                  <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      Thời gian nghỉ
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Ngày bắt đầu:</span>
-                        <span className="font-medium">{formatDate(leaveRequest.startDate)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Ngày kết thúc:</span>
-                        <span className="font-medium">{formatDate(leaveRequest.endDate)}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Số ngày nghỉ:</span>
-                        <span className="font-medium">
-                          {Math.ceil((new Date(leaveRequest.endDate).getTime() - new Date(leaveRequest.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Request Info */}
-                  <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Thông tin đơn
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Ngày tạo:</span>
-                        <span className="font-medium">{formatDateSafe(leaveRequest.createdAt, 'Không xác định')}</span>
-                      </div>
-                      {leaveRequest.updatedAt && leaveRequest.updatedAt !== leaveRequest.createdAt && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Cập nhật cuối:</span>
-                          <span className="font-medium">{formatDateSafe(leaveRequest.updatedAt, 'Chưa cập nhật')}</span>
-                        </div>
-                      )}
-                      {leaveRequest.approvedAt && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Ngày phê duyệt:</span>
-                          <span className="font-medium">{formatDateSafe(leaveRequest.approvedAt, 'Chưa phê duyệt')}</span>
-                        </div>
-                      )}
-                      <Separator />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Trạng thái:</span>
-                        <Badge
-                          variant="secondary"
-                          className={statusColors[leaveRequest.status as keyof typeof statusColors]}
-                        >
-                          {statusLabels[leaveRequest.status as keyof typeof statusLabels]}
-                        </Badge>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Approver Info */}

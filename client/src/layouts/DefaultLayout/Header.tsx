@@ -348,13 +348,7 @@ const Header = () => {
               <DropdownMenuItem
                 onClick={async () => {
                   await logout();
-                  // center-owner, teacher, admin → /auth/login
-                  // parent, student → /
-                  if (user?.role === 'center_owner' || user?.role === 'teacher' || user?.role === 'admin') {
-                    navigate('/auth/login');
-                  } else {
-                    navigate('/');
-                  }
+                  navigate('/auth');
                 }}
               >
                 <LogOut className="mr-2 h-4 w-4" />
