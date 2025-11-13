@@ -11,4 +11,5 @@ export interface ClassSessions {
   maxStudents: number;
   status: string;
   hasAlert?: boolean;
+  substituteTeacher?: string;
 }

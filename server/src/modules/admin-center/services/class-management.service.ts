@@ -4491,12 +4491,40 @@ export class ClassManagementService {
 
   // Legacy methods (keep for backward compatibility)
   async getClassByTeacherId(query: any, teacherId: string) {
-    const { status, page = 1, limit = 10, search } = query;
+    const { status, page = 1, limit = 10, search, includeSubstitute } = query;
+
+    const includeSubstituteFlag =
+      includeSubstitute === true ||
+      includeSubstitute === 'true' ||
+      includeSubstitute === '1';
+
+    // Tập classId giáo viên này từng/đang dạy thay (từ class sessions)
+    let substituteClassIds: string[] = [];
+    if (includeSubstituteFlag) {
+      const substituteSessions = await this.prisma.classSession.findMany({
+        where: {
+          substituteTeacherId: teacherId,
+        },
+        select: { classId: true },
+        distinct: ['classId'],
+      });
+      substituteClassIds = substituteSessions
+        .map((session) => session.classId)
+        .filter((id): id is string => Boolean(id));
+    }
 
     const where: any = {
-      teacherId: teacherId,
-      status: { not: 'deleted' },
+      status: { notIn: ['deleted', 'cancelled'] },
     };
+
+    if (includeSubstituteFlag && substituteClassIds.length > 0) {
+      where.OR = [
+        { teacherId },
+        { id: { in: substituteClassIds } },
+      ];
+    } else {
+      where.teacherId = teacherId;
+    }
 
     if (status && status !== 'all') {
       where.status = status;
@@ -4531,25 +4559,30 @@ export class ClassManagementService {
     });
 
     // Transform the data to match frontend expectations
-    const transformedClasses = classes.map((cls) => ({
-      id: cls.id,
-      code: cls.classCode,
-      name: cls.name,
-      subject: cls.subject?.name || '',
-      students: cls._count.enrollments,
-      schedule: DataTransformer.formatScheduleArray(cls.recurringSchedule),
-      status: cls.status,
-      startDate:
-        cls.actualStartDate?.toISOString().split('T')[0] ||
-        cls.expectedStartDate?.toISOString().split('T')[0] ||
-        '',
-      endDate: cls.actualEndDate?.toISOString().split('T')[0] || '',
-      room: cls.room?.name || 'Chưa xác định',
-      description: cls.description || '',
-      teacherId: cls.teacherId,
-      gradeName: cls.grade?.name || '',
-      feeStructureName: cls.feeStructure?.name || '',
-    }));
+    const transformedClasses = classes.map((cls) => {
+      const isSubstitute =
+        includeSubstituteFlag && substituteClassIds.includes(cls.id);
+      return {
+        id: cls.id,
+        code: cls.classCode,
+        name: cls.name,
+        subject: cls.subject?.name || '',
+        students: cls._count.enrollments,
+        schedule: DataTransformer.formatScheduleArray(cls.recurringSchedule),
+        status: cls.status,
+        startDate:
+          cls.actualStartDate?.toISOString().split('T')[0] ||
+          cls.expectedStartDate?.toISOString().split('T')[0] ||
+          '',
+        endDate: cls.actualEndDate?.toISOString().split('T')[0] || '',
+        room: cls.room?.name || 'Chưa xác định',
+        description: cls.description || '',
+        teacherId: cls.teacherId,
+        gradeName: cls.grade?.name || '',
+        feeStructureName: cls.feeStructure?.name || '',
+        isSubstitute,
+      };
+    });
 
     return {
       data: transformedClasses,

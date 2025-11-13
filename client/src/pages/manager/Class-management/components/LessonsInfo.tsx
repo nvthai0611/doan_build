@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
@@ -49,6 +50,17 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     sessionDate?: string;
   } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [cancelPopoverSessionId, setCancelPopoverSessionId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSession, setCancelSession] = useState<any | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  // Postpone states
+  const [postponePopoverSessionId, setPostponePopoverSessionId] = useState<string | null>(null);
+  const [postponeSession, setPostponeSession] = useState<any | null>(null);
+  const [postponeDate, setPostponeDate] = useState<Date | null>(null);
+  const [postponeStartTime, setPostponeStartTime] = useState('');
+  const [postponeEndTime, setPostponeEndTime] = useState('');
+  const [isPostponing, setIsPostponing] = useState(false);
   
   // Pagination hook
   const pagination = usePagination({
@@ -183,7 +195,154 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     }
   };
 
-  const getStatusBadge = (status: string) => {  
+  const openCancelPopover = (session: any) => {
+    setCancelSession(session);
+    setCancelReason(session?.cancellationReason || '');
+    setCancelPopoverSessionId(session.id);
+  };
+
+  const closeCancelPopover = () => {
+    setCancelPopoverSessionId(null);
+    if (!isCancelling) {
+      setCancelSession(null);
+      setCancelReason('');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelSession) return;
+    if (!cancelReason.trim()) {
+      toast.error('Vui lòng nhập lý do nghỉ buổi học');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      await centerOwnerScheduleService.updateSession(cancelSession.id, {
+        status: SessionStatus.DAY_OFF,
+        cancellationReason: cancelReason.trim(),
+      } as any);
+
+      toast.success('Đã ghi nhận buổi học nghỉ');
+      closeCancelPopover();
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể cập nhật trạng thái buổi học');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleSuggestPostpone = (session: any) => {
+    // open postpone popover instead of info toast
+    openPostponePopover(session);
+  };
+
+  // Postpone helpers/handlers
+  const openPostponePopover = (session: any) => {
+    setPostponeSession(session);
+    const sessionDate = session.scheduledDate || session.sessionDate;
+    setPostponeDate(sessionDate ? new Date(sessionDate) : new Date());
+    setPostponeStartTime(session.startTime || '08:00');
+    setPostponeEndTime(session.endTime || '09:30');
+    setPostponePopoverSessionId(session.id);
+  };
+
+  const closePostponePopover = () => {
+    setPostponePopoverSessionId(null);
+    if (!isPostponing) {
+      setPostponeSession(null);
+      setPostponeDate(null);
+      setPostponeStartTime('');
+      setPostponeEndTime('');
+    }
+  };
+
+  const handlePostponeStartTimeChange = (newStart: string) => {
+    if (!postponeSession) {
+      setPostponeStartTime(newStart);
+      return;
+    }
+    const originalStart = postponeSession.startTime || '08:00';
+    const originalEnd = postponeSession.endTime || '09:30';
+    const originalDuration = calculateDurationMinutes(originalStart, originalEnd);
+    const newEnd = addMinutesToTime(newStart, originalDuration);
+    setPostponeStartTime(newStart);
+    setPostponeEndTime(newEnd);
+  };
+
+  const handleConfirmPostpone = async () => {
+    if (!postponeSession || !postponeDate) return;
+    if (!postponeStartTime || !postponeEndTime) {
+      toast.error('Vui lòng nhập đầy đủ thời gian');
+      return;
+    }
+    if (postponeStartTime >= postponeEndTime) {
+      toast.error('Giờ bắt đầu phải trước giờ kết thúc');
+      return;
+    }
+
+    setIsPostponing(true);
+    try {
+      // Build YYYY-MM-DD from local date parts to avoid TZ shift
+      const year = postponeDate.getFullYear();
+      const month = String(postponeDate.getMonth() + 1).padStart(2, '0');
+      const day = String(postponeDate.getDate()).padStart(2, '0');
+      const sessionDateStr = `${year}-${month}-${day}`;
+
+      const currentSessionDate = postponeSession.scheduledDate || postponeSession.sessionDate;
+      let currentDateStr: string | null = null;
+      if (currentSessionDate) {
+        const currentDate = new Date(currentSessionDate);
+        const cy = currentDate.getFullYear();
+        const cm = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const cd = String(currentDate.getDate()).padStart(2, '0');
+        currentDateStr = `${cy}-${cm}-${cd}`;
+      }
+
+      // Check conflicts first
+      const conflictResult = await centerOwnerScheduleService.checkScheduleConflict(
+        postponeSession.id,
+        sessionDateStr,
+        postponeStartTime,
+        postponeEndTime
+      );
+
+      const finalData: any = {
+        startTime: postponeStartTime,
+        endTime: postponeEndTime,
+      };
+      if (currentDateStr && sessionDateStr !== currentDateStr) {
+        finalData.sessionDate = sessionDateStr;
+      }
+
+      if (conflictResult?.hasConflict) {
+        const conflicts = conflictResult.conflicts || [];
+        const conflictText = conflicts
+          .map((c: any) => `${c.className} (${c.startTime} - ${c.endTime})`)
+          .join(', ');
+        toast.error(
+          conflictText
+            ? `Không thể lùi lịch do trùng với: ${conflictText}`
+            : 'Không thể lùi lịch do trùng lịch với lớp khác.'
+        );
+        setIsPostponing(false);
+        return;
+      }
+
+      await centerOwnerScheduleService.updateSession(postponeSession.id, finalData);
+      toast.success('Đã lùi lịch buổi học thành công');
+      closePostponePopover();
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể lùi lịch buổi học');
+    } finally {
+      setIsPostponing(false);
+    }
+  };
+
+  const renderStatusBadge = (session: any) => {
+    const status = session.status;
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
       [SessionStatus.END]: { 
         variant: 'default', 
@@ -218,12 +377,28 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];
     const Icon = config.icon;
-    return (
+    const badge = (
       <Badge variant={config.variant} className={config.className}>
         <Icon className="h-3 w-3 mr-1" />
         {config.label}
       </Badge>
     );
+
+    if (status === SessionStatus.DAY_OFF) {
+      const reason = session.cancellationReason || 'Chưa cung cấp lý do';
+      return (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-sm">
+              Lý do nghỉ: {reason}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getAttendanceRate = (attendanceCount: number, totalStudents: number) => {
@@ -513,7 +688,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       key: 'status',
       header: 'Trạng thái',
       width: '80px',
-      render: (session: any) => getStatusBadge(session.status)
+      render: (session: any) => renderStatusBadge(session)
     },
     {
       key: 'teacher',
@@ -617,31 +792,139 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
               <TooltipContent>Xem chi tiết</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
+            {/* Postpone Popover */}
+            <Popover
+              open={postponePopoverSessionId === session.id}
+              onOpenChange={(open) => {
+                if (open) {
+                  openPostponePopover(session);
+                } else {
+                  closePostponePopover();
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-orange-600 hover:text-orange-700"
+                  disabled={session.status === SessionStatus.DAY_OFF || session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
                 >
                   <Clock className="h-4 w-4" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Lùi lịch</TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 space-y-4" align="end">
+                <div className="space-y-1">
+                  <div className="font-medium">Lùi lịch buổi học</div>
+                  {(session.scheduledDate || session.sessionDate) && (
+                    <div className="text-xs text-gray-500">
+                      Hiện tại: {format(new Date(session.scheduledDate || session.sessionDate), 'dd/MM/yyyy')}{' '}
+                      {session.startTime && session.endTime ? `${session.startTime} - ${session.endTime}` : ''}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Ngày mới</label>
+                    <CalendarComponent
+                      mode="single"
+                      selected={postponeDate || undefined}
+                      onSelect={(d) => d && setPostponeDate(d)}
+                      className="rounded-md border shadow-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">Giờ bắt đầu</label>
+                      <Input
+                        type="time"
+                        value={postponeStartTime}
+                        onChange={(e) => handlePostponeStartTimeChange(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">Giờ kết thúc</label>
+                      <Input
+                        type="time"
+                        value={postponeEndTime}
+                        onChange={(e) => setPostponeEndTime(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closePostponePopover}
+                    disabled={isPostponing}
+                  >
+                    Thoát
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleConfirmPostpone}
+                    disabled={isPostponing}
+                  >
+                    {isPostponing ? 'Đang lưu...' : 'Xác nhận'}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover
+              open={cancelPopoverSessionId === session.id}
+              onOpenChange={(open) => {
+                if (open) {
+                  openCancelPopover(session);
+                } else {
+                  closeCancelPopover();
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-red-600 hover:text-red-700"
+                  disabled={session.status === SessionStatus.DAY_OFF || session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
                 >
                   <XCircle className="h-4 w-4" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Hủy buổi học</TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 space-y-3" align="end">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Lý do nghỉ <span className="text-red-500">*</span>
+                  </p>
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Ví dụ: Nghỉ lễ, giáo viên bận công tác..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closeCancelPopover}
+                    disabled={isCancelling}
+                  >
+                    Thoát
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleConfirmCancel}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? 'Đang lưu...' : 'Xác nhận'}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </TooltipProvider>
       )
@@ -910,6 +1193,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           allData={filteredSessions}
         />
       </div>
+
     </div>
   );
 };

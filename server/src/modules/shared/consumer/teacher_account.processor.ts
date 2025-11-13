@@ -22,7 +22,7 @@ export class TeacherAccountProcessor {
   async handleSendTeacherAccountEmail(job: Job<TeacherAccountEmailData>) {
     const startTime = Date.now();
     console.log(
-      `📧 [Job ${job.id}] Bắt đầu gửi email tài khoản giáo viên\n` +
+      `[Job ${job.id}] Bắt đầu gửi email tài khoản giáo viên\n` +
       `   - Giáo viên: ${job.data.teacherName}\n` +
       `   - Email: ${job.data.to}`
     );
@@ -60,7 +60,7 @@ export class TeacherAccountProcessor {
       
       const duration = Date.now() - startTime;
       console.log(
-        `✅ [Job ${job.id}] Email tài khoản đã gửi thành công trong ${duration}ms\n` +
+        `[Job ${job.id}] Email tài khoản đã gửi thành công trong ${duration}ms\n` +
         `   - Giáo viên: ${teacherName}\n` +
         `   - Email: ${to}\n` +
         `   - TeacherId: ${teacherId}`
@@ -76,7 +76,7 @@ export class TeacherAccountProcessor {
     } catch (error: any) {
       const duration = Date.now() - startTime;
       console.error(
-        `❌ [Job ${job.id}] Lỗi sau ${duration}ms\n` +
+        `[Job ${job.id}] Lỗi sau ${duration}ms\n` +
         `   - Giáo viên: ${teacherName}\n` +
         `   - Email: ${to}\n` +
         `   - Lỗi: ${error.message}\n` +

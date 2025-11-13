@@ -208,7 +208,11 @@ export default function TeacherSchedule() {
                   </div>
                 </div>
 
-                <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-22 overflow-y-auto'}`}>
+                <div
+                  className={`space-y-1 ${
+                    isExpanded ? 'max-h-none' : 'max-h-22 overflow-y-auto'
+                  }`}
+                >
                   {(isExpanded ? dayList : dayList.slice(0, 1)).map((s) => (
                     <div
                       key={s.id}
@@ -220,15 +224,39 @@ export default function TeacherSchedule() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium truncate">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium truncate">{s.className} - {s.room}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium truncate">
+                              {s.className} - {s.room}
+                            </span>
+                          </div>
+                          <div className="text-xs opacity-90 truncate">
+                            {s.startTime}-{s.endTime}
+                          </div>
+                          {s.status === 'day_off' ? (
+                            <span style={{ fontSize: '10px' }}>(Nghỉ)</span>
+                          ) : s.status === 'end' ? (
+                            <span style={{ fontSize: '10px' }}>
+                              (Đã kết thúc)
+                            </span>
+                          ) : s.status === 'cancelled' ? (
+                            <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                          ) : (
+                            <div style={{ fontSize: '10px' }}>
+                              (Chưa diễn ra){' '}
+                              {s.isSubstitute && s.substituteTeacher && (
+                                <div>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs px-1 py-0 border-purple-500 text-purple-700 bg-purple-50"
+                                  >
+                                    <span style={{ fontSize: '10px' }}>
+                                      Dạy thay
+                                    </span>
+                                  </Badge>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs opacity-90 truncate">{s.startTime}-{s.endTime}</div>
-                            {s.status === "day_off" ? <span style={{ fontSize: '10px' }}>(Nghỉ)</span> 
-                            : s.status === "end" ? <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span> 
-                            : s.status === "cancelled" ? <span style={{ fontSize: '10px' }}>(Đã hủy)</span> 
-                            : <div style={{ fontSize: '10px' }}>(Chưa diễn ra)
-                            </div>}
+                          )}
                         </span>
                       </div>
                     </div>
@@ -237,7 +265,10 @@ export default function TeacherSchedule() {
                     <button
                       type="button"
                       className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
-                      onClick={(e) => { e.stopPropagation(); toggleDateExpand(dateKey) }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleDateExpand(dateKey);
+                      }}
                     >
                       +{dayList.length - 1} buổi khác
                     </button>
@@ -246,7 +277,10 @@ export default function TeacherSchedule() {
                     <button
                       type="button"
                       className="text-xs text-purple-600 text-center py-1 w-full hover:text-purple-800"
-                      onClick={(e) => { e.stopPropagation(); toggleDateExpand(dateKey) }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleDateExpand(dateKey);
+                      }}
                     >
                       Thu gọn
                     </button>

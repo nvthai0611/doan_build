@@ -7,16 +7,18 @@ export const useTeacherClassesQuery = ({
   status = 'all',
   search = '',
   page = 1,
-  limit = 10
+  limit = 10,
+  includeSubstitute = false,
 }: any) => {
   return useQuery({
-    queryKey: ['teacher-classes', teacherId, status, search, page, limit],
+    queryKey: ['teacher-classes', teacherId, status, search, page, limit, includeSubstitute],
     queryFn: async () => {
       const response = await classService.getClassByTeacherId(teacherId, {
         status,
         search,
         page,   
-        limit
+        limit,
+        includeSubstitute,
       })
       return response
     },

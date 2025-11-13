@@ -116,10 +116,7 @@ export default function AddEmployee() {
       }
     }
 
-    // Validate role
-    if (!validateRequired(formData.role)) {
-      newErrors.role = 'Nhóm quyền là bắt buộc'
-    }
+    // Role is always "teacher" - no validation needed
 
     // Validate username
     if (!validateRequired(formData.username)) {
@@ -145,6 +142,11 @@ export default function AddEmployee() {
     // Validate school
     if (!validateRequired(formData.school)) {
       newErrors.school = 'Trường học là bắt buộc'
+    }
+
+    // Validate subjects
+    if (!formData.subjects || formData.subjects.length === 0) {
+      newErrors.subjects = 'Chuyên môn (Môn học) là bắt buộc'
     }
 
     // // Validate contract image
@@ -305,11 +307,11 @@ export default function AddEmployee() {
         phone: formData.phone?.trim() || "",
         gender: formData.gender,
         birthDate: formData.birthDate,
-        role: formData.role as "teacher" | "admin" | "center_owner",
+        role: "teacher" as const, // Always teacher
         isActive: formData.status,  
         schoolName: formData.schoolName.trim(),
         schoolAddress: formData.schoolAddress?.trim(),
-        subjects: formData.subjects, // Thêm mảng subjects
+        subjects: formData.subjects || [], // Thêm mảng subjects
         notes: formData.notes.trim()
       }
       let response
@@ -327,7 +329,12 @@ export default function AddEmployee() {
         formDataToSend.append('isActive', teacherData.isActive.toString()) // Convert boolean to string
         formDataToSend.append('schoolName', teacherData.schoolName)
         formDataToSend.append('schoolAddress', teacherData.schoolAddress)
-        formDataToSend.append('subjects', JSON.stringify(teacherData.subjects))
+        // Append each subject separately for FormData
+        if (Array.isArray(teacherData.subjects) && teacherData.subjects.length > 0) {
+          teacherData.subjects.forEach((subject: string) => {
+            formDataToSend.append('subjects[]', subject)
+          })
+        }
         if (teacherData.notes) {
           formDataToSend.append('notes', teacherData.notes)
         }
@@ -339,7 +346,72 @@ export default function AddEmployee() {
       toast.success("Thêm giáo viên thành công!")
       navigate("/center-qn/teachers")
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra khi thêm giáo viên"
+      // Ensure error message is always a string
+      let errorMessage = "Có lỗi xảy ra khi thêm giáo viên"
+      
+      try {
+        // Handle validation errors from backend
+        if (error.response?.data) {
+          const errorData = error.response.data
+          
+          // Check if message is an array (backend format: message: [{ field: "error" }])
+          if (Array.isArray(errorData.message)) {
+            const messages = errorData.message
+              .map((item: any) => {
+                if (typeof item === 'string') {
+                  return item
+                } else if (typeof item === 'object' && item !== null) {
+                  // Extract key-value pairs from object
+                  return Object.entries(item)
+                    .map(([key, value]) => {
+                      const fieldName = key === 'subjects' ? 'Chuyên môn' : key
+                      return `${fieldName}: ${value}`
+                    })
+                    .join(', ')
+                }
+                return String(item)
+              })
+              .filter(Boolean)
+              .join('; ')
+            errorMessage = messages || errorMessage
+          }
+          // Check if it's a validation error with multiple fields (errors object)
+          else if (errorData.errors && typeof errorData.errors === 'object') {
+            const errorMessages = Object.entries(errorData.errors)
+              .map(([field, messages]: [string, any]) => {
+                const fieldName = field === 'subjects' ? 'Chuyên môn' : field
+                const msgArray = Array.isArray(messages) 
+                  ? messages.map(m => typeof m === 'string' ? m : String(m))
+                  : [typeof messages === 'string' ? messages : String(messages)]
+                return `${fieldName}: ${msgArray.join(', ')}`
+              })
+              .join('; ')
+            errorMessage = errorMessages || errorMessage
+          } 
+          // Handle string message
+          else if (errorData.message) {
+            errorMessage = typeof errorData.message === 'string' 
+              ? errorData.message 
+              : String(errorData.message)
+          } 
+          // Handle string errorData
+          else if (typeof errorData === 'string') {
+            errorMessage = errorData
+          } 
+          // Fallback: convert object to string
+          else {
+            errorMessage = JSON.stringify(errorData)
+          }
+        } else if (error.message) {
+          errorMessage = typeof error.message === 'string' 
+            ? error.message 
+            : String(error.message)
+        }
+      } catch (parseError) {
+        // Fallback to default message if parsing fails
+        console.error('Error parsing error response:', parseError)
+      }
+      
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false) // Unset loading state regardless of outcome
@@ -501,21 +573,6 @@ export default function AddEmployee() {
                   <ErrorMessage field="birthDate" />
                 </div>
 
-                {/* Role */}
-                <div className="space-y-2 mb-4">
-                  <Label htmlFor="role">Nhóm quyền <span className="text-red-500">*</span></Label>
-                  <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
-                    <SelectTrigger className={errors.role ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Chọn nhóm quyền" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="teacher">Giáo viên</SelectItem>
-                      <SelectItem value="center_owner">Chủ trung tâm</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <ErrorMessage field="role" />
-                </div>
-
                 {/* Login Account Section */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-foreground">Tài khoản đăng nhập</h3>
@@ -603,7 +660,7 @@ export default function AddEmployee() {
 
                   {/* Subjects/Chuyên môn */}
                   <div className="space-y-2">
-                    <Label htmlFor="subjects">Chuyên môn (Môn học)</Label>
+                    <Label htmlFor="subjects">Chuyên môn (Môn học) <span className="text-red-500">*</span></Label>
                     <MultiSelect
                       options={subjectOptions}
                       selected={formData.subjects}
@@ -614,6 +671,7 @@ export default function AddEmployee() {
                       disabled={subjectsLoading}
                       maxDisplay={3}
                     />
+                    <ErrorMessage field="subjects" />
                     {formData.subjects.length > 0 && (
                       <p className="text-sm text-muted-foreground">
                         Đã chọn {formData.subjects.length} môn học
