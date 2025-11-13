@@ -20,14 +20,16 @@ export class SessionService {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          teacherId: teacherId
+          teacherId: teacherId,
         },
         include: {
           class: {
             include: {
               subject: { select: { name: true } },
               enrollments: {
-                include: {
+                select: {
+                  status: true,
+                  studentId: true,
                   student: {
                     include: {
                       user: { select: { fullName: true, avatar: true } }
@@ -59,7 +61,7 @@ export class SessionService {
         return null;
       }
 
-      console.log(session);
+      //console.log(session);
 
       // Tạo danh sách học viên với trạng thái điểm danh
       const students: StudentInSessionDto[] = session.class.enrollments.map(enrollment => {
@@ -68,7 +70,8 @@ export class SessionService {
           id: enrollment.student.id,
           name: enrollment.student.user.fullName || 'Chưa có tên',
           avatar: enrollment.student.user.avatar || undefined,
-          attendanceStatus: attendance?.status || undefined
+          attendanceStatus: attendance?.status || undefined,
+          status: enrollment.status
         };
       });
 
@@ -80,7 +83,7 @@ export class SessionService {
         subject: session.class.subject.name,
         className: session.class.name,
         room: session.room?.name || 'Chưa xác định',
-        studentCount: session.class.enrollments.length,
+        studentCount: session.class.enrollments.filter(enrollment => enrollment.status === 'studying').length,
         status: session.status,
         notes: session.notes || undefined,
         type: 'regular',

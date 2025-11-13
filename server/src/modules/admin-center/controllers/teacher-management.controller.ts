@@ -31,7 +31,6 @@ export class TeacherManagementController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('contractImage'))
   create(@Body() createTeacherDto: CreateTeacherDto, @UploadedFile() file?: any) {
-    console.log("Raw body:", createTeacherDto);
     // Thêm file vào DTO
     if (file) {
       createTeacherDto.contractImage = file;

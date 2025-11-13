@@ -88,13 +88,62 @@ export const centerOwnerTeacherService = {
 
   // Tạo giáo viên mới
   createTeacher: async (data: CreateTeacherRequest | FormData): Promise<Teacher> => {
-    // Kiểm tra nếu là FormData (có file upload)
-    const isFormData = data instanceof FormData
-    const options = isFormData ? {
-      contentType: "multipart/form-data"
-    } : {}
-    const response = await apiClient.post<Teacher>(`${centerOwnerTeacherService.BASE_URL}`, data, options)
-    return response.data
+    try {
+      // Kiểm tra nếu là FormData (có file upload)
+      const isFormData = data instanceof FormData
+      const options = isFormData ? {
+        contentType: "multipart/form-data"
+      } : {}
+      const response = await apiClient.post<Teacher>(`${centerOwnerTeacherService.BASE_URL}`, data, options)
+      return response.data
+    } catch (error: any) {
+      console.error('Error creating teacher:', error)
+      
+      // Parse error message từ response
+      let errorMessage = 'Có lỗi xảy ra khi tạo giáo viên'
+      
+      try {
+        const errorData = error.response?.data || error.response || error
+        
+        // Xử lý message là array (format: [{ field: "error" }])
+        if (Array.isArray(errorData.message)) {
+          const messages = errorData.message
+            .map((item: any) => {
+              if (typeof item === 'string') {
+                return item
+              } else if (typeof item === 'object' && item !== null) {
+                // Extract key-value pairs from object
+                return Object.entries(item)
+                  .map(([key, value]) => {
+                    const fieldName = key === 'subjects' ? 'Chuyên môn' : key
+                    return `${fieldName}: ${value}`
+                  })
+                  .join(', ')
+              }
+              return String(item)
+            })
+            .filter(Boolean)
+            .join('; ')
+          errorMessage = messages || errorMessage
+        }
+        // Xử lý message là string
+        else if (errorData.message && typeof errorData.message === 'string') {
+          errorMessage = errorData.message
+        }
+        // Xử lý error object trực tiếp
+        else if (errorData.error && typeof errorData.error === 'string') {
+          errorMessage = errorData.error
+        }
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError)
+      }
+      
+      // Throw error với message là string
+      const errorToThrow = new Error(errorMessage)
+      // Giữ nguyên error response để component có thể xử lý thêm
+      ;(errorToThrow as any).response = error.response
+      throw errorToThrow
+    }
   },
 
   // Cập nhật thông tin giáo viên

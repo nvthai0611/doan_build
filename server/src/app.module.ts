@@ -47,6 +47,18 @@ import { TasksModule } from './modules/cronjob/cron.module';
         port: parseInt(process.env.REDIS_PORT) || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
         db: parseInt(process.env.REDIS_DB) || 0,
+        connectTimeout: 60000, // 60 giây timeout cho connection
+        commandTimeout: 5000,  // 5 giây timeout cho mỗi command
+        retryStrategy: (times: number) => {
+          // Retry với exponential backoff
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        maxRetriesPerRequest: 3, // Retry tối đa 3 lần cho mỗi request
+      },
+      settings: {
+        stalledInterval: 30000, // 30 giây - kiểm tra job bị stuck
+        maxStalledCount: 1,      // Chỉ cho phép 1 lần stalled trước khi fail
       },
     }),
     AuthModule,

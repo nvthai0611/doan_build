@@ -17,8 +17,6 @@ export class PublicClassesService {
 
     const where: any = {
       status: { in: ['ready', 'active'] }, // Lớp sẵn sàng hoặc đang học
-      // Chỉ hiển thị lớp có thông tin đầy đủ
-      teacherId: teacherId ? { equals: teacherId } : { not: null },
       // subjectId is required in schema, no need to filter
     };
 
@@ -28,6 +26,10 @@ export class PublicClassesService {
 
     if (gradeId) {
       where.gradeId = gradeId;
+    }
+
+    if (teacherId) {
+      where.teacherId = teacherId;
     }
 
     // Fetch tất cả lớp phù hợp (không phân trang) để lọc lớp còn chỗ

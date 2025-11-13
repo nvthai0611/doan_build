@@ -234,38 +234,33 @@ export default function ChangeScheduleRequestManagement() {
       key: 'actions',
       header: 'Thao tác',
       render: (item: ScheduleChange) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item.id)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
+        <div>
+          <div className="flex items-center gap-2 bg-blue-500 text-white px-2 py-1 rounded-md">
+            <div onClick={() => handleViewDetails(item.id)}>
+              <Eye className="h-4 w-4 cursor-pointer" />
+              Xem
+            </div>
+          </div>
+          {item.status === 'pending' && (
+            <div>
+                <div className="h-1 w-full bg-gray-200" />
+                <div 
                   onClick={() => handleApprove(item.id)}
-                  className="text-green-600"
+                  className="text-green-600 flex items-center gap-2 cursor-pointer bg-green-500 text-white px-2 py-1 rounded-md"
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  <CheckCircle className="h-4 w-4 cursor-pointer" />
                   Duyệt yêu cầu
-                </DropdownMenuItem>
-                <DropdownMenuItem 
+                </div>
+                <div 
                   onClick={() => handleReject(item.id)}
-                  className="text-red-600"
+                  className="text-red-600 flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md"
                 >
-                  <XCircle className="mr-2 h-4 w-4" />
+                  <XCircle className="h-4 w-4 cursor-pointer" />
                   Từ chối
-                </DropdownMenuItem>
-              </>
+                </div>
+            </div>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        </div>
       )
     }
   ]

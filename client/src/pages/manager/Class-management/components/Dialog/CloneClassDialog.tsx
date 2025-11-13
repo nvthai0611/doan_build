@@ -34,7 +34,7 @@ export const CloneClassDialog = ({
 }: CloneClassDialogProps) => {
   const [formData, setFormData] = useState<CloneClassData>({
     name: '',
-    cloneSchedule: true,
+    cloneSchedule: false,
     cloneTeacher: false,
     cloneStudents: false,
     cloneCurriculum: true,
@@ -148,34 +148,18 @@ export const CloneClassDialog = ({
             
             <div className="space-y-3 border rounded-lg p-4">
               {/* Clone Schedule */}
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="cloneSchedule"
-                  checked={formData.cloneSchedule}
-                  onCheckedChange={(checked) => handleCheckboxChange('cloneSchedule', checked as boolean)}
-                />
+              {/* Clone Schedule (Disabled) */}
+              {/* <div className="flex items-start gap-3 opacity-60 cursor-not-allowed">
+                <Checkbox id="cloneSchedule" checked={formData.cloneSchedule} disabled />
                 <div className="flex-1">
-                  <label
-                    htmlFor="cloneSchedule"
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    Lịch học
+                  <label htmlFor="cloneSchedule" className="text-sm font-medium">
+                    Lịch học (không sao chép)
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Sao chép lịch học hàng tuần (thứ, giờ học)
+                    Lịch học sẽ cần thiết lập lại cho lớp mới
                   </p>
-                  {classData.recurringSchedule && (
-                    <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-                      {classData.recurringSchedule.schedules?.map((s: any, i: number) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <span className="inline-block w-1 h-1 rounded-full bg-green-400"></span>
-                          <span>{s.day}: {s.startTime} - {s.endTime}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Clone Teacher */}
               <div className="flex items-start gap-3">
@@ -201,7 +185,7 @@ export const CloneClassDialog = ({
               </div>
 
               {/* Clone Room */}
-              <div className="flex items-start gap-3">
+              {/* <div className="flex items-start gap-3">
                 <Checkbox
                   id="cloneRoom"
                   checked={formData.cloneRoom}
@@ -221,7 +205,7 @@ export const CloneClassDialog = ({
                     )}
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Clone Curriculum */}
               <div className="flex items-start gap-3">
@@ -243,33 +227,18 @@ export const CloneClassDialog = ({
                 </div>
               </div>
 
-              {/* Clone Students */}
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="cloneStudents"
-                  checked={formData.cloneStudents}
-                  onCheckedChange={(checked) => handleCheckboxChange('cloneStudents', checked as boolean)}
-                />
+              {/* Clone Students (temporarily disabled) */}
+              {/* <div className="flex items-start gap-3 opacity-60">
+                <Checkbox id="cloneStudents" checked={formData.cloneStudents} disabled />
                 <div className="flex-1">
-                  <label
-                    htmlFor="cloneStudents"
-                    className="text-sm font-medium cursor-pointer"
-                  >
+                  <label htmlFor="cloneStudents" className="text-sm font-medium">
                     Học sinh
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Thêm tất cả học sinh hiện tại vào lớp mới ({classData.studentCount || 0} học sinh)
+                    (Tính năng đứng lại để kiểm tra sau) {classData.studentCount || 0} học sinh
                   </p>
-                  {formData.cloneStudents && (
-                    <Alert className="mt-2">
-                      <Info className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        Học sinh sẽ được ghi danh vào cả 2 lớp. Hãy kiểm tra lịch học để tránh xung đột.
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 

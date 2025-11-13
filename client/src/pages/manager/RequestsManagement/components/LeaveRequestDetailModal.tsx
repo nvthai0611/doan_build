@@ -21,7 +21,7 @@ import {
 
 interface LeaveRequest {
   id: string
-  requestType: string
+  type: string
   teacherId: string
   startDate: string
   endDate: string
@@ -145,9 +145,9 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
-                className={requestTypeColors[request?.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors.other}
               >
-                {requestTypeLabels[request?.requestType as keyof typeof requestTypeLabels] || request?.requestType}
+                {requestTypeLabels[request?.type as keyof typeof requestTypeLabels] || request?.type}
               </Badge>
               <Badge
                 variant="secondary"
@@ -245,7 +245,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
                   {request?.affectedSessions.map((session) => (
                     <div key={session?.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div>

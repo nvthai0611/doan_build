@@ -1736,7 +1736,7 @@ async updateStatusPayment(paymentId: string, status: string, customNotes?: strin
       note = customNotes.trim();
     } 
     // Otherwise, use default note
-    else if (existingPayment.status === "partially_paid" && status === "completed") {
+    else if (customNotes === null && existingPayment.status === "partially_paid" && status === "completed") {
       note += " => Phụ huynh đã thanh toán phần còn lại của hóa đơn.";
     }
 
