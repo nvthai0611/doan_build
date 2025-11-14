@@ -56,6 +56,8 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { SchoolManagementController } from './controllers/school-management.controller';
+import { SchoolManagementService } from './services/school-management.service';
 
 @Module({
   imports: [
@@ -93,7 +95,8 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     ContractUploadController,
     RoomsManagementController,
     SubjectManagementController,
-    PayrollTeacherController
+    PayrollTeacherController,
+    SchoolManagementController
   ],
   providers: [
     PrismaService,
@@ -124,7 +127,8 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
-    PayRollTeacherService
+    PayRollTeacherService,
+    SchoolManagementService
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 

@@ -40,7 +40,8 @@ import {
     FileCheck,
     Clock,
     FolderOpen,
-    CheckSquare
+    CheckSquare,
+    School
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -185,6 +186,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           title: 'Quản lý phòng học',
           icon: Building,
           href: '/center-qn/rooms',
+        },
+        {
+          title: 'Quản lý trường học',
+          icon: School,
+          href: '/center-qn/schools',
         },
         {
           title: 'Truyền thông',
