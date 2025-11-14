@@ -5,6 +5,7 @@ import { BillCronService } from '../../cronjob/service/bill-cron.service';
 import { PayrollCronService } from '../../cronjob/service/payroll-teacher.service';
 import { TriggerManagementService } from '../services/trigger-management.service';
 import { CronJobFilterDto, CronJobHistoryDto, CronJobStatsDto } from '../dto/cron-job-filter.dto';
+import { FeeReminderService } from '../../cronjob/service/send-email-bill.service';
 // import { AdminGuard } from 'src_auth/guards/admin.guard'; // (RẤT QUAN TRỌNG)
 
 @ApiTags('Admin Center - Job Triggers')
@@ -16,6 +17,7 @@ export class JobTriggerController {
   constructor(
     private readonly billCron: BillCronService,
     private readonly payrollCron: PayrollCronService,
+    private readonly feeReminder: FeeReminderService,
     private readonly prisma: PrismaService,
     private readonly triggerManagement: TriggerManagementService,
   ) {}
@@ -23,7 +25,7 @@ export class JobTriggerController {
   /**
    * Kích hoạt chạy cron tính hóa đơn HỌC SINH
    */
-  @Post('run-bill-generation')
+  @Post('bill_generation')
   @ApiOperation({ summary: 'Trigger bill generation job manually' })
   async triggerBillGeneration() {
     this.logger.warn('Kích hoạt tạo Hóa đơn HỌC SINH bằng tay!');
@@ -41,7 +43,7 @@ export class JobTriggerController {
   /**
    * Kích hoạt chạy cron tính lương GIÁO VIÊN
    */
-  @Post('run-payroll-generation')
+  @Post('teacher_payroll_generation')
   @ApiOperation({ summary: 'Trigger payroll generation job manually' })
   async triggerPayrollGeneration() {
     this.logger.warn('Kích hoạt tạo Bảng Lương GIÁO VIÊN bằng tay!');
@@ -55,6 +57,48 @@ export class JobTriggerController {
     return { message: 'Quy trình tạo bảng lương GIÁO VIÊN đã bắt đầu.' };
   }
 
+  @Post('bill_publishing')
+  @ApiOperation({ summary: 'Trigger payroll generation job manually' })
+  async triggerBillPublish() {
+    this.logger.warn('Kích hoạt tạo Bảng Lương GIÁO VIÊN bằng tay!');
+    
+    // 2. Kiểm tra "khóa": Job này đã đang chạy chưa?
+    await this.checkIfJobRunning('bill_publishing');
+    
+    // 3. Chạy "Fire-and-Forget" (Không await)
+    this.billCron.handlePublishCalculatedBills(); 
+    
+    return { message: 'Quy trình tạo bảng lương GIÁO VIÊN đã bắt đầu.' };
+  }
+
+
+  @Post('fee_reminder_early')
+  @ApiOperation({ summary: 'Trigger early fee reminder job manually' })
+  async triggerEarlyFeeReminder() {
+    this.logger.warn('Kích hoạt gửi email nhắc nhở học phí sớm bằng tay!');
+    
+    await this.checkIfJobRunning('fee_reminder_early');
+    
+    this.feeReminder.handleEarlyFeeReminder();
+    
+    return { message: 'Quy trình gửi email nhắc nhở học phí sớm đã bắt đầu.' };
+  }
+
+  /**
+   * Kích hoạt gửi email nhắc hạn đóng học phí
+   */
+  @Post('fee_reminder_due')
+  @ApiOperation({ summary: 'Trigger due date fee reminder job manually' })
+  async triggerDueFeeReminder() {
+    this.logger.warn('Kích hoạt gửi email nhắc hạn đóng học phí bằng tay!');
+    
+    await this.checkIfJobRunning('fee_reminder_due');
+    
+    this.feeReminder.handleDueFeeReminder();
+    
+    return { message: 'Quy trình gửi email nhắc hạn đóng học phí đã bắt đầu.' };
+  }
+
   /**
    * List all cron jobs with filters
    */
@@ -66,6 +110,11 @@ export class JobTriggerController {
       startDate: filters.startDate ? new Date(filters.startDate) : undefined,
       endDate: filters.endDate ? new Date(filters.endDate) : undefined,
     });
+  }
+
+  @Get('types')
+  async getAllTypeController(){
+    return this.triggerManagement.getAllType()
   }
 
   /**
@@ -152,4 +201,6 @@ export class JobTriggerController {
       );
     }
   }
+
+  
 }

@@ -60,6 +60,8 @@ import { JobTriggerController } from './controllers/job-trigger.controller';
 import { BillCronService } from '../cronjob/service/bill-cron.service';
 import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
 import { TriggerManagementService } from './services/trigger-management.service';
+import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
+import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 
 @Module({
   imports: [
@@ -132,7 +134,9 @@ import { TriggerManagementService } from './services/trigger-management.service'
     PayRollTeacherService,
     BillCronService,
     PayrollCronService,
-    TriggerManagementService
+    TriggerManagementService,
+    FeeReminderService,
+    EmailServiceNotificationBill
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 

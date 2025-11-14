@@ -40,7 +40,8 @@ import {
     FileCheck,
     Clock,
     FolderOpen,
-    CheckSquare
+    CheckSquare,
+    Cog
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -216,7 +217,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         },
         {
           title: 'Tác Vụ Định Kỳ',
-          icon: AlertTriangle,
+          icon: Cog,
           href: '/center-qn/trigger-cronjobs',
         },
       ],

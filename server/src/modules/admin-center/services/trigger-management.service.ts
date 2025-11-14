@@ -41,8 +41,21 @@ export class TriggerManagementService {
     }) {
         // Set default values - Last month
         const now = new Date();
-        const defaultStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const defaultEndDate = new Date(now.getFullYear(), now.getMonth(), 0);
+
+// Ngày bắt đầu: ngày này của tháng trước (nếu không có thì lấy cuối tháng trước)
+let defaultStartDate = new Date(
+  now.getFullYear(),
+  now.getMonth() - 1,
+  now.getDate()
+);
+
+// Nếu bị nhảy sang tháng hiện tại → chỉnh về ngày cuối tháng trước
+if (defaultStartDate.getMonth() === now.getMonth()) {
+  defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 0);
+}
+
+// Ngày kết thúc: hôm nay
+const defaultEndDate = now;
         
         const { 
             jobType, 
@@ -301,5 +314,28 @@ export class TriggerManagementService {
             data: retryExecution,
             message: 'Job marked for retry',
         };
+    }
+
+    async getAllType() {
+        const jobTypes = await this.prismaService.cronJobExecution.findMany({
+            distinct: ['jobType'],
+            select: {
+                 jobType: true,
+                 },
+            orderBy: { jobType: 'asc' },
+        });
+        // lấy mới nhất của một job type
+        const latestExecutions = await Promise.all(
+            jobTypes.map(async ({ jobType }) => {
+                return await this.prismaService.cronJobExecution.findFirst({
+                    where: { jobType },
+                    orderBy: { startedAt: 'desc' },
+                });
+            })
+        )
+        const formattedExecutions = latestExecutions
+            .filter(job => job !== null)
+            .map(job => this.formatJobExecution(job));
+        return formattedExecutions
     }
 }

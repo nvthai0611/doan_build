@@ -10,20 +10,10 @@ interface CronJobFilters {
 }
 
 /**
- * Trigger cron job tạo hóa đơn học sinh thủ công
- */
-const triggerBillGeneration = async () => {
-    console.warn('Kích hoạt tạo Hóa đơn HỌC SINH bằng tay!');
-    const response = await apiClient.post('/admin-center/triggers/run-bill-generation');
-    return response.data;
-}
-
-/**
  * Trigger cron job tạo bảng lương giáo viên thủ công
  */
-const triggerPayrollGeneration = async () => {
-    console.warn('Kích hoạt tạo Bảng Lương GIÁO VIÊN bằng tay!');
-    const response = await apiClient.post('/admin-center/triggers/run-payroll-generation');
+const triggerCronJob = async (type: string, label: string) => {
+    const response = await apiClient.post(`/admin-center/triggers/${type}`);
     return response.data;
 }
 
@@ -31,8 +21,9 @@ const triggerPayrollGeneration = async () => {
  * List tất cả cron job executions với filters
  * Mỗi job type lấy execution gần nhất
  */
-const listCronJobExecutions = async (filters?: CronJobFilters) => {
-    const queryParams = new URLSearchParams();
+const listCronJobExecutions = async (filters?: CronJobFilters): Promise<any> => {
+    try {
+        const queryParams = new URLSearchParams();
     
     if (filters?.jobType) {
         queryParams.append('jobType', filters.jobType);
@@ -64,7 +55,11 @@ const listCronJobExecutions = async (filters?: CronJobFilters) => {
         : '/admin-center/triggers/executions';
     
     const response = await apiClient.get(url);
-    return response.data;
+    return response;
+    } catch (error) {
+        console.error('Error fetching cron job executions:', error);
+        throw error;
+    }
 }
 
 /**
@@ -78,7 +73,7 @@ const getLatestExecutions = async () => {
 /**
  * Lấy danh sách tất cả job types có trong hệ thống
  */
-const getJobTypes = async () => {
+const getJobTypes = async ():Promise<any> => {
     const response = await apiClient.get('/admin-center/triggers/executions/types');
     return response.data;
 }
@@ -124,14 +119,19 @@ const retryCronJob = async (id: string) => {
     return response.data;
 }
 
+const getAllType = async ():Promise<any> => {
+    const response = await apiClient.get('/admin-center/triggers/types')
+    return response.data
+}
+
 export {
-    triggerBillGeneration,
-    triggerPayrollGeneration,
+    triggerCronJob,
     listCronJobExecutions,
     getLatestExecutions,
     getJobTypes,
     getCronJobHistory,
     getCronJobStats,
     getCronJobDetails,
-    retryCronJob
+    retryCronJob,
+    getAllType
 }

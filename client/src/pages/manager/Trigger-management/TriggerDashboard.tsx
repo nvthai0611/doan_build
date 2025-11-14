@@ -10,16 +10,41 @@ import { Link } from "react-router-dom"
 import { listCronJobExecutions, getJobTypes } from "@/services/center-owner/trigger-cronjobs/trigger-management.service"
 import { Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/assets/shadcn-ui/components/ui/breadcrumb"
 
 /**
  * Helper function to get last month date range
  */
 const getLastMonthRange = () => {
-  const now = new Date()
-  const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastDay = new Date(now.getFullYear(), now.getMonth(), 0)
-  return { startDate: firstDay, endDate: lastDay }
-}
+  const now = new Date();
+
+  // Tính ngày này của tháng trước
+  let startDate = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    now.getDate()
+  );
+
+  // Nếu nhảy sang tháng hiện tại => chỉnh về ngày cuối tháng trước
+  if (startDate.getMonth() === now.getMonth()) {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 0);
+  }
+
+  // End date = hôm nay
+  const endDate = now;
+
+  return { startDate, endDate };
+};
+
+const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
 
 export default function TriggerDashboard() {
   const [selectedJob, setSelectedJob] = useState<any | null>(null)
@@ -74,20 +99,21 @@ export default function TriggerDashboard() {
     retry: 1,
   })
 
+  
   // Extract jobs array from response.data
   const jobs = useMemo(() => {
     if (!executionsData) return []
-    return executionsData
+    return executionsData?.data
   }, [executionsData])
   
   // Extract pagination from response.pagination
   const pagination = useMemo(() => {
-    if (!executionsData?.pagination) {
+    if (!executionsData?.pagination ) {
       return { page: 1, limit: 10, total: 0, totalPages: 0 }
     }
-    return executionsData.pagination
+    return executionsData?.pagination
   }, [executionsData])
-
+  
   const handleFilterChange = (newFilters: any) => {
     setFilters((prev) => ({
       ...prev,
@@ -124,16 +150,26 @@ export default function TriggerDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Quản lý nhiệm vụ thực thi</h1>
+              <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <BreadcrumbPage>Quản lý công việc </BreadcrumbPage>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        
+      </BreadcrumbList>
+    </Breadcrumb>
               <p className="mt-2 text-sm text-muted-foreground">
                 Giám sát và quản lý các lần thực thi công việc đã lên lịch (Mặc định: Tháng trước)
               </p>
             </div>
-            <Link to="/manual-trigger">
+            <Link to="manual-trigger">
               <Button
                 variant="default"
-                className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70"
+                className="bg-gradient-to-r bg-red-600 from-accent to-accent-600 text-white hover:from-accent-600 hover:to-accent-700"
               >
-                Manual Trigger
+                Kích hoạt thủ công
               </Button>
             </Link>
           </div>
@@ -143,7 +179,7 @@ export default function TriggerDashboard() {
       <div className="p-6">
         <div className="mx-auto space-y-6">
           {/* Keep table mounted; show fetch state subtly */}
-          {isLoading && jobs.length === 0 ? (
+          {isLoading && jobs?.length === 0 ? (
             // initial load
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -162,6 +198,7 @@ export default function TriggerDashboard() {
                 onSelectJob={setSelectedJob}
                 onRefresh={refetch}
                 loading={isFetching} // NEW: pass fetching state
+                formatDate={formatDate as any}
               />
               {selectedJob && (
                 <JobDetailModal job={selectedJob} isOpen={!!selectedJob} onClose={() => setSelectedJob(null)} />

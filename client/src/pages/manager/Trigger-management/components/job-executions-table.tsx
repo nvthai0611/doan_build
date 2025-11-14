@@ -31,6 +31,7 @@ interface JobExecutionsTableProps {
   onSelectJob: (job: any) => void
   onRefresh: () => void
   loading?: boolean // NEW: to show table loading
+  formatDate: (date: string | Date) => string
 }
 
 export function JobExecutionsTable({
@@ -43,6 +44,7 @@ export function JobExecutionsTable({
   onSelectJob,
   onRefresh,
   loading = false,
+  formatDate 
 }: JobExecutionsTableProps) {
   const statuses = ["all", "running", "completed", "failed"]
 
@@ -86,15 +88,7 @@ export function JobExecutionsTable({
     }
   }
 
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+  
 
   const formatDuration = (ms: number | null) => {
     if (!ms) return "-"
@@ -282,10 +276,10 @@ export function JobExecutionsTable({
           hoverable={true}
           striped={false}
           enableSearch={true}
-          searchPlaceholder="Search executions..."
+          searchPlaceholder="Search nhiệm vụ hệ thống..."
           enableSort={true}
           loading={loading}
-          emptyMessage="Không có dữ liệu cron job executions. Thử thay đổi bộ lọc hoặc khoảng thời gian."
+          emptyMessage="Không có dữ liệu về nhiệm vụ hệ thống. Thử thay đổi bộ lọc hoặc khoảng thời gian."
           pagination={{
             currentPage: pagination.page,
             totalPages: pagination.totalPages,
