@@ -1,14 +1,25 @@
 "use client"
 
-import { GraduationCap, Mail, Phone, MapPin, Facebook, Youtube, Music } from "lucide-react"
+import { GraduationCap, Mail, Phone, MapPin, Facebook, Youtube, Music, Clock } from "lucide-react"
 import type { CenterInfo } from "../../../services/common/public-center-info.service"
 
 interface FooterProps {
   centerInfo?: CenterInfo | null
 }
 
+const daysOfWeek = [
+  { value: "sunday", label: "Chủ Nhật" }  ,
+  { value: "monday", label: "Thứ Hai" }  ,
+  { value: "tuesday", label: "Thứ Ba" }  ,
+  { value: "wednesday", label: "Thứ Tư" }  ,
+  { value: "thursday", label: "Thứ Năm" }  ,
+  { value: "friday", label: "Thứ Sáu" }  ,
+  { value: "saturday", label: "Thứ Bảy" }  ,
+];
+
 export const Footer = ({ centerInfo }: FooterProps) => {
   const centerName = centerInfo?.value?.centerInfo?.name || "Trung Tâm Giáo Dục"
+  const centerSlogan = centerInfo?.value?.centerInfo?.slogan || "Nơi khơi nguồn tri thức, nuôi dưỡng tương lai của thế hệ trẻ."
   const centerDescription = centerInfo?.value?.centerInfo?.description || "Nơi khơi nguồn tri thức, nuôi dưỡng tương lai của thế hệ trẻ."
   const phone = centerInfo?.value?.contact?.phone || "1900 1234"
   const email = centerInfo?.value?.contact?.email || "info@center.edu"
@@ -35,7 +46,8 @@ export const Footer = ({ centerInfo }: FooterProps) => {
               )}
               <span className="font-bold text-lg">{centerName}</span>
             </div>
-            <p className="text-sm opacity-90">{centerDescription}</p>
+            <p className="text-sm opacity-90">{centerSlogan}</p>
+            {/* <p className="text-sm opacity-90">{centerDescription}</p> */}
           </div>
 
           {/* Quick Links */}
@@ -92,6 +104,30 @@ export const Footer = ({ centerInfo }: FooterProps) => {
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5" />
                 <span>{address}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <div className="flex flex-col gap-1">
+                  <span>
+                    {centerInfo?.value?.contact?.workingHours
+                      ?.map(
+                        (hour) =>
+                          `${
+                            daysOfWeek.find((day) => day.value === hour.fromDay)
+                              ?.label
+                          } - ${
+                            daysOfWeek.find((day) => day.value === hour.toDay)
+                              ?.label
+                          }`,
+                      )
+                      .join(', ')}
+                  </span>
+                  <span>
+                    {centerInfo?.value?.contact?.workingHours
+                      ?.map((hour) => `${hour.open} - ${hour.close}`)
+                      .join(', ')}
+                  </span>
+                </div>
               </li>
             </ul>
           </div>
