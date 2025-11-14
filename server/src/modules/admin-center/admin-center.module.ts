@@ -56,6 +56,9 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { CenterInfoController } from './controllers/center-info.controller';
+import { CenterInfoService } from './services/center-info.service';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -68,6 +71,7 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     ]),
     
     SharedModule, //sử dụng email services
+    CloudinaryModule, // Cloudinary service cho upload ảnh
   ],
   controllers: [
     ApprovalManagementController,
@@ -93,7 +97,8 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     ContractUploadController,
     RoomsManagementController,
     SubjectManagementController,
-    PayrollTeacherController
+    PayrollTeacherController,
+    CenterInfoController,
   ],
   providers: [
     PrismaService,
@@ -124,7 +129,8 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
-    PayRollTeacherService
+    PayRollTeacherService,
+    CenterInfoService,
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 
