@@ -496,7 +496,7 @@ export default function StudentManagement() {
     // Status Column
     {
       key: "status",
-      header: "Trạng thái",
+      header: "Trạng thái lớp học",
       width: "200px",
       render: (student: any) => {
   // Đếm số lượng từng trạng thái
@@ -534,36 +534,36 @@ export default function StudentManagement() {
   )
 }
     },
-    // Course Column
-    {
-      key: "course",
-      header: "Khóa học",
-      width: "200px",
-      render: (student: any) => (
-        <span className="text-sm text-gray-900 dark:text-white">
-          {student?.enrollments?.length}
-        </span>
-      )
-    },
-    // Class Column
-    {
-      key: "class",
-      header: "Lớp học",
-      width: "200px",
-      render: (student: any) => (
-        <span className="text-sm text-gray-900 dark:text-white">
-          {student?.enrollments?.length}
-        </span>
-      )
-    },
+    // // Course Column
+    // {
+    //   key: "course",
+    //   header: "Khóa học",
+    //   width: "200px",
+    //   render: (student: any) => (
+    //     <span className="text-sm text-gray-900 dark:text-white">
+    //       {student?.enrollments?.length}
+    //     </span>
+    //   )
+    // },
+    // // Class Column
+    // {
+    //   key: "class",
+    //   header: "Lớp học",
+    //   width: "200px",
+    //   render: (student: any) => (
+    //     <span className="text-sm text-gray-900 dark:text-white">
+    //       {student?.enrollments?.length}
+    //     </span>
+    //   )
+    // },
     // Account Status Column (moved to last)
     {
       key: "accountStatus",
-      header: "Tài khoản",
+      header: "Trạng thái tài khoản",
       width: "250px",
       align: "right" as const,
       render: (student: any) => (
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center justify-start gap-3">
           <Switch
             checked={student?.user?.isActive || false}
             onCheckedChange={() => handleToggleAccountStatus(student?.id, student?.user?.isActive)}

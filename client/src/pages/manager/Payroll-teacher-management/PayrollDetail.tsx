@@ -247,7 +247,7 @@ export default function PayrollDetail() {
               Quản lý lương giáo viên
             </BreadcrumbLink>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          {/* <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() => navigate(`/center-qn/payroll-teacher/${payroll?.teacher?.id}`)}
@@ -255,7 +255,7 @@ export default function PayrollDetail() {
             >
               Danh sách hóa đơn của giáo viên
             </BreadcrumbLink>
-          </BreadcrumbItem>
+          </BreadcrumbItem> */}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="text-foreground font-medium">

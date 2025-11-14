@@ -39,11 +39,18 @@ export class BillCronService {
       const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const dueDate = new Date(now.getFullYear(), now.getMonth(), 7);
       const billingPeriodStr = `T${firstDayOfLastMonth.getMonth() + 1}/${firstDayOfLastMonth.getFullYear()}`;
-
+      const formatLocalDate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
       this.logger.log(
-        `Kỳ hóa đơn: ${firstDayOfLastMonth.toISOString().split('T')[0]} - ${lastDayOfLastMonth.toISOString().split('T')[0]}`,
+        `Kỳ hóa đơn: ${formatLocalDate(firstDayOfLastMonth)} - ${formatLocalDate(lastDayOfLastMonth)}`,
       );
-
+this.logger.log(
+        `Kỳ hóa đơn: ${firstDayOfLastMonth} - ${lastDayOfLastMonth}`,
+      );
       // Lấy danh sách session trong tháng
       this.logger.log('Đang tìm các buổi học trong tháng...');
       const sessionsInMonth = await this.prisma.classSession.findMany({
@@ -59,7 +66,7 @@ export class BillCronService {
       if (sessionsInMonth.length === 0) {
         this.logger.log('Không có buổi học nào trong tháng trước. Dừng lại.');
         await this.updateCronExecution(cronExecutionId, {
-          status: 'completed',
+          status: 'success',
           totalItems: 0,
           successCount: 0,
           failedCount: 0,
@@ -71,14 +78,45 @@ export class BillCronService {
       const sessionIds = sessionsInMonth.map((session) => session.id);
 
       this.logger.log('Đang nhóm điểm danh của học sinh...');
-      const attendanceGroups = await (this.prisma.studentSessionAttendance as any).groupBy({
-        by: ['studentId', 'classId'],
+      const attendances = await this.prisma.studentSessionAttendance.findMany({
         where: {
           sessionId: { in: sessionIds },
           status: { not: 'excused' },
         },
-        _count: { id: true },
-      } as any);
+        select: {
+          studentId: true,
+          session: {
+            select: {
+              classId: true, // ✅ Lấy classId từ relation
+            },
+          },
+        },
+      });
+      //Group với map để tránh quá nhiều truy vấn 
+      const attendanceMap = new Map<string, { studentId: string; classId: string; count: number }>();
+      
+      attendances.forEach((attendance) => {
+        const classId = attendance.session.classId;
+        const key = `${attendance.studentId}_${classId}`;
+        const existing = attendanceMap.get(key);
+        
+        if (existing) {
+          existing.count++;
+        } else {
+          attendanceMap.set(key, {
+            studentId: attendance.studentId,
+            classId: classId,
+            count: 1,
+          });
+        }
+      });
+
+      // ✅ Convert sang array với format giống groupBy
+      const attendanceGroups = Array.from(attendanceMap.values()).map((group) => ({
+        studentId: group.studentId,
+        classId: group.classId,
+        _count: { id: group.count },
+      }));
 
       this.logger.log(`Tìm thấy ${attendanceGroups.length} nhóm để tạo hóa đơn.`);
       totalItemsProcessed = attendanceGroups.length;
@@ -201,7 +239,7 @@ export class BillCronService {
 
       // Cập nhật Cron Execution thành công
       const durationMs = Date.now() - startTime;
-      const status = failedCount > 0 ? 'completed_with_errors' : 'completed';
+      const status = failedCount > 0 ? 'completed_with_errors' : 'success';
       const errorMessage =
         failedCount > 0 ? `Failed to generate ${failedCount}/${totalItemsProcessed} bills` : null;
 
@@ -273,7 +311,7 @@ export class BillCronService {
       if (calculatedBills.length === 0) {
         this.logger.log('Không có hóa đơn calculated nào để publish.');
         await this.updateCronExecution(cronExecutionId, {
-          status: 'completed',
+          status: 'success',
           totalItems: 0,
           successCount: 0,
           failedCount: 0,
@@ -313,7 +351,7 @@ export class BillCronService {
       const durationMs = Date.now() - startTime;
       
       await this.updateCronExecution(cronExecutionId, {
-        status: 'completed',
+        status: 'success',
         totalItems: calculatedBills.length,
         successCount,
         failedCount,
@@ -377,7 +415,7 @@ export class BillCronService {
       failedCount: data.failedCount ?? 0,
       errorMessage: data.errorMessage ?? null,
       durationMs: data.durationMs,
-      completedAt: ['completed', 'completed_with_errors', 'failed'].includes(data.status)
+      completedAt: ['success', 'completed_with_errors', 'failed'].includes(data.status)
         ? new Date()
         : undefined,
     };

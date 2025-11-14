@@ -59,6 +59,14 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
 import { CenterInfoController } from './controllers/center-info.controller';
 import { CenterInfoService } from './services/center-info.service';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { SchoolManagementController } from './controllers/school-management.controller';
+import { SchoolManagementService } from './services/school-management.service';
+import { JobTriggerController } from './controllers/job-trigger.controller';
+import { BillCronService } from '../cronjob/service/bill-cron.service';
+import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
+import { TriggerManagementService } from './services/trigger-management.service';
+import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
+import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 
 @Module({
   imports: [
@@ -99,6 +107,8 @@ import { CloudinaryModule } from '../cloudinary/cloudinary.module';
     SubjectManagementController,
     PayrollTeacherController,
     CenterInfoController,
+    SchoolManagementController,
+    JobTriggerController
   ],
   providers: [
     PrismaService,
@@ -131,6 +141,12 @@ import { CloudinaryModule } from '../cloudinary/cloudinary.module';
     ClassNotificationCronService, // Cron job cho thông báo lớp học
     PayRollTeacherService,
     CenterInfoService,
+    SchoolManagementService,
+    BillCronService,
+    PayrollCronService,
+    TriggerManagementService,
+    FeeReminderService,
+    EmailServiceNotificationBill
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 
