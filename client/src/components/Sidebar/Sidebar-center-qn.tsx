@@ -214,6 +214,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           icon: AlertTriangle,
           href: '/center-qn/incidents',
         },
+        {
+          title: 'Tác Vụ Định Kỳ',
+          icon: AlertTriangle,
+          href: '/center-qn/trigger-cronjobs',
+        },
       ],
     },
     {

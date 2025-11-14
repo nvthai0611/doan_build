@@ -68,6 +68,7 @@ import SubjectsPage from "../pages/manager/Subject-management/Subject";
 import PayrollManagement from "../pages/manager/Payroll-teacher-management/PayrollManagement";
 import PayrollOfTeacher from "../pages/manager/Payroll-teacher-management/PayrollOfTeacher";
 import PayrollDetail from "../pages/manager/Payroll-teacher-management/PayrollDetail";
+import TriggerDashboard from "../pages/manager/Trigger-management/TriggerDashboard";
 
 export const privateRoutes = (
   <>
@@ -117,6 +118,7 @@ export const privateRoutes = (
         <Route path="payroll-teacher" element={<PayrollManagement />} />
         <Route path="payroll-teacher/:id" element={<PayrollOfTeacher />} />
         <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
+        <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
       </Route>
 
       {/* Giáo viên */}
