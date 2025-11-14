@@ -5,6 +5,7 @@ import {
   Building2,
   Camera,
   Clock,
+  Facebook,
   Globe,
   Home,
   Loader2,
@@ -17,6 +18,8 @@ import {
   ShieldCheck,
   SplitSquareVertical,
   UploadCloud,
+  Youtube,
+  Music,
 } from 'lucide-react';
 import { settingsService } from '@/services/center-owner/settings-management/settings.service';
 import {
@@ -67,6 +70,9 @@ type CenterInfoForm = {
     phone: string;
     email: string;
     website: string;
+    facebook?: string;
+    youtube?: string;
+    tiktok?: string;
     workingHours: WorkingHour[];
   };
   address: {
@@ -104,6 +110,9 @@ const createEmptyForm = (): CenterInfoForm => ({
     phone: '',
     email: '',
     website: '',
+    facebook: '',
+    youtube: '',
+    tiktok: '',
     workingHours: [
       { fromDay: 'monday', toDay: 'friday', open: '08:00', close: '17:30' },
     ],
@@ -358,6 +367,15 @@ export function CenterInfoSetting() {
     }
     if (payload.contact.website && !/^https?:\/\//.test(payload.contact.website.trim())) {
       nextErrors['contact.website'] = 'Website phải bắt đầu bằng http hoặc https';
+    }
+    if (payload.contact.facebook && payload.contact.facebook.trim() && !/^https?:\/\//.test(payload.contact.facebook.trim())) {
+      nextErrors['contact.facebook'] = 'Facebook URL phải bắt đầu bằng http hoặc https';
+    }
+    if (payload.contact.youtube && payload.contact.youtube.trim() && !/^https?:\/\//.test(payload.contact.youtube.trim())) {
+      nextErrors['contact.youtube'] = 'YouTube URL phải bắt đầu bằng http hoặc https';
+    }
+    if (payload.contact.tiktok && payload.contact.tiktok.trim() && !/^https?:\/\//.test(payload.contact.tiktok.trim())) {
+      nextErrors['contact.tiktok'] = 'TikTok URL phải bắt đầu bằng http hoặc https';
     }
     payload.contact.workingHours.forEach((slot, index) => {
       if (!slot.fromDay || !slot.toDay) {
@@ -700,6 +718,9 @@ export function CenterInfoSetting() {
                       <p className="text-xs text-muted-foreground">
                         PNG, JPG, WEBP &lt; 10MB
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        Vui lòng sử dụng ảnh xóa nền
+                      </p>
                       <input
                         id="logo-upload"
                         type="file"
@@ -881,6 +902,77 @@ export function CenterInfoSetting() {
                   {errors['contact.website'] && (
                     <p className="text-sm text-destructive">
                       {errors['contact.website']}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="contact-facebook">Facebook (nếu có)</Label>
+                  <div className="flex items-center gap-2">
+                    <Facebook className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="contact-facebook"
+                      placeholder="https://facebook.com/sep-center"
+                      value={formData.contact.facebook || ''}
+                      onChange={(e) =>
+                        updateSectionField('contact', 'facebook', e.target.value)
+                      }
+                      className={
+                        errors['contact.facebook'] ? 'border-destructive' : ''
+                      }
+                    />
+                  </div>
+                  {errors['contact.facebook'] && (
+                    <p className="text-sm text-destructive">
+                      {errors['contact.facebook']}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact-youtube">YouTube (nếu có)</Label>
+                  <div className="flex items-center gap-2">
+                    <Youtube className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="contact-youtube"
+                      placeholder="https://youtube.com/@sep-center"
+                      value={formData.contact.youtube || ''}
+                      onChange={(e) =>
+                        updateSectionField('contact', 'youtube', e.target.value)
+                      }
+                      className={
+                        errors['contact.youtube'] ? 'border-destructive' : ''
+                      }
+                    />
+                  </div>
+                  {errors['contact.youtube'] && (
+                    <p className="text-sm text-destructive">
+                      {errors['contact.youtube']}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact-tiktok">TikTok (nếu có)</Label>
+                  <div className="flex items-center gap-2">
+                    <Music className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="contact-tiktok"
+                      placeholder="https://tiktok.com/@sep-center"
+                      value={formData.contact.tiktok || ''}
+                      onChange={(e) =>
+                        updateSectionField('contact', 'tiktok', e.target.value)
+                      }
+                      className={
+                        errors['contact.tiktok'] ? 'border-destructive' : ''
+                      }
+                    />
+                  </div>
+                  {errors['contact.tiktok'] && (
+                    <p className="text-sm text-destructive">
+                      {errors['contact.tiktok']}
                     </p>
                   )}
                 </div>
