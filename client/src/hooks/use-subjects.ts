@@ -10,8 +10,8 @@ export function useSubjects() {
   const subjectsQuery = useQuery({
     queryKey: ['subjects'],
     queryFn: () => subjectService.getSubjects(),
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   })
 
   const addMutation = useMutation({

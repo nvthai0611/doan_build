@@ -94,8 +94,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       return response;
     },
     enabled: !!classData.id,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 3000,
+    refetchOnWindowFocus: true
   });
 
   const { data: roomsData } = useQuery({
@@ -105,8 +105,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       return response;
     },
     enabled: !!classData.id,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 3000,
+    refetchOnWindowFocus: true
   });
 
   const { data: gradesData } = useQuery({
@@ -116,8 +116,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       return response;
     },
     enabled: !!classData.id,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 3000,
+    refetchOnWindowFocus: true
   });
 
   // Fetch sessions data để kiểm tra lớp đã có lịch học chưa

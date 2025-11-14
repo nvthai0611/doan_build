@@ -17,8 +17,8 @@ export function useRooms() {
     queryFn: async () => {
       return await classroomService.getRooms()
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   })
 
   // Đảm bảo rooms luôn là mảng, ngay cả khi undefined hoặc không phải mảng
