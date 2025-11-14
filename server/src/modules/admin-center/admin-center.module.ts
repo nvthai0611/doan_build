@@ -102,7 +102,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     RoomsManagementController,
     SubjectManagementController,
     PayrollTeacherController,
-    SchoolManagementController
+    SchoolManagementController,
     JobTriggerController
   ],
   providers: [

@@ -41,7 +41,7 @@ import {
     Clock,
     FolderOpen,
     CheckSquare,
-    School
+    School,
     Cog
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
