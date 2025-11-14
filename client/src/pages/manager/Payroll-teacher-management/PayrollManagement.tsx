@@ -23,9 +23,18 @@ interface Teacher {
     id: string
     fullName: string
     email: string
+    isActive: boolean
   }
-  payrolls: Payroll[]
-  payrollPayments: any[]
+  payroll?: {
+    id: string
+    periodStart: string
+    periodEnd: string
+    totalAmount: number
+    status: string
+    adminPublishedAt?: string
+    teacherActionAt?: string
+  }
+  payrollPayment?: any
 }
 
 interface Payroll {
@@ -93,12 +102,12 @@ const PayrollManagement: React.FC = () => {
   }, [])
 
   // Use debounced values in query
-  const { data: listTeacher, isLoading, error, refetch } = useQuery({
-    queryKey: ['payrollTeachers', debouncedTeacherName, debouncedEmail, status, month],
-    queryFn: () => payrollService.getListTeacher(debouncedTeacherName, debouncedEmail, status, month),
-    staleTime: 30000,
-    retry: 1
-  })
+    const { data: listTeacher, isLoading, error, refetch } = useQuery<Teacher[]>({
+      queryKey: ['payrollTeachers', debouncedTeacherName, debouncedEmail, status, month],
+      queryFn: () => payrollService.getListTeacher(debouncedTeacherName, debouncedEmail, status, month) as Promise<Teacher[]>,
+      staleTime: 30000,
+      retry: 1
+    })
 
   // Send email reminder mutation
   const sendEmailMutation = useMutation({
@@ -122,13 +131,16 @@ const PayrollManagement: React.FC = () => {
   })
 
   const getPayrollStatus = (teacher: Teacher) => {
-    if (!teacher.payrolls || teacher.payrolls.length === 0) {
-      return { label: 'Chưa có lương', variant: 'secondary' as const, icon: Clock, color: 'bg-gray-200' }
+    if (!teacher.payroll) {
+      return { 
+        label: 'Chưa có lương', 
+        variant: 'secondary' as const, 
+        icon: Clock, 
+        color: 'bg-gray-200' 
+      }
     }
 
-    const latestPayroll = teacher.payrolls[0]
-    
-    switch (latestPayroll.status) {
+    switch (teacher.payroll.status) {
       case 'pending':
         return { label: 'Chờ xử lý', variant: 'warning' as const, icon: Clock, color: 'bg-yellow-200' }
       case 'waiting_teacher_approval':
@@ -147,24 +159,22 @@ const PayrollManagement: React.FC = () => {
   }
 
   const getEmailStatus = (teacher: Teacher) => {
-    if (!teacher.payrolls || teacher.payrolls.length === 0) {
+    if (!teacher.payroll) {
       return { sent: false, date: null }
     }
-    const latestPayroll = teacher.payrolls[0]
     return {
-      sent: !!latestPayroll.adminPublishedAt,
-      date: latestPayroll.adminPublishedAt
+      sent: !!teacher.payroll.adminPublishedAt,
+      date: teacher.payroll.adminPublishedAt
     }
   }
 
   const getConfirmStatus = (teacher: Teacher) => {
-    if (!teacher.payrolls || teacher.payrolls.length === 0) {
+    if (!teacher.payroll) {
       return { confirmed: false, date: null }
     }
-    const latestPayroll = teacher.payrolls[0]
     return {
-      confirmed: latestPayroll.status === 'approved_by_teacher' || latestPayroll.status === 'paid',
-      date: latestPayroll.teacherActionAt
+      confirmed: teacher.payroll.status === 'approved_by_teacher' || teacher.payroll.status === 'paid',
+      date: teacher.payroll.teacherActionAt
     }
   }
 
@@ -190,7 +200,7 @@ const PayrollManagement: React.FC = () => {
     if (selectedTeachers.length === listTeacher?.length) {
       setSelectedTeachers([])
     } else {
-      setSelectedTeachers(listTeacher.map(teacher => teacher.id))
+      setSelectedTeachers(listTeacher?.map(teacher => teacher.id))
     }
   }
 
@@ -341,7 +351,7 @@ const PayrollManagement: React.FC = () => {
   ]
 
   const handleViewDetail = (teacher: Teacher) => {
-    navigate(`/center-qn/payroll-teacher/${teacher.id}`)
+    navigate(`/center-qn/payroll-teacher/payroll/${teacher?.payroll?.id}`)
     // TODO: Navigate to detail page or open modal
   }
 
@@ -448,33 +458,37 @@ const PayrollManagement: React.FC = () => {
           </div>
 
           {/* Month Filter */}
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tháng
-            </label>
-            <Select
-              value={month}
-              onValueChange={(value) => {
-                setMonth(value === 'all' ? '' : value)
-                setCurrentPage(1)
-              }}
-            >
-              <SelectTrigger>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <SelectValue placeholder="Tất cả tháng" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả tháng</SelectItem>
-                {monthOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div> */}
+          <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Tháng
+  </label>
+  <div className="relative">
+    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+    <Input
+      type="month"
+      value={month}
+      onChange={(e) => {
+        setMonth(e.target.value)
+        setCurrentPage(1)
+      }}
+      className="pl-10 pr-10"
+      max={new Date().toISOString().slice(0, 7)}
+    />
+    {month && (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          setMonth('')
+          setCurrentPage(1)
+        }}
+        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 z-10"
+      >
+        <X className="w-4 h-4" />
+      </Button>
+    )}
+  </div>
+</div>
 
           {/* Status Filter */}
           <div>

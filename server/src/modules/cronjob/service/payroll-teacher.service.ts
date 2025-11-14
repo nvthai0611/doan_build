@@ -746,7 +746,7 @@ export class PayrollCronService {
       failedCount: data.failedCount ?? 0,
       errorMessage: data.errorMessage ?? null,
       durationMs: data.durationMs,
-      completedAt: ['completed', 'completed_with_errors', 'failed'].includes(
+      completedAt: ['success', 'completed_with_errors', 'failed'].includes(
         data.status,
       )
         ? new Date()

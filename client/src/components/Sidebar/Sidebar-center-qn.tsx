@@ -40,7 +40,9 @@ import {
     FileCheck,
     Clock,
     FolderOpen,
-    CheckSquare
+    CheckSquare,
+    School,
+    Cog
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -187,6 +189,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           href: '/center-qn/rooms',
         },
         {
+          title: 'Quản lý trường học',
+          icon: School,
+          href: '/center-qn/schools',
+        },
+        {
           title: 'Truyền thông',
           icon: MessageSquare,
           href: '/center-qn/communication',
@@ -213,6 +220,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           title: 'Báo cáo sự cố',
           icon: AlertTriangle,
           href: '/center-qn/incidents',
+        },
+        {
+          title: 'Tác Vụ Định Kỳ',
+          icon: Cog,
+          href: '/center-qn/trigger-cronjobs',
         },
       ],
     },
