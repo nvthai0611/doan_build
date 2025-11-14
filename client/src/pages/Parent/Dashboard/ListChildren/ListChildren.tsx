@@ -77,8 +77,8 @@ export function ListChildren() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["parent-children", { search: searchQuery }],
     queryFn: () => parentChildService.getChildren({ search: searchQuery, limit: 50, page: 1 }),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   const rows: ChildRow[] = useMemo(() => {

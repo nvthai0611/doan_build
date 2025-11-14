@@ -26,6 +26,7 @@ import { ParentOverviewService } from './services/parent-overview.service';
 import { CommitmentsController } from './controllers/commitments.controller';
 import { CommitmentsService } from './services/commitments.service';
 import { AdminCenterModule } from '../admin-center/admin-center.module';
+import { ChildProgressController } from './controllers/child-progress.controller';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Module({
@@ -51,6 +52,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
   ChildTeacherFeedbackController,
     ParentOverviewController,
     CommitmentsController,
+    ChildProgressController,
   ],
   providers: [
     PrismaService,
