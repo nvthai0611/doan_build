@@ -56,6 +56,8 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { SchoolManagementController } from './controllers/school-management.controller';
+import { SchoolManagementService } from './services/school-management.service';
 import { JobTriggerController } from './controllers/job-trigger.controller';
 import { BillCronService } from '../cronjob/service/bill-cron.service';
 import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
@@ -100,6 +102,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     RoomsManagementController,
     SubjectManagementController,
     PayrollTeacherController,
+    SchoolManagementController
     JobTriggerController
   ],
   providers: [
@@ -132,6 +135,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
     PayRollTeacherService,
+    SchoolManagementService,
     BillCronService,
     PayrollCronService,
     TriggerManagementService,
