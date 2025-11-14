@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { publicClassesService, type RecruitingClass } from "../../services/common/public-classes.service"
 import { publicShowcasesService, type Showcase } from "../../services/common/public-showcases.service"
 import { publicTeacherService } from "../../services/common/public-teacher.service"
+import { publicCenterInfoService, type CenterInfo } from "../../services/common/public-center-info.service"
 import { useAuth } from "../../lib/auth"
 import { formatScheduleArray } from "../../utils/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +24,9 @@ import {
   Star,
   Award,
   Newspaper,
+  Phone,
+  Mail,
+  MapPin,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -131,12 +135,20 @@ export const LandingPage = () => {
     queryFn: () => publicTeacherService.getTeachers(),
   })
 
+  // Fetch center info
+  const { data: centerInfoData } = useQuery({
+    queryKey: ["public-center-info"],
+    queryFn: () => publicCenterInfoService.getCenterInfo(),
+    refetchOnWindowFocus: false,
+  })
+
   const classes = classesData?.data || []
   const subjects = subjectsData?.data || []
   const grades = gradesData?.data || []
   const meta = classesData?.meta
   const showcases = showcasesData?.data || []
   const teachers = teachersData?.data || []
+  const centerInfo: CenterInfo | null = centerInfoData?.data || null
 
   // Filter by search term
   const filteredClasses = classes.filter(
@@ -175,10 +187,10 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <Header />
+      <Header centerInfo={centerInfo} />
 
       {/* Hero Banner */}
-      <HeroBanner />
+      <HeroBanner centerInfo={centerInfo} />
       {/* Classes Section */}
       <section
         id="classes"
@@ -565,7 +577,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <Footer />
+      <Footer centerInfo={centerInfo} />
     </div>
   );
 }

@@ -46,6 +46,19 @@ class SettingsService {
     const res = await apiClient.post(`/admin-center/holidays-setting/${id}/apply`, {});
     return res.data;
   }
+
+  // Center Info
+  async getCenterInfo() {
+    const res = await apiClient.get('/admin-center/center-info');
+    return res;
+  }
+
+  async updateCenterInfo(formData: FormData) {
+    const res = await apiClient.put('/admin-center/center-info', formData, {
+      contentType: 'multipart/form-data',
+    });
+    return res.data;
+  }
 }
 
 export const settingsService = new SettingsService();

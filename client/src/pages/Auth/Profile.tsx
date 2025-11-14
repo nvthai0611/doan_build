@@ -73,10 +73,17 @@ export function ProfilePage() {
       
       if (formData.fullName && formData.fullName.trim()) {
         updateData.fullName = formData.fullName.trim()
+      } else {
+        throw new Error("Họ và tên không được để trống")
       }
       
       if (formData.phone && formData.phone.trim()) {
         updateData.phone = formData.phone.trim()
+        if (!validatePhone(formData.phone.trim())) {
+          throw new Error("Số điện thoại không hợp lệ")
+        }
+      } else {
+        throw new Error("Số điện thoại không được để trống")
       }
       
       if (formData.avatar && formData.avatar.trim()) {
@@ -104,10 +111,23 @@ export function ProfilePage() {
       setInitialData(formData)
     } catch (err: any) {
       console.log(err) // Debug log
-      toast.error("cập nhật profile thất bại")
+      toast.error(err.message || "cập nhật profile thất bại")
     } finally {
       setLoading(false)
     }
+  }
+
+  const allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif']
+  const maxFileSize = 10 * 1024 * 1024 // 10MB
+
+  const isValidFile = (file: File | null): boolean => {
+    if (!file) return false;
+    return allowedFileTypes.includes(file.type) && file.size <= maxFileSize;
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    const phoneRegex = /^(\+84|84|0)[3|5|7|8|9][0-9]{8}$/
+    return phoneRegex.test(phone.replace(/\s/g, ''))
   }
 
   const handleReset = () => {
@@ -217,6 +237,11 @@ export function ProfilePage() {
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
+                          const validateFile = isValidFile(file || null);
+                          if (!validateFile) {
+                            toast.error('File không hợp lệ');
+                            return;
+                          }
                           if (file) {
                             setIsUploading(true);
                             const reader = new FileReader();
@@ -240,7 +265,7 @@ export function ProfilePage() {
                         {isUploading ? 'Đang tải...' : 'Cập nhật ảnh'}
                       </Label>
                       <p className="text-xs text-muted-foreground mt-1">
-                        JPG, PNG hoặc GIF. Tối đa 3MB
+                        JPG, PNG hoặc GIF. Tối đa 10MB
                       </p>
                     </div>
                   </div>
@@ -262,7 +287,7 @@ export function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Họ và tên</Label>
+                    <Label htmlFor="fullName">Họ và tên <span className="text-red-500">*</span></Label>
                     <div className="flex items-center gap-2">
                       <UserCircle className="h-4 w-4 text-muted-foreground" />
                       <Input
@@ -277,14 +302,14 @@ export function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Số điện thoại</Label>
+                    <Label htmlFor="phone">Số điện thoại <span className="text-red-500">*</span></Label>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <Input
                         id="phone"
                         value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                        onChange={(e) =>{
+                          setFormData({ ...formData, phone: e.target.value })}
                         }
                         placeholder="Nhập số điện thoại"
                       />
@@ -327,7 +352,6 @@ export function ProfilePage() {
                       <SelectContent>
                         <SelectItem value="MALE">Nam</SelectItem>
                         <SelectItem value="FEMALE">Nữ</SelectItem>
-                        <SelectItem value="OTHER">Khác</SelectItem>
                       </SelectContent>
                     </Select>
                     </div>

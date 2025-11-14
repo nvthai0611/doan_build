@@ -56,6 +56,9 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { CenterInfoController } from './controllers/center-info.controller';
+import { CenterInfoService } from './services/center-info.service';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { SchoolManagementController } from './controllers/school-management.controller';
 import { SchoolManagementService } from './services/school-management.service';
 import { JobTriggerController } from './controllers/job-trigger.controller';
@@ -76,6 +79,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     ]),
     
     SharedModule, //sử dụng email services
+    CloudinaryModule, // Cloudinary service cho upload ảnh
   ],
   controllers: [
     ApprovalManagementController,
@@ -102,6 +106,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     RoomsManagementController,
     SubjectManagementController,
     PayrollTeacherController,
+    CenterInfoController,
     SchoolManagementController,
     JobTriggerController
   ],
@@ -135,6 +140,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
     PayRollTeacherService,
+    CenterInfoService,
     SchoolManagementService,
     BillCronService,
     PayrollCronService,

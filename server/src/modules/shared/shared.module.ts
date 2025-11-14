@@ -22,6 +22,8 @@ import { PublicShowcasesController } from './controllers/public-showcases.contro
 import { PublicShowcasesService } from './services/public-showcases.service';
 import { PublicTeachersController } from './controllers/public-teachers.controller';
 import { PublicTeachersService } from './services/public-teachers.service';
+import { PublicCenterInfoController } from './controllers/public-center-info.controller';
+import { PublicCenterInfoService } from './services/public-center-info.service';
   
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -81,7 +83,8 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     GradesController,
     PublicClassesController,
     PublicShowcasesController,
-    PublicTeachersController
+    PublicTeachersController,
+    PublicCenterInfoController
   ],
   providers: [
     // Shared services can be added here
@@ -91,6 +94,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     PublicClassesService,
     PublicShowcasesService,
     PublicTeachersService,
+    PublicCenterInfoService,
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,
