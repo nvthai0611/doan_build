@@ -9,7 +9,7 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
   return (
     <section className="relative overflow-hidden pt-10 pb-10 px-4 sm:px-6 lg:px-8">
       <div className="absolute inset-0 gradient-bg opacity-90 z-0">
-        {/* {centerInfo?.value?.centerInfo?.banner ? (
+        {centerInfo?.value?.centerInfo?.banner ? (
           <img
             src={centerInfo.value.centerInfo.banner}
             alt="Hero Banner"
@@ -17,8 +17,8 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
           />
         ) : (
           <div className="absolute inset-0 gradient-bg opacity-90 z-0"></div>
-        )} */}
-        <div className="absolute inset-0 gradient-bg opacity-90 z-0"></div>
+        )}
+        {/* <div className="absolute inset-0 gradient-bg opacity-90 z-0"></div> */}
       </div>
 
       {/* Background decoration */}
@@ -70,7 +70,7 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-8">
+            {/* <div className="grid grid-cols-3 gap-4 pt-8">
               <div>
                 <div className="text-2xl font-bold text-white">500+</div>
                 <div className="text-sm text-white/80">Lớp Học</div>
@@ -83,11 +83,11 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
                 <div className="text-2xl font-bold text-white">100+</div>
                 <div className="text-sm text-white/80">Giáo Viên</div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Right Visual */}
-          <div className="hidden lg:block">
+          {/* <div className="hidden lg:block">
             <div className="relative">
               <div className="absolute inset-0 bg-white/20 rounded-2xl blur-2xl"></div>
               <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
@@ -103,7 +103,7 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </section>
