@@ -11,104 +11,106 @@ export class PayRollTeacherService {
       status: string,
       month?: string
   ) {
-      const whereClause: any = {
-          user: {
-              isActive: true,
-              ...(teacherName && {
-                  fullName: {
-                      contains: teacherName,
-                      mode: 'insensitive'
-                  }
-              }),
-              ...(email && {
-                  email: {
-                      contains: email,
-                      mode: 'insensitive'
-                  }
-              })
-          }
-      }
-
-      // Nếu không truyền month thì lấy tháng trước làm mặc định
-      const getPreviousMonthString = () => {
-          const now = new Date()
-          const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-          const lastOfPrevMonth = new Date(firstOfThisMonth.getTime() - 1)
-          const y = lastOfPrevMonth.getFullYear()
-          const m = String(lastOfPrevMonth.getMonth() + 1).padStart(2, '0')
-          return `${y}-${m}`
-      }
-
       // Helper function để tính ngày bắt đầu và kết thúc tháng
       const getMonthRange = (monthString?: string) => {
-          // fallback về tháng trước nếu input không đúng
-          const ms = monthString && monthString.includes('-') ? monthString : getPreviousMonthString()
-          const [year, monthNum] = ms.split('-')
+          // Nếu không truyền month thì lấy tháng trước làm mặc định
+          if (!monthString || monthString.trim() === '') {
+              const now = new Date()
+              const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+              const lastOfPrevMonth = new Date(firstOfThisMonth.getTime() - 1)
+              const year = lastOfPrevMonth.getFullYear()
+              const monthNum = String(lastOfPrevMonth.getMonth() + 1).padStart(2, '0')
+              monthString = `${year}-${monthNum}`
+          }
+
+          const [year, monthNum] = monthString.split('-')
           const startDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
           const endDate = new Date(parseInt(year), parseInt(monthNum), 1)
           
           return { startDate, endDate }
       }
 
-      const effectiveMonth = month && month.trim() !== '' ? month : getPreviousMonthString()
+      const { startDate, endDate } = getMonthRange(month)
 
-      // Build payroll filter conditions
-      const payrollFilter: any = {}
-      
-      if (status) {
-          payrollFilter.status = status
+      // Build where clause cho Payroll
+      const payrollWhere: any = {
+          periodStart: {
+              gte: startDate,
+              lt: endDate
+          }
       }
 
-      // luôn áp dụng tháng effectiveMonth (tháng truyền vào hoặc mặc định tháng trước)
-      if (effectiveMonth) {
-           const monthRange = getMonthRange(effectiveMonth)
-           payrollFilter.AND = [
-               {
-                   periodStart: {
-                       gte: monthRange.startDate
-                   }
-               },
-               {
-                   periodStart: {
-                       lt: monthRange.endDate
-                   }
-               }
-           ]
-       }
+      // Filter theo status nếu có
+      if (status) {
+          payrollWhere.status = status
+      }
 
-      // Filter teachers that have matching payrolls
-      // NOTE: không thêm whereClause.payrolls để KHÔNG loại bỏ teacher không có payroll.
-      // Chỉ dùng payrollFilter trong phần include.payrolls để lấy payrolls cho từng teacher.
-
-      const teachers = await this.prisma.teacher.findMany({
-          where: whereClause,
-          include: {
+      // Filter theo teacher name/email
+      if (teacherName || email) {
+          payrollWhere.teacher = {
               user: {
-                  select: {
-                      id: true,
-                      fullName: true,
-                      email: true
-                  }
-              },
-              payrolls: {
-                  ...(Object.keys(payrollFilter).length > 0 && {
-                      where: payrollFilter
+                  ...(teacherName && {
+                      fullName: {
+                          contains: teacherName,
+                          mode: 'insensitive'
+                      }
                   }),
-                  orderBy: {
-                      periodStart: 'desc'
+                  ...(email && {
+                      email: {
+                          contains: email,
+                          mode: 'insensitive'
+                      }
+                  })
+              }
+          }
+      }
+
+      // Lấy tất cả payrolls theo điều kiện
+      const payrolls = await this.prisma.payroll.findMany({
+          where: payrollWhere,
+          include: {
+              teacher: {
+                  include: {
+                      user: {
+                          select: {
+                              id: true,
+                              fullName: true,
+                              email: true,
+                              isActive: true
+                          }
+                      }
                   }
               },
-              payrollPayments: true
+              payrollPayment: true
+          },
+          orderBy: {
+              periodStart: 'desc'
           }
       })
 
-      const mapped = teachers.map((t: any) => ({
-          ...t,
-          // nếu không có payroll lấy được cho tháng hiện tại -> để null (user yêu cầu)
-          payrolls: Array.isArray(t.payrolls) && t.payrolls.length > 0 ? t.payrolls : null
+      // Transform payrolls thành danh sách teachers với payroll info
+      const result = payrolls.map(payroll => ({
+          id: payroll.teacher.id,
+          userId: payroll.teacher.userId,
+          teacherCode: payroll.teacher.teacherCode,
+          schoolId: payroll.teacher.schoolId,
+          subjects: payroll.teacher.subjects,
+          createdAt: payroll.teacher.createdAt,
+          updatedAt: payroll.teacher.updatedAt,
+          user: payroll.teacher.user,
+          payroll: {
+              id: payroll.id,
+              periodStart: payroll.periodStart,
+              periodEnd: payroll.periodEnd,
+              totalAmount: payroll.totalAmount,
+              status: payroll.status,
+              adminPublishedAt: payroll.adminPublishedAt,
+              teacherActionAt: payroll.teacherActionAt,
+          },
+          payrollPayment: payroll.payrollPayment
       }))
 
-      return mapped
+      return result
   }
 
       async getAllPayrollsByTeacherId(teacherId: string, year?: string, classId?: string) {

@@ -41,7 +41,8 @@ import {
     Clock,
     FolderOpen,
     CheckSquare,
-    School
+    School,
+    Cog
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -219,6 +220,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           title: 'Báo cáo sự cố',
           icon: AlertTriangle,
           href: '/center-qn/incidents',
+        },
+        {
+          title: 'Tác Vụ Định Kỳ',
+          icon: Cog,
+          href: '/center-qn/trigger-cronjobs',
         },
       ],
     },

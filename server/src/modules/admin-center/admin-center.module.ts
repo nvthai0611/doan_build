@@ -58,6 +58,12 @@ import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
 import { SchoolManagementController } from './controllers/school-management.controller';
 import { SchoolManagementService } from './services/school-management.service';
+import { JobTriggerController } from './controllers/job-trigger.controller';
+import { BillCronService } from '../cronjob/service/bill-cron.service';
+import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
+import { TriggerManagementService } from './services/trigger-management.service';
+import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
+import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 
 @Module({
   imports: [
@@ -96,7 +102,8 @@ import { SchoolManagementService } from './services/school-management.service';
     RoomsManagementController,
     SubjectManagementController,
     PayrollTeacherController,
-    SchoolManagementController
+    SchoolManagementController,
+    JobTriggerController
   ],
   providers: [
     PrismaService,
@@ -128,7 +135,12 @@ import { SchoolManagementService } from './services/school-management.service';
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
     PayRollTeacherService,
-    SchoolManagementService
+    SchoolManagementService,
+    BillCronService,
+    PayrollCronService,
+    TriggerManagementService,
+    FeeReminderService,
+    EmailServiceNotificationBill
   ],
   exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
 
