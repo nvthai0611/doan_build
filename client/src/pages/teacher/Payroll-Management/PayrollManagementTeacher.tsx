@@ -34,8 +34,8 @@ const PayrollManagementTeacher: React.FC = () => {
   
   
   // ✅ Handle filter changes
-  const handleFilterChange = (newFilters: Partial<any>) => {
-    setFilters(prev => ({
+  const handleFilterChange = (newFilters: any) => {
+    setFilters((prev: any) => ({
       ...prev,
       ...newFilters,
       page: 1 // Reset page khi filter thay đổi
@@ -44,11 +44,11 @@ const PayrollManagementTeacher: React.FC = () => {
 
   // ✅ Handle pagination
   const handlePageChange = (page: number) => {
-    setFilters(prev => ({ ...prev, page }))
+    setFilters((prev: any) => ({ ...prev, page }))
   }
 
   const handleItemsPerPageChange = (limit: number) => {
-    setFilters(prev => ({ ...prev, limit, page: 1 }))
+    setFilters((prev: any) => ({ ...prev, limit, page: 1 }))
   }
 
   // ✅ Navigate to detail

@@ -6,8 +6,9 @@ import { DataTable, type Column } from '../../../components/common/Table/DataTab
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft, Download, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { ArrowLeft, Download, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 import PayrollStatusBadge from './components/PayrollStatusBadge'
+import AdjustmentDialog from './components/AdjustmentDialog'
 import { toast } from 'sonner'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 
@@ -17,8 +18,8 @@ const PayrollDetailTeacher: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false)
 
-  // ✅ Fetch payroll detail với filters
   const { 
     data: response, 
     isLoading, 
@@ -35,13 +36,11 @@ const PayrollDetailTeacher: React.FC = () => {
     staleTime: 30000
   })
 
-  // ✅ Extract data từ response
   const payroll = response?.data?.payroll
   const sessions = response?.data?.sessions || []
   const pagination = response?.data?.pagination
   const summary = response?.data?.summary
 
-  // ✅ Get unique classes cho filter
   const uniqueClasses = useMemo(() => {
     if (!sessions || sessions.length === 0) return []
     
@@ -56,13 +55,11 @@ const PayrollDetailTeacher: React.FC = () => {
     return Array.from(classMap.values())
   }, [sessions])
 
-  // ✅ Handle filter change
   const handleClassFilterChange = (classId: string) => {
     setSelectedClass(classId)
-    setCurrentPage(1) // Reset về trang 1 khi filter
+    setCurrentPage(1)
   }
 
-  // ✅ Handle pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
@@ -72,18 +69,14 @@ const PayrollDetailTeacher: React.FC = () => {
     setCurrentPage(1)
   }
 
-  // ✅ Handle approve/reject
   const handleApprove = () => {
-    // TODO: Implement approve API
     toast.success('Đã duyệt bảng lương thành công')
   }
 
   const handleReject = () => {
-    // TODO: Implement reject API
     toast.error('Đã từ chối bảng lương')
   }
 
-  // ✅ DataTable columns
   const columns: Column<any>[] = [
     {
       key: 'sessionDate',
@@ -122,7 +115,6 @@ const PayrollDetailTeacher: React.FC = () => {
       width: '120px',
       align: 'center',
       render: (payout) => {
-        // ✅ Kiểm tra dạy thay từ ClassSession
         const isSubstitute = payout.session.substituteTeacherId === payroll?.teacherId
         return (
           <Badge variant={isSubstitute ? 'secondary' : 'default'}>
@@ -202,6 +194,8 @@ const PayrollDetailTeacher: React.FC = () => {
   }
 
   const canApproveOrReject = payroll.status === 'waiting_teacher_approval'
+  const hasAdjustments = Number(payroll.bonuses) > 0 || Number(payroll.deductions) > 0
+  const hasBackPay = Number(payroll.backPayAmount || 0) > 0
 
   return (
     <div className="container mx-auto py-6">
@@ -296,7 +290,95 @@ const PayrollDetailTeacher: React.FC = () => {
         </div>
       </div>
 
-      {/* Session Summary - Từ Backend */}
+      {/* Quick Actions - Adjustment & Back Pay */}
+      {(hasAdjustments || hasBackPay) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Adjustment Button */}
+          {hasAdjustments && (
+            <button
+              onClick={() => setAdjustmentDialogOpen(true)}
+              className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6 hover:shadow-md transition-all text-left group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Điều chỉnh lương
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-4 mt-3">
+                    {Number(payroll.bonuses) > 0 && (
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-700">
+                          +{Number(payroll.bonuses).toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+                    )}
+                    {Number(payroll.deductions) > 0 && (
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="w-4 h-4 text-red-600" />
+                        <span className="text-sm font-medium text-red-700">
+                          -{Number(payroll.deductions).toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-blue-600 group-hover:translate-x-1 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* Back Pay Button */}
+          {hasBackPay && (
+            <button
+              onClick={() => navigate(`/teacher/payroll-management/${payrollId}/back-pay`)}
+              className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-6 hover:shadow-md transition-all text-left group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-yellow-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Chi tiết truy lĩnh
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      {payroll.computedDetails?.metadata?.backPayCount || 0} khoản
+                    </Badge>
+                    <span className="text-sm font-medium text-yellow-700">
+                      +{Number(payroll.backPayAmount).toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                </div>
+                <div className="text-yellow-600 group-hover:translate-x-1 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Adjustment Dialog */}
+      <AdjustmentDialog
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        adjustmentDetails={payroll.adjustmentDetails}
+        bonuses={Number(payroll.bonuses)}
+        deductions={Number(payroll.deductions)}
+      />
+
+      {/* Session Summary */}
       {summary && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

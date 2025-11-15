@@ -1,7 +1,7 @@
 import { apiClient } from "../../../utils/clientAxios"
 
 
-    const getAllPayrolls = async ( filters: any) => {
+    const getAllPayrolls = async ( filters: any): Promise<any> => {
     try {
       const searchParams = new URLSearchParams()
       if (filters?.month) {
@@ -24,7 +24,7 @@ import { apiClient } from "../../../utils/clientAxios"
     }
 
     }
-const getPayrollDetail = async (payrollId: string, filters?: any) => {
+const getPayrollDetail = async (payrollId: string, filters?: any): Promise<any> => {
   try {
     const searchParams = new URLSearchParams()
     
