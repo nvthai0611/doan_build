@@ -80,7 +80,7 @@ export async function verifyEmailConnection(): Promise<boolean> {
       console.log('[Email] Đang verify SMTP connection...');
       await transport.verify();
       isVerified = true;
-      console.log('[Email] ✅ SMTP connection verified successfully');
+      console.log('[Email]SMTP connection verified successfully');
       return true;
     } catch (error: any) {
       // Không throw error, chỉ log để app vẫn có thể chạy

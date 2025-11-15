@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
@@ -56,6 +58,9 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { CenterInfoController } from './controllers/center-info.controller';
+import { CenterInfoService } from './services/center-info.service';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { SchoolManagementController } from './controllers/school-management.controller';
 import { SchoolManagementService } from './services/school-management.service';
 import { JobTriggerController } from './controllers/job-trigger.controller';
@@ -77,9 +82,11 @@ import { BullModule } from '@nestjs/bull';
         path: "admin-center", 
         module: AdminCenterModule,
       },
-    ]),
-    
+      ]),
+    HttpModule, // HTTP client for AI API calls
+    ConfigModule, // Config service for API keys
     SharedModule, //sử dụng email services
+    CloudinaryModule, // Cloudinary service cho upload ảnh
   ],
   controllers: [
     ApprovalManagementController,
@@ -106,6 +113,7 @@ import { BullModule } from '@nestjs/bull';
     RoomsManagementController,
     SubjectManagementController,
     PayrollTeacherController,
+    CenterInfoController,
     SchoolManagementController,
     JobTriggerController
   ],
@@ -139,6 +147,7 @@ import { BullModule } from '@nestjs/bull';
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
     PayRollTeacherService,
+    CenterInfoService,
     SchoolManagementService,
     BillCronService,
     PayrollCronService,
@@ -146,7 +155,7 @@ import { BullModule } from '@nestjs/bull';
     FeeReminderService,
     EmailServiceNotificationBill
   ],
-  exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
 
 })
 //check

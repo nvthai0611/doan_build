@@ -4514,7 +4514,7 @@ export class ClassManagementService {
     }
 
     const where: any = {
-      status: { notIn: ['deleted', 'cancelled'] },
+      status: { not: 'deleted' },
     };
 
     if (includeSubstituteFlag && substituteClassIds.length > 0) {

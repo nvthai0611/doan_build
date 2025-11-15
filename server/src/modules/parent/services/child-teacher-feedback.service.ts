@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 import { PrismaService } from 'src/db/prisma.service'
+import { TeacherFeedbackService } from '../../admin-center/services/teacher-feedback.service'
 
 interface CreateFeedbackDto {
 	teacherId: string
@@ -12,7 +13,10 @@ interface CreateFeedbackDto {
 
 @Injectable()
 export class ChildTeacherFeedbackService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly teacherFeedbackService: TeacherFeedbackService,
+	) {}
 
 	async getAvailableTeachersForChild(userId: string, childId: string) {
 		const parent = await this.prisma.parent.findUnique({ where: { userId }, select: { id: true } })
@@ -109,9 +113,22 @@ export class ChildTeacherFeedbackService {
 				comment: dto.comment || '',
 				categories: dto.categories ? (dto.categories as any) : undefined,
 				isAnonymous: !!dto.isAnonymous,
-				status: 'pending',
+				status: 'approved', // Mặc định là approved
 			},
 		})
+
+		// Trigger class analysis async ngay khi feedback được tạo (vì đã approved)
+		if (created.classId) {
+			// Chạy async để không block response
+			this.teacherFeedbackService
+				.triggerClassAnalysisAsync(created.classId, created.id)
+				.catch((error) => {
+					console.error(
+						`Failed to trigger analysis for class ${created.classId}:`,
+						error,
+					)
+				})
+		}
 
 		return { id: created.id }
 	}
