@@ -104,6 +104,8 @@ export default function TeacherSchedule() {
     }
   }
 
+  const [isLegendOpen, setIsLegendOpen] = useState(false)
+
   const handlePrev = () => {
     if(viewType === "month") {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
@@ -403,25 +405,59 @@ export default function TeacherSchedule() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold text-gray-900">Lịch dạy</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">
+              Lịch dạy
+            </CardTitle>
             <div className="flex items-center space-x-4">
-              <Select value={viewType} onValueChange={(v: ViewType) => setViewType(v)}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <Select
+                value={viewType}
+                onValueChange={(v: ViewType) => setViewType(v)}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="month">Tháng</SelectItem>
                   <SelectItem value="week">Tuần</SelectItem>
                   <SelectItem value="list">Danh sách</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handlePrev}><ChevronLeft className="w-4 h-4" /></Button>
-              <Button variant="outline" size="sm" onClick={handleNext}><ChevronRight className="w-4 h-4" /></Button>
-              <Button variant="outline" size="sm" onClick={handleToday}>Hôm nay</Button>
+              <Button variant="outline" size="sm" onClick={handlePrev}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleNext}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday}>
+                Hôm nay
+              </Button>
             </div>
           </div>
-          {viewType === "month" && <div className="text-lg text-gray-600">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</div>}
-          {viewType === "week" && <div className="text-lg text-gray-600">{getWeekRange().startOfWeek.toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })} 
-            - {getWeekRange().endOfWeek.toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })}</div>}
-          {viewType === "list" && <div className="text-lg text-gray-600">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</div>}
+          {viewType === 'month' && (
+            <div className="text-lg text-gray-600">
+              {MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}
+            </div>
+          )}
+          {viewType === 'week' && (
+            <div className="text-lg text-gray-600">
+              {getWeekRange().startOfWeek.toLocaleDateString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              })}
+              -{' '}
+              {getWeekRange().endOfWeek.toLocaleDateString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              })}
+            </div>
+          )}
+          {viewType === 'list' && (
+            <div className="text-lg text-gray-600">
+              {MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {error ? (
@@ -434,9 +470,9 @@ export default function TeacherSchedule() {
               </CardContent>
             </Card>
           ) : null}
-          {viewType === "month" && renderMonthView()}
-          {viewType === "week" && renderWeekView()}
-          {viewType === "list" && renderListView()}
+          {viewType === 'month' && renderMonthView()}
+          {viewType === 'week' && renderWeekView()}
+          {viewType === 'list' && renderListView()}
         </CardContent>
       </Card>
 
@@ -446,17 +482,43 @@ export default function TeacherSchedule() {
             <>
               <DialogHeader>
                 <div className="flex items-center justify-between">
-                  <DialogTitle className="text-xl font-bold">{selected.className}</DialogTitle>
-                  <Badge className={`${getClassSessionStatusColor(selected.status)} px-3 py-1`}>{selected.subject}</Badge>
+                  <DialogTitle className="text-xl font-bold">
+                    {selected.className}
+                  </DialogTitle>
+                  <Badge
+                    className={`${getClassSessionStatusColor(
+                      selected.status,
+                    )} px-3 py-1`}
+                  >
+                    {selected.subject}
+                  </Badge>
                 </div>
                 <div className="text-sm text-gray-600">{selected.room}</div>
               </DialogHeader>
 
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2"><Calendar className="w-4 h-4 text-gray-500" /><span className="text-sm"><strong>Ngày diễn ra:</strong> {new Date(selected.date).toLocaleDateString("vi-VN")}</span></div>
-                  <div className="flex items-center space-x-2"><Clock className="w-4 h-4 text-gray-500" /><span className="text-sm"><strong>Thời gian:</strong> {selected.startTime}-{selected.endTime}</span></div>
-                  <div className="flex items-center space-x-2"><User className="w-4 h-4 text-gray-500" /><span className="text-sm"><strong>Giáo viên:</strong> {(selected as any).teacherName || "Tôi"}</span></div>
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm">
+                      <strong>Ngày diễn ra:</strong>{' '}
+                      {new Date(selected.date).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm">
+                      <strong>Thời gian:</strong> {selected.startTime}-
+                      {selected.endTime}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm">
+                      <strong>Giáo viên:</strong>{' '}
+                      {(selected as any).teacherName || 'Tôi'}
+                    </span>
+                  </div>
                 </div>
 
                 {selected.notes && (
@@ -469,16 +531,31 @@ export default function TeacherSchedule() {
                 {/* Placeholder danh sách HV nếu API có */}
                 {(selected as any).students?.length ? (
                   <div>
-                    <h4 className="font-semibold mb-3">Học viên ({(selected as any).students.length})</h4>
+                    <h4 className="font-semibold mb-3">
+                      Học viên ({(selected as any).students.length})
+                    </h4>
                     <div className="grid grid-cols-1 gap-2">
                       {(selected as any).students.map((st: any) => (
-                        <div key={st.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <div
+                          key={st.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                        >
                           <div className="flex items-center space-x-3">
                             <Avatar className="w-8 h-8">
-                              <AvatarImage src={st.avatar || "/placeholder.svg"} />
-                              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">{st.name?.split(" ").map((n: string) => n[0]).join("").slice(0,2)}</AvatarFallback>
+                              <AvatarImage
+                                src={st.avatar || '/placeholder.svg'}
+                              />
+                              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                                {st.name
+                                  ?.split(' ')
+                                  .map((n: string) => n[0])
+                                  .join('')
+                                  .slice(0, 2)}
+                              </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">{st.name}</span>
+                            <span className="text-sm font-medium">
+                              {st.name}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -490,6 +567,81 @@ export default function TeacherSchedule() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Legend Sidebar */}
+      <div
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-50 transition-all duration-300 ease-in-out ${
+          isLegendOpen ? 'translate-x-0' : 'translate-x-[calc(100%-3rem)]'
+        }`}
+      >
+        <div className="bg-white border-l border-t border-b border-gray-200 rounded-l-lg shadow-lg flex">
+          {/* Toggle Button */}
+          <button
+            onClick={() => setIsLegendOpen(!isLegendOpen)}
+            className="flex items-center justify-center w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-l-lg transition-colors"
+            aria-label={isLegendOpen ? 'Ẩn chú thích' : 'Hiện chú thích'}
+          >
+            {isLegendOpen ? (
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            )}
+          </button>
+
+          {/* Legend Content */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              isLegendOpen ? 'w-64 opacity-100' : 'w-0 opacity-0'
+            }`}
+          >
+            <div className="p-4">
+              <h2 className="text-lg font-bold mb-4 text-gray-800">
+                Chú thích trạng thái
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3 h-3 ${getClassSessionStatusColor(
+                      'has_not_happened',
+                    )}`}
+                  ></div>
+                  <span className="text-sm text-blue-600">Chưa diễn ra</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3 h-3 ${getClassSessionStatusColor(
+                      'happening',
+                    )}`}
+                  ></div>
+                  <span className="text-sm text-green-600">Đang diễn ra</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3 h-3 ${getClassSessionStatusColor('end')}`}
+                  ></div>
+                  <span className="text-sm text-red-600">Đã kết thúc</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3 h-3 ${getClassSessionStatusColor(
+                      'cancelled',
+                    )}`}
+                  ></div>
+                  <span className="text-sm text-red-600">Đã hủy</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3 h-3 ${getClassSessionStatusColor(
+                      'day_off',
+                    )}`}
+                  ></div>
+                  <span className="text-sm text-orange-600">Nghỉ</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

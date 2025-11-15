@@ -354,11 +354,10 @@ export function HolidaySetting() {
         <div className="flex justify-center">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 text-red-600 focus:text-red-600"
+              <Button variant="outline" className="flex items-center gap-2 text-red-600 focus:text-red-600" title="Xóa"
                 onSelect={(e) => e.preventDefault()}
               >
                 <Trash2 className="w-4 h-4" />
-                Xóa
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
