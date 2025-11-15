@@ -200,6 +200,7 @@ model Class {
   transfersTo       TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
   feedbacks         TeacherFeedback[]
   progressReports   ProgressReport[]       @relation("ClassProgressReports")
+  feedbackAnalysis   TeacherFeedbackAnalysis?  @relation("ClassFeedbackAnalysis") // 1 lớp chỉ có 1 phân tích
 
   @@map("classes")
 }
@@ -915,7 +916,7 @@ model TeacherFeedback {
   comment     String?
   categories  Json?
   isAnonymous Boolean                   @default(false) @map("is_anonymous")
-  status      String                    @default("approved") // approved, hidden, flagge  
+  status      String                    @default("approved") // approved, hidden, flagged, pending  
   createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   analysis    TeacherFeedbackAnalysis[]
@@ -933,23 +934,45 @@ model TeacherFeedback {
 
 model TeacherFeedbackAnalysis {
   id                String          @id @default(uuid()) @db.Uuid
-  feedbackId        String          @map("feedback_id") @db.Uuid
+  feedbackId        String?         @map("feedback_id") @db.Uuid  // Nullable: null nếu là class analysis
+  classId           String?         @map("class_id") @db.Uuid      // Nullable: null nếu là feedback analysis
+  analysisType      String          @default("feedback") @map("analysis_type") // "feedback" | "class"
+  
   sentimentScore    Decimal         @map("sentiment_score") @db.Decimal(5, 2)
   sentimentLabel    String          @map("sentiment_label")
+  sentimentExplanation String?      @map("sentiment_explanation") @db.Text
+  
+  // Cho class analysis - tổng hợp
+  overallAnalysis   String?         @map("overall_analysis") @db.Text
+  strengths         Json?           // Array of strings
+  weaknesses        Json?           // Array of strings
+  recommendations   Json?           // Array of strings
+  keyInsights       Json?           @map("key_insights") // Array of strings
+  feedbackCount     Int?            @default(0) @map("feedback_count")
+  avgRating         Decimal?        @map("avg_rating") @db.Decimal(3, 2)
+  
+  // Cho feedback analysis - riêng lẻ
   toxicityScore     Decimal?        @map("toxicity_score") @db.Decimal(5, 2)
   keyPhrases        Json?           @map("key_phrases")
   categorizedIssues Json?           @map("categorized_issues")
+  
+  // Common fields
   aiSummary         String?         @map("ai_summary")
   recommendedAction String?         @map("recommended_action")
   confidenceScore   Decimal?        @map("confidence_score") @db.Decimal(5, 2)
   analyzedAt        DateTime        @default(now()) @map("analyzed_at") @db.Timestamptz(6)
-  aiModel           String          @default("gpt-4") @map("ai_model")
+  aiModel           String          @default("gpt-3.5-turbo") @map("ai_model")
   processingTimeMs  Int?            @map("processing_time_ms")
-  feedback          TeacherFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  
+  feedback          TeacherFeedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  class             Class?           @relation("ClassFeedbackAnalysis", fields: [classId], references: [id], onDelete: Cascade)
 
   @@index([feedbackId], map: "idx_analysis_feedback")
+  @@index([classId], map: "idx_analysis_class")
+  @@index([analysisType], map: "idx_analysis_type")
   @@index([sentimentLabel], map: "idx_analysis_sentiment")
   @@index([recommendedAction], map: "idx_analysis_action")
+  @@unique([classId]) // Đảm bảo 1 lớp chỉ có 1 class analysis (classId unique khi analysisType = 'class')
   @@map("teacher_feedback_analyses")
 }
 

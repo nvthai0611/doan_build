@@ -65,7 +65,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     StudentLeaveRequestService,
     ClassJoinService,
     ChildTeacherFeedbackService,
-      ParentOverviewService,
+    ParentOverviewService,
     CommitmentsService,
     CloudinaryService,
   ],
