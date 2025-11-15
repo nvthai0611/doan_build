@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
@@ -76,8 +78,9 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
         path: "admin-center", 
         module: AdminCenterModule,
       },
-    ]),
-    
+      ]),
+    HttpModule, // HTTP client for AI API calls
+    ConfigModule, // Config service for API keys
     SharedModule, //sử dụng email services
     CloudinaryModule, // Cloudinary service cho upload ảnh
   ],
@@ -148,7 +151,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     FeeReminderService,
     EmailServiceNotificationBill
   ],
-  exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
 
 })
 //check

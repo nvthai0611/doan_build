@@ -6,6 +6,7 @@ export interface TeacherFeedbackItem {
   parentName: string
   parentEmail: string
   studentName: string
+  classId: string
   className: string
   rating: number
   categories: any
@@ -29,6 +30,54 @@ export interface TeacherFeedbackQuery {
 export interface ApiResponse<T> {
   data: T
   message: string
+}
+
+export interface SingleFeedbackAIAnalysis {
+  sentiment: 'positive' | 'negative' | 'neutral'
+  sentimentExplanation: string
+  ratingJustification: string
+  commentAnalysis: string
+  categoryInsights: {
+    teaching_quality?: string
+    communication?: string
+    punctuality?: string
+    professionalism?: string
+  }
+  keyPoints: string[]
+  overallSummary: string
+}
+
+export interface TeacherAIAnalysis {
+  teacherId: string
+  teacherName: string
+  summary: string
+  sentiment: 'positive' | 'negative' | 'neutral'
+  sentimentExplanation: string
+  overallAnalysis: string
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: string[]
+  keyInsights: string[]
+}
+
+export interface ClassAIAnalysis {
+  classId: string
+  className: string
+  sentiment: 'positive' | 'negative' | 'neutral'
+  sentimentExplanation: string
+  overallAnalysis: string
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: string[]
+  keyInsights: string[]
+  feedbackCount: number
+  avgRating: number
+  analyzedAt: string
+}
+
+export interface TeacherAIAnalysisQuery {
+  dateFrom?: string
+  dateTo?: string
 }
 
 
