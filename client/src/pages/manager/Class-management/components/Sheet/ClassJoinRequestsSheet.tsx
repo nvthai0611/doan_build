@@ -65,6 +65,8 @@ export const ClassJoinRequestsSheet = ({
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [pendingRequestIds, setPendingRequestIds] = useState<string[]>([]);
   const [isApproveAll, setIsApproveAll] = useState(false);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [isProcessingAll, setIsProcessingAll] = useState(false);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   // Fetch requests khi sheet mở
@@ -119,12 +121,19 @@ export const ClassJoinRequestsSheet = ({
         title: 'Thành công',
         description: 'Đã phê duyệt yêu cầu tham gia lớp học',
       });
+      // Chỉ clear processingRequestId nếu không phải đang approve all
+      // isProcessingAll sẽ được clear trong handleApproveAll sau khi tất cả request xong
+      if (!isProcessingAll) {
+        setProcessingRequestId(null);
+      }
       refetch();
       // Invalidate alerts để update badge count
       queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['class-join-requests'] });
     },
     onError: (error: any) => {
+      setProcessingRequestId(null);
+      setIsProcessingAll(false);
       toast({
         title: 'Lỗi',
         description: error?.message || 'Không thể phê duyệt yêu cầu',
@@ -142,12 +151,14 @@ export const ClassJoinRequestsSheet = ({
         title: 'Thành công',
         description: 'Đã từ chối yêu cầu tham gia lớp học',
       });
+      setProcessingRequestId(null);
       refetch();
       // Invalidate alerts để update badge count
       queryClient.invalidateQueries({ queryKey: ['all-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['class-join-requests'] });
     },
     onError: (error: any) => {
+      setProcessingRequestId(null);
       toast({
         title: 'Lỗi',
         description: error?.message || 'Không thể từ chối yêu cầu',
@@ -191,6 +202,7 @@ export const ClassJoinRequestsSheet = ({
     if (!maxStudents || maxStudents === 0) {
       // Không có giới hạn, approve trực tiếp
       console.log('No max students limit, approving directly');
+      setProcessingRequestId(requestId);
       approveMutation.mutate({ requestId, overrideCapacity: false });
       return;
     }
@@ -214,10 +226,12 @@ export const ClassJoinRequestsSheet = ({
 
     console.log('No capacity issue, approving directly');
     // If no capacity issue, proceed directly
+    setProcessingRequestId(requestId);
     approveMutation.mutate({ requestId, overrideCapacity: false });
   };
 
   const handleReject = (requestId: string) => {
+    setProcessingRequestId(requestId);
     rejectMutation.mutate(requestId);
   };
 
@@ -227,9 +241,11 @@ export const ClassJoinRequestsSheet = ({
 
     if (!maxStudents) {
       // Không có giới hạn, approve trực tiếp tất cả
+      setIsProcessingAll(true);
       for (const req of pending) {
         await approveMutation.mutateAsync({ requestId: req.id, overrideCapacity: false });
       }
+      setIsProcessingAll(false);
       refetch();
       return;
     }
@@ -249,9 +265,11 @@ export const ClassJoinRequestsSheet = ({
     }
 
     // If no capacity issue, proceed directly
+    setIsProcessingAll(true);
     for (const req of pending) {
       await approveMutation.mutateAsync({ requestId: req.id, overrideCapacity: false });
     }
+    setIsProcessingAll(false);
     refetch();
   };
 
@@ -260,14 +278,17 @@ export const ClassJoinRequestsSheet = ({
     
     if (isApproveAll && pendingRequestIds.length > 0) {
       // Approve all pending requests with overrideCapacity = true
+      setIsProcessingAll(true);
       for (const requestId of pendingRequestIds) {
         await approveMutation.mutateAsync({ requestId, overrideCapacity: true });
       }
+      setIsProcessingAll(false);
       setPendingRequestIds([]);
       setIsApproveAll(false);
       refetch();
     } else if (pendingRequestId) {
       // Approve single request with overrideCapacity = true
+      setProcessingRequestId(pendingRequestId);
       approveMutation.mutate({ requestId: pendingRequestId, overrideCapacity: true });
       setPendingRequestId(null);
     }
@@ -314,8 +335,8 @@ export const ClassJoinRequestsSheet = ({
               Danh sách yêu cầu truy cập
             </SheetTitle>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleApproveAll} disabled={isLoading || approveMutation.isPending}>
-                {approveMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : null}
+              <Button size="sm" onClick={handleApproveAll} disabled={isLoading || isProcessingAll}>
+                {isProcessingAll ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : null}
                 Chấp nhận tất cả
               </Button>
             </div>
@@ -413,8 +434,31 @@ export const ClassJoinRequestsSheet = ({
                             </div>
                             {request.status === 'pending' && (
                               <div className="flex items-center gap-1">
-                                <Button size="sm" className="h-7 px-2" onClick={e => { e.stopPropagation(); handleApprove(request.id); }}> <Check className="w-4 h-4" /> </Button>
-                                <Button size="sm" variant="outline" className="h-7 px-2" onClick={e => { e.stopPropagation(); handleReject(request.id); }} > <XCircle className="w-4 h-4" /> </Button>
+                                <Button 
+                                  size="sm" 
+                                  className="h-7 px-2" 
+                                  onClick={e => { e.stopPropagation(); handleApprove(request.id); }}
+                                  disabled={processingRequestId === request.id || isProcessingAll}
+                                >
+                                  {processingRequestId === request.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Check className="w-4 h-4" />
+                                  )}
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-7 px-2" 
+                                  onClick={e => { e.stopPropagation(); handleReject(request.id); }}
+                                  disabled={processingRequestId === request.id || isProcessingAll}
+                                >
+                                  {processingRequestId === request.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4" />
+                                  )}
+                                </Button>
                               </div>
                             )}
                           </div>
