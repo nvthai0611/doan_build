@@ -235,31 +235,48 @@ export default function ChangeScheduleRequestManagement() {
       header: 'Thao tác',
       render: (item: ScheduleChange) => (
         <div>
-          <div className="flex items-center gap-2 bg-blue-500 text-white px-2 py-1 rounded-md">
-            <div onClick={() => handleViewDetails(item.id)}>
-              <Eye className="h-4 w-4 cursor-pointer" />
-              Xem
+          <div className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600">
+            <div title="Xem chi tiết" onClick={() => {
+              handleViewDetails(item.id);
+            }}>
+              <Eye className="h-4 w-4" />
             </div>
           </div>
-          {item.status === 'pending' && (
-            <div>
+            <>
                 <div className="h-1 w-full bg-gray-200" />
                 <div 
-                  onClick={() => handleApprove(item.id)}
-                  className="text-green-600 flex items-center gap-2 cursor-pointer bg-green-500 text-white px-2 py-1 rounded-md"
+                  title="Duyệt"
+                  onClick={() => {
+                    if (item.status !== 'pending') {
+                      return
+                    }
+                    handleApprove(item.id);
+                  }}
+                  className={`flex items-center px-2 py-1 rounded-md ${
+                    item.status !== 'pending'
+                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                      : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                  }`}
                 >
-                  <CheckCircle className="h-4 w-4 cursor-pointer" />
-                  Duyệt yêu cầu
+                  <CheckCircle className="h-4 w-4" />
                 </div>
                 <div 
-                  onClick={() => handleReject(item.id)}
-                  className="text-red-600 flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md"
+                  title="Từ chối"
+                  onClick={() => {
+                    if (item.status !== 'pending') {
+                      return
+                    }
+                    handleReject(item.id);
+                  }}
+                  className={`flex items-center px-2 py-1 rounded-md ${
+                    item.status !== 'pending'
+                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                      : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                  }`}
                 >
-                  <XCircle className="h-4 w-4 cursor-pointer" />
-                  Từ chối
+                  <XCircle className="h-4 w-4" />
                 </div>
-            </div>
-            )}
+            </>
         </div>
       )
     }

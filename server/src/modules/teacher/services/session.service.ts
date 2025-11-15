@@ -15,14 +15,36 @@ export class SessionService {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  async getSessionDetail(teacherId: string, sessionId: string): Promise<SessionDetailResponseDto | null> {
+  async getSessionDetail(teacherId: string, sessionId: string): Promise<any | null> {
     try {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          teacherId: teacherId,
+          OR: [
+            { teacherId: teacherId },
+            { substituteTeacherId: teacherId },
+          ],
         },
-        include: {
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          teacherId: true,
+          substituteTeacherId: true,
+          teacher: {
+            select: {
+              user: { select: { fullName: true } }
+            }
+          },
+          substituteTeacher: {
+            select: {
+              user: { select: { fullName: true } }
+            }
+          },
           class: {
             include: {
               subject: { select: { name: true } },
@@ -40,11 +62,6 @@ export class SessionService {
             }
           },
           room: { select: { name: true } },
-          teacher: {
-            include: {
-              user: { select: { fullName: true } }
-            }
-          },
           attendances: {
             include: {
               student: {
@@ -64,7 +81,7 @@ export class SessionService {
       //console.log(session);
 
       // Tạo danh sách học viên với trạng thái điểm danh
-      const students: StudentInSessionDto[] = session.class.enrollments.map(enrollment => {
+      const students: any[] = session.class.enrollments.map(enrollment => {
         const attendance = session.attendances.find(att => att.studentId === enrollment.studentId);
         return {
           id: enrollment.student.id,
@@ -89,7 +106,9 @@ export class SessionService {
         type: 'regular',
         teacherId: session.teacherId,
         teacherName: session.teacher?.user.fullName || undefined,
-        students,
+        students: students.filter(student => student.status === 'studying'),
+        substituteTeacherId: session.substituteTeacherId,
+        substituteTeacherName: session.substituteTeacher?.user?.fullName || null,
         createdAt: session.createdAt,
         updatedAt: session.createdAt
       };
