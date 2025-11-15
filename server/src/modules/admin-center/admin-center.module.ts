@@ -49,6 +49,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
 import { ClassNotificationCronService } from './crons/class-notification-cron.service';
+import { FeedbackAnalysisCronService } from './crons/feedback-analysis-cron.service';
 import { ClassNotificationService } from './services/class-notification.service';
 import { ContractUploadController } from './controllers/contract-upload.controller';
 import { ContractUploadService } from './services/contract-upload.service';
@@ -142,6 +143,7 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
+    FeedbackAnalysisCronService, // Cron job phân tích feedback mỗi 7 ngày
     PayRollTeacherService,
     CenterInfoService,
     SchoolManagementService,

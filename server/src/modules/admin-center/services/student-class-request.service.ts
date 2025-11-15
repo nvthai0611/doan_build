@@ -254,20 +254,31 @@ export class StudentClassRequestService {
         console.log('⚠️ Bypassing capacity check - overrideCapacity is true');
       }
 
-      // Kiểm tra học sinh đã enrolled chưa
+      // Kiểm tra học sinh đã enrolled chưa (check với bất kỳ status nào)
       const existingEnrollment = await this.prisma.enrollment.findFirst({
         where: {
           studentId: request.studentId,
           classId: request.classId,
-          status: { in: ['studying', 'not_been_updated'] },
         },
       });
 
-      if (existingEnrollment) {
+      // Nếu đã có enrollment với status active, throw error
+      if (existingEnrollment && ['studying', 'not_been_updated'].includes(existingEnrollment.status)) {
         throw new HttpException(
           {
             success: false,
             message: 'Học sinh đã được ghi danh vào lớp này rồi',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Nếu học sinh đã dừng học, không cho phép approve lại
+      if (existingEnrollment && existingEnrollment.status === 'stopped') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Học sinh đã dừng học, không thể phê duyệt yêu cầu tham gia lớp này',
           },
           HttpStatus.BAD_REQUEST,
         );
@@ -299,31 +310,66 @@ export class StudentClassRequestService {
           });
         }
 
-        // Tạo enrollment
-        const enrollment = await tx.enrollment.create({
-          data: {
-            studentId: request.studentId,
-            classId: request.classId,
-            status: 'studying',
-            enrolledAt: new Date(),
-          },
-        });
+        // Tạo hoặc update enrollment
+        let enrollment;
+        if (existingEnrollment) {
+          // Nếu đã có enrollment với status khác (completed, dropped, etc.), update lại thành studying
+          enrollment = await tx.enrollment.update({
+            where: { id: existingEnrollment.id },
+            data: {
+              status: 'studying',
+              enrolledAt: new Date(),
+            },
+          });
+        } else {
+          // Tạo enrollment mới
+          enrollment = await tx.enrollment.create({
+            data: {
+              studentId: request.studentId,
+              classId: request.classId,
+              status: 'studying',
+              enrolledAt: new Date(),
+            },
+          });
+        }
         let contractUpload = null;
         if (request.commitmentImageUrl) {
           const fileName =
             request.commitmentImageUrl.split('/').pop() || 'commitment_image';
 
-          contractUpload = await tx.contractUpload.create({
-            data: {
+          // Check xem contractUpload đã tồn tại chưa
+          const existingContractUpload = await tx.contractUpload.findFirst({
+            where: {
               enrollmentId: enrollment.id,
-              parentId: request.student.parent?.id || null,
-              contractType: 'student_commitment', // Loại hợp đồng: cam kết học tập
-              uploadedImageUrl: request.commitmentImageUrl,
-              uploadedImageName: fileName,
-              uploadedAt: new Date(),
-              status: 'active',
+              contractType: 'student_commitment',
             },
           });
+
+          if (existingContractUpload) {
+            // Update contractUpload nếu đã tồn tại
+            contractUpload = await tx.contractUpload.update({
+              where: { id: existingContractUpload.id },
+              data: {
+                uploadedImageUrl: request.commitmentImageUrl,
+                uploadedImageName: fileName,
+                uploadedAt: new Date(),
+                status: 'active',
+              },
+            });
+          } else {
+            // Tạo contractUpload mới
+            contractUpload = await tx.contractUpload.create({
+              data: {
+                enrollmentId: enrollment.id,
+                parentId: request.student.parent?.id || null,
+                contractType: 'student_commitment', // Loại hợp đồng: cam kết học tập
+                uploadedImageUrl: request.commitmentImageUrl,
+                uploadedImageName: fileName,
+                uploadedAt: new Date(),
+                status: 'active',
+              },
+            });
+          }
         }
         return { updatedRequest, enrollment, contractUpload };
       });

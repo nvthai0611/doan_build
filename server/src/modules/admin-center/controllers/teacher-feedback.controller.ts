@@ -10,16 +10,6 @@ export class TeacherFeedbackController {
     return this.service.findAll(query)
   }
 
-  @Get(':id/ai-analysis')
-  async analyzeSingleFeedback(@Param('id') id: string) {
-    return this.service.analyzeSingleFeedback(id)
-  }
-
-  @Get('teacher/:teacherId/ai-analysis')
-  async analyzeTeacherFeedbacks(@Param('teacherId') teacherId: string, @Query() query: any) {
-    return this.service.analyzeTeacherFeedbacks(teacherId, query)
-  }
-
   @Get('class/:classId/analysis')
   async getClassAnalysis(@Param('classId') classId: string) {
     return this.service.getClassAnalysisFromDB(classId)

@@ -32,34 +32,6 @@ export interface ApiResponse<T> {
   message: string
 }
 
-export interface SingleFeedbackAIAnalysis {
-  sentiment: 'positive' | 'negative' | 'neutral'
-  sentimentExplanation: string
-  ratingJustification: string
-  commentAnalysis: string
-  categoryInsights: {
-    teaching_quality?: string
-    communication?: string
-    punctuality?: string
-    professionalism?: string
-  }
-  keyPoints: string[]
-  overallSummary: string
-}
-
-export interface TeacherAIAnalysis {
-  teacherId: string
-  teacherName: string
-  summary: string
-  sentiment: 'positive' | 'negative' | 'neutral'
-  sentimentExplanation: string
-  overallAnalysis: string
-  strengths: string[]
-  weaknesses: string[]
-  recommendations: string[]
-  keyInsights: string[]
-}
-
 export interface ClassAIAnalysis {
   classId: string
   className: string
@@ -74,10 +46,4 @@ export interface ClassAIAnalysis {
   avgRating: number
   analyzedAt: string
 }
-
-export interface TeacherAIAnalysisQuery {
-  dateFrom?: string
-  dateTo?: string
-}
-
 

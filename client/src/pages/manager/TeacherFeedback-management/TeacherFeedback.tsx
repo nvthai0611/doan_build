@@ -660,7 +660,15 @@ function ClassAIAnalysisDialog({
   })
 
   const aiAnalysis = useMemo(() => {
-    return (aiAnalysisResp as any)?.data as ClassAIAnalysis | undefined
+    const result = (aiAnalysisResp as any)?.data as ClassAIAnalysis | undefined
+    if (result) {
+      console.log('AI Analysis data:', result)
+      console.log('Strengths:', result.strengths, 'Length:', result.strengths?.length)
+      console.log('Weaknesses:', result.weaknesses, 'Length:', result.weaknesses?.length)
+      console.log('Recommendations:', result.recommendations, 'Length:', result.recommendations?.length)
+      console.log('Key Insights:', result.keyInsights, 'Length:', result.keyInsights?.length)
+    }
+    return result
   }, [aiAnalysisResp])
 
   const feedbacks = useMemo(() => {
@@ -847,87 +855,6 @@ function ClassAIAnalysisDialog({
             </Card>
           )}
 
-          {/* Feedbacks List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Danh Sách Feedback ({feedbacks.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingFeedbacks ? (
-                <div className="text-center py-8">
-                  <Brain className="h-6 w-6 text-primary animate-pulse mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Đang tải feedback...</p>
-                </div>
-              ) : feedbacks.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-8">Chưa có feedback nào.</div>
-              ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {feedbacks.map((f) => {
-                    const openItem = !!openFeedbackIds[f.id]
-                    const toggle = () => setOpenFeedbackIds((s) => ({ ...s, [f.id]: !openItem }))
-                    return (
-                      <div key={f.id} className="border rounded-md">
-                        <button onClick={toggle} className="w-full flex items-center justify-between p-3 hover:bg-accent/50 transition-colors text-left">
-                          <div className="flex-1">
-                            <div className="font-medium text-sm">
-                              {f.isAnonymous ? 'Ẩn danh' : f.parentName} <span className="text-muted-foreground">• {f.isAnonymous ? 'Học sinh ẩn danh' : f.studentName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-muted-foreground">Ngày: {f.createdAt}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <StarRating value={f.rating} />
-                            {openItem ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </div>
-                        </button>
-                        {openItem && (
-                          <div className="px-4 pb-4 pt-2 space-y-4 border-t">
-                            {/* Overall Rating */}
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">Đánh Giá Chung</p>
-                              <StarRating value={f.rating} />
-                            </div>
-
-                            {/* Category Breakdown */}
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-3">Đánh Giá Chi Tiết</p>
-                              <div className="space-y-2">
-                                {Object.entries(f.categories || {}).map(([key, value]: [string, any]) => (
-                                  <div key={key}>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <p className="text-xs font-medium">
-                                        {categoryLabels[key as keyof typeof categoryLabels]}
-                                      </p>
-                                      <span className="text-xs font-semibold">{value}/5</span>
-                                    </div>
-                                    <div className="w-full bg-muted rounded-full h-1.5">
-                                      <div className="bg-yellow-400 h-1.5 rounded-full" style={{ width: `${(value / 5) * 100}%` }} />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Comment */}
-                            {f.comment && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Nhận Xét</p>
-                                <p className="p-2 bg-muted rounded-lg text-xs text-muted-foreground">{f.comment}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </DialogContent>
     </Dialog>
