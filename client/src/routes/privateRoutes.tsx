@@ -71,6 +71,9 @@ import PayrollOfTeacher from "../pages/manager/Payroll-teacher-management/Payrol
 import PayrollDetail from "../pages/manager/Payroll-teacher-management/PayrollDetail";
 import TriggerDashboard from "../pages/manager/Trigger-management/TriggerDashboard";
 import  ManualTriggerPanel  from "../pages/manager/Trigger-management/components/manual-trigger-panel";
+import  PayrollManagementTeacher  from "../pages/teacher/Payroll-Management/PayrollManagementTeacher";
+import PayrollDetailTeacher from "../pages/teacher/Payroll-Management/PayrollDetail";
+import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
 
 export const privateRoutes = (
   <>
@@ -156,6 +159,9 @@ export const privateRoutes = (
         <Route path="requests/my-requests" element={<MyRequests />} />
         <Route path="requests/student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
         <Route path="contracts" element={<ContractsManageme />} />
+        <Route path="payroll-management" element= {<PayrollManagementTeacher/>}/>
+        <Route path="payroll-management/:payrollId" element= {<PayrollDetailTeacher/>}/>
+        <Route path="payroll-management/:payrollId/back-pay" element = {<BackPayDetail/>}/>
       </Route>
 
       {/* Học sinh */}

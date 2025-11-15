@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { PayRollTeacherService } from "../services/payroll-teacher.service";
 
@@ -41,4 +41,10 @@ export class PayrollTeacherController {
   ) {
     return this.PayRollTeacherService.getClassSessionsByClassId(classId, month, teacherId);
   }
+
+  @Post('payroll/send-email')
+  async sendPayrollEmail(@Body() body: { payrollIds: string[] }) {
+    return this.PayRollTeacherService.sendEmailNotificationPayrollTeacher(body.payrollIds);
+  }
+  
 }
