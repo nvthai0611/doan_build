@@ -36,6 +36,8 @@ import { ContractsManageController } from './controllers/contracts-manage.contro
 import { ContractsManageService } from './services/contracts-manage.service';
 import { SharedModule } from '../shared/shared.module';
 import { PrismaService } from 'src/db/prisma.service';
+import { PayrollController } from './controllers/payroll.controller';
+import { PayrollService } from './services/payroll.service';
 
 @Module({
   imports: [
@@ -65,6 +67,7 @@ import { PrismaService } from 'src/db/prisma.service';
     IncidentReportController,
     ContractsManageController,
     TeacherStudentLeaveRequestController,
+    PayrollController
   ],
   providers: [
     AttendanceService,
@@ -86,6 +89,7 @@ import { PrismaService } from 'src/db/prisma.service';
     ContractsManageService,
     TeacherStudentLeaveRequestService,
     PrismaService,
+    PayrollService
   ],
   exports: [
     AttendanceService,

@@ -69,10 +69,14 @@ import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
 import { TriggerManagementService } from './services/trigger-management.service';
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Enable cron jobs
+    BullModule.registerQueue({
+      name: 'payroll-notification', // ✅ Register queue ở đây
+    }),
     RouterModule.register([
       {
         path: "admin-center", 
