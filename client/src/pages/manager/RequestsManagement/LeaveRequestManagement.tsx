@@ -38,12 +38,14 @@ const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
   approved: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+  cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
 }
 
 const statusLabels = {
   pending: 'Chờ duyệt',
   approved: 'Đã duyệt',
   rejected: 'Từ chối',
+  cancelled: 'Đã hủy',
 }
 
 export default function LeaveRequestManagement() {
@@ -202,14 +204,12 @@ export default function LeaveRequestManagement() {
         <Badge
           variant="secondary"
           className={
-            requestTypeColors[
-              item.type as keyof typeof requestTypeColors
-            ] || requestTypeColors.other
+            requestTypeColors[item.type as keyof typeof requestTypeColors] ||
+            requestTypeColors.other
           }
         >
-          {requestTypeLabels[
-            item.type as keyof typeof requestTypeLabels
-          ] || item.type}
+          {requestTypeLabels[item.type as keyof typeof requestTypeLabels] ||
+            item.type}
         </Badge>
       ),
     },
@@ -276,32 +276,45 @@ export default function LeaveRequestManagement() {
         <div>
           <div className="flex items-center gap-2">
             <div
-              className="cursor-pointer flex items-center gap-2 bg-blue-500 text-white px-2 py-1 rounded-md"
+              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              title="Xem chi tiết"
               onClick={() => handleViewDetails(item.id)}
             >
-              <Eye className="h-4 w-4 cursor-pointer" />
-              Xem
+              <Eye className="h-4 w-4" />
+            </div>
+            <div
+              title="Duyệt"
+              onClick={() => {
+                if (item.status !== 'pending') {
+                  return;
+                }
+                handleApprove(item.id);
+              }}
+              className={`flex items-center px-2 py-1 rounded-md ${
+                item.status !== 'pending'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                  : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+              }`}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </div>
+            <div
+              title="Từ chối"
+              onClick={() => {
+                if (item.status !== 'pending') {
+                  return;
+                }
+                handleReject(item.id);
+              }}
+              className={`flex items-center px-2 py-1 rounded-md ${
+                item.status !== 'pending'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                  : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+              }`}
+            >
+              <XCircle className="h-4 w-4" />
             </div>
           </div>
-          {item.status === 'pending' && (
-            <>
-              <div className="h-1 w-full bg-gray-200" />
-              <div
-                onClick={() => handleApprove(item.id)}
-                className="text-green-600 flex items-center gap-2 cursor-pointer bg-green-500 text-white px-2 py-1 rounded-md"
-              >
-                <CheckCircle className="h-4 w-4 cursor-pointer" />
-                Duyệt đơn
-              </div>
-              <div
-                onClick={() => handleReject(item.id)}
-                className="text-red-600 flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md"
-              >
-                <XCircle className="h-4 w-4 cursor-pointer" />
-                Từ chối
-              </div>
-            </>
-          )}
         </div>
       ),
     },

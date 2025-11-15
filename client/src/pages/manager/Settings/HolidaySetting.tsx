@@ -461,6 +461,7 @@ export function HolidaySetting() {
               <Input
                 type="date"
                 value={form.startDate}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => handleInputChange('startDate', e.target.value)}
                 onBlur={() => handleInputBlur('startDate')}
                 className={`w-full ${
@@ -482,6 +483,7 @@ export function HolidaySetting() {
               <Input
                 type="date"
                 value={form.endDate}
+                min={form.startDate || new Date().toISOString().split('T')[0]}
                 onChange={(e) => handleInputChange('endDate', e.target.value)}
                 onBlur={() => handleInputBlur('endDate')}
                 className={`w-full ${
@@ -524,7 +526,7 @@ export function HolidaySetting() {
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
-              disabled={creating || Object.keys(errors).length > 0}
+              disabled={creating || !form.startDate || !form.endDate || !form.type}
               onClick={handleSubmit}
               className="flex-1"
             >
