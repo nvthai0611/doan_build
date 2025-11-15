@@ -158,37 +158,37 @@ model Grade {
 }
 
 model Class {
-  id                String                 @id @default(uuid()) @db.Uuid
-  roomId            String?                @map("room_id") @db.Uuid
-  teacherId         String?                @map("teacher_id") @db.Uuid
-  classCode         String?                @unique @map("class_code")
+  id                String                   @id @default(uuid()) @db.Uuid
+  roomId            String?                  @map("room_id") @db.Uuid
+  teacherId         String?                  @map("teacher_id") @db.Uuid
+  classCode         String?                  @unique @map("class_code")
   description       String?
-  feeStructureId    String?                @map("fee_structure_id") @db.Uuid
-  gradeId           String?                @map("grade_id") @db.Uuid
-  maxStudents       Int?                   @default(30) @map("max_students")
+  feeStructureId    String?                  @map("fee_structure_id") @db.Uuid
+  gradeId           String?                  @map("grade_id") @db.Uuid
+  maxStudents       Int?                     @default(30) @map("max_students")
   name              String
-  status            String                 @default("draft") // draft, ready, active, completed, suspended, cancelled
-  subjectId         String                 @map("subject_id") @db.Uuid
-  recurringSchedule Json?                  @map("recurring_schedule")
-  academicYear      String?                @map("academic_year")
-  expectedStartDate DateTime?              @map("expected_start_date") @db.Date
-  actualStartDate   DateTime?              @map("actual_start_date") @db.Date
-  actualEndDate     DateTime?              @map("actual_end_date") @db.Date
-  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  feeAmount         Decimal?               @map("fee_amount") @db.Decimal(12, 2)
-  feePeriod         String?                @map("fee_period")
-  feeCurrency       String?                @default("VND") @map("fee_currency")
-  feeLockedAt       DateTime?              @map("fee_locked_at") @db.Timestamptz(6)
-  password          String?                @map("password")
+  status            String                   @default("draft") // draft, ready, active, completed, suspended, cancelled
+  subjectId         String                   @map("subject_id") @db.Uuid
+  recurringSchedule Json?                    @map("recurring_schedule")
+  academicYear      String?                  @map("academic_year")
+  expectedStartDate DateTime?                @map("expected_start_date") @db.Date
+  actualStartDate   DateTime?                @map("actual_start_date") @db.Date
+  actualEndDate     DateTime?                @map("actual_end_date") @db.Date
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  feeAmount         Decimal?                 @map("fee_amount") @db.Decimal(12, 2)
+  feePeriod         String?                  @map("fee_period")
+  feeCurrency       String?                  @default("VND") @map("fee_currency")
+  feeLockedAt       DateTime?                @map("fee_locked_at") @db.Timestamptz(6)
+  password          String?                  @map("password")
   assessments       Assessment[]
   feeHistories      ClassFeeHistory[]
   sessions          ClassSession[]
-  feeStructure      FeeStructure?          @relation(fields: [feeStructureId], references: [id])
-  grade             Grade?                 @relation(fields: [gradeId], references: [id])
-  room              Room?                  @relation(fields: [roomId], references: [id])
-  subject           Subject                @relation(fields: [subjectId], references: [id])
-  teacher           Teacher?               @relation(fields: [teacherId], references: [id])
+  feeStructure      FeeStructure?            @relation(fields: [feeStructureId], references: [id])
+  grade             Grade?                   @relation(fields: [gradeId], references: [id])
+  room              Room?                    @relation(fields: [roomId], references: [id])
+  subject           Subject                  @relation(fields: [subjectId], references: [id])
+  teacher           Teacher?                 @relation(fields: [teacherId], references: [id])
   enrollments       Enrollment[]
   feeRecords        FeeRecord[]
   incidentReports   IncidentReport[]
@@ -196,11 +196,11 @@ model Class {
   scheduleChanges   ScheduleChange[]
   sessionRequests   SessionRequest[]
   classRequests     StudentClassRequest[]
-  transfersFrom     TeacherClassTransfer[] @relation("TeacherClassTransferFromClass")
-  transfersTo       TeacherClassTransfer[] @relation("TeacherClassTransferToClass")
+  transfersFrom     TeacherClassTransfer[]   @relation("TeacherClassTransferFromClass")
+  transfersTo       TeacherClassTransfer[]   @relation("TeacherClassTransferToClass")
   feedbacks         TeacherFeedback[]
-  progressReports   ProgressReport[]       @relation("ClassProgressReports")
-  feedbackAnalysis   TeacherFeedbackAnalysis?  @relation("ClassFeedbackAnalysis") // 1 lớp chỉ có 1 phân tích
+  progressReports   ProgressReport[]         @relation("ClassProgressReports")
+  feedbackAnalysis  TeacherFeedbackAnalysis? @relation("ClassFeedbackAnalysis") // 1 lớp chỉ có 1 phân tích
 
   @@map("classes")
 }
@@ -604,16 +604,24 @@ model Contract {
 }
 
 model Payroll {
-  id              BigInt   @id @default(autoincrement())
-  teacherId       String   @map("teacher_id") @db.Uuid
-  periodStart     DateTime @map("period_start") @db.Date
-  periodEnd       DateTime @map("period_end") @db.Date
-  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
-  computedDetails Json?    @map("computed_details")
-  bonuses         Decimal  @default(0) @db.Decimal(12, 2)
-  deductions      Decimal  @default(0) @db.Decimal(12, 2)
-  hourlyRate      Decimal? @map("hourly_rate") @db.Decimal(8, 2)
-  teachingHours   Decimal? @map("teaching_hours") @db.Decimal(5, 2)
+  id                BigInt   @id @default(autoincrement())
+  teacherId         String   @map("teacher_id") @db.Uuid
+  periodStart       DateTime @map("period_start") @db.Date
+  periodEnd         DateTime @map("period_end") @db.Date
+  totalAmount       Decimal  @map("total_amount") @db.Decimal(12, 2)
+  computedDetails   Json?    @map("computed_details")
+  // Tiền truy lĩnh (Nợ cũ - Cron tự động tính)
+  backPayAmount     Decimal? @default(0) @map("back_pay_amount") @db.Decimal(12, 2)
+  bonuses           Decimal? @default(0) @db.Decimal(12, 2)
+  deductions        Decimal? @default(0) @db.Decimal(12, 2)
+  adjustmentDetails Json?    @map("adjustment_details")
+  // json mẫu nó sẽ như này   {
+  //   "type": "bonus",
+  //   "amount": 500000,
+  //   "reason": "Thưởng Tết Nguyên Đán 2025"
+  // }
+  hourlyRate        Decimal? @map("hourly_rate") @db.Decimal(8, 2)
+  teachingHours     Decimal? @map("teaching_hours") @db.Decimal(5, 2)
 
   // --- TRẠNG THÁI QUY TRÌNH DUYỆT LƯƠNG ---
   status String @default("pending")
@@ -933,46 +941,46 @@ model TeacherFeedback {
 }
 
 model TeacherFeedbackAnalysis {
-  id                String          @id @default(uuid()) @db.Uuid
-  feedbackId        String?         @map("feedback_id") @db.Uuid  // Nullable: null nếu là class analysis
-  classId           String?         @map("class_id") @db.Uuid      // Nullable: null nếu là feedback analysis
-  analysisType      String          @default("feedback") @map("analysis_type") // "feedback" | "class"
-  
-  sentimentScore    Decimal         @map("sentiment_score") @db.Decimal(5, 2)
-  sentimentLabel    String          @map("sentiment_label")
-  sentimentExplanation String?      @map("sentiment_explanation") @db.Text
-  
-  // Cho class analysis - tổng hợp
-  overallAnalysis   String?         @map("overall_analysis") @db.Text
-  strengths         Json?           // Array of strings
-  weaknesses        Json?           // Array of strings
-  recommendations   Json?           // Array of strings
-  keyInsights       Json?           @map("key_insights") // Array of strings
-  feedbackCount     Int?            @default(0) @map("feedback_count")
-  avgRating         Decimal?        @map("avg_rating") @db.Decimal(3, 2)
-  
-  // Cho feedback analysis - riêng lẻ
-  toxicityScore     Decimal?        @map("toxicity_score") @db.Decimal(5, 2)
-  keyPhrases        Json?           @map("key_phrases")
-  categorizedIssues Json?           @map("categorized_issues")
-  
-  // Common fields
-  aiSummary         String?         @map("ai_summary")
-  recommendedAction String?         @map("recommended_action")
-  confidenceScore   Decimal?        @map("confidence_score") @db.Decimal(5, 2)
-  analyzedAt        DateTime        @default(now()) @map("analyzed_at") @db.Timestamptz(6)
-  aiModel           String          @default("gpt-3.5-turbo") @map("ai_model")
-  processingTimeMs  Int?            @map("processing_time_ms")
-  
-  feedback          TeacherFeedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  class             Class?           @relation("ClassFeedbackAnalysis", fields: [classId], references: [id], onDelete: Cascade)
+  id           String  @id @default(uuid()) @db.Uuid
+  feedbackId   String? @map("feedback_id") @db.Uuid // Nullable: null nếu là class analysis
+  classId      String? @map("class_id") @db.Uuid // Nullable: null nếu là feedback analysis
+  analysisType String  @default("feedback") @map("analysis_type") // "feedback" | "class"
 
+  sentimentScore       Decimal @map("sentiment_score") @db.Decimal(5, 2)
+  sentimentLabel       String  @map("sentiment_label")
+  sentimentExplanation String? @map("sentiment_explanation") @db.Text
+
+  // Cho class analysis - tổng hợp
+  overallAnalysis String?  @map("overall_analysis") @db.Text
+  strengths       Json? // Array of strings
+  weaknesses      Json? // Array of strings
+  recommendations Json? // Array of strings
+  keyInsights     Json?    @map("key_insights") // Array of strings
+  feedbackCount   Int?     @default(0) @map("feedback_count")
+  avgRating       Decimal? @map("avg_rating") @db.Decimal(3, 2)
+
+  // Cho feedback analysis - riêng lẻ
+  toxicityScore     Decimal? @map("toxicity_score") @db.Decimal(5, 2)
+  keyPhrases        Json?    @map("key_phrases")
+  categorizedIssues Json?    @map("categorized_issues")
+
+  // Common fields
+  aiSummary         String?  @map("ai_summary")
+  recommendedAction String?  @map("recommended_action")
+  confidenceScore   Decimal? @map("confidence_score") @db.Decimal(5, 2)
+  analyzedAt        DateTime @default(now()) @map("analyzed_at") @db.Timestamptz(6)
+  aiModel           String   @default("gpt-3.5-turbo") @map("ai_model")
+  processingTimeMs  Int?     @map("processing_time_ms")
+
+  feedback TeacherFeedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  class    Class?           @relation("ClassFeedbackAnalysis", fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([classId]) // Đảm bảo 1 lớp chỉ có 1 class analysis (classId unique khi analysisType = 'class')
   @@index([feedbackId], map: "idx_analysis_feedback")
   @@index([classId], map: "idx_analysis_class")
   @@index([analysisType], map: "idx_analysis_type")
   @@index([sentimentLabel], map: "idx_analysis_sentiment")
   @@index([recommendedAction], map: "idx_analysis_action")
-  @@unique([classId]) // Đảm bảo 1 lớp chỉ có 1 class analysis (classId unique khi analysisType = 'class')
   @@map("teacher_feedback_analyses")
 }
 

@@ -111,7 +111,7 @@ const PayrollManagement: React.FC = () => {
 
   // Send email reminder mutation
   const sendEmailMutation = useMutation({
-    mutationFn: (teacherIds: string[]) => payrollService.sendPayrollReminder(teacherIds),
+    mutationFn: (payrollIds: string[]) => payrollService.sendPayrollNotification(payrollIds),
     onSuccess: () => {
       toast({
         title: 'Thành công',
@@ -142,19 +142,19 @@ const PayrollManagement: React.FC = () => {
 
     switch (teacher.payroll.status) {
       case 'pending':
-        return { label: 'Chờ xử lý', variant: 'warning' as const, icon: Clock, color: 'bg-yellow-200' }
+        return { label: 'Chờ xử lý', variant: 'warning' as const, icon: Clock, color: 'bg-yellow-400' }
       case 'waiting_teacher_approval':
-        return { label: 'Chờ GV duyệt', variant: 'default' as const, icon: Clock, color: 'bg-blue-200' }
+        return { label: 'Chờ GV duyệt', variant: 'default' as const, icon: Clock, color: 'bg-blue-400' }
       case 'rejected_by_teacher':
-        return { label: 'GV từ chối', variant: 'destructive' as const, icon: XCircle, color: 'bg-red-200' }
+        return { label: 'GV từ chối', variant: 'destructive' as const, icon: XCircle, color: 'bg-red-400' }
       case 'approved_by_teacher':
-        return { label: 'GV đã duyệt', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-200' }
+        return { label: 'GV đã duyệt', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-400' }
       case 'paid':
-        return { label: 'Đã thanh toán', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-300' }
+        return { label: 'Đã thanh toán', variant: 'success' as const, icon: CheckCircle, color: 'bg-green-400' }
       case 'cancelled':
-        return { label: 'Đã hủy', variant: 'secondary' as const, icon: XCircle, color: 'bg-gray-300' }
+        return { label: 'Đã hủy', variant: 'secondary' as const, icon: XCircle, color: 'bg-gray-400' }
       default:
-        return { label: 'Không xác định', variant: 'secondary' as const, icon: Clock, color: 'bg-gray-200' }
+        return { label: 'Không xác định', variant: 'secondary' as const, icon: Clock, color: 'bg-gray-400' }
     }
   }
 
@@ -186,7 +186,22 @@ const PayrollManagement: React.FC = () => {
     setCurrentPage(1)
   }
 
+  // ✅ Kiểm tra xem payroll có ở status pending không
+  const canSelectForEmail = (teacher: Teacher): boolean => {
+    return teacher.payroll?.status === 'pending' || false
+  }
+
   const handleSelectTeacher = (teacherId: string) => {
+    // ✅ Chỉ cho phép chọn nếu status là pending
+    if (!canSelectForEmail({ payroll: { id: teacherId, status: 'pending' } } as any)) {
+      toast({
+        title: 'Không thể chọn',
+        description: 'Chỉ có thể gửi email cho payroll ở trạng thái "Chờ xử lý"',
+        variant: 'default'
+      })
+      return
+    }
+
     setSelectedTeachers(prev => 
       prev.includes(teacherId) 
         ? prev.filter(id => id !== teacherId)
@@ -197,14 +212,20 @@ const PayrollManagement: React.FC = () => {
   const handleSelectAll = () => {
     if (!listTeacher) return
     
-    if (selectedTeachers.length === listTeacher?.length) {
+    // ✅ Chỉ chọn những payroll ở status pending
+    const pendingPayrollIds = listTeacher
+      .filter(teacher => canSelectForEmail(teacher))
+      .map(teacher => teacher?.payroll?.id || '')
+      .filter(Boolean)
+    
+    if (selectedTeachers.length === pendingPayrollIds.length && pendingPayrollIds.length > 0) {
       setSelectedTeachers([])
     } else {
-      setSelectedTeachers(listTeacher?.map(teacher => teacher.id))
+      setSelectedTeachers(pendingPayrollIds)
     }
   }
 
-  const handleSendEmailReminder = () => {
+  const handleSendEmailReminder = async () => {
     if (selectedTeachers.length === 0) {
       toast({
         title: 'Cảnh báo',
@@ -214,6 +235,22 @@ const PayrollManagement: React.FC = () => {
       return
     }
 
+    // ✅ Kiểm tra lại trước khi gửi
+    const invalidPayrolls = selectedTeachers.filter(id => {
+      const teacher = listTeacher?.find(t => t.payroll?.id === id)
+      return !teacher || teacher.payroll?.status !== 'pending'
+    })
+
+    if (invalidPayrolls.length > 0) {
+      toast({
+        title: 'Lỗi',
+        description: 'Một số payroll không ở trạng thái "Chờ xử lý"',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500))
     sendEmailMutation.mutate(selectedTeachers)
   }
 
@@ -222,17 +259,28 @@ const PayrollManagement: React.FC = () => {
       key: 'checkbox',
       header: (
         <Checkbox
-          checked={listTeacher && selectedTeachers.length === listTeacher.length && listTeacher.length > 0}
+          checked={
+            listTeacher && 
+            listTeacher.filter(t => canSelectForEmail(t)).length > 0 &&
+            selectedTeachers.length === listTeacher.filter(t => canSelectForEmail(t)).length
+          }
           onCheckedChange={handleSelectAll}
+          disabled={!listTeacher || listTeacher.filter(t => canSelectForEmail(t)).length === 0}
           aria-label="Select all"
         />
       ),
       width: '50px',
       render: (teacher) => (
         <Checkbox
-          checked={selectedTeachers.includes(teacher.id)}
-          onCheckedChange={() => handleSelectTeacher(teacher.id)}
+          checked={selectedTeachers.includes(teacher?.payroll?.id || '')}
+          onCheckedChange={() => handleSelectTeacher(teacher?.payroll?.id || '')}
+          disabled={!canSelectForEmail(teacher)} // ✅ Disable nếu status không pending
           aria-label={`Select ${teacher.user.fullName}`}
+          title={
+            !canSelectForEmail(teacher) 
+              ? 'Chỉ có thể chọn payroll ở trạng thái "Chờ xử lý"' 
+              : ''
+          }
         />
       )
     },
@@ -281,8 +329,15 @@ const PayrollManagement: React.FC = () => {
       render: (teacher) => {
         const statusInfo = getPayrollStatus(teacher)
         const Icon = statusInfo.icon
+        
+        // ✅ Highlight nếu là pending
+        const isPending = teacher.payroll?.status === 'pending'
+        
         return (
-          <Badge variant={statusInfo.variant} className={`gap-1 ${statusInfo.color}`}>
+          <Badge 
+            variant={statusInfo.variant} 
+            className={`gap-1 ${statusInfo.color} ${isPending ? 'ring-2 ring-blue-400' : ''}`}
+          >
             <Icon className="w-3 h-3" />
             {statusInfo.label}
           </Badge>
@@ -388,8 +443,16 @@ const PayrollManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Search and Filter Section */}
+      {/* Filter Section - Thêm thông báo */}
       <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
+        {/* ✅ Thêm thông báo về trạng thái pending */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+          <p>
+            💡 Chỉ có thể gửi email nhắc nhở cho payroll ở trạng thái 
+            <span className="font-semibold ml-1">Chờ xử lý (Pending)</span>
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Teacher Name Search */}
           <div className="relative">

@@ -8,6 +8,6 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
 
 @Module({
   controllers: [CronTestController],
-  providers: [BillCronService, PayrollCronService, ProgressReportCronService, PrismaService, EmailServiceNotificationBill],
+  providers: [BillCronService, PayrollCronService, ProgressReportCronService, PrismaService, EmailServiceNotificationBill ],
 })
 export class TasksModule {}

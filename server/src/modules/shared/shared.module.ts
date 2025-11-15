@@ -24,6 +24,8 @@ import { PublicTeachersController } from './controllers/public-teachers.controll
 import { PublicTeachersService } from './services/public-teachers.service';
 import { PublicCenterInfoController } from './controllers/public-center-info.controller';
 import { PublicCenterInfoService } from './services/public-center-info.service';
+import { EmailNotificationPayrollService } from './services/email-notification-payroll.service';
+import { PayrollNotificationProcessor } from './consumer/payroll-notification.processor';
   
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
@@ -76,6 +78,9 @@ const DEFAULT_BULL_JOB_OPTIONS = {
       name: 'session_change_email',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
+    BullModule.registerQueue({
+      name: 'payroll-notification',
+    }),
   ],
   controllers:[
     // Shared controllers can be added here
@@ -104,7 +109,9 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     EnrollmentEmailProcessor,
     ClassStatusChangeProcessor,
     ClassRequestEmailProcessor,
-    SessionChangeEmailProcessor
+    SessionChangeEmailProcessor,
+    EmailNotificationPayrollService,
+    PayrollNotificationProcessor
   ],
   exports: [
     StudentSharedService, 
@@ -112,6 +119,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     PrismaService,
     EmailQueueService,
     EmailNotificationService, // Export để các module khác sử dụng
+    EmailNotificationPayrollService
   ],
   
 })

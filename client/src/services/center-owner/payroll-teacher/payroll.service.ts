@@ -66,8 +66,8 @@ const getSessionsByClassId = async (classId: string, month?: string, teacherId?:
   }
 }
 
-const sendPayrollReminder = async (teacherIds: string[]) => {
-  return ''
+const sendPayrollNotification = async (payrollIds: string[]) => {
+  return await apiClient.post(`admin-center/payroll-teacher/payroll/send-email`, { payrollIds })
 }
 
 export const payrollService = {
@@ -75,5 +75,5 @@ export const payrollService = {
   getListPayrollsByTeacherId,
   getPayrollById,
   getSessionsByClassId,
-  sendPayrollReminder
+  sendPayrollNotification
 }

@@ -1,9 +1,14 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../../../db/prisma.service";
-
+import { Queue } from "bull";
+import { InjectQueue } from "@nestjs/bull";
 @Injectable()
 export class PayRollTeacherService {
-  constructor(private prisma: PrismaService){}
+  private readonly logger = new Logger(PayRollTeacherService.name);
+  constructor(private prisma: PrismaService,
+    @InjectQueue('payroll-notification')
+    private readonly payrollQueue: Queue,
+  ){}
 
   async getListTeachers(
       teacherName: string, 
@@ -362,6 +367,134 @@ export class PayRollTeacherService {
         } catch (error) {
           console.error('Error retrieving class sessions by classId:', error)
           throw new Error('Failed to retrieve class sessions')
+        }
+      }
+
+      async sendEmailNotificationPayrollTeacher(listPayrollsId: string[]) {
+        const startTime = Date.now();
+        let executionId: string | null = null;
+    
+        try {
+          if (!listPayrollsId || listPayrollsId.length === 0) {
+            throw new Error('Danh sách payroll không được để trống');
+          }
+    
+          const payrollIds = listPayrollsId.map(id => BigInt(id));
+    
+          const payrolls = await this.prisma.payroll.findMany({
+            where: {
+              id: { in: payrollIds },
+            },
+            select: {
+              id: true,
+              status: true,
+              periodStart: true,
+              periodEnd: true,
+              totalAmount: true,
+              bonuses: true,
+              deductions: true,
+              teacher: {
+                select: {
+                  user: {
+                    select: {
+                      fullName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+    
+          if (payrolls.length === 0) {
+            throw new Error('Không tìm thấy payroll nào');
+          }
+    
+          const payrollsToNotify = payrolls.filter(p => p.status === 'pending');
+    
+          if (payrollsToNotify.length === 0) {
+            this.logger.warn('Không có payroll nào ở trạng thái pending');
+            return {
+              success: true,
+              message: 'Không có payroll nào ở trạng thái pending để gửi thông báo',
+              totalRequested: listPayrollsId.length,
+              totalNotified: 0,
+            };
+          }
+    
+          // ✅ Tạo CronJobExecution record
+          const execution = await this.prisma.cronJobExecution.create({
+            data: {
+              jobType: 'payroll_notification',
+              status: 'running',
+              totalItems: payrollsToNotify.length,
+              metadata: {
+                payrollIds: payrollsToNotify.map(p => p.id.toString()),
+                teacherEmails: payrollsToNotify.map(p => p.teacher.user.email),
+                executedAt: new Date().toISOString(),
+              },
+            },
+          });
+    
+          executionId = execution.id;
+    
+          // ✅ Chuyển BigInt thành string trước khi thêm vào queue
+          const jobs = payrollsToNotify.map(payroll =>
+            this.payrollQueue.add(
+              'send-payroll-notification',
+              {
+                payrollId: payroll.id.toString(), // ✅ Convert BigInt to string
+                executionId: execution.id,
+              },
+              {
+                delay: 1000,
+                removeOnComplete: true,
+                removeOnFail: false,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 2000 },
+              },
+            ),
+          );
+    
+          await Promise.all(jobs);
+    
+          this.logger.log(
+            `✅ Đã queue ${payrollsToNotify.length}/${payrolls.length} thông báo payroll`,
+          );
+    
+          return {
+            success: true,
+            message: `Đã gửi thông báo cho ${payrollsToNotify.length} giáo viên`,
+            executionId: execution.id,
+            totalRequested: listPayrollsId.length,
+            totalProcessed: payrolls.length,
+            totalNotified: payrollsToNotify.length,
+            notifiedPayrolls: payrollsToNotify.map(p => ({
+              payrollId: p.id.toString(),
+              teacherName: p.teacher.user.fullName,
+              teacherEmail: p.teacher.user.email,
+              period: `${p.periodStart.toLocaleDateString('vi-VN')} - ${p.periodEnd.toLocaleDateString('vi-VN')}`,
+              totalAmount: p.totalAmount,
+            })),
+          };
+        } catch (error: any) {
+          this.logger.error('❌ Lỗi khi gửi thông báo payroll:', error);
+    
+          // ✅ Cập nhật status execution thành failed
+          if (executionId) {
+            const durationMs = Date.now() - startTime;
+            await this.prisma.cronJobExecution.update({
+              where: { id: executionId },
+              data: {
+                status: 'failed',
+                errorMessage: error?.message || 'Unknown error occurred',
+                completedAt: new Date(),
+                durationMs,
+              },
+            });
+          }
+    
+          throw error;
         }
       }
 }
