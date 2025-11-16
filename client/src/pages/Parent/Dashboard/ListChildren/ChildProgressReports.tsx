@@ -19,13 +19,6 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
     queryFn: () => parentChildProgressReportService.getProgressReports(child.id),
   }) as any
 
-  if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Đang tải báo cáo tiến độ…</div>
-  }
-  if (isError) {
-    return <div className="text-sm text-red-600">Không thể tải báo cáo tiến độ.</div>
-  }
-
   // Group reports by period (1 report = 1 subject per class now)
   const rawReports = ((reports as any)?.data as ProgressReportDto[] | undefined) || (reports as ProgressReportDto[] | undefined) || []
 
@@ -86,9 +79,7 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
     }
   })
 
-  if (!progressReports.length) {
-    return <div className="text-sm text-muted-foreground">Chưa có báo cáo tiến độ nào.</div>
-  }
+  // Hooks must not be conditional; handle empty state later in JSX
 
   // Month + Year filters
   const groupsArray = useMemo(() => Object.values(groupedByPeriod) as any[], [groupedByPeriod])
@@ -133,6 +124,15 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
 
   return (
     <div className="space-y-6">
+      {isLoading && (
+        <div className="text-sm text-muted-foreground">Đang tải báo cáo tiến độ…</div>
+      )}
+      {isError && !isLoading && (
+        <div className="text-sm text-red-600">Không thể tải báo cáo tiến độ.</div>
+      )}
+      {!isLoading && !isError && progressReports.length === 0 && (
+        <div className="text-sm text-muted-foreground">Chưa có báo cáo tiến độ nào.</div>
+      )}
       {/* Lọc theo tháng và năm */}
       <CardTitle>Tìm kiếm theo tháng và năm</CardTitle>
       <div className="flex flex-wrap items-center gap-3">
