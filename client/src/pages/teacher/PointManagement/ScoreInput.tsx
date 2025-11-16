@@ -46,7 +46,6 @@ export default function GradeInputPage() {
             id: c.id,
             name: c.name,
             subject: { name: c.subject?.name || 'N/A' },
-            studentCount: c.studentCount || 0
           }
         }) as TeacherClassItem[]
         setClasses(items)
@@ -364,7 +363,7 @@ export default function GradeInputPage() {
                   ) : (
                     classes.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name} - {cls.subject?.name || ''} ({cls.studentCount || 0} HS)
+                        {cls.name} - {cls.subject?.name || ''}
                       </SelectItem>
                     ))
                   )}

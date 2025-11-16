@@ -65,3 +65,7 @@ export type {
   ApproveRejectDto,
   AffectedSessionDetail,
 } from './student-leave-request/student-leave.types'
+
+// Progress Management
+export { teacherProgressService } from './progress-management/progress.service'
+export type { TeacherProgressReportDto } from './progress-management/progress.service'
