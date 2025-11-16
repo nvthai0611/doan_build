@@ -74,6 +74,7 @@ import  ManualTriggerPanel  from "../pages/manager/Trigger-management/components
 import  PayrollManagementTeacher  from "../pages/teacher/Payroll-Management/PayrollManagementTeacher";
 import PayrollDetailTeacher from "../pages/teacher/Payroll-Management/PayrollDetail";
 import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
+import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
 
 export const privateRoutes = (
   <>
@@ -139,6 +140,7 @@ export const privateRoutes = (
         <Route path="classes/:classId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
+        <Route path="grades/evaluation" element={<ProgressManagement />} />
         <Route path="attendance" element={<AttendanceTable />} />
         <Route path="documents/upload" element={<FileUpload />} />
         <Route path="documents/manage" element={<FileManage />} />
