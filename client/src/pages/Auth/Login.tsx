@@ -46,8 +46,8 @@ export function LoginForm() {
         sessionStorage.removeItem('redirectAfterLogin')
         navigate(redirectPath, { replace: true })
       } else {
-        // Default redirect: Center Owner về /center-qn, Teacher về /teacher/profile
-        const defaultPath = result.user.role === 'center_owner' ? '/center-qn' : '/teacher/profile'
+        // Default redirect: Center Owner về /center-qn, Teacher về /teacher/overview
+        const defaultPath = result.user.role === 'center_owner' ? '/center-qn' : '/teacher/overview'
         navigate(defaultPath, { replace: true })
       }
     } catch (err: any) {
