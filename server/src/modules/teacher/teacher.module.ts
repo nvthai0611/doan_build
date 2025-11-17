@@ -40,6 +40,8 @@ import { PayrollController } from './controllers/payroll.controller';
 import { PayrollService } from './services/payroll.service';
 import { TeacherProgressReportController } from './controllers/progress-report.controller';
 import { TeacherProgressReportService } from './services/progress-report.service';
+import { TeacherDashboardController } from './controllers/dashboard.controller';
+import { TeacherDashboardService } from './services/dashboard.service';
 
 @Module({
   imports: [
@@ -70,7 +72,8 @@ import { TeacherProgressReportService } from './services/progress-report.service
     ContractsManageController,
     TeacherStudentLeaveRequestController,
     PayrollController,
-    TeacherProgressReportController
+    TeacherProgressReportController,
+    TeacherDashboardController
   ],
   providers: [
     AttendanceService,
@@ -93,7 +96,8 @@ import { TeacherProgressReportService } from './services/progress-report.service
     TeacherStudentLeaveRequestService,
     PrismaService,
     PayrollService,
-    TeacherProgressReportService
+    TeacherProgressReportService,
+    TeacherDashboardService
   ],
   exports: [
     AttendanceService,

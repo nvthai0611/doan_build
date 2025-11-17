@@ -3,6 +3,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, AlertTriangle, FileQuestion } from "lucide-react"
 import type { Child } from "../../../../services/parent/child-management/child.types"
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
@@ -125,46 +127,92 @@ export function ChildProgressReports({ child }: ChildProgressReportsProps) {
   return (
     <div className="space-y-6">
       {isLoading && (
-        <div className="text-sm text-muted-foreground">Đang tải báo cáo tiến độ…</div>
+        <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Đang tải báo cáo tiến độ…</h3>
+              <p className="text-sm text-muted-foreground">Vui lòng chờ trong giây lát.</p>
+            </div>
+          </div>
+        </div>
       )}
       {isError && !isLoading && (
-        <div className="text-sm text-red-600">Không thể tải báo cáo tiến độ.</div>
+        <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center">
+              <AlertTriangle className="text-red-600 dark:text-red-400" size={32} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Không thể tải báo cáo tiến độ</h3>
+              <p className="text-sm text-muted-foreground">Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.</p>
+            </div>
+          </div>
+        </div>
       )}
       {!isLoading && !isError && progressReports.length === 0 && (
-        <div className="text-sm text-muted-foreground">Chưa có báo cáo tiến độ nào.</div>
+        <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <FileQuestion className="text-slate-400 dark:text-slate-500" size={40} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Chưa có báo cáo tiến độ</h3>
+              <p className="text-sm text-muted-foreground">Bé chưa có báo cáo tiến độ nào.</p>
+            </div>
+          </div>
+        </div>
       )}
-      {/* Lọc theo tháng và năm */}
-      <CardTitle>Tìm kiếm theo tháng và năm</CardTitle>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground">Tháng:</label>
-          <select
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          >
-            {monthOptions.map((m) => (
-              <option key={m} value={String(m)}>Tháng {m}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground">Năm:</label>
-          <select
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-          >
-            <option value="all">Tất cả</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* Lọc theo tháng và năm chỉ hiện khi có dữ liệu */}
+      {progressReports.length > 0 && (
+        <>
+          <CardTitle>Tìm kiếm theo tháng và năm</CardTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">Tháng:</label>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {monthOptions.map((m) => (
+                  <option key={m} value={String(m)}>Tháng {m}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">Năm:</label>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                <option value="all">Tất cả</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={String(y)}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
-      {filteredReports.length === 0 && (
-        <div className="text-sm text-muted-foreground">Không có báo cáo cho kỳ đã chọn.</div>
+
+      {/* Nếu có dữ liệu tổng thể nhưng lọc không ra kết quả thì hiện alert riêng */}
+      {progressReports.length > 0 && filteredReports.length === 0 && (
+        <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-amber-50 dark:bg-amber-950 flex items-center justify-center">
+              <FileQuestion className="text-amber-600 dark:text-amber-500" size={40} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Không tìm thấy báo cáo phù hợp</h3>
+              <p className="text-sm text-muted-foreground">Không có báo cáo tiến độ nào cho tháng/năm bạn đã chọn.</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {filteredReports.map((report: any, idx: number) => (
