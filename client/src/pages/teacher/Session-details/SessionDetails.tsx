@@ -65,7 +65,7 @@ interface RescheduleData {
 export default function SessionDetails() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-  const [session, setSession] = useState<SessionDetails | null>(null)
+  const [session, setSession] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false)
@@ -189,18 +189,22 @@ export default function SessionDetails() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled": return "bg-blue-100 text-blue-800"
-      case "completed": return "bg-green-100 text-green-800"
+      case "has_not_happened": return "bg-blue-100 text-blue-800"
+      case "happening": return "bg-green-100 text-green-800"
+      case "end": return "bg-red-100 text-red-800"
       case "cancelled": return "bg-red-100 text-red-800"
+      case "day_off": return "bg-orange-100 text-orange-800"
       default: return "bg-gray-100 text-gray-800"
     }
   }
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "scheduled": return "Đã lên lịch"
-      case "completed": return "Đã hoàn thành"
+      case "has_not_happened": return "Chưa diễn ra"
+      case "happening": return "Đang diễn ra"
+      case "end": return "Đã kết thúc"
       case "cancelled": return "Đã hủy"
+      case "day_off": return "Nghỉ"
       default: return status
     }
   }
@@ -392,8 +396,8 @@ export default function SessionDetails() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <CardContent>
-                    <div className="space-y-3">
-                      {session?.students.map((student) => (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {session?.students.map((student: any) => (
                         <div
                           key={student.id}
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -498,6 +502,30 @@ export default function SessionDetails() {
                 </div>
               </div>
             </CardContent>
+            {session?.substituteTeacherName && (
+              <CardContent>
+                <div className="flex items-center space-x-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      {session?.substituteTeacherName
+                        ?.split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .slice(0, 2) || 'GV'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">
+                      {session?.substituteTeacherName || 'Giáo viên'}
+                    </p>
+                    <p className="text-sm text-orange-700">
+                      Giáo viên thay thế
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
       </div>

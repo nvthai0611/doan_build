@@ -110,7 +110,7 @@ export class ProgressReportCronService {
         // 6) Tạo nhận xét tự động
         const autoComment = this.generateAutoComment(averageScore, attendanceRate)
 
-        // 7) Tạo ProgressReport (status=PUBLISHED - tự động công bố)
+        // 7) Tạo ProgressReport ở trạng thái DRAFT (chờ GV duyệt)
         await this.prisma.progressReport.create({
           data: {
             studentId,
@@ -124,9 +124,9 @@ export class ProgressReportCronService {
             attendanceRate: attendanceRate ?? undefined,
             trend: trend ?? undefined, // ✅ Xu hướng điểm so với kỳ trước
             overallComment: autoComment,
-            status: 'PUBLISHED', // Tự động công bố
+            status: 'DRAFT', // Chờ giáo viên duyệt trước khi công bố cho phụ huynh
             generatedAt: new Date(),
-            publishedAt: new Date(),
+            publishedAt: null,
           },
         })
         createdCount++

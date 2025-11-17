@@ -38,6 +38,8 @@ import { SharedModule } from '../shared/shared.module';
 import { PrismaService } from 'src/db/prisma.service';
 import { PayrollController } from './controllers/payroll.controller';
 import { PayrollService } from './services/payroll.service';
+import { TeacherProgressReportController } from './controllers/progress-report.controller';
+import { TeacherProgressReportService } from './services/progress-report.service';
 
 @Module({
   imports: [
@@ -67,7 +69,8 @@ import { PayrollService } from './services/payroll.service';
     IncidentReportController,
     ContractsManageController,
     TeacherStudentLeaveRequestController,
-    PayrollController
+    PayrollController,
+    TeacherProgressReportController
   ],
   providers: [
     AttendanceService,
@@ -89,7 +92,8 @@ import { PayrollService } from './services/payroll.service';
     ContractsManageService,
     TeacherStudentLeaveRequestService,
     PrismaService,
-    PayrollService
+    PayrollService,
+    TeacherProgressReportService
   ],
   exports: [
     AttendanceService,

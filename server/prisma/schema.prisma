@@ -558,7 +558,7 @@ model ProgressReport {
   grade          String? // ✅ Thêm: Xếp loại học lực (A/B/C...)
   trend          String? // ✅ Thêm nếu cần biểu diễn xu hướng điểm
   overallComment String?
-  status         String    @default("PUBLISHED")
+  status         String    @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
   generatedAt    DateTime? // ✅ Thêm: ngày hệ thống tạo báo cáo
   publishedAt    DateTime? // ✅ Thêm: ngày giáo viên/phụ huynh thấy được
   createdAt      DateTime  @default(now())
