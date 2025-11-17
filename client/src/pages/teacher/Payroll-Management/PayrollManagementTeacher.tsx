@@ -7,7 +7,7 @@ import PayrollStatusBadge from './components/PayrollStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Eye, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { getAllPayrolls } from '../../../services/teacher/payroll-management/payroll-management'
+import { getAllPayrolls } from '../../../services/teacher/payroll-management/payroll-management.service'
 
 const PayrollManagementTeacher: React.FC = () => {
   const navigate = useNavigate()

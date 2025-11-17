@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Param, Patch, Put, Query, Req } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger'
 import { PayrollService } from '../services/payroll.service'
 
@@ -19,12 +19,13 @@ export class PayrollController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async getTeacherPayrolls(
-    @Query('teacherId') teacherId: string,
+    @Req() req: any,
     @Query('month') month?: string,
     @Query('status') status?: string,
     @Query('page') page?: string,
-    @Query('limit') limit?: string
+    @Query('limit') limit?: string,
   ): Promise<any> {
+    const teacherId = req.user.teacherId
     return this.payrollService.getTeacherPayroll({
       teacherId,
       month,
@@ -63,4 +64,10 @@ export class PayrollController {
       limit: limit ? parseInt(limit, 10) : 10
     })
   }
+  @Patch(':payrollId/approve')
+  async approvePayroll( @Req() req: any, @Param('payrollId') payrollId: string ) {
+    const teacherId = req.user.teacherId
+    return this.payrollService.approvePayroll(teacherId, payrollId)
+  }
+
 }

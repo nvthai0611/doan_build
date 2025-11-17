@@ -1,24 +1,29 @@
 import React, { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getPayrollDetail } from '../../../services/teacher/payroll-management/payroll-management'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getPayrollDetail, approvePayroll, rejectPayroll } from '../../../services/teacher/payroll-management/payroll-management.service'
 import { DataTable, type Column } from '../../../components/common/Table/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft, Download, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
+import { Download, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 import PayrollStatusBadge from './components/PayrollStatusBadge'
 import AdjustmentDialog from './components/AdjustmentDialog'
+import PayrollApprovalDialog from './components/PayrollApprovalDialog'
+import PayrollRejectDialog from './components/PayrollRejectDialog'
 import { toast } from 'sonner'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 
 const PayrollDetailTeacher: React.FC = () => {
   const { payrollId } = useParams<{ payrollId: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [selectedClass, setSelectedClass] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false)
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
 
   const { 
     data: response, 
@@ -40,6 +45,34 @@ const PayrollDetailTeacher: React.FC = () => {
   const sessions = response?.data?.sessions || []
   const pagination = response?.data?.pagination
   const summary = response?.data?.summary
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: () => approvePayroll(payrollId!),
+    onSuccess: () => {
+      toast.success('Đã xác nhận duyệt bảng lương thành công')
+      setApprovalDialogOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['payroll-detail', payrollId] })
+      queryClient.invalidateQueries({ queryKey: ['teacher-payrolls'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Có lỗi xảy ra khi duyệt bảng lương')
+    }
+  })
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectPayroll(payrollId!, reason),
+    onSuccess: () => {
+      toast.success('Đã từ chối bảng lương')
+      setRejectDialogOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['payroll-detail', payrollId] })
+      queryClient.invalidateQueries({ queryKey: ['teacher-payrolls'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Có lỗi xảy ra khi từ chối bảng lương')
+    }
+  })
 
   const uniqueClasses = useMemo(() => {
     if (!sessions || sessions.length === 0) return []
@@ -70,11 +103,19 @@ const PayrollDetailTeacher: React.FC = () => {
   }
 
   const handleApprove = () => {
-    toast.success('Đã duyệt bảng lương thành công')
+    setApprovalDialogOpen(true)
+  }
+
+  const handleConfirmApprove = () => {
+    approveMutation.mutate()
   }
 
   const handleReject = () => {
-    toast.error('Đã từ chối bảng lương')
+    setRejectDialogOpen(true)
+  }
+
+  const handleConfirmReject = (reason: string) => {
+    rejectMutation.mutate(reason)
   }
 
   const columns: Column<any>[] = [
@@ -113,7 +154,6 @@ const PayrollDetailTeacher: React.FC = () => {
       key: 'isSubstitute',
       header: 'Loại',
       width: '120px',
-      align: 'center',
       render: (payout) => {
         const isSubstitute = payout.session.substituteTeacherId === payroll?.teacherId
         return (
@@ -127,7 +167,6 @@ const PayrollDetailTeacher: React.FC = () => {
       key: 'status',
       header: 'Trạng thái',
       width: '120px',
-      align: 'center',
       render: (payout) => {
         const statusMap: any = {
           completed: { label: 'Hoàn thành', icon: CheckCircle, color: 'text-green-600' },
@@ -139,7 +178,7 @@ const PayrollDetailTeacher: React.FC = () => {
         const Icon = statusInfo.icon
         
         return (
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center  gap-1">
             <Icon className={`w-4 h-4 ${statusInfo.color}`} />
             <span className={`text-xs ${statusInfo.color}`}>
               {statusInfo.label}
@@ -152,7 +191,6 @@ const PayrollDetailTeacher: React.FC = () => {
       key: 'teacherPayout',
       header: 'Thanh toán',
       width: '150px',
-      align: 'right',
       render: (payout) => (
         <span className="font-semibold text-green-600">
           {Number(payout.teacherPayout).toLocaleString('vi-VN')} đ
@@ -193,7 +231,11 @@ const PayrollDetailTeacher: React.FC = () => {
     )
   }
 
-  const canApproveOrReject = payroll.status === 'waiting_teacher_approval'
+  const canApproveOrReject = payroll.status == 'waiting_teacher_approval'
+  const rejectedPayroll = payroll.status == 'rejected_by_teacher'
+  const approvedPayroll = payroll.status == 'approved_by_teacher'
+  const paidPayroll = payroll.status == 'paid'
+  const cancelPayroll = payroll.status == 'cancelled'
   const hasAdjustments = Number(payroll.bonuses) > 0 || Number(payroll.deductions) > 0
   const hasBackPay = Number(payroll.backPayAmount || 0) > 0
 
@@ -231,6 +273,26 @@ const PayrollDetailTeacher: React.FC = () => {
                 Xác nhận duyệt
               </Button>
             </>
+          )}
+          {rejectedPayroll && (
+            <Badge variant="outline" className="px-3 py-2 text-white bg-orange-600">
+                Đã yêu cầu xem xét lại bảng lương
+            </Badge>
+          )}
+          {approvedPayroll && (
+            <Badge variant='outline'  className="px-3 py-2 text-white bg-yellow-600">
+                Đã duyệt bảng lương
+            </Badge>
+          )}
+          {paidPayroll && (
+            <Badge variant='outline'  className="px-3 py-2 text-white bg-green-600">
+                Bảng lương đã được thanh toán
+            </Badge>
+          )}
+          {cancelPayroll && (
+            <Badge variant='outline'  className="px-3 py-2 text-white bg-red-600">
+                Bảng lương đã bị hủy
+            </Badge>
           )}
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
@@ -290,10 +352,9 @@ const PayrollDetailTeacher: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Actions - Adjustment & Back Pay */}
+      {/* Quick Actions */}
       {(hasAdjustments || hasBackPay) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {/* Adjustment Button */}
           {hasAdjustments && (
             <button
               onClick={() => setAdjustmentDialogOpen(true)}
@@ -335,7 +396,6 @@ const PayrollDetailTeacher: React.FC = () => {
             </button>
           )}
 
-          {/* Back Pay Button */}
           {hasBackPay && (
             <button
               onClick={() => navigate(`/teacher/payroll-management/${payrollId}/back-pay`)}
@@ -369,13 +429,30 @@ const PayrollDetailTeacher: React.FC = () => {
         </div>
       )}
 
-      {/* Adjustment Dialog */}
+      {/* Dialogs */}
       <AdjustmentDialog
         open={adjustmentDialogOpen}
         onOpenChange={setAdjustmentDialogOpen}
         adjustmentDetails={payroll.adjustmentDetails}
         bonuses={Number(payroll.bonuses)}
         deductions={Number(payroll.deductions)}
+      />
+
+      <PayrollApprovalDialog
+        open={approvalDialogOpen}
+        onOpenChange={setApprovalDialogOpen}
+        payroll={payroll}
+        summary={summary}
+        onConfirm={handleConfirmApprove}
+        loading={approveMutation.isPending}
+      />
+
+      <PayrollRejectDialog
+        open={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        payroll={payroll}
+        onConfirm={handleConfirmReject}
+        loading={rejectMutation.isPending}
       />
 
       {/* Session Summary */}
