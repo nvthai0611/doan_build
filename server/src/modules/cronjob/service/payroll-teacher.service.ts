@@ -438,6 +438,16 @@ export class PayrollCronService {
             totalAmount: true,
             amount: true,
             dueDate: true, // Quan trọng để suy luận kỳ nợ
+            student: {
+              select:{
+                user:{
+                  select:{
+                    fullName: true
+                  }
+
+                }
+              }
+            }
           },
         },
       },
@@ -542,7 +552,7 @@ export class PayrollCronService {
             feeRecordId: feeRecord.id,
             sessionId: session.id,
             sessionDate: sessionDateStr,
-            description: `Truy lĩnh buổi ${sessionDateStr} (từ HĐ ${feeRecord.id})`,
+            description: `Truy lĩnh buổi ${sessionDateStr} (từ hóa đơn của học sinh ${feeRecord.student.user.fullName})`,
             revenuePerSession: revenuePerSession.toNumber(),
             payoutRate: payoutRate.toNumber(),
             payoutAmount: teacherPayout.toNumber(),

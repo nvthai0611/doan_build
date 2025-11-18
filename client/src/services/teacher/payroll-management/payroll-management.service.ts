@@ -88,9 +88,11 @@ const rejectPayroll = async (payrollId: string, reason: string) => {
 }
 
 
+
+
 export {
     getAllPayrolls,
     getPayrollDetail,
     approvePayroll,
-    rejectPayroll
+    rejectPayroll,
 }

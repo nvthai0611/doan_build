@@ -7,7 +7,7 @@ import { payrollService } from "@/services/center-owner/payroll-teacher/payroll.
 import { DataTable, Column } from "@/components/common/Table/DataTable"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, Filter, X } from "lucide-react"
+import { ArrowLeft, Calendar, Filter, X, Check, XCircle, DollarSign, Info } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
@@ -23,6 +23,7 @@ export default function PayrollDetail() {
   const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined)
   const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined)
   const [classFilter, setClassFilter] = useState<string>("all")
+  const [showBackPayModal, setShowBackPayModal] = useState(false)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["payroll-detail", payrollId],
@@ -35,17 +36,29 @@ export default function PayrollDetail() {
   const payroll: any = useMemo(() => (data as any) ?? null, [data])
 
   const statusBadge = (status?: string) => {
-    switch (status) {
-      case "approved":
-        return <Badge className="bg-green-100 text-green-800">Đã duyệt</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Chờ duyệt</Badge>
-      case "rejected":
-        return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
-      default:
-        return <Badge variant="outline">{status || "-"}</Badge>
-    }
+  switch (status) {
+    case "approved_by_teacher":
+      return <Badge className="bg-green-100 text-green-800">Đã duyệt</Badge>
+
+    case "paid":
+      return <Badge className="bg-green-100 text-green-800">Đã thanh toán</Badge>
+
+    case "pending":
+      return <Badge className="bg-yellow-100 text-yellow-800">Chờ xử lý</Badge>
+
+    case "waiting_teacher_approval":
+      return <Badge className="bg-yellow-100 text-yellow-800">Chờ giáo viên duyệt</Badge>
+
+    case "cancelled":
+      return <Badge className="bg-gray-200 text-gray-700">Đã hủy</Badge>
+
+    case "rejected_by_teacher":
+      return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
+
+    default:
+      return <Badge variant="outline">{status || "-"}</Badge>
   }
+}
 
   const sessionStatusBadge = (status?: string) => {
     switch (status) {
@@ -183,7 +196,7 @@ export default function PayrollDetail() {
       )
     },
     { key: "className", header: "Lớp"},
-    { key: "teacher", header: "Giáo viên" },
+    // { key: "teacher", header: "Giáo viên" },
     { 
       key: "status", 
       header: "Trạng thái",
@@ -191,7 +204,7 @@ export default function PayrollDetail() {
     },
     {
       key: "studentCount",
-      header: "Số HS",
+      header: "Số học sinh",
       render: (row) => `${row.studentCount} HS`
     },
     {
@@ -221,6 +234,114 @@ export default function PayrollDetail() {
     return filteredRows.slice(start, start + itemsPerPage)
   }, [filteredRows, currentPage, itemsPerPage])
 
+  // Mutation for handling payroll actions
+  const handlePayrollAction = async (action: string) => {
+    try {
+      // TODO: Implement API call
+      // await payrollService.updatePayrollStatus(payrollId, action)
+      console.log(`Action: ${action} for payroll ${payrollId}`)
+      // Refetch data after action
+      // refetch()
+    } catch (error) {
+      console.error('Error handling payroll action:', error)
+    }
+  }
+
+  const renderActionButtons = () => {
+    const status = payroll?.status
+
+    switch (status) {
+      case "pending":
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handlePayrollAction('send_to_teacher')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Gửi cho giáo viên
+            </Button>
+            <Button 
+              onClick={() => handlePayrollAction('cancel')}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Hủy bảng lương
+            </Button>
+          </div>
+        )
+
+      case "waiting_teacher_approval":
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handlePayrollAction('remind_teacher')}
+              variant="outline"
+            >
+              Nhắc nhở giáo viên
+            </Button>
+            <Button 
+              onClick={() => handlePayrollAction('cancel')}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Hủy bảng lương
+            </Button>
+          </div>
+        )
+
+      case "approved_by_teacher":
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handlePayrollAction('mark_as_paid')}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Xác nhận đã thanh toán
+            </Button>
+            <Button 
+              onClick={() => handlePayrollAction('cancel')}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Hủy bảng lương
+            </Button>
+          </div>
+        )
+
+      case "rejected_by_teacher":
+        return (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handlePayrollAction('resend_to_teacher')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Gửi lại cho giáo viên
+            </Button>
+            <Button 
+              onClick={() => handlePayrollAction('cancel')}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Hủy bảng lương
+            </Button>
+          </div>
+        )
+
+      case "paid":
+      case "cancelled":
+        return null // No actions for final states
+
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -233,7 +354,10 @@ export default function PayrollDetail() {
             </p>
           </div>
         </div>
-        <div>{statusBadge(payroll?.status)}</div>
+        <div className="flex items-center gap-3">
+          {statusBadge(payroll?.status)}
+          {renderActionButtons()}
+        </div>
       </div>
 
       {/* Breadcrumb */}
@@ -395,6 +519,35 @@ export default function PayrollDetail() {
           rowKey="id"
         />
       </div>
+
+      {/* Back Pay Summary Card */}
+      {payroll?.backPayAmount > 0 && (
+        <div className="rounded-xl border bg-amber-50 border-amber-200 p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-amber-900 mb-1">
+                  Có tiền truy lĩnh trong kỳ này
+                </h3>
+                <p className="text-sm text-amber-700">
+                  Bảng lương này bao gồm{" "}
+                  <span className="font-semibold">
+                    {fmt(payroll.backPayAmount)} đ
+                  </span>{" "}
+                  tiền truy lĩnh từ các buổi học trước đó
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}/back-pay-details`)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Xem chi tiết
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

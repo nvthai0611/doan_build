@@ -75,6 +75,7 @@ import  PayrollManagementTeacher  from "../pages/teacher/Payroll-Management/Payr
 import PayrollDetailTeacher from "../pages/teacher/Payroll-Management/PayrollDetail";
 import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
 import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
+import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
 
 export const privateRoutes = (
   <>
@@ -127,6 +128,7 @@ export const privateRoutes = (
         <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
         <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
         <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
+        <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
       </Route>
 
       {/* Giáo viên */}
