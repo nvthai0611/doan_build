@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { FileText, Plus } from "lucide-react"
-import { ContractUploadDialog } from "../TeacherContracts/contracts/UpLoadContracts"
+// import { ContractUploadDialog } from "../TeacherContracts/contracts/UpLoadContracts"
 import { ContractsList } from "../TeacherContracts/contracts/ListContracts"
 import { useAuth } from "../../../lib/auth"
 import { contractsService } from "../../../services/teacher/contracts-management/contracts.service"
@@ -24,7 +24,7 @@ export interface Contract {
 export default function ContractsPage() {
   const { user } = useAuth()
   const [contracts, setContracts] = useState<any[]>([])
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  // const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // Load contracts from localStorage
@@ -47,11 +47,11 @@ export default function ContractsPage() {
     return () => { mounted = false }
   }, [user?.id])
 
-  const handleAddContract = (newContract: any) => {
-    const updatedContracts = [newContract, ...contracts]
-    setContracts(updatedContracts)
-    setIsUploadDialogOpen(false)
-  }
+  // const handleAddContract = (newContract: any) => {
+  //   const updatedContracts = [newContract, ...contracts]
+  //   setContracts(updatedContracts)
+  //   setIsUploadDialogOpen(false)
+  // }
 
   const handleDeleteContract = (contractId: string) => {
     contractsService.remove(contractId).then(() => {
@@ -76,10 +76,10 @@ export default function ContractsPage() {
           <h1 className="text-3xl font-bold text-balance">Quản lý hợp đồng</h1>
           <p className="text-muted-foreground mt-1">Lưu trữ và theo dõi các hợp đồng của bạn</p>
         </div>
-        <Button onClick={() => setIsUploadDialogOpen(true)} className="gap-2">
+        {/* <Button onClick={() => setIsUploadDialogOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" />
           Tải lên hợp đồng
-        </Button>
+        </Button> */}
       </div>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -120,11 +120,11 @@ export default function ContractsPage() {
       <ContractsList contracts={contracts} onDelete={handleDeleteContract} />
 
       {/* Upload Dialog */}
-      <ContractUploadDialog
+      {/* <ContractUploadDialog
         isOpen={isUploadDialogOpen}
         onOpenChange={setIsUploadDialogOpen}
         onAddContract={handleAddContract}
-      />
+      /> */}
     </div>
   )
 }

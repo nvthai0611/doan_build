@@ -54,7 +54,7 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
       alert("Vui lòng nhập ngày hết hạn")
       return
     }
-    
+
     if (contractType === "other" && !customContractType.trim()) {
       alert("Vui lòng nhập loại hợp đồng")
       return
@@ -139,9 +139,22 @@ export function ContractUploadDialog({ isOpen, onOpenChange, teacherId, onUpload
                 />
                 <input
                   type="file"
-                  accept="application/pdf,image/*"
+                  accept="image/*"
                   onChange={(e) => {
                     const f = e.target.files?.[0] || null
+
+                    // Validate file type - only allow images
+                    if (f && f.type === 'application/pdf') {
+                      alert('Không được phép tải lên file PDF. Vui lòng chọn file ảnh.')
+                      e.target.value = '' // Reset input
+                      return
+                    }
+
+                    if (f && !f.type.startsWith('image/')) {
+                      alert('Chỉ được phép tải lên file ảnh (JPG, PNG, v.v.)')
+                      e.target.value = '' // Reset input
+                      return
+                    }
                     setFile(f)
                     if (f && !fileName) setFileName(f.name)
 
