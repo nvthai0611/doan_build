@@ -47,7 +47,8 @@ export function JobExecutionsTable({
   formatDate 
 }: JobExecutionsTableProps) {
   const statuses = ["all", "running", "completed", "failed"]
-
+  console.log("job", jobTypes);
+  
   // Quick date filter handler
   const handleQuickDateFilter = (preset: string) => {
     const now = new Date()
@@ -214,7 +215,8 @@ export function JobExecutionsTable({
                   <SelectItem value="all">Tất cả loại</SelectItem>
                   {jobTypes.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {formatJobType(type)}
+                      {/* {formatJobType(type)} */}
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

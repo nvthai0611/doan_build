@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getPayrollDetail } from '../../../services/teacher/payroll-management/payroll-management'
+import { getPayrollDetail } from '../../../services/teacher/payroll-management/payroll-management.service'
 import { DataTable, type Column } from '../../../components/common/Table/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -74,7 +74,6 @@ const BackPayDetail: React.FC = () => {
       key: 'revenuePerSession',
       header: 'Doanh thu/buổi',
       width: '150px',
-      align: 'right',
       render: (item) => (
         <span className="text-sm text-gray-600">
           {Number(item.revenuePerSession).toLocaleString('vi-VN')} đ
@@ -85,7 +84,6 @@ const BackPayDetail: React.FC = () => {
       key: 'payoutRate',
       header: 'Tỷ lệ',
       width: '100px',
-      align: 'center',
       render: (item) => (
         <Badge variant="outline">
           {(Number(item.payoutRate) * 100).toFixed(0)}%
@@ -96,7 +94,6 @@ const BackPayDetail: React.FC = () => {
       key: 'payoutAmount',
       header: 'Thanh toán',
       width: '150px',
-      align: 'right',
       render: (item) => (
         <span className="font-bold text-yellow-600">
           +{Number(item.payoutAmount).toLocaleString('vi-VN')} đ

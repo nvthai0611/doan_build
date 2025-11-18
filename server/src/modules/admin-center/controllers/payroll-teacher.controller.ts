@@ -5,7 +5,7 @@ import { PayRollTeacherService } from "../services/payroll-teacher.service";
 @ApiTags('Admin - Payroll Teacher')
 @Controller('payroll-teacher')
 export class PayrollTeacherController {
-  constructor(private readonly PayRollTeacherService: PayRollTeacherService) {}
+  constructor(private readonly payRollTeacherService: PayRollTeacherService) {}
 
   @Get('teachers')
   async getListTeachers(
@@ -14,7 +14,7 @@ export class PayrollTeacherController {
     @Query('status') status: string,
     @Query('month') month: string
   ) {
-    return this.PayRollTeacherService.getListTeachers(teacherName, email, status, month);
+    return this.payRollTeacherService.getListTeachers(teacherName, email, status, month);
   }
 
   @Get('payrolls/:teacherId')
@@ -23,13 +23,13 @@ export class PayrollTeacherController {
     @Query('year') year: string, // Changed from month to year
     @Query('classId') classId: string
   ) {
-    return this.PayRollTeacherService.getAllPayrollsByTeacherId(teacherId, year, classId); // Updated to pass year
+    return this.payRollTeacherService.getAllPayrollsByTeacherId(teacherId, year, classId); // Updated to pass year
   }
 
   // Chi tiết 1 payroll (kèm class qua payoutDetails -> session -> class)
   @Get('payroll/:payrollId/detail')
   async getPayrollById(@Param('payrollId') payrollId: string) {
-    return this.PayRollTeacherService.getPayrollById(payrollId);
+    return this.payRollTeacherService.getPayrollById(payrollId);
   }
 
   // Danh sách buổi học theo classId (filter optional: month, teacherId)
@@ -39,12 +39,17 @@ export class PayrollTeacherController {
     @Query('month') month?: string,
     @Query('teacherId') teacherId?: string
   ) {
-    return this.PayRollTeacherService.getClassSessionsByClassId(classId, month, teacherId);
+    return this.payRollTeacherService.getClassSessionsByClassId(classId, month, teacherId);
   }
 
   @Post('payroll/send-email')
   async sendPayrollEmail(@Body() body: { payrollIds: string[] }) {
-    return this.PayRollTeacherService.sendEmailNotificationPayrollTeacher(body.payrollIds);
+    return this.payRollTeacherService.sendEmailNotificationPayrollTeacher(body.payrollIds);
   }
+
+  @Get(':payrollId/back-pay-details')
+async getPayrollBackPayDetails(@Param('payrollId') payrollId: string) {
+  return this.payRollTeacherService.getPayrollBackPayDetails(payrollId);
+}
   
 }

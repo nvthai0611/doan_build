@@ -53,7 +53,46 @@ const getPayrollDetail = async (payrollId: string, filters?: any): Promise<any> 
   }
 }
 
+/**
+ * Xác nhận duyệt bảng lương
+ * @param payrollId - ID của payroll
+ */
+const approvePayroll = async (payrollId: string) => {
+  try {
+    const response = await apiClient.patch(
+      `/teacher/payroll/${payrollId}/approve`
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error approving payroll:', error)
+    throw error
+  }
+}
+
+/**
+ * Từ chối bảng lương
+ * @param payrollId - ID của payroll
+ * @param reason - Lý do từ chối
+ */
+const rejectPayroll = async (payrollId: string, reason: string) => {
+  try {
+    const response = await apiClient.patch(
+      `/teacher/payroll/${payrollId}/reject`,
+      { reason }
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error rejecting payroll:', error)
+    throw error
+  }
+}
+
+
+
+
 export {
     getAllPayrolls,
-    getPayrollDetail
+    getPayrollDetail,
+    approvePayroll,
+    rejectPayroll,
 }

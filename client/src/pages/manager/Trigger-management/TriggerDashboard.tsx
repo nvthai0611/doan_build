@@ -65,7 +65,7 @@ export default function TriggerDashboard() {
     queryFn: getJobTypes,
     staleTime: 5 * 60 * 1000,
   })
-
+  
   // Fetch cron job executions
   const {
     data: executionsData,
@@ -192,7 +192,7 @@ export default function TriggerDashboard() {
                 jobs={jobs}
                 filters={filters}
                 pagination={pagination}
-                jobTypes={jobTypesData?.data || []}
+                jobTypes={jobTypesData || []}
                 onFilterChange={handleFilterChange}
                 onPageChange={handlePageChange}
                 onSelectJob={setSelectedJob}

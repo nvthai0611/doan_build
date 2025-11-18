@@ -140,7 +140,7 @@ const jobTypeConfig: Record<string, any> = {
   },
   send_emails: {
     icon: Mail,
-    label: 'Send Emails',
+    label: 'Gửi Email',
     description: 'Process email queue',
     color:
       'from-pink-500/20 to-pink-500/5 hover:from-pink-500/30 hover:to-pink-500/10 border-pink-500/30',
