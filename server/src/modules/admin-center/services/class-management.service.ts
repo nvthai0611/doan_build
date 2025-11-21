@@ -1351,14 +1351,14 @@ export class ClassManagementService {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 9);
             console.log(
-              `📅 Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
+              `Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
             );
           }
 
           if (startDate && endDate && updatedClass.recurringSchedule) {
             // Tự động gen sessions
             console.log(
-              `🚀 Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
+              `Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -3229,7 +3229,7 @@ export class ClassManagementService {
           body.teacherId,
         );
         console.log(
-          `📧 Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
+          `Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
         );
       } catch (emailError) {
         // Log lỗi email nhưng không làm fail toàn bộ operation
@@ -3306,7 +3306,7 @@ export class ClassManagementService {
           'Lớp học đã được hủy phân công',
         );
         console.log(
-          `📧 Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
+          `Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
         );
       } catch (emailError) {
         console.error(
@@ -4336,7 +4336,6 @@ export class ClassManagementService {
   // Lấy dashboard data đầy đủ
   async getDashboard(classId: string) {
     try {
-      console.log(classId);
       // Validate class exists
       const classItem = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -4492,12 +4491,12 @@ export class ClassManagementService {
   // Legacy methods (keep for backward compatibility)
   async getClassByTeacherId(query: any, teacherId: string) {
     const { status, page = 1, limit = 10, search, includeSubstitute } = query;
-
+    
     const includeSubstituteFlag =
       includeSubstitute === true ||
       includeSubstitute === 'true' ||
       includeSubstitute === '1';
-
+    
     // Tập classId giáo viên này từng/đang dạy thay (từ class sessions)
     let substituteClassIds: string[] = [];
     if (includeSubstituteFlag) {
@@ -4508,11 +4507,12 @@ export class ClassManagementService {
         select: { classId: true },
         distinct: ['classId'],
       });
+      
       substituteClassIds = substituteSessions
         .map((session) => session.classId)
         .filter((id): id is string => Boolean(id));
     }
-
+    
     const where: any = {
       status: { not: 'deleted' },
     };
