@@ -247,7 +247,7 @@ export class PayRollTeacherService {
           // Payroll.id là BigInt trong Prisma schema
           const idBig = BigInt(payrollId)
           const payroll = await this.prisma.payroll.findUnique({
-            where: { id: idBig },
+            where: { id: idBig, status: {not: 'cancelled'} },
             include: {
               teacher: {
                 select: {
@@ -497,4 +497,334 @@ export class PayRollTeacherService {
           throw error;
         }
       }
+
+      async getPayrollBackPayDetails(payrollId: string) {
+  try {
+    const idBig = BigInt(payrollId)
+
+    const payroll = await this.prisma.payroll.findUnique({
+      where: { id: idBig },
+      select: {
+        id: true,
+        teacherId: true,
+        periodStart: true,
+        periodEnd: true,
+        backPayAmount: true,
+        computedDetails: true,
+        status: true,
+        teacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!payroll) {
+      throw new Error('Không tìm thấy bảng lương')
+    }
+
+    // Parse computedDetails
+    const computedDetails = payroll.computedDetails as any
+    const metadata = computedDetails?.metadata || {}
+    const backPayDetailsFromDb = computedDetails?.backPayDetails || []
+
+    // Lấy danh sách sessionId từ backPayDetails
+    const sessionIds = backPayDetailsFromDb.map((item: any) => item.sessionId)
+    const feeRecordIds = backPayDetailsFromDb.map((item: any) => item.feeRecordId).filter(Boolean)
+
+    if (sessionIds.length === 0) {
+      return {
+        data: {
+          payroll: {
+            payrollId: payroll.id.toString(),
+            status: payroll.status,
+            periodStart: payroll.periodStart,
+            periodEnd: payroll.periodEnd
+          },
+          teacher: {
+            id: payroll.teacherId,
+            fullName: payroll.teacher.user.fullName,
+            email: payroll.teacher.user.email
+          },
+          backPaySummary: {
+            totalBackPayAmount: Number(payroll.backPayAmount || 0),
+            backPayCount: 0,
+            processedAt: metadata.processedAt || new Date(),
+            statistics: {
+              totalStudents: 0,
+              totalRevenue: 0,
+              totalTeacherEarned: 0,
+              averagePayoutRate: 0,
+              totalBackPayAmount: 0
+            }
+          },
+          backPayDetails: []
+        },
+        message: 'Chi tiết truy lĩnh được lấy thành công'
+      }
+    }
+
+    // Truy vấn thông tin session từ database
+    const sessions = await this.prisma.classSession.findMany({
+      where: {
+        id: { in: sessionIds }
+      },
+      select: {
+        id: true,
+        sessionDate: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        notes: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classCode: true
+          }
+        },
+        teacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        },
+        substituteTeacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true
+              }
+            }
+          }
+        },
+        teacherSessionPayout: {
+          select: {
+            id: true,
+            studentCount: true,
+            sessionFeePerStudent: true,
+            totalRevenue: true,
+            payoutRate: true,
+            teacherPayout: true,
+            status: true,
+            calculatedAt: true
+          }
+        }
+      }
+    })
+
+    // Truy vấn thông tin học sinh từ feeRecordId
+    const feeRecords = feeRecordIds.length > 0
+      ? await this.prisma.feeRecord.findMany({
+          where: {
+            id: { in: feeRecordIds }
+          },
+          select: {
+            id: true,
+            student: {
+              select: {
+                id: true,
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true
+                  }
+                }
+              }
+            },
+            amount: true,
+          }
+        })
+      : []
+
+    // Tạo map cho dữ liệu
+    const sessionMap = new Map(sessions.map(s => [s.id, s]))
+    const feeRecordMap = new Map(feeRecords.map(f => [f.id, f]))
+
+    // Format chi tiết từng buổi học bị truy lĩnh
+    const formattedBackPayDetails = backPayDetailsFromDb.map((backPayItem: any) => {
+      const session = sessionMap.get(backPayItem.sessionId)
+      const feeRecord = backPayItem.feeRecordId ? feeRecordMap.get(backPayItem.feeRecordId) : null
+
+      if (!session) {
+        return {
+          sessionId: backPayItem.sessionId,
+          sessionDate: backPayItem.sessionDate,
+          description: backPayItem.description,
+          revenuePerSession: Number(backPayItem.revenuePerSession || 0),
+          payoutRate: Number(backPayItem.payoutRate || 0),
+          payoutAmount: Number(backPayItem.payoutAmount || 0),
+          feeRecordId: backPayItem.feeRecordId,
+          error: 'Session không tìm thấy trong database'
+        }
+      }
+
+      return {
+        // Thông tin truy lĩnh
+        backPayInfo: {
+          sessionId: backPayItem.sessionId,
+          description: backPayItem.description,
+          feeRecordId: backPayItem.feeRecordId,
+          revenuePerSession: Number(backPayItem.revenuePerSession || 0),
+          payoutRate: Number(backPayItem.payoutRate || 0),
+          payoutAmount: Number(backPayItem.payoutAmount || 0)
+        },
+
+        // Thông tin học sinh
+        studentInfo: feeRecord
+          ? {
+              id: feeRecord.student.id,
+              fullName: feeRecord.student.user.fullName,
+              email: feeRecord.student.user.email,
+              feeAmount: Number(feeRecord.amount || 0),
+            }
+          : null,
+
+        // Thông tin buổi học
+        sessionInfo: {
+          id: session.id,
+          sessionDate: session.sessionDate,
+          startTime: session.startTime,
+          endTime: session.endTime,
+          duration: this.calculateDuration(session.startTime, session.endTime),
+          status: session.status,
+          notes: session.notes
+        },
+
+        // Thông tin lớp học
+        classInfo: {
+          id: session.class.id,
+          name: session.class.name,
+          classCode: session.class.classCode
+        },
+
+        // Thông tin giáo viên chính
+        primaryTeacherInfo: {
+          id: session.teacher?.id,
+          fullName: session.teacher?.user?.fullName || 'N/A',
+          email: session.teacher?.user?.email || 'N/A'
+        },
+
+        // Thông tin giáo viên thay thế (nếu có)
+        substituteTeacherInfo: session.substituteTeacher
+          ? {
+              id: session.substituteTeacher.id,
+              fullName: session.substituteTeacher.user.fullName,
+              email: session.substituteTeacher.user.email
+            }
+          : null,
+
+        // Thông tin payout
+        payoutDetails: {
+          studentCount: session.teacherSessionPayout?.studentCount || 0,
+          sessionFeePerStudent: Number(session.teacherSessionPayout?.sessionFeePerStudent || 0),
+          totalSessionRevenue: Number(session.teacherSessionPayout?.totalRevenue || 0),
+          teacherEarned: Number(session.teacherSessionPayout?.teacherPayout || 0),
+          payoutStatus: session.teacherSessionPayout?.status || 'unknown',
+          calculatedAt: session.teacherSessionPayout?.calculatedAt
+        }
+      }
+    })
+
+    // Tính toán statistics
+    const statistics = {
+      totalStudents: formattedBackPayDetails.reduce(
+        (sum, item) => sum + (item.payoutDetails?.studentCount || 0),
+        0
+      ),
+      totalRevenue: formattedBackPayDetails.reduce(
+        (sum, item) => sum + (item.backPayInfo?.revenuePerSession || 0),
+        0
+      ),
+      totalTeacherEarned: formattedBackPayDetails.reduce(
+        (sum, item) => sum + (item.payoutDetails?.teacherEarned || 0),
+        0
+      ),
+      averagePayoutRate: this.calculateAverageRate(formattedBackPayDetails),
+      totalBackPayAmount: formattedBackPayDetails.reduce(
+        (sum, item) => sum + (item.backPayInfo?.payoutAmount || 0),
+        0
+      )
+    }
+
+    return {
+      data: {
+        payroll: {
+          payrollId: payroll.id.toString(),
+          status: payroll.status,
+          periodStart: payroll.periodStart,
+          periodEnd: payroll.periodEnd
+        },
+
+        teacher: {
+          id: payroll.teacherId,
+          fullName: payroll.teacher.user.fullName,
+          email: payroll.teacher.user.email
+        },
+
+        backPaySummary: {
+          totalBackPayAmount: Number(payroll.backPayAmount || 0),
+          backPayCount: formattedBackPayDetails.length,
+          processedAt: metadata.processedAt || new Date(),
+          statistics
+        },
+
+        backPayDetails: formattedBackPayDetails
+      },
+      message: 'Chi tiết truy lĩnh được lấy thành công'
+    }
+  } catch (error) {
+    this.logger.error('Error getting back pay details:', error)
+    throw new Error('Failed to get back pay details')
+  }
+}
+
+/**
+ * Tính toán thời lượng buổi học (phút)
+ */
+private calculateDuration(startTime: string, endTime: string): number {
+  try {
+    const [startH, startM] = startTime.split(':').map(Number)
+    const [endH, endM] = endTime.split(':').map(Number)
+
+    const startMinutes = startH * 60 + startM
+    const endMinutes = endH * 60 + endM
+
+    return Math.max(0, endMinutes - startMinutes)
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Tính toán tỷ lệ payout trung bình
+ */
+private calculateAverageRate(details: any[]): number {
+  if (details.length === 0) return 0
+
+  const totalRate = details.reduce(
+    (sum, item) => sum + (item.backPayInfo?.payoutRate || 0),
+    0
+  )
+
+  return Math.round((totalRate / details.length) * 10000) / 10000
+}
 }

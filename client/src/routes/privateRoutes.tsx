@@ -70,11 +70,13 @@ import PayrollManagement from "../pages/manager/Payroll-teacher-management/Payro
 import PayrollOfTeacher from "../pages/manager/Payroll-teacher-management/PayrollOfTeacher";
 import PayrollDetail from "../pages/manager/Payroll-teacher-management/PayrollDetail";
 import TriggerDashboard from "../pages/manager/Trigger-management/TriggerDashboard";
-import  ManualTriggerPanel  from "../pages/manager/Trigger-management/components/manual-trigger-panel";
-import  PayrollManagementTeacher  from "../pages/teacher/Payroll-Management/PayrollManagementTeacher";
+import ManualTriggerPanel from "../pages/manager/Trigger-management/components/manual-trigger-panel";
+import PayrollManagementTeacher from "../pages/teacher/Payroll-Management/PayrollManagementTeacher";
 import PayrollDetailTeacher from "../pages/teacher/Payroll-Management/PayrollDetail";
 import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
 import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
+import TeacherOverview from "../pages/teacher/TeacherOverview/TeacherOverview";
+import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
 
 export const privateRoutes = (
   <>
@@ -127,6 +129,7 @@ export const privateRoutes = (
         <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
         <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
         <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
+        <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
       </Route>
 
       {/* Giáo viên */}
@@ -134,7 +137,7 @@ export const privateRoutes = (
         path="/teacher"
         element={<AuthMiddleware allowedRoles={['teacher']} />}
       >
-        <Route path="profile" element={<TeacherProfilePage />} />
+        <Route index path="overview" element={<TeacherOverview />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:classId" element={<ClassDetailsPage />} />
@@ -161,9 +164,9 @@ export const privateRoutes = (
         <Route path="requests/my-requests" element={<MyRequests />} />
         <Route path="requests/student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
         <Route path="contracts" element={<ContractsManageme />} />
-        <Route path="payroll-management" element= {<PayrollManagementTeacher/>}/>
-        <Route path="payroll-management/:payrollId" element= {<PayrollDetailTeacher/>}/>
-        <Route path="payroll-management/:payrollId/back-pay" element = {<BackPayDetail/>}/>
+        <Route path="payroll-management" element={<PayrollManagementTeacher />} />
+        <Route path="payroll-management/:payrollId" element={<PayrollDetailTeacher />} />
+        <Route path="payroll-management/:payrollId/back-pay" element={<BackPayDetail />} />
       </Route>
 
       {/* Học sinh */}

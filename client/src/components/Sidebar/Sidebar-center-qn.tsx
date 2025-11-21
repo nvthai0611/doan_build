@@ -255,16 +255,16 @@ const teacherMenuItems = [
   {
     title: 'Tổng quan',
     icon: Home,
-    href: '/teacher/profile',
+    href: '/teacher/overview',
   },
   {
     title: 'Quản lý lớp học',
     icon: Users,
     href: '/teacher/classes',
-    children: [
-      { title: 'Lớp được phân công', href: '/teacher/classes' },
-      { title: 'Thống kê tiến độ', href: '/teacher/classes/progress' },
-    ],
+    // children: [
+    //   { title: 'Lớp được phân công', href: '/teacher/classes' },
+    //   { title: 'Thống kê tiến độ', href: '/teacher/classes/progress' },
+    // ],
   },
   // {
   //     title: "Điểm danh",
@@ -320,11 +320,11 @@ const teacherMenuItems = [
     icon: Briefcase,
     href: '/teacher/contracts',
   },
-  {
-    title: 'Thông tin cá nhân',
-    icon: Settings,
-    href: '/teacher/profile',
-  },
+//   {
+//     title: 'Thông tin cá nhân',
+//     icon: Settings,
+//     href: '/teacher/profile',
+//   },
 ];
 const studentMenuItems = [
     {

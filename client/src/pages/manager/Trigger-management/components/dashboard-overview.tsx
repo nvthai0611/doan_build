@@ -15,28 +15,28 @@ export function DashboardOverview({ jobs }: any) {
 
   const statCards = [
     {
-      title: "Total Jobs",
+      title: "Tổng số công việc",
       value: stats.totalJobs,
       icon: Activity,
       color: "text-primary",
       bgGradient: "from-primary/20 to-primary/5",
     },
     {
-      title: "Completed",
+      title: "Thành công",
       value: stats.completedJobs,
       icon: CheckCircle2,
       color: "text-green-500",
       bgGradient: "from-green-500/20 to-green-500/5",
     },
     {
-      title: "Failed",
+      title: "Thất bại",
       value: stats.failedJobs,
       icon: AlertCircle,
       color: "text-red-500",
       bgGradient: "from-red-500/20 to-red-500/5",
     },
     {
-      title: "Running",
+      title: "Đang chạy",
       value: stats.runningJobs,
       icon: Clock,
       color: "text-amber-500",

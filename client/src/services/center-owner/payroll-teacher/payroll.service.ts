@@ -70,10 +70,23 @@ const sendPayrollNotification = async (payrollIds: string[]) => {
   return await apiClient.post(`admin-center/payroll-teacher/payroll/send-email`, { payrollIds })
 }
 
+const getPayrollBackPayDetails = async (payrollId: string): Promise<any> => {
+  try {
+    const response = await apiClient.get(
+      `admin-center/payroll-teacher/${payrollId}/back-pay-details`
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching back pay details:', error)
+    throw error
+  }
+}
+
 export const payrollService = {
   getListTeacher,
   getListPayrollsByTeacherId,
   getPayrollById,
   getSessionsByClassId,
-  sendPayrollNotification
+  sendPayrollNotification,
+  getPayrollBackPayDetails
 }
