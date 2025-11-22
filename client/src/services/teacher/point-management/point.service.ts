@@ -9,7 +9,8 @@ import type {
   StudentGradeDetail,
   SubjectStats,
   GradeViewFilters,
-  GradeViewResponse
+  GradeViewResponse,
+  ClassSession
 } from "./point.types"
 
 export const teacherPointService = {
@@ -47,6 +48,14 @@ export const teacherPointService = {
    */
   getExamTypesConfig: async (): Promise<any[]> => {
     const response = await ApiService.get<any[]>("/teacher/grades/exam-types-config")
+    return response.data || []
+  },
+
+  /**
+   * Lấy danh sách các buổi học đã kết thúc của lớp
+   */
+  getCompletedSessions: async (classId: string): Promise<ClassSession[]> => {
+    const response = await ApiService.get<ClassSession[]>("/teacher/grades/completed-sessions", { classId })
     return response.data || []
   },
 
