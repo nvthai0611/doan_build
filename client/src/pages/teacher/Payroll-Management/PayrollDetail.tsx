@@ -406,7 +406,7 @@ const PayrollDetailTeacher: React.FC = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="w-5 h-5 text-yellow-600" />
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Chi tiết truy lĩnh
+                      Chi tiết lương (buổi dạy cũ)
                     </h3>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
