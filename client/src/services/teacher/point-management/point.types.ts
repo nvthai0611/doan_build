@@ -26,12 +26,21 @@ export type Assessment = {
 
 // GradeEntry đã được định nghĩa lại ở dưới
 
+export type ClassSession = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  startTime: string;
+  endTime: string;
+  notes?: string;
+  displayText: string;
+};
+
 export type RecordGradesPayload = {
   classId: string;
   assessmentName: string;
   assessmentType: string;
   maxScore: number;
-  date: string; // YYYY-MM-DD
+  classSessionId: string; // ID của buổi học đã kết thúc
   description?: string;
   grades: GradeEntry[];
 };

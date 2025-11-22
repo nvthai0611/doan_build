@@ -78,9 +78,9 @@ const approvePayroll = async (payrollId: string) => {
  */
 const rejectPayroll = async (payrollId: string, reason: string) => {
   try {
-    const response = await apiClient.patch(
+    const response = await apiClient.post(
       `/teacher/payroll/${payrollId}/reject`,
-      { reason }
+      { teacherRejectionReason: reason }
     )
     return response.data
   } catch (error) {

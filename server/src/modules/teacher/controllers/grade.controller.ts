@@ -198,6 +198,36 @@ export class GradeController {
         return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
     }
 
+    @Get('completed-sessions')
+    @ApiOperation({ summary: 'Lấy danh sách các buổi học đã kết thúc của lớp' })
+    @ApiQuery({ name: 'classId', required: true, description: 'ID lớp (UUID)' })
+    async getCompletedSessions(@Req() request: any, @Query('classId') classId: string) {
+        const userId = request.user?.userId;
+        
+        if (!userId) {
+            return { 
+                success: false, 
+                status: HttpStatus.UNAUTHORIZED, 
+                data: [], 
+                message: 'Không tìm thấy thông tin người dùng', 
+                meta: null 
+            };
+        }
+        
+        try {
+            const data = await this.gradeService.getCompletedSessions(userId, classId);
+            return { success: true, status: HttpStatus.OK, data, message: 'OK', meta: null };
+        } catch (error) {
+            return { 
+                success: false, 
+                status: HttpStatus.INTERNAL_SERVER_ERROR, 
+                data: [], 
+                message: error.message || 'Có lỗi xảy ra', 
+                meta: null 
+            };
+        }
+    }
+
     @Get('assessments/:assessmentId/grades')
     @ApiOperation({ summary: 'Lấy điểm theo assessment' })
     async getAssessmentGrades(@Req() request: any, @Param('assessmentId') assessmentId: string) {

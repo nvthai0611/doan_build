@@ -171,11 +171,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           href: '/finance',
           children: [
             { title: 'Hóa đơn giáo viên', href: '/center-qn/payroll-teacher' },
-            { title: 'Định nghĩa học phí', href: '/finance/tuition' },
-            { title: 'Phiếu thu - chi', href: '/finance/receipts' },
-            { title: 'Thanh toán online', href: '/finance/online-payment' },
-            { title: 'Báo cáo thu chi', href: '/finance/reports' },
-            { title: 'Nợ học phí', href: '/finance/debts' },
+            // { title: 'Định nghĩa học phí', href: '/finance/tuition' },
+            // { title: 'Phiếu thu - chi', href: '/finance/receipts' },
+            // { title: 'Thanh toán online', href: '/finance/online-payment' },
+            // { title: 'Báo cáo thu chi', href: '/finance/reports' },
+            // { title: 'Nợ học phí', href: '/finance/debts' },
             { title: 'Học bổng & Giảm phí', href: '/finance/scholarships' },
           ],
         },
@@ -320,6 +320,11 @@ const teacherMenuItems = [
       { title: 'Báo cáo sự cố mới', href: '/teacher/incidents/report' },
       { title: 'Quản lý báo cáo', href: '/teacher/incidents/manage' },
     ],
+  },
+  {
+    title: 'Quản lý lương',
+    icon: CircleDollarSign,
+    href: '/teacher/payroll-management',
   },
   {
     title: 'Quản lý hợp đồng',
