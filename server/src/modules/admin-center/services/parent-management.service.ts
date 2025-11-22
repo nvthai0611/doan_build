@@ -649,12 +649,15 @@ export class ParentManagementService {
     accountStatus?: string,
     page: number = 1,
     limit: number = 10,
+    hasStudents?: boolean,
+    hasEnrollments?: boolean,
   ) {
     try {
       const skip = (page - 1) * limit;
 
       // Build where condition
       const whereCondition: any = {};
+      const andConditions: any[] = [];
 
       // Search by name, email, phone
       if (search && search.trim()) {
@@ -703,6 +706,40 @@ export class ParentManagementService {
         };
       }
 
+      if (typeof hasStudents === 'boolean') {
+        andConditions.push({
+          students: hasStudents ? { some: {} } : { none: {} },
+        });
+      }
+
+      if (typeof hasEnrollments === 'boolean') {
+        andConditions.push(
+          hasEnrollments
+            ? {
+                students: {
+                  some: {
+                    enrollments: {
+                      some: {},
+                    },
+                  },
+                },
+              }
+            : {
+                students: {
+                  none: {
+                    enrollments: {
+                      some: {},
+                    },
+                  },
+                },
+              },
+        );
+      }
+
+      if (andConditions.length > 0) {
+        whereCondition.AND = [...(whereCondition.AND || []), ...andConditions];
+      }
+
       // Get total count
       const totalCount = await this.prisma.parent.count({
         where: whereCondition,
@@ -741,23 +778,39 @@ export class ParentManagementService {
                   email: true,
                 },
               },
+              enrollments: {
+                select: {
+                  id: true,
+                },
+              },
             },
           },
         },
       });
 
-      const formattedParents = parents.map((parent) => ({
-        id: parent.id,
-        createdAt: parent.createdAt,
-        updatedAt: parent.updatedAt,
-        user: parent.user,
-        students: parent.students.map((student) => ({
+      const formattedParents = parents.map((parent) => {
+        const students = parent.students.map((student) => ({
           id: student.id,
           studentCode: student.studentCode,
           user: student.user,
-        })),
-        studentCount: parent.students.length,
-      }));
+          enrollments: student.enrollments || [],
+        }));
+
+        const enrollmentCount = students.reduce(
+          (total, student) => total + (student.enrollments?.length || 0),
+          0,
+        );
+
+        return {
+          id: parent.id,
+          createdAt: parent.createdAt,
+          updatedAt: parent.updatedAt,
+          user: parent.user,
+          students,
+          studentCount: students.length,
+          enrollmentCount,
+        };
+      });
 
       return {
         data: formattedParents,

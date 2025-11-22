@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { ClassInformationService } from '../services/class-information.service';
+import { StudentLeaveRequestService } from '../services/student-leave-request.service';
 
 @ApiTags('Parent - Child Classes')
 @Controller('') // Remove 'parent' since RouterModule already has it
@@ -17,6 +18,7 @@ import { ClassInformationService } from '../services/class-information.service';
 export class ChildClassesController {
   constructor(
     private readonly classInformationService: ClassInformationService,
+    private readonly studentLeaveRequestService: StudentLeaveRequestService,
   ) {}
 
   @Get('children-classes')
@@ -66,11 +68,12 @@ export class ChildClassesController {
         );
       }
 
-      const result = await this.classInformationService.getChildClasses(parentUserId, studentId);
+      // Sử dụng StudentLeaveRequestService để trả về array trực tiếp (phù hợp với form leave request)
+      const result = await this.studentLeaveRequestService.getChildClasses(parentUserId, studentId);
 
       return {
         success: true,
-        data: result, // result đã là { enrolledClasses: [], pendingRequests: [] }
+        data: result, // result là array của classes
         message: 'Lấy danh sách lớp học thành công',
       };
     } catch (error) {

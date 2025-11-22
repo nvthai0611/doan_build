@@ -20,9 +20,15 @@ interface RequestJoinClassSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   classData: RecruitingClass | null;
+  onJoinError?: (error: { message: string; status?: string } | null) => void;
 }
 
-export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: RequestJoinClassSheetProps) => {
+export const RequestJoinClassSheet = ({
+  open,
+  onOpenChange,
+  classData,
+  onJoinError,
+}: RequestJoinClassSheetProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [password, setPassword] = useState('');
@@ -100,6 +106,13 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
     }
   }, [open, classData]);
 
+  const enrollmentStatusMessages: Record<string, string> = {
+    stopped: 'Con bạn đã thôi học lớp này. Vui lòng liên hệ trung tâm nếu muốn học lại.',
+    graduated: 'Con bạn đã hoàn thành lớp học này. Hãy chọn lớp khác phù hợp hơn.',
+    studying: 'Học sinh đang theo học lớp này, không thể gửi thêm yêu cầu.',
+    not_been_updated: 'Học sinh đã được thêm vào lớp, vui lòng chờ trung tâm cập nhật lịch học.',
+  };
+
   const handleRequestJoin = async () => {
     if (!classData) {
       toast({
@@ -141,6 +154,7 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
     }
 
     setIsLoading(true);
+    onJoinError?.(null);
     try {
       const payload: any = {
         classId: classData.id,
@@ -159,7 +173,7 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
         title: "Thành công",
         description: "Đã gửi yêu cầu tham gia lớp học. Vui lòng đợi trung tâm phê duyệt.",
       });
-      
+      onJoinError?.(null);
       onOpenChange(false);
     } catch (error: any) {
       const errorData = error.response?.data || error.response?.message || error;
@@ -201,11 +215,20 @@ export const RequestJoinClassSheet = ({ open, onOpenChange, classData }: Request
       } else if (error.message) {
         errorMessage = error.message;
       }
+
+      const enrollmentStatus = errorData?.enrollmentStatus;
+      if (enrollmentStatus && enrollmentStatusMessages[enrollmentStatus]) {
+        errorMessage = enrollmentStatusMessages[enrollmentStatus];
+      }
       
       toast({
         title: "Lỗi",
         description: errorMessage,
         variant: "destructive",
+      });
+      onJoinError?.({
+        message: errorMessage,
+        status: enrollmentStatus,
       });
     } finally {
       setIsLoading(false);
