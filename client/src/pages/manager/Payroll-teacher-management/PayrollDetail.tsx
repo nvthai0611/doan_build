@@ -482,6 +482,34 @@ export default function PayrollDetail() {
           </div>
         </div>
       </div>
+            {/* Back Pay Summary Card */}
+      {payroll?.backPayAmount > 0 && (
+        <div className="rounded-xl border bg-amber-50 border-amber-200 p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-amber-900 mb-1">
+                  Có tiền lương (buổi học cũ) trong kỳ này
+                </h3>
+                <p className="text-sm text-amber-700">
+                  Bảng lương này bao gồm{" "}
+                  <span className="font-semibold">
+                    {fmt(payroll.backPayAmount)} đ
+                  </span>{" "}
+                  tiền lương từ các buổi học trước đó
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}/back-pay-details`)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Xem chi tiết
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Sessions DataTable */}
       <div className="rounded-xl border bg-white p-6">
@@ -520,34 +548,7 @@ export default function PayrollDetail() {
         />
       </div>
 
-      {/* Back Pay Summary Card */}
-      {payroll?.backPayAmount > 0 && (
-        <div className="rounded-xl border bg-amber-50 border-amber-200 p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-amber-600 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-amber-900 mb-1">
-                  Có tiền truy lĩnh trong kỳ này
-                </h3>
-                <p className="text-sm text-amber-700">
-                  Bảng lương này bao gồm{" "}
-                  <span className="font-semibold">
-                    {fmt(payroll.backPayAmount)} đ
-                  </span>{" "}
-                  tiền truy lĩnh từ các buổi học trước đó
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}/back-pay-details`)}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Xem chi tiết
-            </Button>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 }

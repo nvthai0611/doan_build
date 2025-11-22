@@ -135,7 +135,7 @@ const BackPayDetail: React.FC = () => {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Chi tiết truy lĩnh
+              Chi tiết lương (buổi dạy cũ)
             </h1>
             <p className="text-sm text-gray-600 mt-1">
               Kỳ lương: {new Date(payroll.periodStart).toLocaleDateString('vi-VN')} - {new Date(payroll.periodEnd).toLocaleDateString('vi-VN')}
@@ -170,7 +170,7 @@ const BackPayDetail: React.FC = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Chi tiết truy lĩnh</BreadcrumbPage>
+            <BreadcrumbPage>Chi tiết lương (buổi dạy cũ)</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -180,7 +180,7 @@ const BackPayDetail: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-yellow-600" />
-            Tổng quan truy lĩnh
+            Tổng quan lương (buổi dạy cũ)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -192,7 +192,7 @@ const BackPayDetail: React.FC = () => {
               </p>
             </div>
             <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-              <p className="text-sm text-yellow-700 mb-1">Tổng tiền truy lĩnh</p>
+              <p className="text-sm text-yellow-700 mb-1">Tổng tiền lương (buổi dạy cũ)</p>
               <p className="text-3xl font-bold text-yellow-800">
                 {backPayAmount.toLocaleString('vi-VN')} đ
               </p>
@@ -223,7 +223,7 @@ const BackPayDetail: React.FC = () => {
             loading={isLoading}
             error={error?.message}
             onRetry={refetch}
-            emptyMessage="Không có khoản truy lĩnh nào"
+            emptyMessage="Không có khoản lương (buổi dạy cũ) nào"
             hoverable
             striped
             pagination={{
