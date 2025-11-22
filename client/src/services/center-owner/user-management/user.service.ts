@@ -42,5 +42,38 @@ export const centerOwnerUserService = {
     const response = await apiClient.patch<ResetPasswordResponse>(`${BASE_URL}/${id}/reset-password`, payload);
     return response as unknown as ResetPasswordResponse;
   },
+
+  async checkAvailability(email?: string, username?: string, excludeId?: string | null): Promise<{
+    data: {
+      emailAvailable: boolean;
+      usernameAvailable: boolean;
+      emailMessage?: string;
+      usernameMessage?: string;
+    };
+    message: string;
+  }> {
+    const params: Record<string, string> = {};
+    if (email) params.email = email;
+    if (username) params.username = username;
+    if (excludeId) params.excludeId = excludeId;
+    const response = await apiClient.get<{
+      data: {
+        emailAvailable: boolean;
+        usernameAvailable: boolean;
+        emailMessage?: string;
+        usernameMessage?: string;
+      };
+      message: string;
+    }>(`${BASE_URL}/check-availability`, params);
+    return response as unknown as {
+      data: {
+        emailAvailable: boolean;
+        usernameAvailable: boolean;
+        emailMessage?: string;
+        usernameMessage?: string;
+      };
+      message: string;
+    };
+  },
 };
 

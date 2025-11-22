@@ -506,6 +506,44 @@ export class UsersService {
     };
   }
 
+  async checkAvailability(email?: string, username?: string, excludeId?: string) {
+    const result: { emailAvailable: boolean; usernameAvailable: boolean; emailMessage?: string; usernameMessage?: string } = {
+      emailAvailable: true,
+      usernameAvailable: true,
+    };
+
+    if (email) {
+      const existingEmail = await this.prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+      });
+      if (existingEmail) {
+        result.emailAvailable = false;
+        result.emailMessage = 'Email đã được sử dụng';
+      }
+    }
+
+    if (username) {
+      const existingUsername = await this.prisma.user.findFirst({
+        where: {
+          username,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+      });
+      if (existingUsername) {
+        result.usernameAvailable = false;
+        result.usernameMessage = 'Tên đăng nhập đã được sử dụng';
+      }
+    }
+
+    return {
+      data: result,
+      message: 'Kiểm tra tính khả dụng thành công',
+    };
+  }
+
   private async ensureUniqueCredential(email?: string, username?: string, excludeId?: string) {
     if (email) {
       const existingEmail = await this.prisma.user.findFirst({
