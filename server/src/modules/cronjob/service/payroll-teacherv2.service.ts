@@ -397,7 +397,7 @@ export class PayrollCronService {
           feeRecordId: feeRecord.id,
           sessionId: 'BACKPAY', // Không gắn với session cụ thể
           sessionDate: feeRecord.dueDate.toISOString().slice(0, 10), // Dùng ngày hóa đơn làm mốc hiển thị
-          description: `Truy lĩnh nợ cũ lớp ${className} (${studentName}) - Rate: ${teacherRate.times(100)}%`,
+          description: `Lương buổi học cũ: ${className} (${studentName}) - Rate: ${teacherRate.times(100)}%`,
           revenuePerSession: paymentAmount.toNumber(),
           payoutRate: teacherRate.toNumber(),
           payoutAmount: teacherPayout.toNumber(),
@@ -482,7 +482,7 @@ export class PayrollCronService {
           backPayCount: backPayDetails.length,
           backPayTotal: backPayAmount.toFixed(0),
           processedAt: new Date().toISOString(),
-          note: 'Lương Quỹ Lớp + Truy lĩnh Winner-Takes-All',
+          note: 'Lương Quỹ Lớp + Lương từ buổi học cũ',
         };
 
         const computedDetails = {

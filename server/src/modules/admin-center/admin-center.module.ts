@@ -78,12 +78,15 @@ import { BullModule } from '@nestjs/bull';
     BullModule.registerQueue({
       name: 'payroll-notification', // ✅ Register queue ở đây
     }),
+    BullModule.registerQueue({
+      name: 'payroll-recalculation', // ✅ Register queue ở đây
+    }),
     RouterModule.register([
       {
-        path: "admin-center", 
+        path: "admin-center",
         module: AdminCenterModule,
       },
-      ]),
+    ]),
     HttpModule, // HTTP client for AI API calls
     ConfigModule, // Config service for API keys
     SharedModule, //sử dụng email services
@@ -155,7 +158,8 @@ import { BullModule } from '@nestjs/bull';
     PayrollCronService,
     TriggerManagementService,
     FeeReminderService,
-    EmailServiceNotificationBill
+    EmailServiceNotificationBill,
+
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
 
