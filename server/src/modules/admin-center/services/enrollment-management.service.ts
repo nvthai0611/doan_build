@@ -975,22 +975,22 @@ export class EnrollmentManagementService {
                   avatar: true,
                 },
               },
-            },
-          },
-          contractUploads: {
-            select: {
-              id: true,
-              uploadedAt: true,
-              status: true,
-              subjectIds: true,
-            },
-            where: {
-              status: {
-                in: ['active'],
+              contractUploads: {
+                select: {
+                  id: true,
+                  uploadedAt: true,
+                  status: true,
+                  subjectIds: true,
+                },
+                where: {
+                  status: {
+                    in: ['active'],
+                  },
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
               },
-            },
-            orderBy: {
-              uploadedAt: 'desc',
             },
           },
         },
@@ -1028,21 +1028,20 @@ export class EnrollmentManagementService {
             });
 
           // Kiểm tra contract có đúng môn học không
+          // ContractUpload hiện tại được link với Student (studentId), không phải Enrollment (enrollmentId đã deprecated)
           let hasValidContract = false;
-          if (
-            enrollment.contractUploads &&
-            enrollment.contractUploads.length > 0 &&
-            classInfo?.subjectId
-          ) {
-            // Duyệt qua tất cả contracts để tìm contract đúng môn
-            for (const contract of enrollment.contractUploads) {
-              if (
-                contract.subjectIds &&
-                Array.isArray(contract.subjectIds) &&
-                contract.subjectIds.includes(classInfo.subjectId)
-              ) {
-                hasValidContract = true;
-                break;
+          if (classInfo?.subjectId) {
+            const studentContracts = enrollment.student?.contractUploads || [];
+            if (studentContracts.length > 0) {
+              for (const contract of studentContracts) {
+                if (
+                  contract.subjectIds &&
+                  Array.isArray(contract.subjectIds) &&
+                  contract.subjectIds.includes(classInfo.subjectId)
+                ) {
+                  hasValidContract = true;
+                  break;
+                }
               }
             }
           }

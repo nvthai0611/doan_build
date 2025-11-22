@@ -1,27 +1,72 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useParams, useNavigate } from "react-router-dom"
-import { DataTable, Column } from "@/components/common/Table/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Loader2, ArrowLeft, Download, Eye } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { 
+  Loader2, 
+  Download, 
+  Calendar,
+  Filter,
+  X,
+  GraduationCap,
+  User,
+  Wallet,
+  Eye,
+  Clock
+} from "lucide-react"
+import { format } from "date-fns"
+import { vi } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+// Import service của bạn (đường dẫn có thể khác tùy project)
 import { payrollService } from "../../../services/center-owner/payroll-teacher/payroll.service"
+import { DataTable, type Column } from '../../../components/common/Table/DataTable'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import BackPayDetailModal from "./components/BackPayDetailModal"
 
-interface BackPayItem {
-  backPayInfo: any
-  sessionInfo: any
-  classInfo: any
-  primaryTeacherInfo: any
-  substituteTeacherInfo: any
-  payoutDetails: any
+// --- Interface khớp với API Backend mới ---
+export interface BackPayItem {
+  description: string
+  sessionDate: string // Ngày hóa đơn / ngày ghi nhận
+  payoutAmount: number
+  payoutRate: number
+  revenueBase: number // Tổng tiền hóa đơn nợ
+  source?: {
+    type: string
+    feeRecordId: string
+    monthDebt: string // Ngày hạn nộp -> Suy ra tháng nợ
+  }
+  student?: {
+    id: string
+    code: string
+    name: string
+  }
+  class?: {
+    id: string
+    name: string
+    code: string
+  }
 }
 
 export default function BackPayDetails() {
@@ -29,10 +74,19 @@ export default function BackPayDetails() {
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [selectedBackPay, setSelectedBackPay] = useState<BackPayItem | null>(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
+  
+  // State cho Modal
+  const [selectedItem, setSelectedItem] = useState<BackPayItem | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
-  const { data, isLoading, isError } = useQuery({
+  // Filters
+  const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined)
+  const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined)
+  const [classFilter, setClassFilter] = useState<string>("all")
+
+  // --- Gọi API ---
+  // Lưu ý: Đảm bảo payrollService.getPayrollBackPayDetails đã được update
+  const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ["back-pay-details", payrollId],
     queryFn: () => payrollService.getPayrollBackPayDetails(String(payrollId)),
     enabled: !!payrollId,
@@ -40,7 +94,11 @@ export default function BackPayDetails() {
     refetchOnWindowFocus: false,
   })
 
-  const backPayData = data
+  // Lấy dữ liệu từ response (Cấu trúc phẳng mới)
+  const payroll = response?.data?.payroll
+  const allBackPayDetails: BackPayItem[] = response?.data?.backPayDetails || []
+  const summary = response?.data?.backPaySummary
+  
   const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
   const formatDate = (dateString?: string) => {
@@ -48,144 +106,204 @@ export default function BackPayDetails() {
     return new Date(dateString).toLocaleDateString("vi-VN")
   }
 
-  // Transform back pay details to table rows
-  const backPayRows = useMemo(() => {
-    return backPayData?.backPayDetails?.map((item: BackPayItem, index: number) => ({
-      id: item.backPayInfo.sessionId || String(index),
-      sessionId: item.backPayInfo.sessionId,
-      sessionDate: formatDate(item.sessionInfo.sessionDate),
-      sessionTime: `${item.sessionInfo.startTime} - ${item.sessionInfo.endTime}`,
-      className: `${item.classInfo.name} (${item.classInfo.classCode})`,
-      primaryTeacher: item.primaryTeacherInfo.fullName,
-      description: item.backPayInfo.description,
-      revenuePerSession: item.backPayInfo.revenuePerSession,
-      payoutRate: item.backPayInfo.payoutRate,
-      payoutAmount: item.backPayInfo.payoutAmount,
-      status: item.sessionInfo.status,
-      fullData: item,
-    })) || []
-  }, [backPayData])
+  // Giới hạn date picker trong khoảng kỳ lương hiện tại
+  const periodStartDate = useMemo(() => {
+    if (!payroll?.periodStart) return undefined
+    return new Date(payroll.periodStart)
+  }, [payroll?.periodStart])
 
-  const totalPages = Math.max(1, Math.ceil(backPayRows.length / itemsPerPage))
-  const pagedRows = useMemo(() => {
-    return backPayRows.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    )
-  }, [backPayRows, currentPage, itemsPerPage])
+  const periodEndDate = useMemo(() => {
+    if (!payroll?.periodEnd) return undefined
+    return new Date(payroll.periodEnd)
+  }, [payroll?.periodEnd])
 
-  // Calculate back pay percentage safely
-  const backPayPercentage = useMemo(() => {
-    const totalRevenue = backPayData?.backPaySummary?.statistics?.totalRevenue || 0
-    const totalBackPay = backPayData?.backPaySummary?.statistics?.totalBackPayAmount || 0
+  // Lấy danh sách lớp unique để filter
+  const uniqueClasses = useMemo(() => {
+    const classMap = new Map<string, { id: string; name: string }>()
+    allBackPayDetails.forEach((item) => {
+      if (item.class && !classMap.has(item.class.id)) {
+        classMap.set(item.class.id, {
+          id: item.class.id,
+          name: item.class.name,
+        })
+      }
+    })
+    return Array.from(classMap.values())
+  }, [allBackPayDetails])
 
-    if (totalRevenue === 0) return 0
-    return ((totalBackPay / totalRevenue) * 100).toFixed(2)
-  }, [backPayData])
+  // --- Logic Lọc Dữ Liệu ---
+  const filteredRows = useMemo(() => {
+    let filtered = [...allBackPayDetails]
 
-  const handleViewDetail = (item: BackPayItem) => {
-    setSelectedBackPay(item)
-    setShowDetailModal(true)
-  }
-
-  const getSessionStatusBadge = (status?: string) => {
-    const statusConfig: Record<string, { label: string; variant: any }> = {
-      end: { label: "Đã kết thúc", variant: "default" },
-      cancelled: { label: "Đã hủy", variant: "destructive" },
-      scheduled: { label: "Đã lên lịch", variant: "outline" },
-      day_off: { label: "Nghỉ", variant: "secondary" },
+    // Filter by date range (Dựa trên sessionDate - ngày hóa đơn)
+    if (startDateFilter || endDateFilter) {
+      filtered = filtered.filter((item) => {
+        const itemDate = new Date(item.sessionDate)
+        const isAfterStart = !startDateFilter || itemDate >= startDateFilter
+        const isBeforeEnd = !endDateFilter || itemDate <= endDateFilter
+        return isAfterStart && isBeforeEnd
+      })
     }
 
-    const config = statusConfig[status || ""] || { label: status || "-", variant: "outline" }
-    return <Badge variant={config.variant}>{config.label}</Badge>
-  }
+    // Filter by class
+    if (classFilter && classFilter !== "all") {
+      filtered = filtered.filter((item) => item.class?.id === classFilter)
+    }
 
-  const columns: Column<any>[] = [
-    {
-      key: "sessionDate",
-      header: "Ngày buổi học",
-      sortable: true,
-    },
-    {
-      key: "sessionTime",
-      header: "Giờ học",
-      sortable: false,
-    },
-    {
-      key: "className",
-      header: "Lớp học",
-      sortable: true,
-    },
-    {
-      key: "primaryTeacher",
-      header: "Giáo viên chính",
-      sortable: true,
-      render: (row) => (
-        <div className="max-w-xs">
-          <p className="text-sm font-medium text-gray-900">{row.primaryTeacher}</p>
-        </div>
-      ),
-    },
-    {
-      key: "revenuePerSession",
-      header: "Doanh thu",
-      sortable: true,
-      render: (row) => (
-        <span className="text-blue-700 font-medium">
-          {fmt(row.revenuePerSession)} đ
-        </span>
-      ),
-    },
-    {
-      key: "payoutRate",
-      header: "Tỷ lệ (%)",
-      sortable: true,
-      render: (row) => (
-        <Badge variant="outline">
-          {(row.payoutRate * 100).toFixed(0)}%
-        </Badge>
-      ),
-    },
-    {
-      key: "payoutAmount",
-      header: "Số tiền truy lĩnh",
-      sortable: true,
-      render: (row) => (
-        <span className="text-emerald-700 font-semibold">
-          {fmt(row.payoutAmount)} đ
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Trạng thái",
-      render: (row) => getSessionStatusBadge(row.status),
-    },
-    {
-      key: "actions",
-      header: "Thao tác",
-      render: (row) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleViewDetail(row.fullData)}
-          className="gap-2"
-        >
-          <Eye className="w-4 h-4" />
-          Xem chi tiết
-        </Button>
-      ),
-    },
-  ]
+    return filtered
+  }, [allBackPayDetails, startDateFilter, endDateFilter, classFilter])
+
+  // Tổng tiền của danh sách đang hiển thị (đã filter)
+  const currentBackPayTotal = useMemo(() => {
+      return filteredRows.reduce((sum, item) => sum + item.payoutAmount, 0)
+  }, [filteredRows])
 
   const handleExport = () => {
-    // TODO: Implement export to Excel/PDF
     console.log("Export back pay details")
+    // Logic export excel ở đây
   }
 
-  const handleGoBack = () => {
-    navigate(`/center-qn/payroll-teacher/payroll/${payrollId}`)
+  const handleViewDetail = (item: BackPayItem) => {
+    setSelectedItem(item)
+    setShowModal(true)
   }
+
+  // --- Handlers ---
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDateFilter(date)
+    setCurrentPage(1)
+  }
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDateFilter(date)
+    setCurrentPage(1)
+  }
+
+  const handleClassChange = (classId: string) => {
+    setClassFilter(classId)
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setStartDateFilter(undefined)
+    setEndDateFilter(undefined)
+    setClassFilter("all")
+    setCurrentPage(1)
+  }
+
+  const hasActiveFilters = startDateFilter || endDateFilter || classFilter !== "all"
+  const periodLabel = `${formatDate(payroll?.periodStart)} - ${formatDate(payroll?.periodEnd)}`
+
+  // --- Cấu hình Cột cho DataTable ---
+  const columns: Column<BackPayItem>[] = [
+    {
+      key: 'sessionDate',
+      header: 'Ngày ghi nhận',
+      width: '120px',
+      render: (item) => (
+        <div className="flex flex-col">
+            <span className="font-medium text-gray-900">
+            {new Date(item.sessionDate).toLocaleDateString('vi-VN')}
+            </span>
+            <span className="text-[11px] text-gray-500">Ngày thu tiền</span>
+        </div>
+      )
+    },
+    {
+      key: 'info', // Cột ảo hiển thị thông tin Nguồn
+      header: 'Thông tin nguồn nợ',
+      width: '250px',
+      render: (item) => (
+        <div className="flex flex-col gap-1.5">
+            {item.class ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                    <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{item.class.name}</span>
+                    <span className="text-xs text-gray-400 font-normal">({item.class.code})</span>
+                </div>
+            ) : (
+                <span className="text-sm text-gray-400 italic">Lớp đã bị xóa</span>
+            )}
+            
+            {item.student ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600 ml-1">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    {item.student.name}
+                    <span className="text-xs text-gray-400">({item.student.code})</span>
+                </div>
+            ) : (
+                <span className="text-sm text-gray-400 italic ml-1">Học sinh không xác định</span>
+            )}
+        </div>
+      )
+    },
+    {
+      key: 'description',
+      header: 'Nội dung',
+      width: '280px',
+      render: (item) => (
+        <div>
+          <p className="text-sm text-gray-700 line-clamp-2" title={item.description}>
+            {item.description}
+          </p>
+          {item.source?.monthDebt && (
+             <div className="flex items-center gap-1 mt-1">
+               <Badge variant="outline" className="text-[10px] px-1 py-0 border-red-200 text-red-600 bg-red-50">
+                 Kỳ nợ: {new Date(item.source.monthDebt).toLocaleDateString('vi-VN', {month: 'long', year: 'numeric'})}
+               </Badge>
+             </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'revenueBase',
+      header: 'Tổng nợ thu được',
+      width: '140px',
+      render: (item) => (
+        <div className="flex flex-col items-end">
+            <span className="text-sm text-gray-600">
+            {fmt(item.revenueBase)} đ
+            </span>
+            <span className="text-[10px] text-gray-400">Hóa đơn gốc</span>
+        </div>
+      )
+    },
+    {
+      key: 'payoutRate',
+      header: 'Tỷ lệ',
+      width: '80px',
+      render: (item) => (
+        <div className="flex justify-center">
+            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+            {(Number(item.payoutRate) * 100).toFixed(0)}%
+            </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'payoutAmount',
+      header: 'Thực nhận',
+      width: '140px',
+      render: (item) => (
+        <div className="flex flex-col items-end">
+            <span className="font-bold text-green-600">
+            +{fmt(item.payoutAmount)} đ
+            </span>
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '50px',
+      render: (item) => (
+        <Button variant="ghost" size="sm" onClick={() => handleViewDetail(item)}>
+            <Eye className="w-4 h-4 text-gray-500" />
+        </Button>
+      )
+    }
+  ]
 
   if (isLoading) {
     return (
@@ -200,8 +318,7 @@ export default function BackPayDetails() {
     return (
       <div className="text-center py-12">
         <p className="text-red-600 font-medium">Có lỗi xảy ra khi tải dữ liệu</p>
-        <Button onClick={handleGoBack} variant="outline" className="mt-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <Button onClick={() => navigate(-1)} variant="outline" className="mt-4">
           Quay lại
         </Button>
       </div>
@@ -210,182 +327,224 @@ export default function BackPayDetails() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbItem>
-          <BreadcrumbLink
-            onClick={() => navigate("/center-qn/payroll-teacher")}
-            className="cursor-pointer hover:text-foreground"
-          >
-            Quản lý lương giáo viên
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbLink
-            onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}`)}
-            className="cursor-pointer hover:text-foreground"
-          >
-            Chi tiết bảng lương
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="text-foreground font-medium">Chi tiết truy lĩnh</BreadcrumbPage>
-        </BreadcrumbItem>
-      </Breadcrumb>
-
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleGoBack}
-            className="mb-3"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Chi tiết truy lĩnh lương</h1>
-          <p className="text-gray-600 mt-1">
-            Bảng lương từ {formatDate(backPayData?.payroll?.periodStart)} đến{" "}
-            {formatDate(backPayData?.payroll?.periodEnd)}
+          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (Truy lĩnh nợ cũ)</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Kỳ lương hiện tại: <span className="font-medium">{periodLabel}</span> • Giáo viên: {response?.data?.teacher?.fullName || "-"}
           </p>
         </div>
-        <Button
-          onClick={handleExport}
-          variant="outline"
-          className="border-blue-300 text-blue-600 hover:bg-blue-50"
-        >
+        <Button onClick={handleExport} variant="outline">
           <Download className="w-4 h-4 mr-2" />
           Xuất file
         </Button>
       </div>
 
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() => navigate("/center-qn/payroll-teacher")}
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Quản lý lương giáo viên
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}`)}
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Chi tiết bảng lương
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-foreground font-medium">
+              Chi tiết truy lĩnh
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100 p-6 hover:shadow-lg transition-shadow">
-          <p className="text-sm text-blue-700 font-medium mb-2">Giáo viên</p>
-          <p className="text-xl font-bold text-blue-900">{backPayData?.teacher?.fullName || "-"}</p>
-          <p className="text-xs text-blue-600 mt-2">{backPayData?.teacher?.email || "-"}</p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-purple-50 to-purple-100 p-6 hover:shadow-lg transition-shadow">
-          <p className="text-sm text-purple-700 font-medium mb-2">Số buổi truy lĩnh</p>
-          <p className="text-3xl font-bold text-purple-900">
-            {backPayData?.backPaySummary?.backPayCount || 0}
-          </p>
-          <p className="text-xs text-purple-600 mt-2">buổi</p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 hover:shadow-lg transition-shadow">
-          <p className="text-sm text-emerald-700 font-medium mb-2">Tổng tiền truy lĩnh</p>
-          <p className="text-2xl font-bold text-emerald-900">
-            {fmt(backPayData?.backPaySummary?.statistics?.totalBackPayAmount || 0)} đ
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-orange-50 to-orange-100 p-6 hover:shadow-lg transition-shadow">
-          <p className="text-sm text-orange-700 font-medium mb-2">Tổng doanh thu</p>
-          <p className="text-2xl font-bold text-orange-900">
-            {fmt(backPayData?.backPaySummary?.statistics?.totalRevenue || 0)} đ
-          </p>
-        </div>
-      </div>
-
-      {/* Detailed Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-lg border bg-white p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Thông tin bảng lương</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center pb-3 border-b">
-              <span className="text-gray-600">Kỳ lương:</span>
-              <span className="font-medium text-gray-900">
-                {formatDate(backPayData?.payroll?.periodStart)} -{" "}
-                {formatDate(backPayData?.payroll?.periodEnd)}
-              </span>
+      <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-white shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-yellow-800 text-lg">
+            <Wallet className="w-5 h-5" />
+            Tổng quan truy lĩnh
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            <div className="bg-white p-4 rounded-xl border border-yellow-100 shadow-sm">
+              <p className="text-sm text-gray-500 mb-1">Số khoản nợ thu được</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-gray-900">
+                    {summary?.count || allBackPayDetails.length}
+                </span>
+                <span className="text-sm text-gray-500">khoản</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center pb-3 border-b">
-              <span className="text-gray-600">Trạng thái:</span>
-              <Badge variant="outline">{backPayData?.payroll?.status || "-"}</Badge>
+            
+            <div className="bg-white p-4 rounded-xl border border-yellow-100 shadow-sm">
+              <p className="text-sm text-gray-500 mb-1">Tổng tiền nhận thêm</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-green-600">
+                    +{fmt(Number(summary?.totalBackPayAmount || 0))}
+                </span>
+                <span className="text-sm text-gray-500">VNĐ</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Ngày xử lý:</span>
-              <span className="font-medium text-gray-900">
-                {formatDate(backPayData?.backPaySummary?.processedAt)}
-              </span>
+
+            <div className="bg-white p-4 rounded-xl border border-yellow-100 shadow-sm">
+              <p className="text-sm text-gray-500 mb-1">Ngày xử lý</p>
+              <div className="flex items-center gap-2 h-[36px]">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-medium text-gray-900">
+                    {summary?.processedAt
+                    ? new Date(summary.processedAt).toLocaleDateString('vi-VN', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })
+                    : 'N/A'}
+                </span>
+              </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <div className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-slate-600" />
+            <h2 className="text-sm font-medium text-slate-600">Bộ lọc tìm kiếm</h2>
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="w-4 h-4 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
         </div>
 
-        <div className="rounded-lg border bg-white p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Thống kê truy lĩnh</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center pb-3 border-b">
-              <span className="text-gray-600">Số buổi truy lĩnh:</span>
-              <span className="font-semibold text-purple-700">
-                {backPayData?.backPaySummary?.backPayCount || 0} buổi
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b">
-              <span className="text-gray-600">Tổng tiền truy lĩnh:</span>
-              <span className="font-semibold text-emerald-700">
-                {fmt(backPayData?.backPaySummary?.statistics?.totalBackPayAmount || 0)} đ
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">% truy lĩnh:</span>
-              <span className="font-semibold text-orange-700">
-                {backPayPercentage}%
-              </span>
-            </div>
+        <div className="flex flex-wrap gap-3">
+          {/* Start Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal w-[150px]",
+                  !startDateFilter && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {startDateFilter ? format(startDateFilter, "dd/MM/yyyy", { locale: vi }) : "Từ ngày"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={startDateFilter}
+                onSelect={handleStartDateChange}
+                initialFocus
+                defaultMonth={startDateFilter ?? periodStartDate}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* End Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal w-[150px]",
+                  !endDateFilter && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {endDateFilter ? format(endDateFilter, "dd/MM/yyyy", { locale: vi }) : "Đến ngày"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={endDateFilter}
+                onSelect={handleEndDateChange}
+                initialFocus
+                defaultMonth={endDateFilter ?? periodStartDate}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Class Filter */}
+          <Select value={classFilter} onValueChange={handleClassChange}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Chọn lớp" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả lớp</SelectItem>
+              {uniqueClasses.map((cls) => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Summary Filter */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">
+              Hiển thị {filteredRows.length} kết quả
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Data Table */}
-      <div className="rounded-lg border bg-white overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50">
-          <h3 className="font-semibold text-gray-900">Chi tiết các buổi học bị truy lĩnh</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Tổng cộng: {backPayRows.length} buổi
-          </p>
-        </div>
-        <DataTable
-          data={pagedRows}
-          allData={backPayRows}
-          columns={columns}
-          loading={isLoading}
-          error={isError ? "Lỗi tải dữ liệu" : null}
-          emptyMessage="Không có dữ liệu truy lĩnh"
-          enableSearch={true}
-          enableSort={true}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalItems: backPayRows.length,
-            itemsPerPage,
-            onPageChange: setCurrentPage,
-            onItemsPerPageChange: (n) => {
-              setItemsPerPage(n)
-              setCurrentPage(1)
-            },
-            showItemsPerPage: true,
-            showPageInfo: true,
-          }}
-          rowKey="id"
-        />
-      </div>
+      {/* DataTable */}
+      <Card className="shadow-md border-gray-200">
+        <CardHeader>
+          <CardTitle className="text-lg text-gray-800">
+            Danh sách chi tiết
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <DataTable
+            data={filteredRows}
+            columns={columns}
+            loading={isLoading}
+            emptyMessage="Không tìm thấy khoản truy lĩnh nào phù hợp"
+            hoverable
+            striped
+            pagination={{
+              currentPage,
+              totalPages: Math.ceil(filteredRows.length / itemsPerPage),
+              totalItems: filteredRows.length,
+              itemsPerPage,
+              onPageChange: (page) => setCurrentPage(page),
+              onItemsPerPageChange: (limit) => {
+                setItemsPerPage(limit)
+                setCurrentPage(1)
+              },
+              showItemsPerPage: true,
+              showPageInfo: true
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Detail Modal */}
-      {selectedBackPay && (
-        <BackPayDetailModal
-          data={selectedBackPay}
-          open={showDetailModal}
-          onClose={() => setShowDetailModal(false)}
-        />
-      )}
+      <BackPayDetailModal 
+        data={selectedItem}
+        open={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </div>
   )
 }

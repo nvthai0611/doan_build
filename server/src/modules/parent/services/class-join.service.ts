@@ -303,6 +303,41 @@ export class ClassJoinService {
       );
     }
 
+    // Kiểm tra học sinh đã từng tham gia lớp này chưa và trả về thông báo phù hợp
+    const existingEnrollment = await this.prisma.enrollment.findFirst({
+      where: {
+        studentId: dto.studentId,
+        classId: dto.classId,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (existingEnrollment) {
+      const statusMessageMap: Record<string, string> = {
+        studying: 'Học sinh đang theo học lớp này, không thể gửi thêm yêu cầu.',
+        not_been_updated: 'Học sinh đã được thêm vào lớp nhưng chưa cập nhật lịch học.',
+        stopped: 'Con bạn đã thôi học lớp này. Vui lòng liên hệ trung tâm nếu muốn học lại.',
+        graduated: 'Học sinh đã hoàn thành lớp này. Vui lòng chọn lớp khác phù hợp.',
+      };
+
+      const enrollmentStatus = existingEnrollment.status;
+      const message =
+        statusMessageMap[enrollmentStatus] ||
+        'Học sinh đã có lịch sử tham gia lớp này. Vui lòng liên hệ trung tâm để được hỗ trợ.';
+
+      throw new HttpException(
+        {
+          success: false,
+          message,
+          enrollmentStatus,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // Bắt buộc phải có contractUploadId
     // if (!dto.contractUploadId) {
     //   throw new HttpException(
@@ -312,6 +347,38 @@ export class ClassJoinService {
     // }
 
     // Nếu có contractUploadId thì mới tiến hành kiểm tra
+    const existingRequest = await this.prisma.studentClassRequest.findFirst({
+      where: {
+        studentId: dto.studentId,
+        classId: dto.classId,
+        status: 'pending',
+      },
+    });
+
+    if (existingRequest) {
+      throw new HttpException(
+        { success: false, message: 'Đã có yêu cầu tham gia đang chờ xử lý' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const scheduleConflict = await this.checkScheduleConflict(
+      dto.studentId,
+      dto.classId,
+      classData.recurringSchedule,
+    );
+
+    if (scheduleConflict.hasConflict) {
+      throw new HttpException(
+        {
+          success: false,
+          message: scheduleConflict.message,
+          conflictDetails: scheduleConflict.conflictDetails,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     if (dto.contractUploadId) {
       // Validate contractUploadId: kiểm tra hợp đồng có tồn tại, thuộc về student, có môn học của lớp và chưa hết hạn
       let contractUpload: any = null;
@@ -383,57 +450,6 @@ export class ClassJoinService {
           );
         }
       }
-
-      // Kiểm tra học sinh đã enrolled vào lớp này chưa
-      const existingEnrollment = await this.prisma.enrollment.findFirst({
-        where: {
-          studentId: dto.studentId,
-          classId: dto.classId,
-          status: { in: ['studying', 'not_been_updated'] },
-        },
-      });
-
-      if (existingEnrollment) {
-        throw new HttpException(
-          { success: false, message: 'Học sinh đã đăng ký lớp học này rồi' },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Kiểm tra đã có request pending chưa
-      const existingRequest = await this.prisma.studentClassRequest.findFirst({
-        where: {
-          studentId: dto.studentId,
-          classId: dto.classId,
-          status: 'pending',
-        },
-      });
-
-      if (existingRequest) {
-        throw new HttpException(
-          { success: false, message: 'Đã có yêu cầu tham gia đang chờ xử lý' },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Kiểm tra trùng lịch học với các lớp đã đăng ký
-      const scheduleConflict = await this.checkScheduleConflict(
-        dto.studentId,
-        dto.classId,
-        classData.recurringSchedule,
-      );
-
-      if (scheduleConflict.hasConflict) {
-        throw new HttpException(
-          {
-            success: false,
-            message: scheduleConflict.message,
-            conflictDetails: scheduleConflict.conflictDetails,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
       // Tạo request - lưu cả commitmentImageUrl nếu có hợp đồng
       const request = await this.prisma.studentClassRequest.create({
         data: {

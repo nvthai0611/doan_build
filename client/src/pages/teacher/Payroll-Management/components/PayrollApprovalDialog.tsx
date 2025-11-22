@@ -137,7 +137,7 @@ const PayrollApprovalDialog: React.FC<PayrollApprovalDialogProps> = ({
               <div className="flex items-center justify-between py-2 bg-yellow-50 px-3 rounded">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm text-yellow-700">Truy lĩnh</span>
+                  <span className="text-sm text-yellow-700">Lương (buổi dạy cũ)</span>
                   <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
                     {payroll.computedDetails?.metadata?.backPayCount || 0} khoản
                   </Badge>

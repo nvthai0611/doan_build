@@ -46,6 +46,8 @@ const getPayrollDetail = async (payrollId: string, filters?: any): Promise<any> 
       : `/teacher/payroll/${payrollId}`
 
     const response = await apiClient.get(url)
+    console.log("ádasd" + response);
+    
     return response
   } catch (error) {
     console.error('Error fetching payroll detail:', error)
