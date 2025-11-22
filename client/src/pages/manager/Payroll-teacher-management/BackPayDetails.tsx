@@ -1,52 +1,201 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getPayrollDetail } from '../../../services/teacher/payroll-management/payroll-management.service'
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useParams, useNavigate } from "react-router-dom"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { 
+  Loader2, 
+  Download, 
+  Calendar,
+  Filter,
+  X,
+  GraduationCap,
+  User,
+  Wallet,
+  Eye,
+  Clock
+} from "lucide-react"
+import { format } from "date-fns"
+import { vi } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+// Import service của bạn (đường dẫn có thể khác tùy project)
+import { payrollService } from "../../../services/center-owner/payroll-teacher/payroll.service"
 import { DataTable, type Column } from '../../../components/common/Table/DataTable'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Clock, Download, User, GraduationCap, Wallet } from 'lucide-react'
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import BackPayDetailModal from "./components/BackPayDetailModal"
 
-const BackPayDetail: React.FC = () => {
-  const { payrollId } = useParams<{ payrollId: string }>()
+// --- Interface khớp với API Backend mới ---
+export interface BackPayItem {
+  description: string
+  sessionDate: string // Ngày hóa đơn / ngày ghi nhận
+  payoutAmount: number
+  payoutRate: number
+  revenueBase: number // Tổng tiền hóa đơn nợ
+  source?: {
+    type: string
+    feeRecordId: string
+    monthDebt: string // Ngày hạn nộp -> Suy ra tháng nợ
+  }
+  student?: {
+    id: string
+    code: string
+    name: string
+  }
+  class?: {
+    id: string
+    name: string
+    code: string
+  }
+}
+
+export default function BackPayDetails() {
+  const { payrollId } = useParams()
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  
+  // State cho Modal
+  const [selectedItem, setSelectedItem] = useState<BackPayItem | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
-  const { data: response, isLoading, error, refetch } = useQuery({
-    queryKey: ['payroll-backpay', payrollId],
-    queryFn: () => getPayrollDetail(payrollId!),
+  // Filters
+  const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined)
+  const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined)
+  const [classFilter, setClassFilter] = useState<string>("all")
+
+  // --- Gọi API ---
+  // Lưu ý: Đảm bảo payrollService.getPayrollBackPayDetails đã được update
+  const { data: response, isLoading, isError, refetch } = useQuery({
+    queryKey: ["back-pay-details", payrollId],
+    queryFn: () => payrollService.getPayrollBackPayDetails(String(payrollId)),
     enabled: !!payrollId,
     staleTime: 30000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
   })
-  
+
+  // Lấy dữ liệu từ response (Cấu trúc phẳng mới)
   const payroll = response?.data?.payroll
-  // Lấy dữ liệu từ cấu trúc mới của API
-  const allBackPayDetails = response?.data?.backPayDetails || [] 
+  const allBackPayDetails: BackPayItem[] = response?.data?.backPayDetails || []
   const summary = response?.data?.backPaySummary
-  const backPayAmount = Number(summary?.totalBackPayAmount || 0)
+  
+  const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
-  // Client-side pagination
-  const totalItems = allBackPayDetails?.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const backPayDetails = allBackPayDetails?.slice(startIndex, endIndex)
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-"
+    return new Date(dateString).toLocaleDateString("vi-VN")
   }
 
-  const handleItemsPerPageChange = (limit: number) => {
-    setItemsPerPage(limit)
+  // Giới hạn date picker trong khoảng kỳ lương hiện tại
+  const periodStartDate = useMemo(() => {
+    if (!payroll?.periodStart) return undefined
+    return new Date(payroll.periodStart)
+  }, [payroll?.periodStart])
+
+  const periodEndDate = useMemo(() => {
+    if (!payroll?.periodEnd) return undefined
+    return new Date(payroll.periodEnd)
+  }, [payroll?.periodEnd])
+
+  // Lấy danh sách lớp unique để filter
+  const uniqueClasses = useMemo(() => {
+    const classMap = new Map<string, { id: string; name: string }>()
+    allBackPayDetails.forEach((item) => {
+      if (item.class && !classMap.has(item.class.id)) {
+        classMap.set(item.class.id, {
+          id: item.class.id,
+          name: item.class.name,
+        })
+      }
+    })
+    return Array.from(classMap.values())
+  }, [allBackPayDetails])
+
+  // --- Logic Lọc Dữ Liệu ---
+  const filteredRows = useMemo(() => {
+    let filtered = [...allBackPayDetails]
+
+    // Filter by date range (Dựa trên sessionDate - ngày hóa đơn)
+    if (startDateFilter || endDateFilter) {
+      filtered = filtered.filter((item) => {
+        const itemDate = new Date(item.sessionDate)
+        const isAfterStart = !startDateFilter || itemDate >= startDateFilter
+        const isBeforeEnd = !endDateFilter || itemDate <= endDateFilter
+        return isAfterStart && isBeforeEnd
+      })
+    }
+
+    // Filter by class
+    if (classFilter && classFilter !== "all") {
+      filtered = filtered.filter((item) => item.class?.id === classFilter)
+    }
+
+    return filtered
+  }, [allBackPayDetails, startDateFilter, endDateFilter, classFilter])
+
+  // Tổng tiền của danh sách đang hiển thị (đã filter)
+  const currentBackPayTotal = useMemo(() => {
+      return filteredRows.reduce((sum, item) => sum + item.payoutAmount, 0)
+  }, [filteredRows])
+
+  const handleExport = () => {
+    console.log("Export back pay details")
+    // Logic export excel ở đây
+  }
+
+  const handleViewDetail = (item: BackPayItem) => {
+    setSelectedItem(item)
+    setShowModal(true)
+  }
+
+  // --- Handlers ---
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDateFilter(date)
     setCurrentPage(1)
   }
 
-  // --- CẤU HÌNH CỘT (COLUMNS) ---
-  const columns: Column<any>[] = [
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDateFilter(date)
+    setCurrentPage(1)
+  }
+
+  const handleClassChange = (classId: string) => {
+    setClassFilter(classId)
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setStartDateFilter(undefined)
+    setEndDateFilter(undefined)
+    setClassFilter("all")
+    setCurrentPage(1)
+  }
+
+  const hasActiveFilters = startDateFilter || endDateFilter || classFilter !== "all"
+  const periodLabel = `${formatDate(payroll?.periodStart)} - ${formatDate(payroll?.periodEnd)}`
+
+  // --- Cấu hình Cột cho DataTable ---
+  const columns: Column<BackPayItem>[] = [
     {
       key: 'sessionDate',
       header: 'Ngày ghi nhận',
@@ -56,17 +205,16 @@ const BackPayDetail: React.FC = () => {
             <span className="font-medium text-gray-900">
             {new Date(item.sessionDate).toLocaleDateString('vi-VN')}
             </span>
-            <span className="text-[11px] text-gray-500">Ngày hóa đơn</span>
+            <span className="text-[11px] text-gray-500">Ngày thu tiền</span>
         </div>
       )
     },
     {
-      key: 'info', 
+      key: 'info', // Cột ảo hiển thị thông tin Nguồn
       header: 'Thông tin nguồn nợ',
       width: '250px',
       render: (item) => (
         <div className="flex flex-col gap-1.5">
-            {/* Tên Lớp */}
             {item.class ? (
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                     <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
@@ -77,7 +225,6 @@ const BackPayDetail: React.FC = () => {
                 <span className="text-sm text-gray-400 italic">Lớp đã bị xóa</span>
             )}
             
-            {/* Tên Học sinh */}
             {item.student ? (
                 <div className="flex items-center gap-2 text-sm text-gray-600 ml-1">
                     <User className="w-3.5 h-3.5 text-gray-400" />
@@ -111,14 +258,14 @@ const BackPayDetail: React.FC = () => {
     },
     {
       key: 'revenueBase',
-      header: 'Doanh thu gốc',
+      header: 'Tổng nợ thu được',
       width: '140px',
       render: (item) => (
         <div className="flex flex-col items-end">
             <span className="text-sm text-gray-600">
-            {Number(item.revenueBase).toLocaleString('vi-VN')} đ
+            {fmt(item.revenueBase)} đ
             </span>
-            <span className="text-[10px] text-gray-400">Tổng hóa đơn</span>
+            <span className="text-[10px] text-gray-400">Hóa đơn gốc</span>
         </div>
       )
     },
@@ -141,88 +288,90 @@ const BackPayDetail: React.FC = () => {
       render: (item) => (
         <div className="flex flex-col items-end">
             <span className="font-bold text-green-600">
-            +{Number(item.payoutAmount).toLocaleString('vi-VN')} đ
+            +{fmt(item.payoutAmount)} đ
             </span>
         </div>
+      )
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '50px',
+      render: (item) => (
+        <Button variant="ghost" size="sm" onClick={() => handleViewDetail(item)}>
+            <Eye className="w-4 h-4 text-gray-500" />
+        </Button>
       )
     }
   ]
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Đang tải dữ liệu...</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-3 text-gray-600">Đang tải dữ liệu...</span>
       </div>
     )
   }
 
-  if (error || !payroll) {
+  if (isError) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center py-12">
-          <p className="text-red-600">Không thể tải dữ liệu</p>
-          <Button onClick={() => refetch()} className="mt-4">
-            Thử lại
-          </Button>
-        </div>
+      <div className="text-center py-12">
+        <p className="text-red-600 font-medium">Có lỗi xảy ra khi tải dữ liệu</p>
+        <Button onClick={() => navigate(-1)} variant="outline" className="mt-4">
+          Quay lại
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-7xl">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Chi tiết truy lĩnh (Nợ cũ)
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Kỳ lương hiện tại: <span className="font-medium">{new Date(payroll.periodStart).toLocaleDateString('vi-VN')}</span> - <span className="font-medium">{new Date(payroll.periodEnd).toLocaleDateString('vi-VN')}</span>
-            </p>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (Truy lĩnh nợ cũ)</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Kỳ lương hiện tại: <span className="font-medium">{periodLabel}</span> • Giáo viên: {response?.data?.teacher?.fullName || "-"}
+          </p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Xuất Excel
+        <Button onClick={handleExport} variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Xuất file
         </Button>
       </div>
 
       {/* Breadcrumb */}
-      <Breadcrumb className="mb-6">
+      <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink
-              onClick={() => navigate('/teacher/payroll-management')}
-              className="cursor-pointer hover:text-foreground"
+              onClick={() => navigate("/center-qn/payroll-teacher")}
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              Quản lý lương
+              Quản lý lương giáo viên
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink
-              onClick={() => navigate(`/teacher/payroll-management/${payrollId}`)}
-              className="cursor-pointer hover:text-foreground"
+              onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payrollId}`)}
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              Chi tiết kỳ lương
+              Chi tiết bảng lương
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Chi tiết truy lĩnh</BreadcrumbPage>
+            <BreadcrumbPage className="text-foreground font-medium">
+              Chi tiết truy lĩnh
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Summary Card */}
-      <Card className="mb-6 border-yellow-200 bg-gradient-to-br from-yellow-50 to-white shadow-sm">
+      {/* Summary Cards */}
+      <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-white shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-yellow-800 text-lg">
             <Wallet className="w-5 h-5" />
@@ -235,7 +384,7 @@ const BackPayDetail: React.FC = () => {
               <p className="text-sm text-gray-500 mb-1">Số khoản nợ thu được</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-gray-900">
-                    {summary?.count || allBackPayDetails?.length}
+                    {summary?.count || allBackPayDetails.length}
                 </span>
                 <span className="text-sm text-gray-500">khoản</span>
               </div>
@@ -245,7 +394,7 @@ const BackPayDetail: React.FC = () => {
               <p className="text-sm text-gray-500 mb-1">Tổng tiền nhận thêm</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-green-600">
-                    +{backPayAmount.toLocaleString('vi-VN')}
+                    +{fmt(Number(summary?.totalBackPayAmount || 0))}
                 </span>
                 <span className="text-sm text-gray-500">VNĐ</span>
               </div>
@@ -268,38 +417,134 @@ const BackPayDetail: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Filters */}
+      <div className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-slate-600" />
+            <h2 className="text-sm font-medium text-slate-600">Bộ lọc tìm kiếm</h2>
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="w-4 h-4 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {/* Start Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal w-[150px]",
+                  !startDateFilter && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {startDateFilter ? format(startDateFilter, "dd/MM/yyyy", { locale: vi }) : "Từ ngày"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={startDateFilter}
+                onSelect={handleStartDateChange}
+                initialFocus
+                defaultMonth={startDateFilter ?? periodStartDate}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* End Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal w-[150px]",
+                  !endDateFilter && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {endDateFilter ? format(endDateFilter, "dd/MM/yyyy", { locale: vi }) : "Đến ngày"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={endDateFilter}
+                onSelect={handleEndDateChange}
+                initialFocus
+                defaultMonth={endDateFilter ?? periodStartDate}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Class Filter */}
+          <Select value={classFilter} onValueChange={handleClassChange}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Chọn lớp" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả lớp</SelectItem>
+              {uniqueClasses.map((cls) => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Summary Filter */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">
+              Hiển thị {filteredRows.length} kết quả
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* DataTable */}
       <Card className="shadow-md border-gray-200">
         <CardHeader>
           <CardTitle className="text-lg text-gray-800">
-            Danh sách các khoản thanh toán
+            Danh sách chi tiết
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <DataTable
-            data={backPayDetails}
+            data={filteredRows}
             columns={columns}
             loading={isLoading}
-            error={error?.message}
-            onRetry={refetch}
-            emptyMessage="Không có dữ liệu truy lĩnh nào."
+            emptyMessage="Không tìm thấy khoản truy lĩnh nào phù hợp"
             hoverable
             striped
             pagination={{
               currentPage,
-              totalPages,
-              totalItems,
+              totalPages: Math.ceil(filteredRows.length / itemsPerPage),
+              totalItems: filteredRows.length,
               itemsPerPage,
-              onPageChange: handlePageChange,
-              onItemsPerPageChange: handleItemsPerPageChange,
+              onPageChange: (page) => setCurrentPage(page),
+              onItemsPerPageChange: (limit) => {
+                setItemsPerPage(limit)
+                setCurrentPage(1)
+              },
               showItemsPerPage: true,
               showPageInfo: true
             }}
           />
         </CardContent>
       </Card>
+
+      {/* Detail Modal */}
+      <BackPayDetailModal 
+        data={selectedItem}
+        open={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </div>
   )
 }
-
-export default BackPayDetail
