@@ -209,7 +209,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         {
           title: 'Quản lý người dùng',
           icon: UserCog,
-          href: '/users',
+          href: '/center-qn/user-management',
         },
         {
           title: 'Feedback Phụ Huynh',
