@@ -1,5 +1,5 @@
-import { Controller, Get, Param, Patch, Put, Query, Req } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger'
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger'
 import { PayrollService } from '../services/payroll.service'
 
 @ApiTags('Teacher - Payroll')
@@ -68,6 +68,33 @@ export class PayrollController {
   async approvePayroll( @Req() req: any, @Param('payrollId') payrollId: string ) {
     const teacherId = req.user.teacherId
     return this.payrollService.approvePayroll(teacherId, payrollId)
+  }
+
+  @Post(':payrollId/reject')
+  @ApiOperation({ summary: 'Từ chối bảng lương' })
+  @ApiParam({ name: 'payrollId', required: true, type: String })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        rejectionReason: {
+          type: 'string',
+          description: 'Lý do từ chối (tối thiểu 10 ký tự)',
+          example: 'Số buổi học không chính xác, cần kiểm tra lại'
+        }
+      },
+      required: ['rejectionReason']
+    }
+  })
+  async rejectPayroll(
+    @Req() req: any,
+    @Param('payrollId') payrollId: string,
+    @Body('teacherRejectionReason') teacherRejectionReason: string
+  ) {
+    const teacherId = req.user.teacherId
+    console.log(teacherRejectionReason);
+    
+    return this.payrollService.rejectPayroll(teacherId, payrollId, teacherRejectionReason)
   }
 
 }
