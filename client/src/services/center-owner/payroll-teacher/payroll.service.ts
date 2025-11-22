@@ -1,5 +1,15 @@
 import { apiClient } from "../../../utils/clientAxios"
 
+interface PayrollAdjustmentPayload {
+  adjustments: {
+    payrollId: string
+    items: {
+      type: 'bonus' | 'deduction'
+      amount: number
+      reason: string
+    }[]
+  }[]
+}
 const getListTeacher = async (teacherName: string, email: string, status: string, month?: string) => {
   try {
     const query = new URLSearchParams()
@@ -23,13 +33,13 @@ const getListTeacher = async (teacherName: string, email: string, status: string
   }
 }
 
-const getListPayrollsByTeacherId = async (teacherId: string, year?: string, classId?: string) => { // Changed month to year
+const getListPayrollsByTeacherId = async (teacherId: string, year?: string, classId?: string) => {
   try {
     const query = new URLSearchParams()
     if (teacherId) {
-      query.append('teacherId', teacherId) // optional, teacherId đã ở path
+      query.append('teacherId', teacherId)
     }
-    if (year) { // Updated to accept year
+    if (year) {
       query.append('year', year)
     }
     if (classId) {
@@ -82,11 +92,75 @@ const getPayrollBackPayDetails = async (payrollId: string): Promise<any> => {
   }
 }
 
+const recalculatePayrolls = async (payrollIds: string[]): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      `admin-center/payroll-teacher/recalculate`,
+      { payrollIds }
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error recalculating payrolls:', error)
+    throw error
+  }
+}
+
+// ✅ MỚI: Gửi lại email cho giáo viên
+const resendPayrollEmail = async (payrollId: string): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      `admin-center/payroll-teacher/payroll/${payrollId}/resend-email`
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error resending payroll email:', error)
+    throw error
+  }
+}
+
+// ✅ MỚI: Tạo thanh toán lương
+interface CreatePaymentPayload {
+  payrollIds: string[]
+  totalAmount: number
+  paymentMethod: string
+  notes?: string
+}
+
+const createPayrollPayment = async (payload: CreatePaymentPayload): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      `admin-center/payroll-teacher/payment/create`,
+      payload
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error creating payroll payment:', error)
+    throw error
+  }
+}
+
+const applyPayrollAdjustments = async (payload: PayrollAdjustmentPayload): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      `admin-center/payroll-teacher/adjustments/apply`,
+      payload
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error applying payroll adjustments:', error)
+    throw error
+  }
+}
+
 export const payrollService = {
   getListTeacher,
   getListPayrollsByTeacherId,
   getPayrollById,
   getSessionsByClassId,
   sendPayrollNotification,
-  getPayrollBackPayDetails
+  getPayrollBackPayDetails,
+  recalculatePayrolls,
+  resendPayrollEmail,
+  createPayrollPayment,
+  applyPayrollAdjustments
 }

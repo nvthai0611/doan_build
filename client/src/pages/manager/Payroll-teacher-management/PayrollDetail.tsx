@@ -2,12 +2,25 @@
 
 import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { payrollService } from "@/services/center-owner/payroll-teacher/payroll.service"
 import { DataTable, Column } from "@/components/common/Table/DataTable"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, Filter, X, Check, XCircle, DollarSign, Info } from "lucide-react"
+import { 
+  Calendar, 
+  Filter, 
+  X, 
+  Check, 
+  XCircle, 
+  DollarSign, 
+  Info, 
+  Mail, 
+  Send,
+  Plus,
+  Minus,
+  FileText
+} from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
@@ -15,17 +28,21 @@ import { cn } from "@/lib/utils"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/assets/shadcn-ui/components/ui/breadcrumb"
+import { useToast } from "@/hooks/use-toast"
+import { PaymentModal } from "./components/PaymentModal"
 
 export default function PayrollDetail() {
   const { payrollId } = useParams()
   const navigate = useNavigate()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined)
   const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined)
   const [classFilter, setClassFilter] = useState<string>("all")
-  const [showBackPayModal, setShowBackPayModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["payroll-detail", payrollId],
     queryFn: () => payrollService.getPayrollById(String(payrollId)),
     enabled: !!payrollId,
@@ -35,30 +52,74 @@ export default function PayrollDetail() {
 
   const payroll: any = useMemo(() => (data as any) ?? null, [data])
 
+  // ✅ Parse adjustment details
+  const adjustmentDetails = useMemo(() => {
+    if (!payroll?.adjustmentDetails) return []
+    try {
+      const details = typeof payroll.adjustmentDetails === 'string' 
+        ? JSON.parse(payroll.adjustmentDetails)
+        : payroll.adjustmentDetails
+      return Array.isArray(details) ? details : []
+    } catch (error) {
+      console.error('Error parsing adjustment details:', error)
+      return []
+    }
+  }, [payroll?.adjustmentDetails])
+
+  // ✅ Tính tổng bonuses và deductions từ adjustmentDetails
+  const adjustmentSummary = useMemo(() => {
+    const bonuses = adjustmentDetails
+      .filter((adj: any) => adj.type === 'bonus')
+      .reduce((sum: number, adj: any) => sum + Number(adj.amount || 0), 0)
+    
+    const deductions = adjustmentDetails
+      .filter((adj: any) => adj.type === 'deduction')
+      .reduce((sum: number, adj: any) => sum + Number(adj.amount || 0), 0)
+    
+    return { bonuses, deductions, total: bonuses - deductions }
+  }, [adjustmentDetails])
+
+  // ✅ Mutation: Gửi lại email
+  const resendEmailMutation = useMutation({
+    mutationFn: (payrollId: string) => payrollService.sendPayrollNotification([payrollId]),
+    onSuccess: () => {
+      toast({
+        title: 'Thành công',
+        description: 'Đã gửi lại email cho giáo viên, hãy chờ đợi giáo viên phản hồi',
+        variant: 'default'
+      })
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['payroll-detail', payrollId] })
+      refetch()
+      }, 7000)
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Lỗi',
+        description: error?.response?.data?.message || 'Không thể gửi email',
+        variant: 'destructive'
+      })
+    }
+  })
+
   const statusBadge = (status?: string) => {
-  switch (status) {
-    case "approved_by_teacher":
-      return <Badge className="bg-green-100 text-green-800">Đã duyệt</Badge>
-
-    case "paid":
-      return <Badge className="bg-green-100 text-green-800">Đã thanh toán</Badge>
-
-    case "pending":
-      return <Badge className="bg-yellow-100 text-yellow-800">Chờ xử lý</Badge>
-
-    case "waiting_teacher_approval":
-      return <Badge className="bg-yellow-100 text-yellow-800">Chờ giáo viên duyệt</Badge>
-
-    case "cancelled":
-      return <Badge className="bg-gray-200 text-gray-700">Đã hủy</Badge>
-
-    case "rejected_by_teacher":
-      return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
-
-    default:
-      return <Badge variant="outline">{status || "-"}</Badge>
+    switch (status) {
+      case "approved_by_teacher":
+        return <Badge className="bg-green-100 text-green-800">Đã duyệt</Badge>
+      case "paid":
+        return <Badge className="bg-green-100 text-green-800">Đã thanh toán</Badge>
+      case "pending":
+        return <Badge className="bg-yellow-100 text-yellow-800">Chờ xử lý</Badge>
+      case "waiting_teacher_approval":
+        return <Badge className="bg-blue-100 text-blue-800">Chờ giáo viên duyệt</Badge>
+      case "cancelled":
+        return <Badge className="bg-gray-200 text-gray-700">Đã hủy</Badge>
+      case "rejected_by_teacher":
+        return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
+      default:
+        return <Badge variant="outline">{status || "-"}</Badge>
+    }
   }
-}
 
   const sessionStatusBadge = (status?: string) => {
     switch (status) {
@@ -81,7 +142,6 @@ export default function PayrollDetail() {
     ? `${new Date(payroll.periodStart).toLocaleDateString("vi-VN")} - ${new Date(payroll.periodEnd).toLocaleDateString("vi-VN")}`
     : "-"
 
-  // Limit date picker within current payroll period
   const periodStartDate = useMemo(() => {
     return payroll?.periodStart ? new Date(payroll.periodStart) : undefined
   }, [payroll?.periodStart])
@@ -97,7 +157,7 @@ export default function PayrollDetail() {
       const c = s.class || {}
       return {
         id: String(d.id ?? s.id ?? Math.random()),
-        sessionId: s.id || "", // Add sessionId for navigation
+        sessionId: s.id || "",
         date: s.sessionDate ? new Date(s.sessionDate).toLocaleDateString("vi-VN") : "-",
         rawDate: s.sessionDate ? new Date(s.sessionDate) : null,
         time: s.startTime && s.endTime ? `${s.startTime} - ${s.endTime}` : "-",
@@ -113,14 +173,12 @@ export default function PayrollDetail() {
         payoutRate: d.payoutRate || 0,
       }
     }).sort((a: any, b: any) => {
-      // Sort by date descending
       if (!a.rawDate) return 1
       if (!b.rawDate) return -1
       return b.rawDate.getTime() - a.rawDate.getTime()
     })
   }, [payroll])
 
-  // Get unique classes for filter
   const uniqueClasses = useMemo(() => {
     const classMap = new Map()
     sessionRows.forEach((row: any) => {
@@ -155,24 +213,19 @@ export default function PayrollDetail() {
 
   const hasActiveFilters = startDateFilter || endDateFilter || classFilter !== "all"
 
-  // Apply filters
   const filteredRows = useMemo(() => {
     let filtered = [...sessionRows]
 
-    // Filter by date range
     if (startDateFilter || endDateFilter) {
       filtered = filtered.filter((row: any) => {
         if (!row.rawDate) return false
-        
         const sessionDate = row.rawDate
         const isAfterStart = !startDateFilter || sessionDate >= startDateFilter
         const isBeforeEnd = !endDateFilter || sessionDate <= endDateFilter
-        
         return isAfterStart && isBeforeEnd
       })
     }
 
-    // Filter by class
     if (classFilter && classFilter !== "all") {
       filtered = filtered.filter((row: any) => row.classId === classFilter)
     }
@@ -183,8 +236,8 @@ export default function PayrollDetail() {
   const sessionColumns: Column<any>[] = [
     { key: "date", header: "Ngày" },
     { key: "time", header: "Thời gian" },
-    { 
-      key: "notes", 
+    {
+      key: "notes",
       header: "Tên buổi học",
       render: (row) => (
         <button
@@ -195,10 +248,9 @@ export default function PayrollDetail() {
         </button>
       )
     },
-    { key: "className", header: "Lớp"},
-    // { key: "teacher", header: "Giáo viên" },
-    { 
-      key: "status", 
+    { key: "className", header: "Lớp" },
+    {
+      key: "status",
       header: "Trạng thái",
       render: (row) => sessionStatusBadge(row.status)
     },
@@ -224,7 +276,6 @@ export default function PayrollDetail() {
     }
   ]
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const totalItems = filteredRows.length
@@ -234,17 +285,9 @@ export default function PayrollDetail() {
     return filteredRows.slice(start, start + itemsPerPage)
   }, [filteredRows, currentPage, itemsPerPage])
 
-  // Mutation for handling payroll actions
-  const handlePayrollAction = async (action: string) => {
-    try {
-      // TODO: Implement API call
-      // await payrollService.updatePayrollStatus(payrollId, action)
-      console.log(`Action: ${action} for payroll ${payrollId}`)
-      // Refetch data after action
-      // refetch()
-    } catch (error) {
-      console.error('Error handling payroll action:', error)
-    }
+  const handleResendEmail = () => {
+    if (!payrollId) return
+    resendEmailMutation.mutate(payrollId)
   }
 
   const renderActionButtons = () => {
@@ -254,20 +297,13 @@ export default function PayrollDetail() {
       case "pending":
         return (
           <div className="flex gap-2">
-            <Button 
-              onClick={() => handlePayrollAction('send_to_teacher')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Gửi cho giáo viên
-            </Button>
-            <Button 
-              onClick={() => handlePayrollAction('cancel')}
+            <Button
+              onClick={handleResendEmail}
               variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              disabled={resendEmailMutation.isPending}
             >
-              <XCircle className="w-4 h-4 mr-2" />
-              Hủy bảng lương
+              <Send className="w-4 h-4 mr-2" />
+              {resendEmailMutation.isPending ? 'Đang gửi...' : 'Gửi cho giáo viên'}
             </Button>
           </div>
         )
@@ -275,19 +311,13 @@ export default function PayrollDetail() {
       case "waiting_teacher_approval":
         return (
           <div className="flex gap-2">
-            <Button 
-              onClick={() => handlePayrollAction('remind_teacher')}
+            <Button
+              onClick={handleResendEmail}
               variant="outline"
+              disabled={resendEmailMutation.isPending}
             >
-              Nhắc nhở giáo viên
-            </Button>
-            <Button 
-              onClick={() => handlePayrollAction('cancel')}
-              variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Hủy bảng lương
+              <Mail className="w-4 h-4 mr-2" />
+              {resendEmailMutation.isPending ? 'Đang gửi...' : 'Gửi lại email'}
             </Button>
           </div>
         )
@@ -295,20 +325,12 @@ export default function PayrollDetail() {
       case "approved_by_teacher":
         return (
           <div className="flex gap-2">
-            <Button 
-              onClick={() => handlePayrollAction('mark_as_paid')}
+            <Button
+              onClick={() => setShowPaymentModal(true)}
               className="bg-green-600 hover:bg-green-700"
             >
               <DollarSign className="w-4 h-4 mr-2" />
-              Xác nhận đã thanh toán
-            </Button>
-            <Button 
-              onClick={() => handlePayrollAction('cancel')}
-              variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Hủy bảng lương
+              Tạo thanh toán
             </Button>
           </div>
         )
@@ -316,26 +338,20 @@ export default function PayrollDetail() {
       case "rejected_by_teacher":
         return (
           <div className="flex gap-2">
-            <Button 
-              onClick={() => handlePayrollAction('resend_to_teacher')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Gửi lại cho giáo viên
-            </Button>
-            <Button 
-              onClick={() => handlePayrollAction('cancel')}
+            <Button
+              onClick={handleResendEmail}
               variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              disabled={resendEmailMutation.isPending}
             >
-              <XCircle className="w-4 h-4 mr-2" />
-              Hủy bảng lương
+              <Send className="w-4 h-4 mr-2" />
+              {resendEmailMutation.isPending ? 'Đang gửi...' : 'Gửi lại cho giáo viên'}
             </Button>
           </div>
         )
 
       case "paid":
       case "cancelled":
-        return null // No actions for final states
+        return null
 
       default:
         return null
@@ -371,23 +387,140 @@ export default function PayrollDetail() {
               Quản lý lương giáo viên
             </BreadcrumbLink>
           </BreadcrumbItem>
-          {/* <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() => navigate(`/center-qn/payroll-teacher/${payroll?.teacher?.id}`)}
-              className="text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              Danh sách hóa đơn của giáo viên
-            </BreadcrumbLink>
-          </BreadcrumbItem> */}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="text-foreground font-medium">
-              Danh sách chi tiết hóa đơn của giáo viên
+              Chi tiết bảng lương
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* ✅ Payroll Summary Card */}
+      <div className="rounded-xl border bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-green-600" />
+            Tổng quan bảng lương
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Lương cơ bản */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm text-blue-700 font-medium mb-1">Lương cơ bản</p>
+            <p className="text-2xl font-bold text-blue-900">
+              {fmt(Number(payroll?.totalAmount || 0) - Number(payroll?.bonuses || 0) + Number(payroll?.deductions || 0))} đ
+            </p>
+          </div>
+
+          {/* Thưởng */}
+          <div className="bg-green-50 rounded-lg p-4">
+            <p className="text-sm text-green-700 font-medium mb-1 flex items-center gap-1">
+              <Plus className="w-3 h-3" />
+              Thưởng
+            </p>
+            <p className="text-2xl font-bold text-green-900">
+              +{fmt(Number(payroll?.bonuses || 0))} đ
+            </p>
+            {adjustmentSummary.bonuses > 0 && (
+              <p className="text-xs text-green-600 mt-1">
+                ({adjustmentDetails.filter((a: any) => a.type === 'bonus').length} điều chỉnh)
+              </p>
+            )}
+          </div>
+
+          {/* Khấu trừ */}
+          <div className="bg-red-50 rounded-lg p-4">
+            <p className="text-sm text-red-700 font-medium mb-1 flex items-center gap-1">
+              <Minus className="w-3 h-3" />
+              Khấu trừ
+            </p>
+            <p className="text-2xl font-bold text-red-900">
+              -{fmt(Number(payroll?.deductions || 0))} đ
+            </p>
+            {adjustmentSummary.deductions > 0 && (
+              <p className="text-xs text-red-600 mt-1">
+                ({adjustmentDetails.filter((a: any) => a.type === 'deduction').length} điều chỉnh)
+              </p>
+            )}
+          </div>
+
+          {/* Tổng cuối */}
+          <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-4 border-2 border-emerald-200">
+            <p className="text-sm text-emerald-700 font-medium mb-1">Tổng thanh toán</p>
+            <p className="text-2xl font-bold text-emerald-900">
+              {fmt(Number(payroll?.totalAmount || 0))} đ
+            </p>
+          </div>
+        </div>
+
+        {/* ✅ Adjustment Details */}
+        {adjustmentDetails.length > 0 && (
+          <div className="mt-6 border-t pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Chi tiết điều chỉnh ({adjustmentDetails.length})
+            </h3>
+            
+            <div className="space-y-2">
+              {adjustmentDetails.map((adj: any, index: number) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg",
+                    adj.type === 'bonus' 
+                      ? "bg-green-50 border border-green-200" 
+                      : "bg-red-50 border border-red-200"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={adj.type === 'bonus' ? 'default' : 'destructive'}
+                      className="gap-1"
+                    >
+                      {adj.type === 'bonus' ? (
+                        <Plus className="w-3 h-3" />
+                      ) : (
+                        <Minus className="w-3 h-3" />
+                      )}
+                      {adj.type === 'bonus' ? 'Thưởng' : 'Khấu trừ'}
+                    </Badge>
+                    
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {adj.reason || 'Không có lý do'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className={cn(
+                      "text-lg font-bold",
+                      adj.type === 'bonus' ? "text-green-700" : "text-red-700"
+                    )}>
+                      {adj.type === 'bonus' ? '+' : '-'}{fmt(Number(adj.amount || 0))} đ
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">Tổng điều chỉnh:</span>
+                <span className={cn(
+                  "font-semibold",
+                  adjustmentSummary.total >= 0 ? "text-green-700" : "text-red-700"
+                )}>
+                  {adjustmentSummary.total >= 0 ? '+' : ''}{fmt(adjustmentSummary.total)} đ
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="rounded-xl border bg-white p-4">
@@ -405,7 +538,6 @@ export default function PayrollDetail() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {/* Start Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -432,7 +564,6 @@ export default function PayrollDetail() {
             </PopoverContent>
           </Popover>
 
-          {/* End Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -459,7 +590,6 @@ export default function PayrollDetail() {
             </PopoverContent>
           </Popover>
 
-          {/* Class Filter */}
           <Select value={classFilter} onValueChange={handleClassChange}>
             <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Chọn lớp" />
@@ -474,7 +604,6 @@ export default function PayrollDetail() {
             </SelectContent>
           </Select>
 
-          {/* Filter Summary */}
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground">
               Hiển thị {filteredRows.length} / {sessionRows.length} buổi học
@@ -482,7 +611,8 @@ export default function PayrollDetail() {
           </div>
         </div>
       </div>
-            {/* Back Pay Summary Card */}
+
+      {/* Back Pay Summary Card */}
       {payroll?.backPayAmount > 0 && (
         <div className="rounded-xl border bg-amber-50 border-amber-200 p-4">
           <div className="flex items-start justify-between">
@@ -490,7 +620,7 @@ export default function PayrollDetail() {
               <Info className="w-5 h-5 text-amber-600 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-amber-900 mb-1">
-                  Có tiền lương (buổi học cũ) trong kỳ này
+                  Có tiền lương truy lĩnh trong kỳ này
                 </h3>
                 <p className="text-sm text-amber-700">
                   Bảng lương này bao gồm{" "}
@@ -521,7 +651,7 @@ export default function PayrollDetail() {
             Danh sách các buổi học trong bảng lương này
           </p>
         </div>
-        
+
         <DataTable
           data={pagedRows}
           allData={filteredRows}
@@ -548,7 +678,12 @@ export default function PayrollDetail() {
         />
       </div>
 
-
+      {/* Payment Modal */}
+      <PaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        payroll={payroll}
+      />
     </div>
   )
 }
