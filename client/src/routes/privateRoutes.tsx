@@ -29,7 +29,6 @@ import StudentHomepage from "../pages/Student/StudentHomepage";
 import StudentSchedule from "../pages/Student/MySchedule/StudentSchedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
-// import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import IncidentReportPage from "../pages/teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/teacher/IncidentReport/IncidentManagent";
