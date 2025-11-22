@@ -5,6 +5,7 @@ import { formatScheduleArray } from '../../../../utils/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   GraduationCap, 
   Users, 
@@ -30,6 +31,7 @@ export const RecruitingClasses = () => {
   const [isJoinSheetOpen, setIsJoinSheetOpen] = useState(false);
   const [selectedClassForJoin, setSelectedClassForJoin] = useState<RecruitingClass | null>(null);
   const [isPendingClassChecked, setIsPendingClassChecked] = useState(false);
+  const [joinError, setJoinError] = useState<{ message: string; status?: string } | null>(null);
 
   // Fetch recruiting classes
   const { data: classesData, isLoading: isLoadingClasses, refetch } = useQuery({
@@ -84,6 +86,7 @@ export const RecruitingClasses = () => {
   }, [classes, isPendingClassChecked]);
 
   const handleJoinClassClick = (classItem: RecruitingClass) => {
+    setJoinError(null);
     setSelectedClassForJoin(classItem);
     setIsJoinSheetOpen(true);
   };
@@ -91,6 +94,7 @@ export const RecruitingClasses = () => {
   const handleRequestSheetClose = () => {
     setIsJoinSheetOpen(false);
     setSelectedClassForJoin(null);
+    setJoinError(null);
     refetch(); // Refresh danh sách sau khi đăng ký
   };
 
@@ -168,6 +172,12 @@ export const RecruitingClasses = () => {
         </div>
       </div>
 
+      {joinError?.message && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{joinError.message}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Loading State */}
       {isLoadingClasses && (
         <div className="flex justify-center items-center py-20">
@@ -233,6 +243,7 @@ export const RecruitingClasses = () => {
         open={isJoinSheetOpen}
         onOpenChange={handleRequestSheetClose}
         classData={selectedClassForJoin}
+        onJoinError={setJoinError}
       />
       
       {/* Join Class Sheet (nhập mã code) - giữ lại để có thể dùng */}
