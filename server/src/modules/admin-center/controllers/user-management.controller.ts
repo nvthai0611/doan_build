@@ -16,6 +16,11 @@ export class UsersController {
     return this.usersService.getUsers(query);
   }
 
+  @Get('check-availability')
+  checkAvailability(@Query('email') email?: string, @Query('username') username?: string, @Query('excludeId') excludeId?: string) {
+    return this.usersService.checkAvailability(email, username, excludeId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.getUserById(id);

@@ -131,6 +131,90 @@ const defaultCreatePayload: CreateUserPayload = {
   isActive: true,
 }
 
+interface ValidationErrors {
+  fullName?: string
+  email?: string
+  username?: string
+  phone?: string
+  password?: string
+  birthDate?: string
+}
+
+function validateEmail(email: string): string | undefined {
+  if (!email.trim()) {
+    return 'Email là bắt buộc'
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return 'Email không hợp lệ'
+  }
+  return undefined
+}
+
+function validateFullName(fullName: string): string | undefined {
+  if (!fullName.trim()) {
+    return 'Họ và tên là bắt buộc'
+  }
+  if (fullName.trim().length < 3) {
+    return 'Họ và tên phải có ít nhất 3 ký tự'
+  }
+  return undefined
+}
+
+function validateUsername(username: string): string | undefined {
+  if (!username.trim()) {
+    return 'Tên đăng nhập là bắt buộc'
+  }
+  if (username.trim().length < 3) {
+    return 'Tên đăng nhập phải có ít nhất 3 ký tự'
+  }
+  if (username.length > 30) {
+    return 'Tên đăng nhập không được vượt quá 30 ký tự'
+  }
+  const usernameRegex = /^[a-zA-Z0-9_.-]+$/
+  if (!usernameRegex.test(username)) {
+    return 'Tên đăng nhập chỉ được chứa chữ, số và _ . -'
+  }
+  return undefined
+}
+
+function validatePhone(phone?: string): string | undefined {
+  if (!phone || !phone.trim()) {
+    return undefined // Phone is optional
+  }
+  const phoneRegex = /^(\+84|84|0)[3|5|7|8|9][0-9]{8}$/
+  if (!phoneRegex.test(phone.trim())) {
+    return 'Số điện thoại chỉ được chứa số và có 10-11 ký tự'
+  }
+  return undefined
+}
+
+function validatePassword(password?: string): string | undefined {
+  if (!password || !password.trim()) {
+    return undefined // Password is optional, will default to 123456
+  }
+  if (password.length < 6) {
+    return 'Mật khẩu phải có ít nhất 6 ký tự'
+  }
+  return undefined
+}
+
+function validateBirthDate(birthDate?: string): string | undefined {
+  if (!birthDate) {
+    return undefined // Birth date is optional
+  }
+  const date = new Date(birthDate)
+  const today = new Date()
+  if (date > today) {
+    return 'Ngày sinh không được lớn hơn ngày hiện tại'
+  }
+  const age = today.getFullYear() - date.getFullYear()
+  if (age > 120) {
+    return 'Ngày sinh không hợp lệ'
+  }
+  return undefined
+}
+
 function formatDate(date?: string | null) {
   if (!date) return '—'
   try {
@@ -173,11 +257,17 @@ export default function UserManagement() {
   const pagination = usePagination({ initialPage: 1, initialItemsPerPage: 10 })
 
   const [searchValue, setSearchValue] = useState('')
-  const debouncedSearch = useDebounce(searchValue, 500)
   const [statusFilter, setStatusFilter] = useState<ManagedUserStatus>('all')
   const [roleFilter, setRoleFilter] = useState<'all' | ManagedUserRole>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [createPayload, setCreatePayload] = useState<CreateUserPayload>(defaultCreatePayload)
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+  const [isFormSubmitted, setIsFormSubmitted] = useState(false)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const [emailAvailability, setEmailAvailability] = useState<{ available: boolean; message?: string } | null>(null)
+  const [usernameAvailability, setUsernameAvailability] = useState<{ available: boolean; message?: string } | null>(null)
   const [detailUserId, setDetailUserId] = useState<string | null>(null)
   const [resetUserId, setResetUserId] = useState<string | null>(null)
   const [forceLogout, setForceLogout] = useState(true)
@@ -193,7 +283,21 @@ export default function UserManagement() {
   const [bulkAction, setBulkAction] = useState<BulkAction>('activate')
   const [isDetailEditing, setIsDetailEditing] = useState(false)
   const [detailEditPayload, setDetailEditPayload] = useState<EditPayload | null>(null)
+  const [editValidationErrors, setEditValidationErrors] = useState<ValidationErrors>({})
+  const [editTouchedFields, setEditTouchedFields] = useState<Record<string, boolean>>({})
+  const [isEditFormSubmitted, setIsEditFormSubmitted] = useState(false)
+  const [isCheckingEditEmail, setIsCheckingEditEmail] = useState(false)
+  const [isCheckingEditUsername, setIsCheckingEditUsername] = useState(false)
+  const [editEmailAvailability, setEditEmailAvailability] = useState<{ available: boolean; message?: string } | null>(null)
+  const [editUsernameAvailability, setEditUsernameAvailability] = useState<{ available: boolean; message?: string } | null>(null)
   const [teacherCollapsibleOpen, setTeacherCollapsibleOpen] = useState(false)
+
+  // Debounced values
+  const debouncedSearch = useDebounce(searchValue, 500)
+  const debouncedCreateEmail = useDebounce(createPayload.email, 800)
+  const debouncedCreateUsername = useDebounce(createPayload.username, 800)
+  const debouncedEditEmail = useDebounce(detailEditPayload?.email || '', 800)
+  const debouncedEditUsername = useDebounce(detailEditPayload?.username || '', 800)
   const [parentCollapsibleOpen, setParentCollapsibleOpen] = useState(false)
   const [studentCollapsibleOpen, setStudentCollapsibleOpen] = useState(false)
 
@@ -243,9 +347,171 @@ export default function UserManagement() {
     }
   }, [usersResponse?.meta?.total, pagination])
 
+  // Check email availability
+  useEffect(() => {
+    if (!createOpen) return
+
+    const emailError = validateEmail(debouncedCreateEmail)
+    if (emailError) {
+      setValidationErrors((prev) => ({ ...prev, email: emailError }))
+      setEmailAvailability(null)
+      return
+    }
+
+    if (debouncedCreateEmail.trim().length > 0) {
+      setIsCheckingEmail(true)
+      centerOwnerUserService
+        .checkAvailability(debouncedCreateEmail.trim())
+        .then((response) => {
+          if (!response.data.emailAvailable) {
+            setValidationErrors((prev) => ({ ...prev, email: response.data.emailMessage || 'Email đã được sử dụng' }))
+            setEmailAvailability({ available: false, message: response.data.emailMessage })
+          } else {
+            setValidationErrors((prev) => ({ ...prev, email: undefined }))
+            setEmailAvailability({ available: true })
+          }
+        })
+        .catch(() => {
+          setEmailAvailability(null)
+        })
+        .finally(() => {
+          setIsCheckingEmail(false)
+        })
+    } else {
+      setEmailAvailability(null)
+      setValidationErrors((prev) => ({ ...prev, email: undefined }))
+    }
+  }, [debouncedCreateEmail, createOpen])
+
+  // Check username availability
+  useEffect(() => {
+    if (!createOpen) return
+
+    const usernameError = validateUsername(debouncedCreateUsername)
+    if (usernameError) {
+      setValidationErrors((prev) => ({ ...prev, username: usernameError }))
+      setUsernameAvailability(null)
+      return
+    }
+
+    if (debouncedCreateUsername.trim().length > 0) {
+      setIsCheckingUsername(true)
+      centerOwnerUserService
+        .checkAvailability(undefined, debouncedCreateUsername.trim())
+        .then((response) => {
+          if (!response.data.usernameAvailable) {
+            setValidationErrors((prev) => ({
+              ...prev,
+              username: response.data.usernameMessage || 'Tên đăng nhập đã được sử dụng',
+            }))
+            setUsernameAvailability({ available: false, message: response.data.usernameMessage })
+          } else {
+            setValidationErrors((prev) => ({ ...prev, username: undefined }))
+            setUsernameAvailability({ available: true })
+          }
+        })
+        .catch(() => {
+          setUsernameAvailability(null)
+        })
+        .finally(() => {
+          setIsCheckingUsername(false)
+        })
+    } else {
+      setUsernameAvailability(null)
+      setValidationErrors((prev) => ({ ...prev, username: undefined }))
+    }
+  }, [debouncedCreateUsername, createOpen])
+
+  // Check email availability for edit form
+  useEffect(() => {
+    const currentDetailUser = detailResponse?.data
+    if (!isDetailEditing || !currentDetailUser) return
+
+    const emailError = validateEmail(debouncedEditEmail)
+    if (emailError) {
+      setEditValidationErrors((prev) => ({ ...prev, email: emailError }))
+      setEditEmailAvailability(null)
+      return
+    }
+
+    // Only check if email changed
+    if (debouncedEditEmail.trim().length > 0 && debouncedEditEmail.trim().toLowerCase() !== currentDetailUser.email.toLowerCase()) {
+      setIsCheckingEditEmail(true)
+      centerOwnerUserService
+        .checkAvailability(debouncedEditEmail.trim(), undefined, currentDetailUser.id)
+        .then((response) => {
+          if (!response.data.emailAvailable) {
+            setEditValidationErrors((prev) => ({
+              ...prev,
+              email: response.data.emailMessage || 'Email đã được sử dụng',
+            }))
+            setEditEmailAvailability({ available: false, message: response.data.emailMessage })
+          } else {
+            setEditValidationErrors((prev) => ({ ...prev, email: undefined }))
+            setEditEmailAvailability({ available: true })
+          }
+        })
+        .catch(() => {
+          setEditEmailAvailability(null)
+        })
+        .finally(() => {
+          setIsCheckingEditEmail(false)
+        })
+    } else {
+      setEditEmailAvailability(null)
+      setEditValidationErrors((prev) => ({ ...prev, email: undefined }))
+    }
+  }, [debouncedEditEmail, isDetailEditing, detailResponse?.data])
+
+  // Check username availability for edit form
+  useEffect(() => {
+    const currentDetailUser = detailResponse?.data
+    if (!isDetailEditing || !currentDetailUser) return
+
+    const usernameError = validateUsername(debouncedEditUsername)
+    if (usernameError) {
+      setEditValidationErrors((prev) => ({ ...prev, username: usernameError }))
+      setEditUsernameAvailability(null)
+      return
+    }
+
+    // Only check if username changed
+    if (debouncedEditUsername.trim().length > 0 && debouncedEditUsername.trim() !== currentDetailUser.username) {
+      setIsCheckingEditUsername(true)
+      centerOwnerUserService
+        .checkAvailability(undefined, debouncedEditUsername.trim(), currentDetailUser.id)
+        .then((response) => {
+          if (!response.data.usernameAvailable) {
+            setEditValidationErrors((prev) => ({
+              ...prev,
+              username: response.data.usernameMessage || 'Tên đăng nhập đã được sử dụng',
+            }))
+            setEditUsernameAvailability({ available: false, message: response.data.usernameMessage })
+          } else {
+            setEditValidationErrors((prev) => ({ ...prev, username: undefined }))
+            setEditUsernameAvailability({ available: true })
+          }
+        })
+        .catch(() => {
+          setEditUsernameAvailability(null)
+        })
+        .finally(() => {
+          setIsCheckingEditUsername(false)
+        })
+    } else {
+      setEditUsernameAvailability(null)
+      setEditValidationErrors((prev) => ({ ...prev, username: undefined }))
+    }
+  }, [debouncedEditUsername, isDetailEditing, detailResponse?.data])
+
   useEffect(() => {
     setIsDetailEditing(false)
     setDetailEditPayload(null)
+    setEditValidationErrors({})
+    setEditTouchedFields({})
+    setIsEditFormSubmitted(false)
+    setEditEmailAvailability(null)
+    setEditUsernameAvailability(null)
   }, [detailUserId])
 
   const users = usersResponse?.data ?? []
@@ -332,6 +598,11 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['users-management-list'] })
       toast.success('Tạo tài khoản người dùng thành công')
       setCreatePayload(defaultCreatePayload)
+      setValidationErrors({})
+      setTouchedFields({})
+      setIsFormSubmitted(false)
+      setEmailAvailability(null)
+      setUsernameAvailability(null)
       setCreateOpen(false)
     },
     onError: (mutationError: any) => {
@@ -373,17 +644,69 @@ export default function UserManagement() {
 
   const handleCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!createPayload.fullName || !createPayload.email || !createPayload.username) {
-      toast.error('Vui lòng nhập đầy đủ thông tin bắt buộc')
+    setIsFormSubmitted(true)
+
+    // Validate all fields
+    const errors: ValidationErrors = {}
+    errors.fullName = validateFullName(createPayload.fullName)
+    errors.email = validateEmail(createPayload.email)
+    errors.username = validateUsername(createPayload.username)
+    errors.phone = validatePhone(createPayload.phone)
+    errors.password = validatePassword(createPayload.password)
+    errors.birthDate = validateBirthDate(createPayload.birthDate)
+
+    // Check availability if email/username are valid
+    if (!errors.email && emailAvailability && !emailAvailability.available) {
+      errors.email = emailAvailability.message || 'Email đã được sử dụng'
+    }
+    if (!errors.username && usernameAvailability && !usernameAvailability.available) {
+      errors.username = usernameAvailability.message || 'Tên đăng nhập đã được sử dụng'
+    }
+
+    setValidationErrors(errors)
+
+    // Check if there are any errors
+    const hasErrors = Object.values(errors).some((error) => error !== undefined)
+    if (hasErrors) {
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập')
       return
     }
+
+    // Check if still checking availability
+    if (isCheckingEmail || isCheckingUsername) {
+      toast.error('Đang kiểm tra tính khả dụng, vui lòng đợi...')
+      return
+    }
+
+    // Submit if validation passes
     createUserMutation.mutate({
       ...createPayload,
       email: createPayload.email.trim(),
       username: createPayload.username.trim(),
       phone: createPayload.phone?.trim() || undefined,
       password: createPayload.password?.trim() || undefined,
+      fullName: createPayload.fullName.trim(),
     })
+  }
+
+  const handleCreateFieldChange = (field: keyof CreateUserPayload, value: any) => {
+    setCreatePayload((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleCreateFieldBlur = (field: keyof CreateUserPayload) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }))
+  }
+
+  const handleCreateDialogClose = (open: boolean) => {
+    if (!open) {
+      setCreateOpen(false)
+      setCreatePayload(defaultCreatePayload)
+      setValidationErrors({})
+      setTouchedFields({})
+      setIsFormSubmitted(false)
+      setEmailAvailability(null)
+      setUsernameAvailability(null)
+    }
   }
 
   const handleRowClick = (user: ManagedUser) => {
@@ -398,17 +721,58 @@ export default function UserManagement() {
       username: detailUser.username,
       phone: detailUser.phone ?? '',
     })
+    setEditValidationErrors({})
+    setEditTouchedFields({})
+    setIsEditFormSubmitted(false)
+    setEditEmailAvailability(null)
+    setEditUsernameAvailability(null)
     setIsDetailEditing(true)
   }
 
   const handleDetailEditCancel = () => {
     setIsDetailEditing(false)
     setDetailEditPayload(null)
+    setEditValidationErrors({})
+    setEditTouchedFields({})
+    setIsEditFormSubmitted(false)
+    setEditEmailAvailability(null)
+    setEditUsernameAvailability(null)
   }
 
   const handleDetailEditSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!detailUser || !detailEditPayload) return
+    setIsEditFormSubmitted(true)
+
+    // Validate all fields
+    const errors: ValidationErrors = {}
+    errors.fullName = validateFullName(detailEditPayload.fullName)
+    errors.email = validateEmail(detailEditPayload.email)
+    errors.username = validateUsername(detailEditPayload.username)
+    errors.phone = validatePhone(detailEditPayload.phone)
+
+    // Check availability if email/username are valid and changed
+    if (!errors.email && editEmailAvailability && !editEmailAvailability.available) {
+      errors.email = editEmailAvailability.message || 'Email đã được sử dụng'
+    }
+    if (!errors.username && editUsernameAvailability && !editUsernameAvailability.available) {
+      errors.username = editUsernameAvailability.message || 'Tên đăng nhập đã được sử dụng'
+    }
+
+    setEditValidationErrors(errors)
+
+    // Check if there are any errors
+    const hasErrors = Object.values(errors).some((error) => error !== undefined)
+    if (hasErrors) {
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập')
+      return
+    }
+
+    // Check if still checking availability
+    if (isCheckingEditEmail || isCheckingEditUsername) {
+      toast.error('Đang kiểm tra tính khả dụng, vui lòng đợi...')
+      return
+    }
 
     updateUserMutation.mutate(
       {
@@ -425,9 +789,23 @@ export default function UserManagement() {
           toast.success('Cập nhật hồ sơ người dùng thành công')
           setIsDetailEditing(false)
           setDetailEditPayload(null)
+          setEditValidationErrors({})
+          setEditTouchedFields({})
+          setIsEditFormSubmitted(false)
+          setEditEmailAvailability(null)
+          setEditUsernameAvailability(null)
         },
       },
     )
+  }
+
+  const handleDetailEditFieldChange = (field: keyof EditPayload, value: any) => {
+    if (!detailEditPayload) return
+    setDetailEditPayload((prev) => (prev ? { ...prev, [field]: value } : null))
+  }
+
+  const handleDetailEditFieldBlur = (field: keyof EditPayload) => {
+    setEditTouchedFields((prev) => ({ ...prev, [field]: true }))
   }
 
   const handleRoleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -626,8 +1004,9 @@ export default function UserManagement() {
       <div className="min-h-screen bg-muted/20 p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Quản trị người dùng</p>
-            <h1 className="text-2xl font-semibold text-foreground">User Management</h1>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Quản trị người dùng
+            </h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" size="sm" onClick={handleRefresh}>
@@ -646,7 +1025,10 @@ export default function UserManagement() {
             <div className="text-sm font-medium text-foreground">
               Đã chọn {selectedUserIds.length} người dùng
             </div>
-            <Select value={bulkAction} onValueChange={(value: BulkAction) => setBulkAction(value)}>
+            <Select
+              value={bulkAction}
+              onValueChange={(value: BulkAction) => setBulkAction(value)}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
@@ -658,13 +1040,16 @@ export default function UserManagement() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleBulkApply} disabled={bulkActionMutation.isPending}>
+            <Button
+              onClick={handleBulkApply}
+              disabled={bulkActionMutation.isPending}
+            >
               {bulkActionMutation.isPending ? 'Đang xử lý...' : 'Thực hiện'}
             </Button>
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-4">
+        {/* <div className="grid gap-4 md:grid-cols-4">
           <StatCard
             title="Tổng số người dùng"
             value={summary?.totalUsers ?? 0}
@@ -685,11 +1070,15 @@ export default function UserManagement() {
           />
           <StatCard
             title="Vai trò đã gán"
-            value={users.reduce<number>((total: number, user: ManagedUser) => total + (user.permissionCount || 0), 0)}
+            value={users.reduce<number>(
+              (total: number, user: ManagedUser) =>
+                total + (user.permissionCount || 0),
+              0,
+            )}
             icon={ShieldCheck}
             trend="Tổng quyền theo vai trò"
           />
-        </div>
+        </div> */}
 
         <div className="mt-6 space-y-4 rounded-lg border bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -700,13 +1089,18 @@ export default function UserManagement() {
                 className="pl-9"
                 value={searchValue}
                 onChange={(event) => {
-                  setSearchValue(event.target.value)
-                  pagination.setCurrentPage(1)
+                  setSearchValue(event.target.value);
+                  pagination.setCurrentPage(1);
                 }}
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Select value={roleFilter} onValueChange={(value: 'all' | ManagedUserRole) => setRoleFilter(value)}>
+              <Select
+                value={roleFilter}
+                onValueChange={(value: 'all' | ManagedUserRole) =>
+                  setRoleFilter(value)
+                }
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Vai trò" />
                 </SelectTrigger>
@@ -720,7 +1114,12 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
 
-              <Select value={statusFilter} onValueChange={(value: ManagedUserStatus) => setStatusFilter(value)}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value: ManagedUserStatus) =>
+                  setStatusFilter(value)
+                }
+              >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
@@ -760,60 +1159,180 @@ export default function UserManagement() {
           </div>
         </div>
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={handleCreateDialogClose}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Thêm người dùng mới</DialogTitle>
-              <DialogDescription>Nhập thông tin người dùng và gán vai trò phù hợp.</DialogDescription>
+              <DialogDescription>
+                Nhập thông tin người dùng và gán vai trò phù hợp.
+              </DialogDescription>
             </DialogHeader>
             <form className="space-y-4" onSubmit={handleCreateSubmit}>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Họ và tên <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="create-fullName">
+                    Họ và tên <span className="text-red-500">*</span>
+                  </Label>
                   <Input
+                    id="create-fullName"
                     value={createPayload.fullName}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, fullName: event.target.value }))}
-                    required
+                    onChange={(event) =>
+                      handleCreateFieldChange('fullName', event.target.value)
+                    }
+                    onBlur={() => handleCreateFieldBlur('fullName')}
+                    className={
+                      (touchedFields.fullName || isFormSubmitted) &&
+                      validationErrors.fullName
+                        ? 'border-red-500'
+                        : ''
+                    }
+                    placeholder="Nhập họ và tên"
                   />
+                  {(touchedFields.fullName || isFormSubmitted) &&
+                    validationErrors.fullName && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.fullName}
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Email <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="email"
-                    value={createPayload.email}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, email: event.target.value }))}
-                    required
-                  />
+                  <Label htmlFor="create-email">
+                    Email <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="create-email"
+                      type="email"
+                      value={createPayload.email}
+                      onChange={(event) =>
+                        handleCreateFieldChange('email', event.target.value)
+                      }
+                      onBlur={() => handleCreateFieldBlur('email')}
+                      className={
+                        (touchedFields.email || isFormSubmitted) &&
+                        validationErrors.email
+                          ? 'border-red-500'
+                          : emailAvailability?.available
+                          ? 'border-green-500'
+                          : ''
+                      }
+                      placeholder="example@email.com"
+                    />
+                    {isCheckingEmail && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  {(touchedFields.email || isFormSubmitted) &&
+                    validationErrors.email && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.email}
+                      </p>
+                    )}
+                  {!validationErrors.email && emailAvailability?.available && (
+                    <p className="text-xs text-green-600">
+                      ✓ Email có thể sử dụng
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Tên đăng nhập <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={createPayload.username}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, username: event.target.value }))}
-                    required
-                  />
+                  <Label htmlFor="create-username">
+                    Tên đăng nhập <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="create-username"
+                      value={createPayload.username}
+                      onChange={(event) =>
+                        handleCreateFieldChange('username', event.target.value)
+                      }
+                      onBlur={() => handleCreateFieldBlur('username')}
+                      className={
+                        (touchedFields.username || isFormSubmitted) &&
+                        validationErrors.username
+                          ? 'border-red-500'
+                          : usernameAvailability?.available
+                          ? 'border-green-500'
+                          : ''
+                      }
+                      placeholder="username123"
+                    />
+                    {isCheckingUsername && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  {(touchedFields.username || isFormSubmitted) &&
+                    validationErrors.username && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.username}
+                      </p>
+                    )}
+                  {!validationErrors.username &&
+                    usernameAvailability?.available && (
+                      <p className="text-xs text-green-600">
+                        ✓ Tên đăng nhập có thể sử dụng
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Số điện thoại</Label>
+                  <Label htmlFor="create-phone">Số điện thoại</Label>
                   <Input
+                    id="create-phone"
                     value={createPayload.phone}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, phone: event.target.value }))}
+                    onChange={(event) =>
+                      handleCreateFieldChange('phone', event.target.value)
+                    }
+                    onBlur={() => handleCreateFieldBlur('phone')}
+                    className={
+                      (touchedFields.phone || isFormSubmitted) &&
+                      validationErrors.phone
+                        ? 'border-red-500'
+                        : ''
+                    }
+                    placeholder="0323456789"
                   />
+                  {(touchedFields.phone || isFormSubmitted) &&
+                    validationErrors.phone && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.phone}
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Mật khẩu</Label>
+                  <Label htmlFor="create-password">Mật khẩu</Label>
                   <Input
+                    id="create-password"
                     type="password"
                     value={createPayload.password}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, password: event.target.value }))}
+                    onChange={(event) =>
+                      handleCreateFieldChange('password', event.target.value)
+                    }
+                    onBlur={() => handleCreateFieldBlur('password')}
+                    className={
+                      (touchedFields.password || isFormSubmitted) &&
+                      validationErrors.password
+                        ? 'border-red-500'
+                        : ''
+                    }
                     placeholder="Mặc định 123456"
                   />
+                  {(touchedFields.password || isFormSubmitted) &&
+                    validationErrors.password && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.password}
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
                   <Label>Vai trò</Label>
                   <Select
                     value={createPayload.role}
-                    onValueChange={(value: ManagedUserRole) => setCreatePayload((prev) => ({ ...prev, role: value }))}
+                    onValueChange={(value: ManagedUserRole) =>
+                      setCreatePayload((prev) => ({ ...prev, role: value }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn vai trò" />
@@ -846,30 +1365,57 @@ export default function UserManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Ngày sinh</Label>
+                  <Label htmlFor="create-birthDate">Ngày sinh</Label>
                   <Input
+                    id="create-birthDate"
                     type="date"
                     value={createPayload.birthDate ?? ''}
-                    onChange={(event) => setCreatePayload((prev) => ({ ...prev, birthDate: event.target.value }))}
+                    onChange={(event) =>
+                      handleCreateFieldChange('birthDate', event.target.value)
+                    }
+                    onBlur={() => handleCreateFieldBlur('birthDate')}
+                    className={
+                      (touchedFields.birthDate || isFormSubmitted) &&
+                      validationErrors.birthDate
+                        ? 'border-red-500'
+                        : ''
+                    }
+                    max={new Date().toISOString().split('T')[0]}
                   />
+                  {(touchedFields.birthDate || isFormSubmitted) &&
+                    validationErrors.birthDate && (
+                      <p className="text-xs text-red-500">
+                        {validationErrors.birthDate}
+                      </p>
+                    )}
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-md border px-3 py-2">
                 <div>
                   <p className="text-sm font-medium">Trạng thái tài khoản</p>
-                  <p className="text-xs text-muted-foreground">Cho phép đăng nhập ngay sau khi tạo</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cho phép đăng nhập ngay sau khi tạo
+                  </p>
                 </div>
                 <Switch
                   checked={createPayload.isActive}
-                  onCheckedChange={(checked) => setCreatePayload((prev) => ({ ...prev, isActive: checked }))}
+                  onCheckedChange={(checked) =>
+                    setCreatePayload((prev) => ({ ...prev, isActive: checked }))
+                  }
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCreateDialogClose(false)}
+                >
                   Hủy
                 </Button>
                 <Button type="submit" disabled={createUserMutation.isPending}>
-                  {createUserMutation.isPending ? 'Đang tạo...' : 'Tạo người dùng'}
+                  {createUserMutation.isPending
+                    ? 'Đang tạo...'
+                    : 'Tạo người dùng'}
                 </Button>
               </DialogFooter>
             </form>
@@ -880,19 +1426,26 @@ export default function UserManagement() {
           open={Boolean(roleUser)}
           onOpenChange={(open) => {
             if (!open) {
-              setRoleUser(null)
+              setRoleUser(null);
             }
           }}
         >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Gán / sửa vai trò</DialogTitle>
-              <DialogDescription>Chọn vai trò phù hợp cho người dùng.</DialogDescription>
+              <DialogDescription>
+                Chọn vai trò phù hợp cho người dùng.
+              </DialogDescription>
             </DialogHeader>
             <form className="space-y-4" onSubmit={handleRoleSubmit}>
               <div className="space-y-2">
                 <Label>Vai trò</Label>
-                <Select value={roleSelection} onValueChange={(value: SupportedRole) => setRoleSelection(value)}>
+                <Select
+                  value={roleSelection}
+                  onValueChange={(value: SupportedRole) =>
+                    setRoleSelection(value)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
@@ -906,11 +1459,15 @@ export default function UserManagement() {
                 </Select>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setRoleUser(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRoleUser(null)}
+                >
                   Hủy
                 </Button>
                 <Button type="submit" disabled={updateUserMutation.isPending}>
-                  {updateUserMutation.isPending ? 'Đang lưu...' : 'Cập nhật'}
+                  {updateUserMutation.isPending ? <div className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> Đang lưu...</div> : 'Cập nhật'}
                 </Button>
               </DialogFooter>
             </form>
@@ -921,9 +1478,9 @@ export default function UserManagement() {
           open={Boolean(detailUserId)}
           onOpenChange={(open) => {
             if (!open) {
-              setDetailUserId(null)
-              setIsDetailEditing(false)
-              setDetailEditPayload(null)
+              setDetailUserId(null);
+              setIsDetailEditing(false);
+              setDetailEditPayload(null);
             }
           }}
         >
@@ -932,31 +1489,52 @@ export default function UserManagement() {
               <SheetTitle>Thông tin chi tiết người dùng</SheetTitle>
             </SheetHeader>
             {detailLoading && (
-              <div className="py-10 text-center text-sm text-muted-foreground">Đang tải dữ liệu...</div>
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                Đang tải dữ liệu...
+              </div>
             )}
             {!detailLoading && detailUser && (
               <div className="mt-6 space-y-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14">
-                      <AvatarImage src={detailUser.avatar ?? undefined} alt={detailUser.fullName} />
-                      <AvatarFallback>{getInitials(detailUser.fullName)}</AvatarFallback>
+                      <AvatarImage
+                        src={detailUser.avatar ?? undefined}
+                        alt={detailUser.fullName}
+                      />
+                      <AvatarFallback>
+                        {getInitials(detailUser.fullName)}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-lg font-semibold">{detailUser.fullName}</p>
-                      <p className="text-sm text-muted-foreground">{detailUser.email}</p>
-                      <p className="text-xs text-muted-foreground">@{detailUser.username}</p>
+                      <p className="text-lg font-semibold">
+                        {detailUser.fullName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {detailUser.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        @{detailUser.username}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {!isDetailEditing ? (
-                      <Button size="sm" variant="outline" onClick={handleDetailEditStart}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleDetailEditStart}
+                      >
                         <Edit3 className="mr-2 h-4 w-4" />
                         Sửa thông tin
                       </Button>
                     ) : (
                       <>
-                        <Button size="sm" variant="ghost" onClick={handleDetailEditCancel}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleDetailEditCancel}
+                        >
                           Hủy thay đổi
                         </Button>
                         <Button
@@ -965,7 +1543,7 @@ export default function UserManagement() {
                           form="detail-edit-form"
                           disabled={updateUserMutation.isPending}
                         >
-                          {updateUserMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+                          {updateUserMutation.isPending ? <div className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> Đang lưu...</div> : 'Lưu'}
                         </Button>
                       </>
                     )}
@@ -973,113 +1551,205 @@ export default function UserManagement() {
                 </div>
 
                 {isDetailEditing ? (
-                  <form id="detail-edit-form" className="grid gap-4" onSubmit={handleDetailEditSubmit}>
+                  <form
+                    id="detail-edit-form"
+                    className="grid gap-4"
+                    onSubmit={handleDetailEditSubmit}
+                  >
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-1.5">
-                        <Label>Họ và tên</Label>
+                        <Label htmlFor="edit-fullName">Họ và tên</Label>
                         <Input
+                          id="edit-fullName"
                           value={detailEditPayload?.fullName ?? ''}
                           onChange={(event) =>
-                            setDetailEditPayload((prev) =>
-                              prev
-                                ? { ...prev, fullName: event.target.value }
-                                : {
-                                    fullName: event.target.value,
-                                    email: detailUser.email,
-                                    username: detailUser.username,
-                                    phone: detailUser.phone ?? '',
-                                  },
+                            handleDetailEditFieldChange(
+                              'fullName',
+                              event.target.value,
                             )
+                          }
+                          onBlur={() => handleDetailEditFieldBlur('fullName')}
+                          className={
+                            (editTouchedFields.fullName ||
+                              isEditFormSubmitted) &&
+                            editValidationErrors.fullName
+                              ? 'border-red-500'
+                              : ''
                           }
                           required
                         />
+                        {(editTouchedFields.fullName || isEditFormSubmitted) &&
+                          editValidationErrors.fullName && (
+                            <p className="text-xs text-red-500">
+                              {editValidationErrors.fullName}
+                            </p>
+                          )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={detailEditPayload?.email ?? ''}
-                          onChange={(event) =>
-                            setDetailEditPayload((prev) =>
-                              prev
-                                ? { ...prev, email: event.target.value }
-                                : {
-                                    fullName: detailUser.fullName,
-                                    email: event.target.value,
-                                    username: detailUser.username,
-                                    phone: detailUser.phone ?? '',
-                                  },
-                            )
-                          }
-                          required
-                        />
+                        <Label htmlFor="edit-email">Email</Label>
+                        <div className="relative">
+                          <Input
+                            id="edit-email"
+                            type="email"
+                            value={detailEditPayload?.email ?? ''}
+                            onChange={(event) =>
+                              handleDetailEditFieldChange(
+                                'email',
+                                event.target.value,
+                              )
+                            }
+                            onBlur={() => handleDetailEditFieldBlur('email')}
+                            className={
+                              (editTouchedFields.email ||
+                                isEditFormSubmitted) &&
+                              editValidationErrors.email
+                                ? 'border-red-500'
+                                : editEmailAvailability?.available
+                                ? 'border-green-500'
+                                : ''
+                            }
+                            required
+                          />
+                          {isCheckingEditEmail && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        {(editTouchedFields.email || isEditFormSubmitted) &&
+                          editValidationErrors.email && (
+                            <p className="text-xs text-red-500">
+                              {editValidationErrors.email}
+                            </p>
+                          )}
+                        {!editValidationErrors.email &&
+                          editEmailAvailability?.available && (
+                            <p className="text-xs text-green-600">
+                              ✓ Email có thể sử dụng
+                            </p>
+                          )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Username</Label>
-                        <Input
-                          value={detailEditPayload?.username ?? ''}
-                          onChange={(event) =>
-                            setDetailEditPayload((prev) =>
-                              prev
-                                ? { ...prev, username: event.target.value }
-                                : {
-                                    fullName: detailUser.fullName,
-                                    email: detailUser.email,
-                                    username: event.target.value,
-                                    phone: detailUser.phone ?? '',
-                                  },
-                            )
-                          }
-                          required
-                        />
+                        <Label htmlFor="edit-username">Username</Label>
+                        <div className="relative">
+                          <Input
+                            id="edit-username"
+                            value={detailEditPayload?.username ?? ''}
+                            onChange={(event) =>
+                              handleDetailEditFieldChange(
+                                'username',
+                                event.target.value,
+                              )
+                            }
+                            onBlur={() => handleDetailEditFieldBlur('username')}
+                            className={
+                              (editTouchedFields.username ||
+                                isEditFormSubmitted) &&
+                              editValidationErrors.username
+                                ? 'border-red-500'
+                                : editUsernameAvailability?.available
+                                ? 'border-green-500'
+                                : ''
+                            }
+                            required
+                          />
+                          {isCheckingEditUsername && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        {(editTouchedFields.username || isEditFormSubmitted) &&
+                          editValidationErrors.username && (
+                            <p className="text-xs text-red-500">
+                              {editValidationErrors.username}
+                            </p>
+                          )}
+                        {!editValidationErrors.username &&
+                          editUsernameAvailability?.available && (
+                            <p className="text-xs text-green-600">
+                              ✓ Tên đăng nhập có thể sử dụng
+                            </p>
+                          )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Số điện thoại</Label>
+                        <Label htmlFor="edit-phone">Số điện thoại</Label>
                         <Input
+                          id="edit-phone"
                           value={detailEditPayload?.phone ?? ''}
                           onChange={(event) =>
-                            setDetailEditPayload((prev) =>
-                              prev
-                                ? { ...prev, phone: event.target.value }
-                                : {
-                                    fullName: detailUser.fullName,
-                                    email: detailUser.email,
-                                    username: detailUser.username,
-                                    phone: event.target.value,
-                                  },
+                            handleDetailEditFieldChange(
+                              'phone',
+                              event.target.value,
                             )
                           }
+                          onBlur={() => handleDetailEditFieldBlur('phone')}
+                          className={
+                            (editTouchedFields.phone || isEditFormSubmitted) &&
+                            editValidationErrors.phone
+                              ? 'border-red-500'
+                              : ''
+                          }
                         />
+                        {(editTouchedFields.phone || isEditFormSubmitted) &&
+                          editValidationErrors.phone && (
+                            <p className="text-xs text-red-500">
+                              {editValidationErrors.phone}
+                            </p>
+                          )}
                       </div>
                     </div>
                   </form>
                 ) : (
                   <div className="grid gap-3">
-                    <DetailRow label="Vai trò" value={detailUser.roleDisplayName} />
-                    <DetailRow label="Trạng thái" value={detailUser.isActive ? 'Hoạt động' : 'Đã khóa'} />
+                    <DetailRow
+                      label="Vai trò"
+                      value={detailUser.roleDisplayName}
+                    />
+                    <DetailRow
+                      label="Trạng thái"
+                      value={detailUser.isActive ? 'Hoạt động' : 'Đã khóa'}
+                    />
                     <DetailRow
                       label="Giới tính"
                       value={
                         detailUser.gender
-                          ? genderLabels[detailUser.gender as keyof typeof genderLabels] || detailUser.gender
+                          ? genderLabels[
+                              detailUser.gender as keyof typeof genderLabels
+                            ] || detailUser.gender
                           : '—'
                       }
                     />
-                    <DetailRow label="Ngày sinh" value={formatDate(detailUser.birthDate)} />
-                    <DetailRow label="Ngày tạo" value={formatDateTime(detailUser.createdAt)} />
-                    <DetailRow label="Đăng nhập gần nhất" value={formatDateTime(detailUser.lastLoginAt)} />
+                    <DetailRow
+                      label="Ngày sinh"
+                      value={formatDate(detailUser.birthDate)}
+                    />
+                    <DetailRow
+                      label="Ngày tạo"
+                      value={formatDateTime(detailUser.createdAt)}
+                    />
+                    <DetailRow
+                      label="Đăng nhập gần nhất"
+                      value={formatDateTime(detailUser.lastLoginAt)}
+                    />
                   </div>
                 )}
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Liên kết</h3>
                   <div className="space-y-2">
                     {detailUser.linkedEntities.teacher && (
-                      <Collapsible open={teacherCollapsibleOpen} onOpenChange={setTeacherCollapsibleOpen}>
+                      <Collapsible
+                        open={teacherCollapsibleOpen}
+                        onOpenChange={setTeacherCollapsibleOpen}
+                      >
                         <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left hover:bg-accent">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Giáo viên</span>
+                            <span className="text-sm font-medium">
+                              Giáo viên
+                            </span>
                             <Badge variant="outline" className="text-xs">
-                              {detailUser.linkedEntities.teacher.teacherCode || '—'}
+                              {detailUser.linkedEntities.teacher.teacherCode ||
+                                '—'}
                             </Badge>
                           </div>
                           <ChevronDown
@@ -1091,31 +1761,54 @@ export default function UserManagement() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="px-4 pb-3">
                           <div className="mt-2 grid gap-2 border-t pt-3">
-                            <DetailRow label="Mã giáo viên" value={detailUser.linkedEntities.teacher.teacherCode || '—'} />
+                            <DetailRow
+                              label="Mã giáo viên"
+                              value={
+                                detailUser.linkedEntities.teacher.teacherCode ||
+                                '—'
+                              }
+                            />
                             <DetailRow
                               label="Trường học"
-                              value={detailUser.linkedEntities.teacher.schoolName || '—'}
+                              value={
+                                detailUser.linkedEntities.teacher.schoolName ||
+                                '—'
+                              }
                             />
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
                     )}
                     {detailUser.linkedEntities.parent && (
-                      <Collapsible open={parentCollapsibleOpen} onOpenChange={setParentCollapsibleOpen}>
+                      <Collapsible
+                        open={parentCollapsibleOpen}
+                        onOpenChange={setParentCollapsibleOpen}
+                      >
                         <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left hover:bg-accent">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Phụ huynh</span>
+                            <span className="text-sm font-medium">
+                              Phụ huynh
+                            </span>
                             <Badge variant="outline" className="text-xs">
                               {detailUser.linkedEntities.parent.relationshipType
                                 ? relationshipTypeLabels[
-                                    detailUser.linkedEntities.parent.relationshipType as keyof typeof relationshipTypeLabels
-                                  ] || detailUser.linkedEntities.parent.relationshipType
+                                    detailUser.linkedEntities.parent
+                                      .relationshipType as keyof typeof relationshipTypeLabels
+                                  ] ||
+                                  detailUser.linkedEntities.parent
+                                    .relationshipType
                                 : '—'}
                             </Badge>
-                            {detailUser.linkedEntities.parent.studentsCount !== undefined &&
-                              detailUser.linkedEntities.parent.studentsCount > 0 && (
+                            {detailUser.linkedEntities.parent.studentsCount !==
+                              undefined &&
+                              detailUser.linkedEntities.parent.studentsCount >
+                                0 && (
                                 <Badge variant="secondary" className="text-xs">
-                                  {detailUser.linkedEntities.parent.studentsCount} con
+                                  {
+                                    detailUser.linkedEntities.parent
+                                      .studentsCount
+                                  }{' '}
+                                  con
                                 </Badge>
                               )}
                           </div>
@@ -1131,37 +1824,53 @@ export default function UserManagement() {
                             <DetailRow
                               label="Mối quan hệ"
                               value={
-                                detailUser.linkedEntities.parent.relationshipType
+                                detailUser.linkedEntities.parent
+                                  .relationshipType
                                   ? relationshipTypeLabels[
-                                      detailUser.linkedEntities.parent.relationshipType as keyof typeof relationshipTypeLabels
-                                    ] || detailUser.linkedEntities.parent.relationshipType
+                                      detailUser.linkedEntities.parent
+                                        .relationshipType as keyof typeof relationshipTypeLabels
+                                    ] ||
+                                    detailUser.linkedEntities.parent
+                                      .relationshipType
                                   : '—'
                               }
                             />
-                            {detailUser.linkedEntities.parent.studentsCount !== undefined && (
+                            {detailUser.linkedEntities.parent.studentsCount !==
+                              undefined && (
                               <DetailRow
                                 label="Số lượng học sinh"
-                                value={detailUser.linkedEntities.parent.studentsCount || 0}
+                                value={
+                                  detailUser.linkedEntities.parent
+                                    .studentsCount || 0
+                                }
                               />
                             )}
                             {detailUser.linkedEntities.parent.students &&
-                              detailUser.linkedEntities.parent.students.length > 0 && (
+                              detailUser.linkedEntities.parent.students.length >
+                                0 && (
                                 <div className="mt-2">
-                                  <p className="text-xs font-medium text-muted-foreground mb-2">Danh sách con:</p>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                                    Danh sách con:
+                                  </p>
                                   <div className="space-y-2">
-                                    {detailUser.linkedEntities.parent.students.map((student) => (
-                                      <div
-                                        key={student.id}
-                                        className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-                                      >
-                                        <div>
-                                          <p className="font-medium">{student.fullName || '—'}</p>
-                                          <p className="text-xs text-muted-foreground">
-                                            {student.studentCode || `ID: ${student.id}`}
-                                          </p>
+                                    {detailUser.linkedEntities.parent.students.map(
+                                      (student) => (
+                                        <div
+                                          key={student.id}
+                                          className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                                        >
+                                          <div>
+                                            <p className="font-medium">
+                                              {student.fullName || '—'}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                              {student.studentCode ||
+                                                `ID: ${student.id}`}
+                                            </p>
+                                          </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      ),
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -1170,16 +1879,23 @@ export default function UserManagement() {
                       </Collapsible>
                     )}
                     {detailUser.linkedEntities.student && (
-                      <Collapsible open={studentCollapsibleOpen} onOpenChange={setStudentCollapsibleOpen}>
+                      <Collapsible
+                        open={studentCollapsibleOpen}
+                        onOpenChange={setStudentCollapsibleOpen}
+                      >
                         <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left hover:bg-accent">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Học sinh</span>
+                            <span className="text-sm font-medium">
+                              Học sinh
+                            </span>
                             <Badge variant="outline" className="text-xs">
-                              {detailUser.linkedEntities.student.studentCode || '—'}
+                              {detailUser.linkedEntities.student.studentCode ||
+                                '—'}
                             </Badge>
                             {detailUser.linkedEntities.student.parent && (
                               <Badge variant="secondary" className="text-xs">
-                                {detailUser.linkedEntities.student.parent.fullName || '—'}
+                                {detailUser.linkedEntities.student.parent
+                                  .fullName || '—'}
                               </Badge>
                             )}
                           </div>
@@ -1194,21 +1910,32 @@ export default function UserManagement() {
                           <div className="mt-2 grid gap-2 border-t pt-3">
                             <DetailRow
                               label="Mã học sinh"
-                              value={detailUser.linkedEntities.student.studentCode || '—'}
+                              value={
+                                detailUser.linkedEntities.student.studentCode ||
+                                '—'
+                              }
                             />
-                            <DetailRow label="Lớp" value={detailUser.linkedEntities.student.grade || '—'} />
+                            {/* <DetailRow label="Lớp" value={detailUser.linkedEntities.student.grade || '—'} /> */}
                             {detailUser.linkedEntities.student.parent && (
                               <div className="mt-2">
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Phụ huynh:</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-2">
+                                  Phụ huynh:
+                                </p>
                                 <div className="rounded-md border px-3 py-2">
                                   <p className="text-sm font-medium">
-                                    {detailUser.linkedEntities.student.parent.fullName || '—'}
+                                    {detailUser.linkedEntities.student.parent
+                                      .fullName || '—'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {detailUser.linkedEntities.student.parent.relationshipType
+                                    {detailUser.linkedEntities.student.parent
+                                      .relationshipType
                                       ? relationshipTypeLabels[
-                                          detailUser.linkedEntities.student.parent.relationshipType as keyof typeof relationshipTypeLabels
-                                        ] || detailUser.linkedEntities.student.parent.relationshipType
+                                          detailUser.linkedEntities.student
+                                            .parent
+                                            .relationshipType as keyof typeof relationshipTypeLabels
+                                        ] ||
+                                        detailUser.linkedEntities.student.parent
+                                          .relationshipType
                                       : '—'}
                                   </p>
                                 </div>
@@ -1221,20 +1948,31 @@ export default function UserManagement() {
                     {!detailUser.linkedEntities.teacher &&
                       !detailUser.linkedEntities.parent &&
                       !detailUser.linkedEntities.student && (
-                        <p className="text-sm text-muted-foreground py-4 text-center">Chưa có liên kết nào.</p>
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          Chưa có liên kết nào.
+                        </p>
                       )}
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold">Phiên đăng nhập gần đây</h3>
+                  <h3 className="text-sm font-semibold">
+                    Phiên đăng nhập gần đây
+                  </h3>
                   <div className="mt-2 space-y-2 rounded-md border p-3">
                     {detailUser.sessions.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Chưa ghi nhận phiên đăng nhập nào.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Chưa ghi nhận phiên đăng nhập nào.
+                      </p>
                     )}
                     {detailUser.sessions.map((session) => (
-                      <div key={session.id} className="flex items-center justify-between text-sm">
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between text-sm"
+                      >
                         <span>{formatDateTime(session.createdAt)}</span>
-                        <Badge variant={session.isActive ? 'secondary' : 'outline'}>
+                        <Badge
+                          variant={session.isActive ? 'secondary' : 'outline'}
+                        >
                           {session.isActive ? 'Đang hoạt động' : 'Đã kết thúc'}
                         </Badge>
                       </div>
@@ -1250,13 +1988,13 @@ export default function UserManagement() {
           open={Boolean(resetUserId)}
           onOpenChange={(open) => {
             if (!open) {
-              setResetUserId(null)
-              setUseCustomPassword(false)
-              setNewPassword('')
-              setConfirmPassword('')
-              setShowPassword(false)
-              setShowConfirmPassword(false)
-              setForceLogout(true)
+              setResetUserId(null);
+              setUseCustomPassword(false);
+              setNewPassword('');
+              setConfirmPassword('');
+              setShowPassword(false);
+              setShowConfirmPassword(false);
+              setForceLogout(true);
             }
           }}
         >
@@ -1273,9 +2011,14 @@ export default function UserManagement() {
               <div className="flex items-center justify-between rounded-md border px-3 py-2">
                 <div>
                   <p className="text-sm font-medium">Nhập mật khẩu tùy chỉnh</p>
-                  <p className="text-xs text-muted-foreground">Sử dụng mật khẩu do bạn chỉ định</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sử dụng mật khẩu do bạn chỉ định
+                  </p>
                 </div>
-                <Switch checked={useCustomPassword} onCheckedChange={setUseCustomPassword} />
+                <Switch
+                  checked={useCustomPassword}
+                  onCheckedChange={setUseCustomPassword}
+                />
               </div>
               {useCustomPassword && (
                 <div className="space-y-4">
@@ -1305,7 +2048,9 @@ export default function UserManagement() {
                         )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Mật khẩu phải có ít nhất 6 ký tự</p>
+                    <p className="text-xs text-muted-foreground">
+                      Mật khẩu phải có ít nhất 6 ký tự
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Xác nhận mật khẩu</Label>
@@ -1324,7 +2069,9 @@ export default function UserManagement() {
                         variant="ghost"
                         size="icon"
                         className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -1334,29 +2081,38 @@ export default function UserManagement() {
                       </Button>
                     </div>
                     {confirmPassword && newPassword !== confirmPassword && (
-                      <p className="text-xs text-red-500">Mật khẩu xác nhận không khớp</p>
+                      <p className="text-xs text-red-500">
+                        Mật khẩu xác nhận không khớp
+                      </p>
                     )}
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-between rounded-md border px-3 py-2">
                 <div>
-                  <p className="text-sm font-medium">Buộc đăng xuất khỏi tất cả thiết bị</p>
-                  <p className="text-xs text-muted-foreground">Vô hiệu hóa phiên đăng nhập hiện tại</p>
+                  <p className="text-sm font-medium">
+                    Buộc đăng xuất khỏi tất cả thiết bị
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Vô hiệu hóa phiên đăng nhập hiện tại
+                  </p>
                 </div>
-                <Switch checked={forceLogout} onCheckedChange={setForceLogout} />
+                <Switch
+                  checked={forceLogout}
+                  onCheckedChange={setForceLogout}
+                />
               </div>
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel
                 onClick={() => {
-                  setResetUserId(null)
-                  setUseCustomPassword(false)
-                  setNewPassword('')
-                  setConfirmPassword('')
-                  setShowPassword(false)
-                  setShowConfirmPassword(false)
-                  setForceLogout(true)
+                  setResetUserId(null);
+                  setUseCustomPassword(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setShowPassword(false);
+                  setShowConfirmPassword(false);
+                  setForceLogout(true);
                 }}
               >
                 Hủy
@@ -1366,16 +2122,16 @@ export default function UserManagement() {
                 onClick={() => {
                   if (useCustomPassword) {
                     if (!newPassword || newPassword.length < 6) {
-                      toast.error('Mật khẩu phải có ít nhất 6 ký tự')
-                      return
+                      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+                      return;
                     }
                     if (!confirmPassword) {
-                      toast.error('Vui lòng xác nhận mật khẩu')
-                      return
+                      toast.error('Vui lòng xác nhận mật khẩu');
+                      return;
                     }
                     if (newPassword !== confirmPassword) {
-                      toast.error('Mật khẩu xác nhận không khớp')
-                      return
+                      toast.error('Mật khẩu xác nhận không khớp');
+                      return;
                     }
                   }
                   if (resetUserId) {
@@ -1383,7 +2139,7 @@ export default function UserManagement() {
                       userId: resetUserId,
                       password: useCustomPassword ? newPassword : undefined,
                       forceLogout,
-                    })
+                    });
                   }
                 }}
                 disabled={resetPasswordMutation.isPending}
@@ -1395,7 +2151,7 @@ export default function UserManagement() {
         </AlertDialog>
       </div>
     </TooltipProvider>
-  )
+  );
 }
 
 interface StatCardProps {
