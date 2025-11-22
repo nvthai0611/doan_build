@@ -66,7 +66,7 @@ import { SchoolManagementController } from './controllers/school-management.cont
 import { SchoolManagementService } from './services/school-management.service';
 import { JobTriggerController } from './controllers/job-trigger.controller';
 import { BillCronService } from '../cronjob/service/bill-cron.service';
-import { PayrollCronService } from '../cronjob/service/payroll-teacher.service';
+import { PayrollCronService } from '../cronjob/service/payroll-teacherv2.service';
 import { TriggerManagementService } from './services/trigger-management.service';
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';

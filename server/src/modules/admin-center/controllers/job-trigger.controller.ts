@@ -2,7 +2,7 @@ import { Controller, Post, Get, Query, Param, UseGuards, Logger, HttpException, 
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from 'src/db/prisma.service';
 import { BillCronService } from '../../cronjob/service/bill-cron.service';
-import { PayrollCronService } from '../../cronjob/service/payroll-teacher.service';
+import { PayrollCronService } from '../../cronjob/service/payroll-teacherv2.service';
 import { TriggerManagementService } from '../services/trigger-management.service';
 import { CronJobFilterDto, CronJobHistoryDto, CronJobStatsDto } from '../dto/cron-job-filter.dto';
 import { FeeReminderService } from '../../cronjob/service/send-email-bill.service';
