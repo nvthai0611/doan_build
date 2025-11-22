@@ -87,3 +87,12 @@ export type {
   QueryUserParams as UserQueryParams,
 } from './user-management/user.types'
 
+// Audit Log
+export { auditLogService } from './audit-log/audit-log.service'
+export type {
+  AuditLog,
+  QueryAuditLogParams,
+  AuditLogListResponse,
+  AuditLogDetailResponse,
+} from './audit-log/audit-log.service'
+
