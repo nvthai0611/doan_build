@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/assets/shadcn-ui/components/ui/breadcrumb"
 import { useToast } from "@/hooks/use-toast"
 import { PaymentModal } from "./components/PaymentModal"
+import { RejectionReasonModal } from "./components/RejectionReasonModal"
 
 export default function PayrollDetail() {
   const { payrollId } = useParams()
@@ -41,6 +42,7 @@ export default function PayrollDetail() {
   const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined)
   const [classFilter, setClassFilter] = useState<string>("all")
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showRejectionModal, setShowRejectionModal] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["payroll-detail", payrollId],
@@ -52,7 +54,6 @@ export default function PayrollDetail() {
 
   const payroll: any = useMemo(() => (data as any) ?? null, [data])
 
-  // ✅ Parse adjustment details
   const adjustmentDetails = useMemo(() => {
     if (!payroll?.adjustmentDetails) return []
     try {
@@ -66,7 +67,6 @@ export default function PayrollDetail() {
     }
   }, [payroll?.adjustmentDetails])
 
-  // ✅ Tính tổng bonuses và deductions từ adjustmentDetails
   const adjustmentSummary = useMemo(() => {
     const bonuses = adjustmentDetails
       .filter((adj: any) => adj.type === 'bonus')
@@ -79,7 +79,6 @@ export default function PayrollDetail() {
     return { bonuses, deductions, total: bonuses - deductions }
   }, [adjustmentDetails])
 
-  // ✅ Mutation: Gửi lại email
   const resendEmailMutation = useMutation({
     mutationFn: (payrollId: string) => payrollService.sendPayrollNotification([payrollId]),
     onSuccess: () => {
@@ -90,7 +89,7 @@ export default function PayrollDetail() {
       })
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['payroll-detail', payrollId] })
-      refetch()
+        refetch()
       }, 7000)
     },
     onError: (error: any) => {
@@ -115,7 +114,15 @@ export default function PayrollDetail() {
       case "cancelled":
         return <Badge className="bg-gray-200 text-gray-700">Đã hủy</Badge>
       case "rejected_by_teacher":
-        return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
+        return (
+          <Badge 
+            className="bg-red-100 text-red-800 cursor-pointer hover:bg-red-200 transition-colors"
+            onClick={() => setShowRejectionModal(true)}
+          >
+            <XCircle className="w-3 h-3 mr-1" />
+            Từ chối - Xem lý do
+          </Badge>
+        )
       default:
         return <Badge variant="outline">{status || "-"}</Badge>
     }
@@ -396,7 +403,33 @@ export default function PayrollDetail() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* ✅ Payroll Summary Card */}
+      {/* ✅ Rejection Alert */}
+      {payroll?.status === 'rejected_by_teacher' && payroll?.rejectionReason && (
+        <div className="rounded-xl border bg-red-50 border-red-200 p-4">
+          <div className="flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 mb-1">
+                Giáo viên đã từ chối bảng lương này
+              </h3>
+              <p className="text-sm text-red-700 mb-3">
+                <strong>Lý do:</strong> {payroll.rejectionReason}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowRejectionModal(true)}
+                className="border-red-300 text-red-700 hover:bg-red-100"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Xem chi tiết
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payroll Summary Card */}
       <div className="rounded-xl border bg-white p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -682,6 +715,13 @@ export default function PayrollDetail() {
       <PaymentModal
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
+        payroll={payroll}
+      />
+
+      {/* ✅ MỚI: Rejection Reason Modal */}
+      <RejectionReasonModal
+        open={showRejectionModal}
+        onOpenChange={setShowRejectionModal}
         payroll={payroll}
       />
     </div>
