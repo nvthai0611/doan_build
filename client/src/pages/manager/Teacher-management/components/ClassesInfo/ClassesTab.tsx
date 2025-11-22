@@ -67,6 +67,13 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   const meta = (teacherClassesData as any)?.meta
   const totalItems = meta?.total || 0
   const totalPages = meta?.totalPages || 0
+
+  // Update pagination when meta changes
+  useEffect(() => {
+    if (meta) {
+      pagination.setTotalItems(meta.total || 0)
+    }
+  }, [meta])
  
 
   const formatDate = (dateString: string): string => {
@@ -134,6 +141,13 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
       )
     }
 
+    // Filter by includeSubstitute switch
+    // If switch is OFF, hide substitute classes
+    // If switch is ON, show all classes (both main and substitute)
+    if (!includeSubstitute) {
+      data = data.filter((item: any) => !item.isSubstitute)
+    }
+
     // Sort by status với custom order: draft → ready → active → suspended → completed → cancelled
     const statusOrder: Record<string, number> = {
       [ClassStatus.DRAFT]: 1,      // Chưa cập nhật
@@ -167,7 +181,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     });
     
     return data
-  }, [teacherClassesData, activeTab, debouncedSearch])
+  }, [teacherClassesData, activeTab, debouncedSearch, includeSubstitute])
 
   // Tab counts based on filtered data
   const tabCounts = useMemo(() => {
@@ -357,13 +371,18 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
           emptyMessage="Không có dữ liệu lớp học"
           hoverable={true}
           pagination={{
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: filteredData.length,
-            itemsPerPage: filteredData.length,
-            onPageChange: () => {},
-            onItemsPerPageChange: () => {},
-            showItemsPerPage: false,
+            currentPage: pagination.currentPage,
+            totalPages: totalPages || 1,
+            totalItems: totalItems || 0,
+            itemsPerPage: pagination.itemsPerPage,
+            onPageChange: (page: number) => {
+              pagination.setCurrentPage(page)
+            },
+            onItemsPerPageChange: (itemsPerPage: number) => {
+              pagination.setItemsPerPage(itemsPerPage)
+              pagination.setCurrentPage(1)
+            },
+            showItemsPerPage: true,
             showPageInfo: true,
           }}
         />

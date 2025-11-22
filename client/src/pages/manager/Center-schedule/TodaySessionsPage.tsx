@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { CodeDisplay } from '../../../components/common/CodeDisplay';
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS, SessionStatus } from '@/lib/constants';
+import { useNavigate } from 'react-router-dom';
 
 interface TeacherInSession {
   id: string;
@@ -46,13 +47,13 @@ interface TeacherInSession {
   enrollmentCount: number;
   checkin: string | null;
   checkout: string | null;
-  attendanceStatus: string;
   recordedHours: number;
 }
 
-type AttendanceStatusFilter = 'all' | 'on_time' | 'late' | 'absent' | 'not_marked';
+type SessionStatusFilter = 'all' | 'has_not_happened' | 'happening' | 'end' | 'day_off' | 'cancelled';
 
 export default function TodaySessionsPage() {
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -62,13 +63,13 @@ export default function TodaySessionsPage() {
   });
   const [search, setSearch] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatusFilter>('all');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
-  const [selectedSessionStatus, setSelectedSessionStatus] = useState<string>('all');
+  const [sessionTab, setSessionTab] = useState<SessionStatusFilter>('all');
+  const [selectedSessionStatus, setSelectedSessionStatus] = useState<SessionStatusFilter>('all');
 
   // Debounce search term để giảm số lần gọi API
   useEffect(() => {
@@ -85,17 +86,30 @@ export default function TodaySessionsPage() {
 
   // Query để lấy data với filter
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['teachers-in-sessions-today', dateRange, debouncedSearchTerm, attendanceStatus, page, limit, selectedClassId, selectedSessionStatus],
+    queryKey: [
+      'teachers-in-sessions-today',
+      dateRange,
+      debouncedSearchTerm,
+      sessionTab,
+      page,
+      limit,
+      selectedClassId,
+      selectedSessionStatus,
+    ],
     queryFn: () =>
       centerOwnerScheduleService.getTeachersInSessionsToday({
         startDate: format(dateRange.start, 'yyyy-MM-dd'),
         endDate: format(dateRange.end, 'yyyy-MM-dd'),
         search: debouncedSearchTerm || undefined,
-        attendanceStatus: attendanceStatus !== 'all' ? attendanceStatus : undefined,
         page,
         limit,
         classId: selectedClassId && selectedClassId !== 'all' ? selectedClassId : undefined,
-        sessionStatus: selectedSessionStatus && selectedSessionStatus !== 'all' ? selectedSessionStatus : undefined,
+        sessionStatus:
+          selectedSessionStatus !== 'all'
+            ? selectedSessionStatus
+            : sessionTab !== 'all'
+              ? sessionTab
+              : undefined,
       }),
     staleTime: 0,
   });
@@ -108,9 +122,8 @@ export default function TodaySessionsPage() {
         startDate: format(dateRange.start, 'yyyy-MM-dd'),
         endDate: format(dateRange.end, 'yyyy-MM-dd'),
         search: debouncedSearchTerm || undefined,
-        attendanceStatus: undefined, // Lấy tất cả
         page: 1,
-        limit: 100, // Lấy nhiều để đếm
+        limit: 100,
       }),
     staleTime: 0,
   });
@@ -125,54 +138,28 @@ export default function TodaySessionsPage() {
 
   const classes = (classesData as any)?.data || [];
 
-  // Tính số lượng theo từng trạng thái
-  const getStatusCount = (status: AttendanceStatusFilter) => {
+  const getSessionStatusCount = (status: SessionStatusFilter) => {
     if (!allData?.data) return 0;
-    
     if (status === 'all') {
       return allData.meta?.total || 0;
     }
-    
-    const statusMap: { [key: string]: string } = {
-      'on_time': 'Đúng giờ',
-      'late': 'Đi muộn',
-      'absent': 'Nghỉ',
-      'not_marked': 'Chưa điểm danh',
-    };
-    
-    const targetStatus = statusMap[status];
-    return allData.data.filter((item: TeacherInSession) => item.attendanceStatus === targetStatus).length;
+    return allData.data.filter((item: TeacherInSession) => item.session.status === status).length;
   };
 
-  // Định nghĩa tabs
   interface Tab {
-    key: AttendanceStatusFilter;
+    key: SessionStatusFilter;
     label: string;
     count: number;
   }
 
   const tabs: Tab[] = [
-    { key: 'all', label: 'Tất cả', count: getStatusCount('all') },
-    { key: 'on_time', label: 'Đúng giờ', count: getStatusCount('on_time') },
-    { key: 'late', label: 'Đi muộn', count: getStatusCount('late') },
-    { key: 'absent', label: 'Nghỉ', count: getStatusCount('absent') },
-    { key: 'not_marked', label: 'Chưa điểm danh', count: getStatusCount('not_marked') },
+    { key: 'all', label: 'Tất cả', count: getSessionStatusCount('all') },
+    { key: 'has_not_happened', label: 'Chưa diễn ra', count: getSessionStatusCount('has_not_happened') },
+    { key: 'happening', label: 'Đang diễn ra', count: getSessionStatusCount('happening') },
+    { key: 'end', label: 'Đã kết thúc', count: getSessionStatusCount('end') },
+    { key: 'day_off', label: 'Nghỉ', count: getSessionStatusCount('day_off') },
+    { key: 'cancelled', label: 'Đã hủy', count: getSessionStatusCount('cancelled') },
   ];
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'Đúng giờ':
-        return 'default';
-      case 'Đi muộn':
-        return 'secondary';
-      case 'Nghỉ':
-        return 'destructive';
-      case 'Chưa điểm danh':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
 
   const getSessionStatusBadge = (status: string) => {
     // Sử dụng label và màu từ constants
@@ -213,6 +200,27 @@ export default function TodaySessionsPage() {
     return `${startStr} → ${endStr}`;
   };
 
+  const goToTeacherDetail = (event: React.MouseEvent, teacherId: string) => {
+    event.stopPropagation();
+    if (teacherId) {
+      navigate(`/center-qn/teachers/${teacherId}`);
+    }
+  };
+
+  const goToSessionDetail = (event: React.MouseEvent, sessionId: string) => {
+    event.stopPropagation();
+    if (sessionId) {
+      navigate(`/center-qn/classes/session-details/${sessionId}`);
+    }
+  };
+
+  const goToClassDetail = (event: React.MouseEvent, classId: string) => {
+    event.stopPropagation();
+    if (classId) {
+      navigate(`/center-qn/classes/${classId}`);
+    }
+  };
+
   // Định nghĩa columns cho DataTable
   const columns: Column<TeacherInSession>[] = [
     {
@@ -228,14 +236,26 @@ export default function TodaySessionsPage() {
       render: (item) => {
         return (
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={item.teacher.avatar || undefined} />
-              <AvatarFallback>
-                {item.teacher.fullName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              onClick={(event) => goToTeacherDetail(event, item.teacher.id)}
+              className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full"
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={item.teacher.avatar || undefined} />
+                <AvatarFallback>
+                  {item.teacher.fullName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </button>
             <div className="flex flex-col">
-              <span className="font-medium">{item.teacher.fullName}</span>
+              <button
+                type="button"
+                onClick={(event) => goToTeacherDetail(event, item.teacher.id)}
+                className="font-medium text-left text-blue-600 hover:underline"
+              >
+                {item.teacher.fullName}
+              </button>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <CodeDisplay code={item.teacher.teacherCode} hiddenLength={4} />
                 
@@ -269,9 +289,13 @@ export default function TodaySessionsPage() {
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium">
-                {item.session.sessionNumber ? `Buổi ${item.session.sessionNumber}` : 'N/A'}
-              </span>
+              <button
+                type="button"
+                onClick={(event) => goToSessionDetail(event, item.session.id)}
+                className="font-medium text-blue-600 hover:underline text-left"
+              >
+                {item.session.sessionNumber ? `Buổi ${item.session.sessionNumber}` : 'Xem chi tiết'}
+              </button>
               <Badge variant={sessionStatus.variant} className={sessionStatus.className}>
                 {sessionStatus.label}
               </Badge>
@@ -286,7 +310,13 @@ export default function TodaySessionsPage() {
       header: 'Lớp',
       render: (item) => (
         <div className="flex flex-col">
-          <span className="font-medium">{item.class.name}</span>
+          <button
+            type="button"
+            onClick={(event) => goToClassDetail(event, item.class.id)}
+            className="font-medium text-left text-blue-600 hover:underline"
+          >
+            {item.class.name}
+          </button>
           <span className="text-sm text-gray-500">{item.class.classCode}</span>
         </div>
       ),
@@ -449,23 +479,18 @@ export default function TodaySessionsPage() {
                     <label className="text-sm text-gray-600 mb-1 block">Trạng thái buổi học</label>
                     <Select
                       value={selectedSessionStatus}
-                      onValueChange={setSelectedSessionStatus}
+                      onValueChange={(value: SessionStatusFilter) => setSelectedSessionStatus(value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Trạng thái buổi học">
-                          {selectedSessionStatus === 'all' ? 'Trạng thái buổi học' : 
-                           selectedSessionStatus === 'happening' ? 'Đang diễn ra' :
-                           selectedSessionStatus === 'has_not_happened' ? 'Chưa diễn ra' :
-                           selectedSessionStatus === 'end' ? 'Đã kết thúc' :
-                           selectedSessionStatus === 'day_off' ? 'Nghỉ' : 'Trạng thái buổi học'}
-                        </SelectValue>
+                        <SelectValue placeholder="Trạng thái buổi học" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả</SelectItem>
-                        <SelectItem value="happening">Đang diễn ra</SelectItem>
                         <SelectItem value="has_not_happened">Chưa diễn ra</SelectItem>
+                        <SelectItem value="happening">Đang diễn ra</SelectItem>
                         <SelectItem value="end">Đã kết thúc</SelectItem>
                         <SelectItem value="day_off">Nghỉ</SelectItem>
+                        <SelectItem value="cancelled">Đã hủy</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -509,11 +534,11 @@ export default function TodaySessionsPage() {
               <button
                 key={tab.key}
                 onClick={() => {
-                  setAttendanceStatus(tab.key);
-                  setPage(1); // Reset về trang 1 khi đổi tab
+                  setSessionTab(tab.key);
+                  setPage(1);
                 }}
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  attendanceStatus === tab.key
+                  sessionTab === tab.key
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}

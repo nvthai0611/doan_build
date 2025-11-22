@@ -8,6 +8,8 @@ const getListParents = async (params?: {
     limit?: number
     search?: string
     isActive?: boolean
+    hasEnrollments?: boolean
+    hasStudents?: boolean
 }) => {
     const response = await ApiService.get('/admin-center/parent-management', params)
     return {

@@ -388,14 +388,14 @@ export function CommitmentsManagement() {
                 className="w-full sm:w-auto"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Tải mẫu cam kết
+                Tải mẫu
               </Button>
               <Button
                 onClick={() => setIsUploadDialogOpen(true)}
                 className="w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Upload hợp đồng mới
+                Upload cam kết mới
               </Button>
             </div>
           </div>
@@ -408,14 +408,14 @@ export function CommitmentsManagement() {
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium text-muted-foreground">
-              Vui lòng chọn học sinh để xem hợp đồng cam kết
+              Vui lòng chọn học sinh để xem cam kết
             </p>
           </CardContent>
         </Card>
       ) : isLoadingCommitments ? (
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground">Đang tải hợp đồng...</p>
+            <p className="text-muted-foreground">Đang tải cam kết...</p>
           </CardContent>
         </Card>
       ) : filteredCommitments.length === 0 ? (
@@ -424,8 +424,8 @@ export function CommitmentsManagement() {
             <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium text-muted-foreground mb-2">
               {commitments.length === 0 
-                ? "Học sinh này chưa có hợp đồng cam kết nào" 
-                : "Không tìm thấy hợp đồng phù hợp"}
+                ? "Học sinh này chưa có cam kết nào" 
+                : "Không tìm thấy cam kết phù hợp"}
             </p>
             <Button
               variant="outline"
@@ -433,7 +433,7 @@ export function CommitmentsManagement() {
               className="mt-4"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Upload hợp đồng đầu tiên
+              Upload cam kết đầu tiên
             </Button>
           </CardContent>
         </Card>
@@ -442,7 +442,7 @@ export function CommitmentsManagement() {
           data={paginatedCommitments}
           columns={columns}
           loading={isLoadingCommitments}
-          emptyMessage="Không có hợp đồng nào"
+          emptyMessage="Không có cam kết nào"
           pagination={{
             currentPage,
             totalPages,

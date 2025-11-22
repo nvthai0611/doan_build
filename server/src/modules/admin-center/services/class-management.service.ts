@@ -1351,14 +1351,14 @@ export class ClassManagementService {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 9);
             console.log(
-              `📅 Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
+              `Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
             );
           }
 
           if (startDate && endDate && updatedClass.recurringSchedule) {
             // Tự động gen sessions
             console.log(
-              `🚀 Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
+              `Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -3229,7 +3229,7 @@ export class ClassManagementService {
           body.teacherId,
         );
         console.log(
-          `📧 Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
+          `Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
         );
       } catch (emailError) {
         // Log lỗi email nhưng không làm fail toàn bộ operation
@@ -3306,7 +3306,7 @@ export class ClassManagementService {
           'Lớp học đã được hủy phân công',
         );
         console.log(
-          `📧 Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
+          `Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
         );
       } catch (emailError) {
         console.error(
@@ -4336,7 +4336,6 @@ export class ClassManagementService {
   // Lấy dashboard data đầy đủ
   async getDashboard(classId: string) {
     try {
-      console.log(classId);
       // Validate class exists
       const classItem = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -4392,12 +4391,22 @@ export class ClassManagementService {
       const studentsCount = classItem.enrollments.length;
 
       // 3. Số buổi học đã diễn ra
+      // Chỉ tính các buổi học có status 'end' VÀ sessionDate <= ngày hiện tại
+      // Format ngày hiện tại thành YYYY-MM-DD để so sánh với @db.Date (chỉ có ngày, không có giờ)
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0]; 
+      
       const completedSessions = await this.prisma.classSession.count({
         where: {
           classId: classId,
           status: 'end',
+          sessionDate: {
+            lte: new Date(todayString), // Chỉ tính buổi học đã qua ngày (đã diễn ra)
+          },
         },
       });
+
+      
 
       // 4. Doanh thu từ học phí đã thanh toán (chỉ tính cho lớp này)
       const revenue = await this.prisma.payment.aggregate({
@@ -4453,9 +4462,65 @@ export class ClassManagementService {
         attendance.unexcusedAbsence;
       attendance.notMarked = totalPossibleAttendances - totalMarkedAttendances;
 
-      // 6. Đánh giá trung bình (chưa có trong schema, để mặc định)
-      const rating = 0;
-      const reviews = 0;
+      // 6. Đánh giá trung bình và reviews
+      const feedbacks = await this.prisma.teacherFeedback.findMany({
+        where: {
+          classId: classId,
+          status: 'approved', // Chỉ tính các feedback đã được approve
+        },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          parent: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          student: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 5, // Lấy 5 reviews gần đây nhất
+      });
+
+      const reviewsCount = await this.prisma.teacherFeedback.count({
+        where: {
+          classId: classId,
+          status: 'approved',
+        },
+      });
+
+      // Tính rating trung bình từ tất cả reviews (không chỉ 5 gần đây)
+      let rating = 0;
+      if (reviewsCount > 0) {
+        const allFeedbacks = await this.prisma.teacherFeedback.findMany({
+          where: {
+            classId: classId,
+            status: 'approved',
+          },
+          select: {
+            rating: true,
+          },
+        });
+        const totalRating = allFeedbacks.reduce((sum, f) => sum + f.rating, 0);
+        rating = totalRating / reviewsCount;
+      }
 
       return {
         success: true,
@@ -4465,8 +4530,17 @@ export class ClassManagementService {
           students: studentsCount,
           lessons: completedSessions,
           revenue: revenue._sum.amount || 0,
-          rating,
-          reviews,
+          rating: Number(rating.toFixed(1)),
+          reviews: reviewsCount,
+          recentReviews: feedbacks.map((f) => ({
+            id: f.id,
+            rating: f.rating,
+            comment: f.comment,
+            createdAt: f.createdAt,
+            parentName: f.parent?.user?.fullName || 'Ẩn danh',
+            parentAvatar: f.parent?.user?.avatar,
+            studentName: f.student?.user?.fullName,
+          })),
           attendance,
           homework: {
             assigned: 0,
@@ -4492,12 +4566,12 @@ export class ClassManagementService {
   // Legacy methods (keep for backward compatibility)
   async getClassByTeacherId(query: any, teacherId: string) {
     const { status, page = 1, limit = 10, search, includeSubstitute } = query;
-
+    
     const includeSubstituteFlag =
       includeSubstitute === true ||
       includeSubstitute === 'true' ||
       includeSubstitute === '1';
-
+    
     // Tập classId giáo viên này từng/đang dạy thay (từ class sessions)
     let substituteClassIds: string[] = [];
     if (includeSubstituteFlag) {
@@ -4508,11 +4582,12 @@ export class ClassManagementService {
         select: { classId: true },
         distinct: ['classId'],
       });
+      
       substituteClassIds = substituteSessions
         .map((session) => session.classId)
         .filter((id): id is string => Boolean(id));
     }
-
+    
     const where: any = {
       status: { not: 'deleted' },
     };
