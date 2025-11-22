@@ -391,3 +391,59 @@ export const DEFAULT_STATUS = {
   REQUEST: RequestStatus.PENDING,
   CONTRACT: ContractStatus.DRAFT
 }
+
+// Mapping các route thành table name
+export const AUDIT_LOG_ROUTES: Record<string, string> = {
+  'user-management': 'users',
+  'classes': 'classes',
+  'students': 'students',
+  'student-management': 'students',
+  'teachers': 'teachers',
+  'teacher-management': 'teachers',
+  'parents': 'parents',
+  'parent-management': 'parents',
+  'enrollments': 'enrollments',
+  'enrollment-management': 'enrollments',
+  'sessions': 'class_sessions',
+  'attendance': 'attendance',
+  'grades': 'student_assessment_grades',
+  'leave-requests': 'leave_requests',
+  'session-requests': 'session_requests',
+  'schedule-changes': 'schedule_changes',
+  'schedule-management': 'schedule_changes',
+  'rooms': 'rooms',
+  'rooms-management': 'rooms',
+  'subjects': 'subjects',
+  'subject-management': 'subjects',
+  'contracts': 'contracts',
+  'payrolls': 'payrolls',
+  'payroll-teacher': 'payrolls',
+  'schools': 'schools',
+  'school-management': 'schools',
+  'teacher-feedback': 'teacher_feedbacks',
+  'profile': 'users',
+  'triggers': null, // Không log cho triggers (cron jobs)
+  'audit-log': null, // Không log cho audit log endpoint
+};
+
+// mapping table name sang model name
+export const TABLE_NAME_TO_MODEL_NAME: Record<string, string> = {
+  'users': 'user',
+  'classes': 'class',
+  'students': 'student',
+  'teachers': 'teacher',
+  'parents': 'parent',
+  'enrollments': 'enrollment',
+  'class_sessions': 'classSession',
+  'attendance': 'attendance',
+  'student_assessment_grades': 'studentAssessmentGrade',
+  'leave_requests': 'leaveRequest',
+  'session_requests': 'sessionRequest',
+  'schedule_changes': 'scheduleChange',
+  'rooms': 'room',
+  'subjects': 'subject',
+  'contracts': 'contract',
+  'payrolls': 'payroll',
+  'schools': 'school',
+  'teacher_feedbacks': 'teacherFeedback',
+};
