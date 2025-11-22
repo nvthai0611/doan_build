@@ -38,9 +38,9 @@ export class RecordGradesDto {
     @Min(0)
     maxScore?: number;
 
-    @ApiProperty({ description: 'Ngày kiểm tra (ISO date: YYYY-MM-DD)' })
-    @IsDateString()
-    date: string;
+    @ApiProperty({ description: 'ID của buổi học (ClassSession) - để xác định ngày kiểm tra', format: 'uuid' })
+    @IsUUID()
+    classSessionId: string;
 
     @ApiProperty({ description: 'Mô tả chi tiết (tùy chọn)', required: false })
     @IsOptional()
