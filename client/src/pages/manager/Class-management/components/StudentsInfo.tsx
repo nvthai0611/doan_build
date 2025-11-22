@@ -27,6 +27,8 @@ import {
   Trash2,
   User,
   ArrowRight,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -62,6 +64,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from '@/components/ui/alert';
 
 interface StudentsInfoProps {
   classId: string;
@@ -71,6 +78,7 @@ interface StudentsInfoProps {
 export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
+  const [showNoContractOnly, setShowNoContractOnly] = useState(false);
   const [isSelectStudentOpen, setIsSelectStudentOpen] = useState(false);
   const [isTransferStudentOpen, setIsTransferStudentOpen] = useState(false);
   const [selectedEnrollments, setSelectedEnrollments] = useState<string[]>([]);
@@ -109,8 +117,20 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   // Lấy tất cả data từ API
   const allEnrollments = (studentsResp as any)?.data || [];
 
+  // Tính toán thống kê cam kết
+  const totalStudents = allEnrollments.length;
+  const studentsWithoutContract = allEnrollments.filter(
+    (enrollment: any) => enrollment.hasContract !== true
+  ).length;
+  const studentsWithContract = totalStudents - studentsWithoutContract;
+
   // Filter enrollments ở FE
   const filteredEnrollments = allEnrollments.filter((enrollment: any) => {
+    // Filter by contract status
+    if (showNoContractOnly && enrollment.hasContract === true) {
+      return false;
+    }
+
     // Filter by status
     if (activeStatusFilter !== EnrollmentStatus.ALL && enrollment.status !== activeStatusFilter) {
       return false;
@@ -160,7 +180,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
   useEffect(() => {
     pagination.setCurrentPage(1);
     setSelectedEnrollments([]);
-  }, [debouncedSearch, activeStatusFilter]);
+  }, [debouncedSearch, activeStatusFilter, showNoContractOnly]);
 
   // Reset selection when class status is not READY
   useEffect(() => {
@@ -613,6 +633,58 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
             </div>
           </div>
         </div>
+
+        {/* Contract Statistics Alert */}
+        {studentsWithoutContract > 0 && (
+          <Alert className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+            <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <AlertTitle className="text-orange-900 dark:text-orange-100">
+              Cảnh báo: Có học sinh chưa có bản cam kết
+            </AlertTitle>
+            <AlertDescription className="text-orange-800 dark:text-orange-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                  <span className="text-sm">
+                    Tổng số học sinh: <strong>{totalStudents}</strong>
+                  </span>
+                  <span className="text-sm">
+                    Đã có cam kết: <strong className="text-green-600 dark:text-green-400">{studentsWithContract}</strong>
+                  </span>
+                  <span className="text-sm">
+                    Chưa có cam kết: <strong className="text-red-600 dark:text-red-400">{studentsWithoutContract}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-no-contract-only"
+                    checked={showNoContractOnly}
+                    onCheckedChange={(checked) => setShowNoContractOnly(checked === true)}
+                  />
+                  <label
+                    htmlFor="show-no-contract-only"
+                    className="text-sm font-medium cursor-pointer flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Chỉ hiển thị chưa có cam kết
+                  </label>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Success Alert - All students have contracts */}
+        {studentsWithoutContract === 0 && totalStudents > 0 && (
+          <Alert className="mb-6 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+            <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertTitle className="text-green-900 dark:text-green-100">
+              Tất cả học sinh đã có bản cam kết
+            </AlertTitle>
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              Tất cả <strong>{totalStudents}</strong> học sinh trong lớp đã có bản cam kết hợp lệ.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Search Bar */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 mb-6">

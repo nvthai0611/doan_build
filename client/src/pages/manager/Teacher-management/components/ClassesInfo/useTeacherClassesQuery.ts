@@ -13,13 +13,14 @@ export const useTeacherClassesQuery = ({
   return useQuery({
     queryKey: ['teacher-classes', teacherId, status, search, page, limit, includeSubstitute],
     queryFn: async () => {
-      const response = await classService.getClassByTeacherId(teacherId, {
+      const params = {
         status,
         search,
         page,   
         limit,
-        includeSubstitute,
-      })
+        includeSubstitute: includeSubstitute ? 'true' : 'false', // Convert boolean to string for query params
+      };
+      const response = await classService.getClassByTeacherId(teacherId, params);
       return response
     },
     refetchOnWindowFocus: true, 

@@ -18,10 +18,10 @@ export class FeedbackAnalysisCronService {
    * 
    * TODO: Đổi lại thành '0 0 * * 0' (mỗi Chủ nhật) sau khi test xong
    */
-  @Cron(CronExpression.EVERY_MINUTE) // Mỗi 1 phút để test (sẽ đổi lại thành '0 0 * * 0' sau)
+  @Cron(CronExpression.EVERY_WEEK) // chạy hàng tuần vào lúc sáng
   async analyzeNewFeedbacks() {
-    this.logger.log('🔄 Starting feedback analysis cron job...')
-
+    this.logger.log('Running feedback analysis cron job...')
+    
     try {
       // Lấy tất cả các lớp có feedback approved
       const classesWithFeedbacks = await this.prisma.teacherFeedback.groupBy({
@@ -35,7 +35,7 @@ export class FeedbackAnalysisCronService {
         },
       })
 
-      this.logger.log(`Found ${classesWithFeedbacks.length} classes with feedbacks`)
+      this.logger.log(`Found ${classesWithFeedbacks.length} classes with feedbacks to analyze`)
 
       let analyzedCount = 0
       let skippedCount = 0
@@ -110,10 +110,10 @@ export class FeedbackAnalysisCronService {
       }
 
       this.logger.log(
-        `✅ Feedback analysis cron job completed: ${analyzedCount} analyzed, ${skippedCount} skipped, ${errorCount} errors`,
+        `Feedback analysis cron job completed: ${analyzedCount} analyzed, ${skippedCount} skipped, ${errorCount} errors`,
       )
     } catch (error) {
-      this.logger.error('❌ Error in feedback analysis cron job:', error)
+      this.logger.error('Error in feedback analysis cron job:', error)
     }
   }
 }

@@ -20,9 +20,7 @@ export const classService = {
 
   // Get teacher classes
   getClassByTeacherId: async (teacherId: string, params?: any) => {
-    const response = await apiClient.get(`${BASE_URL}/${teacherId}/teacher`, {
-      params,
-    });
+    const response = await apiClient.get(`${BASE_URL}/${teacherId}/teacher`, params || {});
     return response;
   },
 

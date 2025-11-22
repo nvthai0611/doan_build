@@ -434,6 +434,18 @@ export const ChangeStatusDialog = ({
       }
     }
 
+    // Nếu chuyển sang CANCELLED ở bất kỳ trạng thái nào cho phép
+    if (selectedStatus === ClassStatus.CANCELLED) {
+      const message = `Bạn sắp hủy lớp "${classData?.name}". ` +
+        'Hành động này không thể hoàn tác và toàn bộ lịch học liên quan sẽ bị ảnh hưởng. ' +
+        'Bạn có chắc chắn muốn tiếp tục không?';
+
+      setWarningMessage(message);
+      setPendingStatus(selectedStatus);
+      setShowConfirmWarning(true);
+      return;
+    }
+
     // Nếu chuyển sang active từ ready hoặc suspended
     if (
       selectedStatus === ClassStatus.ACTIVE &&
@@ -680,6 +692,11 @@ export const ChangeStatusDialog = ({
           message: `Lớp hiện có ${sessionStats.ended}/${sessionStats.total} buổi học đã hoàn thành${sessionStats.pending > 0 ? ` và còn ${sessionStats.pending} buổi học chưa hoàn thành` : ''}. Bạn có muốn tiếp tục chuyển trạng thái không?`,
         }
       : baseValidationMessage;
+
+  const hasCanProceedFlag = (
+    message: typeof validationMessage,
+  ): message is typeof validationMessage & { canProceed: boolean } =>
+    Boolean(message && 'canProceed' in message);
 
   const handleConfirmWarning = async () => {
     // Các trường hợp thì tiếp tục update
@@ -1056,7 +1073,9 @@ export const ChangeStatusDialog = ({
                 !selectedStatus ||
                 isLoading ||
                 // Disable nếu validation message có type = 'error' hoặc canProceed = false
-                (validationMessage?.type === 'error' || validationMessage?.canProceed === false) ||
+                (validationMessage?.type === 'error' ||
+                  (hasCanProceedFlag(validationMessage) &&
+                    validationMessage.canProceed === false)) ||
                 // Nếu chuyển sang ACTIVE từ READY hoặc SUSPENDED
                 // và chưa có sessions → cần nhập ngày
                 (selectedStatus === ClassStatus.ACTIVE &&

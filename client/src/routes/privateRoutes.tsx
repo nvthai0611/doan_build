@@ -37,6 +37,7 @@ import { ListChildren } from "../pages/Parent/Dashboard/ListChildren/ListChildre
 import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
+import CustomerManagementPage from "../pages/manager/Customer-management/CustomerManagement";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 import { CenterInfoSetting } from "../pages/manager/Settings/CenterInfoSetting";
 import { HolidaySetting } from "../pages/manager/Settings/HolidaySetting";
@@ -76,6 +77,7 @@ import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
 import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
 import TeacherOverview from "../pages/teacher/TeacherOverview/TeacherOverview";
 import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
+import UserManagement from "../pages/manager/User-management/UserManagement";
 
 export const privateRoutes = (
   <>
@@ -105,6 +107,7 @@ export const privateRoutes = (
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />
         <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="customers" element={<CustomerManagementPage />} />
         <Route path="parents" element={<ParentManagement />} />
         <Route path="parents/:id" element={<ParentDetailPage />} />
         <Route path="settings/center-info-setting" element={<CenterInfoSetting />} />
@@ -129,6 +132,7 @@ export const privateRoutes = (
         <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
         <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
         <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
+        <Route path="user-management" element={<UserManagement />} />
       </Route>
 
       {/* Giáo viên */}
