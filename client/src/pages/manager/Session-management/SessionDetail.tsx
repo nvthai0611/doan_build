@@ -246,7 +246,7 @@ export default function SessionDetail() {
             </CardContent>
           </Card>
         ) : (
-          <StudentsTab students={students} />
+          <StudentsTab students={students} sessionId={sessionId} />
         );
       default:
         return (
