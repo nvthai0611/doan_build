@@ -329,7 +329,7 @@ export default function BackPayDetails() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (Truy lĩnh nợ cũ)</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (buổi học cũ)</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Kỳ lương hiện tại: <span className="font-medium">{periodLabel}</span> • Giáo viên: {response?.data?.teacher?.fullName || "-"}
           </p>
@@ -363,7 +363,7 @@ export default function BackPayDetails() {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="text-foreground font-medium">
-              Chi tiết truy lĩnh
+              Chi tiết buổi học cũ
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
@@ -374,7 +374,7 @@ export default function BackPayDetails() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-yellow-800 text-lg">
             <Wallet className="w-5 h-5" />
-            Tổng quan truy lĩnh
+            Tổng quan buổi học cũ
           </CardTitle>
         </CardHeader>
         <CardContent>

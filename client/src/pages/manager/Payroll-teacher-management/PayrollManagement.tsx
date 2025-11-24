@@ -188,6 +188,7 @@ const PayrollManagement: React.FC = () => {
   const canSelectForRecalculation = (teacher: Teacher): boolean => {
     return teacher.payroll?.status === 'pending' || teacher.payroll?.status === 'rejected_by_teacher' || false
   }
+  const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
   // ✅ MỚI: Check nếu có thể điều chỉnh (chỉ cho pending)
   const canSelectForAdjustment = (teacher: Teacher): boolean => {
@@ -345,11 +346,11 @@ const PayrollManagement: React.FC = () => {
       render: (teacher) => teacher.user.fullName
     },
     {
-      key: 'email',
-      header: 'Email',
+      key: 'totalAmount',
+      header: 'Tổng lương',
       width: '250px',
       render: (teacher) => (
-        <span className="text-sm text-gray-600">{teacher.user.email}</span>
+        <span className="text-sm text-green-600">{fmt(teacher.payroll?.totalAmount || 0)} đ</span>
       )
     },
     {

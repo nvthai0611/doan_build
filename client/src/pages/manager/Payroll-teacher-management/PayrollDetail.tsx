@@ -136,8 +136,8 @@ export default function PayrollDetail() {
         return <Badge className="bg-red-100 text-red-700">Đã hủy</Badge>
       case "day_off":
         return <Badge className="bg-blue-100 text-blue-700">Nghỉ</Badge>
-      case "scheduled":
-        return <Badge className="bg-slate-100 text-slate-700">Đã lên lịch</Badge>
+      case "has_not_happened":
+        return <Badge className="bg-slate-100 text-slate-700">Chưa diễn ra</Badge>
       default:
         return <Badge variant="outline">{status || "-"}</Badge>
     }
@@ -240,6 +240,34 @@ export default function PayrollDetail() {
     return filtered
   }, [sessionRows, startDateFilter, endDateFilter, classFilter])
 
+ const filteredCalculations = useMemo(() => {
+  // Tính lương thực thu từ các buổi đã lọc
+  const totalRevenue = filteredRows.reduce((sum: number, row: any) => 
+    sum + (row.totalRevenue || 0), 0
+  )
+
+  // Tính tổng lương buổi học từ các buổi đã lọc
+  const totalPayout = filteredRows.reduce((sum: number, row: any) => 
+    sum + (row.teacherPayout || 0), 0
+  )
+
+  // Nếu không có filter, dùng giá trị gốc từ payroll
+  const bonuses = hasActiveFilters ? 0 : Number(payroll?.bonuses || 0)
+  const deductions = hasActiveFilters ? 0 : Number(payroll?.deductions || 0)
+  const backPayAmount = hasActiveFilters ? 0 : Number(payroll?.backPayAmount || 0)
+
+  // Tính tổng thanh toán
+  const totalAmount = totalPayout + bonuses - deductions + backPayAmount
+
+  return {
+    totalRevenue,
+    totalPayout,
+    bonuses,
+    deductions,
+    backPayAmount,
+    totalAmount
+  }
+}, [filteredRows, payroll, hasActiveFilters])
   const sessionColumns: Column<any>[] = [
     { key: "date", header: "Ngày" },
     { key: "time", header: "Thời gian" },
@@ -364,6 +392,8 @@ export default function PayrollDetail() {
         return null
     }
   }
+  console.log(filteredCalculations);
+  
 
   return (
     <div className="space-y-6 p-6">
@@ -435,17 +465,50 @@ export default function PayrollDetail() {
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
             Tổng quan bảng lương
+            {hasActiveFilters && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                Đã lọc
+              </Badge>
+            )}
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Lương cơ bản */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          {/* Lương thực thu */}
           <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm text-blue-700 font-medium mb-1">Lương cơ bản</p>
+            <p className="text-sm text-blue-700 font-medium mb-1">Lương thực thu</p>
             <p className="text-2xl font-bold text-blue-900">
-              {fmt(Number(payroll?.totalAmount || 0) - Number(payroll?.bonuses || 0) + Number(payroll?.deductions || 0))} đ
+              {fmt(filteredCalculations.totalRevenue)} đ
             </p>
+            {hasActiveFilters && (
+              <p className="text-xs text-blue-600 mt-1">
+                {filteredRows.length} buổi học
+              </p>
+            )}
           </div>
+
+          {/* Lương buổi học cũ (Back Pay) */}
+    <div className="bg-purple-50 rounded-lg p-4">
+      <p className="text-sm text-purple-700 font-medium mb-1 flex items-center gap-1">
+        <Plus className="w-3 h-3" />
+        Lương buổi học cũ
+      </p>
+      <p className="text-2xl font-bold text-purple-900">
+        +{fmt(filteredCalculations.backPayAmount)} đ
+      </p>
+      {!hasActiveFilters && payroll?.backPayAmount > 0 && (
+        <p className="text-xs text-purple-600 mt-1">
+          ({payroll.computedDetails?.backPayDetails?.length || 0} khoản)
+        </p>
+      )}
+      {hasActiveFilters && (
+        <p className="text-xs text-purple-600 mt-1">
+          Không tính khi lọc
+        </p>
+      )}
+    </div>
+
+          
 
           {/* Thưởng */}
           <div className="bg-green-50 rounded-lg p-4">
@@ -454,11 +517,16 @@ export default function PayrollDetail() {
               Thưởng
             </p>
             <p className="text-2xl font-bold text-green-900">
-              +{fmt(Number(payroll?.bonuses || 0))} đ
+              +{fmt(filteredCalculations.bonuses)} đ
             </p>
-            {adjustmentSummary.bonuses > 0 && (
+            {!hasActiveFilters && adjustmentSummary.bonuses > 0 && (
               <p className="text-xs text-green-600 mt-1">
                 ({adjustmentDetails.filter((a: any) => a.type === 'bonus').length} điều chỉnh)
+              </p>
+            )}
+            {hasActiveFilters && (
+              <p className="text-xs text-green-600 mt-1">
+                Không tính khi lọc
               </p>
             )}
           </div>
@@ -470,11 +538,28 @@ export default function PayrollDetail() {
               Khấu trừ
             </p>
             <p className="text-2xl font-bold text-red-900">
-              -{fmt(Number(payroll?.deductions || 0))} đ
+              -{fmt(filteredCalculations.deductions)} đ
             </p>
-            {adjustmentSummary.deductions > 0 && (
+            {!hasActiveFilters && adjustmentSummary.deductions > 0 && (
               <p className="text-xs text-red-600 mt-1">
                 ({adjustmentDetails.filter((a: any) => a.type === 'deduction').length} điều chỉnh)
+              </p>
+            )}
+            {hasActiveFilters && (
+              <p className="text-xs text-red-600 mt-1">
+                Không tính khi lọc
+              </p>
+            )}
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm text-blue-700 font-medium mb-1">Tỷ lệ % lương giáo viên</p>
+            <p className="text-2xl font-bold text-blue-900">
+              {payroll?.payoutDetails[0]?.payoutRate} 
+            </p>
+            {hasActiveFilters && (
+              <p className="text-xs text-blue-600 mt-1">
+                {filteredRows.length} buổi học
               </p>
             )}
           </div>
@@ -483,13 +568,18 @@ export default function PayrollDetail() {
           <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-4 border-2 border-emerald-200">
             <p className="text-sm text-emerald-700 font-medium mb-1">Tổng thanh toán</p>
             <p className="text-2xl font-bold text-emerald-900">
-              {fmt(Number(payroll?.totalAmount || 0))} đ
+              {fmt(filteredCalculations.totalAmount)} đ
             </p>
+            {hasActiveFilters && (
+              <p className="text-xs text-emerald-600 mt-1">
+                Chỉ tính buổi học đã lọc
+              </p>
+            )}
           </div>
         </div>
 
-        {/* ✅ Adjustment Details */}
-        {adjustmentDetails.length > 0 && (
+        {/* ✅ Adjustment Details - Chỉ hiển thị khi không có filter */}
+        {!hasActiveFilters && adjustmentDetails.length > 0 && (
           <div className="mt-6 border-t pt-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -550,6 +640,19 @@ export default function PayrollDetail() {
                   {adjustmentSummary.total >= 0 ? '+' : ''}{fmt(adjustmentSummary.total)} đ
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ Thông báo khi có filter active */}
+        {hasActiveFilters && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-blue-600" />
+              <p className="text-sm text-blue-700">
+                <strong>Lưu ý:</strong> Các số liệu trên chỉ tính cho {filteredRows.length} buổi học đã lọc. 
+                Thưởng và khấu trừ không được tính khi đang lọc.
+              </p>
             </div>
           </div>
         )}
@@ -653,7 +756,7 @@ export default function PayrollDetail() {
               <Info className="w-5 h-5 text-amber-600 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-amber-900 mb-1">
-                  Có tiền lương truy lĩnh trong kỳ này
+                  Có tiền lương buổi học cũ
                 </h3>
                 <p className="text-sm text-amber-700">
                   Bảng lương này bao gồm{" "}

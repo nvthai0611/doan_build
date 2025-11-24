@@ -73,6 +73,8 @@ import { EmailServiceNotificationBill } from '../shared/services/email-notificat
 import { BullModule } from '@nestjs/bull';
 import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditLogService } from './services/audit-log.service';
+import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
+import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 
 @Module({
   imports: [
@@ -82,6 +84,9 @@ import { AuditLogService } from './services/audit-log.service';
     }),
     BullModule.registerQueue({
       name: 'payroll-recalculation', // ✅ Register queue ở đây
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-payment-notification', // ✅ Register queue ở đây
     }),
     RouterModule.register([
       {
@@ -163,6 +168,8 @@ import { AuditLogService } from './services/audit-log.service';
     FeeReminderService,
     EmailServiceNotificationBill,
     AuditLogService,
+    ChangeStatusSessionService,
+    EmailNotificationPayrollService
 
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
