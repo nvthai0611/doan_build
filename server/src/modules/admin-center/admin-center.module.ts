@@ -71,6 +71,8 @@ import { TriggerManagementService } from './services/trigger-management.service'
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 import { BullModule } from '@nestjs/bull';
+import { AuditLogController } from './controllers/audit-log.controller';
+import { AuditLogService } from './services/audit-log.service';
 import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
 import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 
@@ -124,7 +126,8 @@ import { EmailNotificationPayrollService } from '../shared/services/email-notifi
     PayrollTeacherController,
     CenterInfoController,
     SchoolManagementController,
-    JobTriggerController
+    JobTriggerController,
+    AuditLogController
   ],
   providers: [
     PrismaService,
@@ -164,11 +167,12 @@ import { EmailNotificationPayrollService } from '../shared/services/email-notifi
     TriggerManagementService,
     FeeReminderService,
     EmailServiceNotificationBill,
+    AuditLogService,
     ChangeStatusSessionService,
     EmailNotificationPayrollService
 
   ],
-  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
 
 })
 //check

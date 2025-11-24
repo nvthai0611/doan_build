@@ -43,6 +43,7 @@ import {
     CheckSquare,
     School,
     Cog,
+    History
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -225,6 +226,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           title: 'Tác Vụ Định Kỳ',
           icon: Cog,
           href: '/center-qn/trigger-cronjobs',
+        },
+        {
+          title: 'Lịch sử hệ thống',
+          icon: History,
+          href: '/center-qn/audit-log',
         },
       ],
     },
