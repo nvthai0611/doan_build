@@ -71,6 +71,8 @@ import { TriggerManagementService } from './services/trigger-management.service'
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 import { BullModule } from '@nestjs/bull';
+import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
+import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 
 @Module({
   imports: [
@@ -80,6 +82,9 @@ import { BullModule } from '@nestjs/bull';
     }),
     BullModule.registerQueue({
       name: 'payroll-recalculation', // ✅ Register queue ở đây
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-payment-notification', // ✅ Register queue ở đây
     }),
     RouterModule.register([
       {
@@ -159,6 +164,8 @@ import { BullModule } from '@nestjs/bull';
     TriggerManagementService,
     FeeReminderService,
     EmailServiceNotificationBill,
+    ChangeStatusSessionService,
+    EmailNotificationPayrollService
 
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác

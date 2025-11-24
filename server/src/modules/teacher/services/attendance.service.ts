@@ -295,6 +295,11 @@ export class AttendanceService {
         { maxWait: 5000, timeout: 30000 }, // Tăng timeout lên 30s
       );
 
+      // Cập nhật lại trạng thái của buổi học 
+      await this.prisma.classSession.update({
+        where: { id: sessionId },
+        data: { status: 'happening' },
+      })
       return {
         data: {
           updated: result.length,

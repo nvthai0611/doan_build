@@ -3,12 +3,14 @@ import { PrismaService } from "../../../db/prisma.service";
 import { Queue } from "bull";
 import { InjectQueue } from "@nestjs/bull";
 import { Prisma } from "@prisma/client";
+import { EmailNotificationPayrollService } from "../../shared/services/email-notification-payroll.service";
 @Injectable()
 export class PayRollTeacherService {
   private readonly logger = new Logger(PayRollTeacherService.name);
   constructor(private prisma: PrismaService,
     @InjectQueue('payroll-notification') private readonly payrollQueue: Queue,
     @InjectQueue('payroll-recalculation') private readonly recalculationQueue: Queue,
+    private readonly emailService: EmailNotificationPayrollService
   ) { }
 
   async getListTeachers(
@@ -685,98 +687,148 @@ export class PayRollTeacherService {
     };
   }
 
-  async createPayrollPayment(data: {
-  payrollIds: string[]
-  totalAmount: number
-  paymentMethod: string
-  notes?: string
-}, userId: string) {
-  try {
-    const { payrollIds, totalAmount, paymentMethod, notes } = data;
+async createPayrollPayment(data: {
+    payrollIds: string[]
+    totalAmount: number
+    paymentMethod: string
+    notes?: string
+  }, userId: string) {
+    try {
+      const { payrollIds, totalAmount, paymentMethod, notes } = data;
 
-    // Validate
-    if (!payrollIds || payrollIds.length === 0) {
-      throw new Error('Danh sách payrollIds không được để trống');
-    }
+      // Validate
+      if (!payrollIds || payrollIds.length === 0) {
+        throw new Error('Danh sách payrollIds không được để trống');
+      }
 
-    const idsBigInt = payrollIds.map(id => BigInt(id));
+      const idsBigInt = payrollIds.map(id => BigInt(id));
 
-    // Kiểm tra các payroll có tồn tại và ở trạng thái approved_by_teacher
-    const payrolls = await this.prisma.payroll.findMany({
-      where: {
-        id: { in: idsBigInt },
-        status: 'approved_by_teacher'
-      },
-      select: {
-        id: true,
-        totalAmount: true,
-        teacherId: true,
-        teacher: {
-          select: {
-            user: { select: { fullName: true, email: true } }
+      // Kiểm tra các payroll có tồn tại và ở trạng thái approved_by_teacher
+      const payrolls = await this.prisma.payroll.findMany({
+        where: {
+          id: { in: idsBigInt },
+          status: 'approved_by_teacher'
+        },
+        select: {
+          id: true,
+          totalAmount: true,
+          bonuses: true,
+          deductions: true,
+          backPayAmount: true,
+          periodStart: true,
+          periodEnd: true,
+          teacherId: true,
+          teacher: {
+            select: {
+              user: { 
+                select: { 
+                  fullName: true, 
+                  email: true 
+                } 
+              }
+            }
           }
         }
-      }
-    });
+      });
 
-    if (payrolls.length === 0) {
-      throw new Error('Không tìm thấy bảng lương nào ở trạng thái đã duyệt');
+      if (payrolls.length === 0) {
+        throw new Error('Không tìm thấy bảng lương nào ở trạng thái đã duyệt');
+      }
+
+      if (payrolls.length !== payrollIds.length) {
+        throw new Error('Một số bảng lương không hợp lệ hoặc chưa được giáo viên duyệt');
+      }
+
+      // Kiểm tra tổng tiền
+      const calculatedTotal = payrolls.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+      if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+        throw new Error(`Tổng tiền không khớp. Tính toán: ${calculatedTotal}, Nhập vào: ${totalAmount}`);
+      }
+
+      const paidByUserId = userId;
+      const payOutInClass = await this.prisma.teacherSessionPayout.findMany({
+        where:{payroll: {id: {in: idsBigInt}}},
+        select:{
+          teacherPayout: true,
+          payoutRate: true        
+        }
+      })
+
+      const totalPayoutInClass = payOutInClass.reduce((sum, p) => sum + Number(p.teacherPayout), 0);
+      // Tạo PayrollPayment
+      const payment = await this.prisma.payrollPayment.create({
+        data: {
+          teacherId: payrolls[0].teacherId,
+          paidByUserId,
+          totalAmount,
+          paymentMethod,
+          notes,
+          paidAt: new Date()
+        }
+      });
+
+      // Cập nhật các Payroll
+      await this.prisma.payroll.updateMany({
+        where: { id: { in: idsBigInt } },
+        data: {
+          status: 'paid',
+          payrollPaymentId: payment.id
+        }
+      });
+
+      this.logger.log(`✅ Đã tạo thanh toán lương ${payment.id} cho ${payrolls.length} bảng lương`);
+
+      // ✅ Gửi email trực tiếp (không qua queue)
+      const teacherInfo = payrolls[0].teacher.user;
+      const payrollDetails = payrolls.map(p => ({
+        payrollId: p.id.toString(),
+        period: `${p.periodStart.toLocaleDateString('vi-VN')} - ${p.periodEnd.toLocaleDateString('vi-VN')}`,
+        amount: Number(p.totalAmount),
+        bonuses: Number(p.bonuses || 0),
+        deductions: Number(p.deductions || 0),
+        backPayAmount: Number(p.backPayAmount || 0)
+      }));
+
+      try {
+        await this.emailService.sendPaymentConfirmationEmail({
+          teacherName: teacherInfo.fullName,
+          teacherEmail: teacherInfo.email,
+          paymentInfo: {
+            paymentId: payment.id.toString(),
+            totalAmount: payment.totalAmount.toString(),
+            paymentMethod: payment.paymentMethod,
+            notes: notes,
+            paidAt: payment.paidAt.toISOString(),
+            payrollDetails: payrollDetails,
+            totalPayoutInClass: totalPayoutInClass,
+            payRate: payOutInClass.length > 0 ? Number(payOutInClass[0].payoutRate) : null
+          }
+        });
+
+        this.logger.log(`📧 Đã gửi email thông báo thanh toán cho ${teacherInfo.email}`);
+      } catch (emailError: any) {
+        // Log lỗi nhưng không throw để không ảnh hưởng đến transaction thanh toán
+        this.logger.error(`⚠️ Lỗi khi gửi email xác nhận thanh toán:`, emailError);
+      }
+
+      return {
+        success: true,
+        message: 'Đã tạo giao dịch thanh toán lương thành công. Email xác nhận đã được gửi đến giáo viên.',
+        data: {
+          paymentId: payment.id.toString(),
+          teacherName: teacherInfo.fullName,
+          totalAmount: payment.totalAmount,
+          paymentMethod: payment.paymentMethod,
+          paidAt: payment.paidAt,
+          payrollCount: payrolls.length,
+          payrollDetails: payrollDetails
+        }
+      };
+    } catch (error: any) {
+      this.logger.error('❌ Lỗi khi tạo thanh toán lương:', error);
+      throw error;
     }
-
-    if (payrolls.length !== payrollIds.length) {
-      throw new Error('Một số bảng lương không hợp lệ hoặc chưa được giáo viên duyệt');
-    }
-
-    // Kiểm tra tổng tiền
-    const calculatedTotal = payrolls.reduce((sum, p) => sum + Number(p.totalAmount), 0);
-    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
-      throw new Error(`Tổng tiền không khớp. Tính toán: ${calculatedTotal}, Nhập vào: ${totalAmount}`);
-    }
-
-    // Lấy thông tin user hiện tại (giả sử từ context/request)
-    // TODO: Implement getCurrentUser() - Lấy từ JWT token
-    const paidByUserId = userId; // Thay bằng userId thực tế
-
-    // Tạo PayrollPayment
-    const payment = await this.prisma.payrollPayment.create({
-      data: {
-        teacherId: payrolls[0].teacherId,
-        paidByUserId,
-        totalAmount,
-        paymentMethod,
-        notes,
-        paidAt: new Date()
-      }
-    });
-
-    // Cập nhật các Payroll
-    await this.prisma.payroll.updateMany({
-      where: { id: { in: idsBigInt } },
-      data: {
-        status: 'paid',
-        payrollPaymentId: payment.id
-      }
-    });
-
-    this.logger.log(`✅ Đã tạo thanh toán lương ${payment.id} cho ${payrolls.length} bảng lương`);
-
-    return {
-      success: true,
-      message: 'Đã tạo giao dịch thanh toán lương thành công',
-      data: {
-        paymentId: payment.id.toString(),
-        teacherName: payrolls[0].teacher.user.fullName,
-        totalAmount: payment.totalAmount,
-        paymentMethod: payment.paymentMethod,
-        paidAt: payment.paidAt,
-        payrollCount: payrolls.length
-      }
-    };
-  } catch (error: any) {
-    this.logger.error('❌ Lỗi khi tạo thanh toán lương:', error);
-    throw error;
   }
-}
 
 async applyPayrollAdjustments(data: {
   adjustments: {

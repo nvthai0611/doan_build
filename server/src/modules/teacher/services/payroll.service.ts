@@ -373,9 +373,9 @@ export class PayrollService {
         data:{
           alertType: 'payroll_rejected',
           processed: false,
-          message: `Giáo viên ${findTeacher?.user.fullName} đã từ chối bảng lương kỳ từ ${checkStatus?.periodStart.toLocaleDateString('vi-VN')} đến ${  checkStatus?.periodEnd.toLocaleDateString('vi-VN')}. Lý do: ${rejectionReason.trim()}`,
+          message: `Giáo viên ${findTeacher?.user.fullName} đã khiếu nại bảng lương kỳ từ ${checkStatus?.periodStart.toLocaleDateString('vi-VN')} đến ${  checkStatus?.periodEnd.toLocaleDateString('vi-VN')}. Lý do: ${rejectionReason.trim()}`,
           isRead: false,
-          title: `Giáo viên ${findTeacher?.user.fullName} đã từ chối bảng lương`,
+          title: `Giáo viên ${findTeacher?.user.fullName} đã khiếu nại bảng lương`,
         }
       })
 
