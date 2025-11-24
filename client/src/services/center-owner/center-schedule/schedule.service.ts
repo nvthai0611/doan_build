@@ -421,4 +421,38 @@ export const centerOwnerScheduleService = {
     );
     return response as any;
   },
+
+  /**
+ * Cập nhật điểm danh của học sinh
+ */
+updateStudentAttendance: async (
+  sessionId: string,
+  studentId: string,
+  status: string,
+  note?: string,
+): Promise<any> => {
+  const response = await ApiService.patch(
+    `/admin-center/schedule-management/sessions/${sessionId}/attendance/${studentId}`,
+    { status, note },
+  );
+  return response.data;
+},
+
+/**
+ * Cập nhật điểm danh hàng loạt
+ */
+updateBulkAttendanceManagement: async (
+  sessionId: string,
+  attendances: Array<{
+    studentId: string;
+    status: string;
+    note?: string;
+  }>,
+): Promise<any[]> => {
+  const response = await ApiService.put(
+    `/admin-center/schedule-management/sessions/${sessionId}/attendance/bulk`,
+    { attendances },
+  );
+  return response.data;
+},
 };

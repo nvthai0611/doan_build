@@ -998,4 +998,166 @@ export class ScheduleManagementService {
       },
     };
   }
+
+  /**
+ * Cập nhật điểm danh của học sinh (cho phép sửa điểm danh quá khứ)
+ */
+async updateStudentAttendance(
+  sessionId: string,
+  studentId: string,
+  data: {
+    status: string;
+    note?: string;
+  },
+) {
+  // Kiểm tra buổi học tồn tại
+  const session = await this.prisma.classSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, classId: true, sessionDate: true },
+  });
+
+  if (!session) {
+    throw new NotFoundException('Không tìm thấy buổi học');
+  }
+  
+  // Kiểm tra học sinh có trong lớp không
+  const enrollment = await this.prisma.enrollment.findFirst({
+    where: {
+      classId: session.classId,
+      studentId: studentId,
+      status: { in: ['studying','graduated'] },
+    },
+  });
+
+  if (!enrollment) {
+    throw new BadRequestException('Học sinh không thuộc lớp này');
+  }
+
+  // Tìm bản ghi điểm danh hiện tại
+  const existingAttendance =
+    await this.prisma.studentSessionAttendance.findFirst({
+      where: {
+        sessionId: sessionId,
+        studentId: studentId,
+      },
+    });
+
+  if (existingAttendance) {
+    // Cập nhật điểm danh đã có
+    const updated = await this.prisma.studentSessionAttendance.update({
+      where: { id: existingAttendance.id },
+      data: {
+        status: data.status,
+        note: data.note,
+        recordedAt: new Date(),
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            studentCode: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      id: updated.id.toString(),
+      sessionId: updated.sessionId,
+      studentId: updated.studentId,
+      studentName: updated.student.user.fullName,
+      studentCode: updated.student.studentCode,
+      status: updated.status,
+      note: updated.note,
+      recordedAt: updated.recordedAt,
+    };
+  } else {
+    // Tạo bản ghi điểm danh mới
+    // Lấy teacherId từ session để làm recordedBy
+    const sessionWithTeacher = await this.prisma.classSession.findUnique({
+      where: { id: sessionId },
+      select: { teacherId: true },
+    });
+
+    const created = await this.prisma.studentSessionAttendance.create({
+      data: {
+        sessionId: sessionId,
+        studentId: studentId,
+        status: data.status,
+        note: data.note,
+        recordedBy: sessionWithTeacher?.teacherId || studentId, // Fallback to studentId if no teacher
+        recordedAt: new Date(),
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            studentCode: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      id: created.id.toString(),
+      sessionId: created.sessionId,
+      studentId: created.studentId,
+      studentName: created.student.user.fullName,
+      studentCode: created.student.studentCode,
+      status: created.status,
+      note: created.note,
+      recordedAt: created.recordedAt,
+    };
+  }
+}
+
+/**
+ * Cập nhật điểm danh hàng loạt
+ */
+async updateBulkAttendance(
+  sessionId: string,
+  attendances: Array<{
+    studentId: string;
+    status: string;
+    note?: string;
+  }>,
+) {
+  // Kiểm tra buổi học tồn tại
+  const session = await this.prisma.classSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, classId: true },
+  });
+
+  if (!session) {
+    throw new NotFoundException('Không tìm thấy buổi học');
+  }
+
+  // Cập nhật từng bản ghi điểm danh
+  const results = await Promise.all(
+    attendances.map((attendance) =>
+      this.updateStudentAttendance(sessionId, attendance.studentId, {
+        status: attendance.status,
+        note: attendance.note,
+      }),
+    ),
+  );
+
+  return results;
+}
 }
