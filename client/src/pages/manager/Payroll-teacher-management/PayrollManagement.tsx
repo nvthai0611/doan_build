@@ -2,7 +2,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { payrollService } from '../../../services/center-owner/payroll-teacher/payroll.service'
 import React, { useState, useMemo, useEffect } from 'react'
 import { DataTable, Column } from '../../../components/common/Table/DataTable'
-import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar, Mail, Send, RefreshCw, DollarSign } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar, Mail, Send, RefreshCw, DollarSign, RefreshCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/assets/shadcn-ui/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,7 +112,9 @@ const PayrollManagement: React.FC = () => {
         variant: 'default'
       })
       setSelectedPayrollIds([])
-      refetch()
+      setTimeout(() => {
+        refetch()
+      }, 10000)
     },
     onError: (error: any) => {
       toast({
@@ -186,6 +188,7 @@ const PayrollManagement: React.FC = () => {
   const canSelectForRecalculation = (teacher: Teacher): boolean => {
     return teacher.payroll?.status === 'pending' || teacher.payroll?.status === 'rejected_by_teacher' || false
   }
+  const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
   // ✅ MỚI: Check nếu có thể điều chỉnh (chỉ cho pending)
   const canSelectForAdjustment = (teacher: Teacher): boolean => {
@@ -343,11 +346,11 @@ const PayrollManagement: React.FC = () => {
       render: (teacher) => teacher.user.fullName
     },
     {
-      key: 'email',
-      header: 'Email',
+      key: 'totalAmount',
+      header: 'Tổng lương',
       width: '250px',
       render: (teacher) => (
-        <span className="text-sm text-gray-600">{teacher.user.email}</span>
+        <span className="text-sm text-green-600">{fmt(teacher.payroll?.totalAmount || 0)} đ</span>
       )
     },
     {
@@ -380,7 +383,7 @@ const PayrollManagement: React.FC = () => {
         
         return (
           <Badge 
-            variant={statusInfo.variant} 
+            variant={statusInfo?.variant} 
             className={`gap-1 ${statusInfo.color} ${isSelectable ? 'ring-2 ring-blue-400' : ''}`}
           >
             <Icon className="w-3 h-3" />
@@ -606,7 +609,7 @@ const PayrollManagement: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tên giáo viên
@@ -727,6 +730,12 @@ const PayrollManagement: React.FC = () => {
                 <SelectItem value="cancelled">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tải lại trang
+            </label>
+            <RefreshCcw className="cursor-pointer" onClick={() => window.location.reload()} />
           </div>
 
           <div className="flex items-end">

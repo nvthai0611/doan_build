@@ -21,7 +21,7 @@ interface PayrollApprovalDialogProps {
   loading?: boolean
 }
 
-const PayrollApprovalDialog: React.FC<PayrollApprovalDialogProps> = ({
+const PayrollApprovalDialog: React.FC<any> = ({
   open,
   onOpenChange,
   payroll,

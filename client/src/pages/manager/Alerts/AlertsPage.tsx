@@ -111,6 +111,8 @@ export const AlertsPage = () => {
       'enrollment': 'Ghi danh',
       'payment': 'Thanh toán',
       'parent_registration': 'Đăng ký',
+      'payroll_rejected': 'Giáo viên đã từ chối bảng lương',
+      'payroll_approved': 'Giáo viên đã duyệt bảng lương',
       'other': 'Khác',
     };
     return types[alertType] || alertType;

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Patch, Body } from '@nestjs/common';
+import { Controller, Get, Query, Param, Patch, Body, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ScheduleManagementService } from '../services/schedule-management.service';
 import {
@@ -117,4 +117,46 @@ export class ScheduleManagementController {
       message: 'Lấy danh sách giáo viên tham gia buổi học thành công',
     };
   }
+
+@Patch('sessions/:id/attendance/:studentId')
+@ApiOperation({ summary: 'Cập nhật điểm danh của học sinh' })
+@ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+@ApiParam({
+  name: 'studentId',
+  description: 'ID của học sinh',
+  type: 'string',
+})
+async updateStudentAttendance(
+  @Param('id') sessionId: string,
+  @Param('studentId') studentId: string,
+  @Body() body: { status: string; note?: string },
+) {
+  const data = await this.scheduleService.updateStudentAttendance(
+    sessionId,
+    studentId,
+    body,
+  );
+  return { data, message: 'Cập nhật điểm danh thành công' };
+}
+
+@Put('sessions/:id/attendance/bulk')
+@ApiOperation({ summary: 'Cập nhật điểm danh hàng loạt' })
+@ApiParam({ name: 'id', description: 'ID của buổi học', type: 'string' })
+async updateBulkAttendance(
+  @Param('id') sessionId: string,
+  @Body()
+  body: {
+    attendances: Array<{
+      studentId: string;
+      status: string;
+      note?: string;
+    }>;
+  },
+) {
+  const data = await this.scheduleService.updateBulkAttendance(
+    sessionId,
+    body.attendances,
+  );
+  return { data, message: 'Cập nhật điểm danh hàng loạt thành công' };
+}
 }

@@ -285,6 +285,12 @@ export class PayrollService {
 
   async approvePayroll(teacherId: string, payrollId: string) {
     try {
+      const findTeacher = await this.prisma.teacher.findUnique({
+        where: {id: teacherId},
+        include:{
+          user: true
+        }
+      })
       const checkStatus = await this.prisma.payroll.findUnique({
         where: { teacherId: teacherId, id: BigInt(payrollId) },
       });
@@ -301,10 +307,84 @@ export class PayrollService {
         where: { id: BigInt(payrollId) },
         data: { status: 'approved_by_teacher' },
       });
+      await this.prisma.alert.create({
+        data:{
+          alertType: 'payroll_approved',
+          title: `Giáo viên ${findTeacher?.user.fullName} đã duyệt bảng lương`,
+          message: `Giáo viên ${findTeacher?.user.fullName} đã duyệt bảng lương kỳ từ ${checkStatus?.periodStart.toLocaleDateString('vi-VN')} đến ${  checkStatus?.periodEnd.toLocaleDateString('vi-VN')}.`,
+          isRead: false,
+          processed: false,
+        }}
+      )
 
       return result;
     } catch (error) {
       console.error('Error approving payroll:', error);
+      throw error;
+    }
+  }
+  async rejectPayroll(teacherId: string, payrollId: string, rejectionReason: string) {
+    try {
+      const findTeacher = await this.prisma.teacher.findUnique({
+        where: {id: teacherId},
+        include:{
+          user: true
+        }
+      })
+      // Kiểm tra payroll có tồn tại và thuộc về giáo viên này không
+      const checkStatus = await this.prisma.payroll.findUnique({
+        where: { 
+          teacherId: teacherId, 
+          id: BigInt(payrollId) 
+        },
+      });
+      
+      if (!checkStatus) {
+        throw new HttpException('Bảng lương không tồn tại', 404);
+      }
+      
+      // Chỉ cho phép từ chối khi đang ở trạng thái chờ duyệt
+      if (checkStatus.status !== 'waiting_teacher_approval') {
+        throw new HttpException(
+          'Chỉ có thể từ chối bảng lương ở trạng thái chờ duyệt',
+          400,
+        );
+      }
+
+      // Kiểm tra lý do từ chối
+      if (!rejectionReason || rejectionReason.trim().length < 10) {
+        throw new HttpException(
+          'Lý do từ chối phải có ít nhất 10 ký tự',
+          400,
+        );
+      }
+
+      // Cập nhật trạng thái payroll
+      const result = await this.prisma.payroll.update({
+        where: { id: BigInt(payrollId) },
+        data: { 
+          status: 'rejected_by_teacher',
+          teacherRejectionReason: rejectionReason.trim(),
+          teacherActionAt: new Date()
+        },
+      });
+
+      await this.prisma.alert.create({
+        data:{
+          alertType: 'payroll_rejected',
+          processed: false,
+          message: `Giáo viên ${findTeacher?.user.fullName} đã khiếu nại bảng lương kỳ từ ${checkStatus?.periodStart.toLocaleDateString('vi-VN')} đến ${  checkStatus?.periodEnd.toLocaleDateString('vi-VN')}. Lý do: ${rejectionReason.trim()}`,
+          isRead: false,
+          title: `Giáo viên ${findTeacher?.user.fullName} đã khiếu nại bảng lương`,
+        }
+      })
+
+      return {
+        data: result,
+        message: 'Đã từ chối bảng lương thành công'
+      };
+    } catch (error) {
+      console.error('Error rejecting payroll:', error);
       throw error;
     }
   }

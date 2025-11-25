@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Eye, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getAllPayrolls } from '../../../services/teacher/payroll-management/payroll-management.service'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/assets/shadcn-ui/components/ui/breadcrumb'
 
 const PayrollManagementTeacher: React.FC = () => {
   const navigate = useNavigate()
@@ -149,14 +150,14 @@ const PayrollManagementTeacher: React.FC = () => {
             <Eye className="w-4 h-4" />
             Xem
           </Button>
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             onClick={() => handleDownloadPDF(payroll)}
             className="gap-1"
           >
             <Download className="w-4 h-4" />
-          </Button>
+          </Button> */}
         </div>
       )
     }
@@ -166,11 +167,17 @@ const PayrollManagementTeacher: React.FC = () => {
     <div className="container mx-auto py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
-          Quản lý lương của tôi
+          Quản lý bảng lương
         </h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Xem và quản lý bảng lương hàng tháng
-        </p>
+        <Breadcrumb className="mb-2">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-foreground font-medium">
+              Quản lý lương của tôi
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
       </div>
 
       {/* Summary Cards */}

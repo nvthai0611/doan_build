@@ -113,7 +113,7 @@ export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps)
             <div className="bg-blue-50 rounded-lg p-3">
               <p className="text-blue-700 font-medium mb-1">Lương cơ bản</p>
               <p className="text-lg font-semibold text-blue-900">
-                {fmt(Number(payroll.totalAmount) - Number(payroll.bonuses || 0) + Number(payroll.deductions || 0))} đ
+                {fmt(Number(payroll.totalAmount) - Number(payroll.bonuses || 0) + Number(payroll.deductions || 0) - Number(payroll.backPayAmount || 0))} đ
               </p>
             </div>
 
@@ -133,7 +133,7 @@ export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps)
 
             {payroll.backPayAmount > 0 && (
               <div className="bg-purple-50 rounded-lg p-3">
-                <p className="text-purple-700 font-medium mb-1">Truy lĩnh</p>
+                <p className="text-purple-700 font-medium mb-1">Lương buổi học cũ</p>
                 <p className="text-lg font-semibold text-purple-900">
                   +{fmt(Number(payroll.backPayAmount))} đ
                 </p>
