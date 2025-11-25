@@ -18,12 +18,14 @@ export default function ProgressManagement() {
 
     const bulkPublishMutation = useMutation({
         mutationFn: async (reportIds: string[]) => {
-            for (const id of reportIds) {
-                await teacherProgressService.publish(id, {})
-            }
+            return teacherProgressService.bulkPublish(reportIds)
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             qc.invalidateQueries({ queryKey: ['teacher-progress-reports'] })
+            alert(`Đã duyệt và công bố thành công ${variables.length} báo cáo!`)
+        },
+        onError: (error: any) => {
+            alert(`Lỗi: ${error?.response?.data?.message || 'Không thể duyệt báo cáo'}`)
         },
     })
 
@@ -70,6 +72,25 @@ export default function ProgressManagement() {
         })
     }, [reports, selectedClass, search])
 
+    // Group reports by class when viewing ALL
+    const groupedByClass = useMemo(() => {
+        if (selectedClass !== 'ALL') return null
+        const map = new Map<string, { className: string; items: TeacherProgressReportDto[] }>()
+        filteredReports.forEach(r => {
+            const id = r.class?.id || 'UNKNOWN'
+            const className = r.class?.name || 'Lớp chưa xác định'
+            if (!map.has(id)) map.set(id, { className, items: [] })
+            map.get(id)!.items.push(r)
+        })
+        return Array.from(map.entries()).map(([id, v]) => ({ id, className: v.className, items: v.items }))
+    }, [filteredReports, selectedClass])
+
+    const approveClassReports = (classId: string) => {
+        const ids = filteredReports.filter(r => r.class?.id === classId).map(r => r.id)
+        if (!ids.length) return
+        bulkPublishMutation.mutate(ids)
+    }
+
     const handleBulkApprove = () => {
         if (filteredReports.length === 0) return
         if (!confirm(`Bạn có chắc muốn duyệt tất cả ${filteredReports.length} báo cáo?`)) return
@@ -102,13 +123,15 @@ export default function ProgressManagement() {
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Tìm tên/mã học sinh"
                     />
-                    <button
-                        className="px-3 py-2 text-sm rounded bg-green-600 text-white disabled:bg-gray-300"
-                        onClick={handleBulkApprove}
-                        disabled={filteredReports.length === 0 || bulkPublishMutation.isPending}
-                    >
-                        {bulkPublishMutation.isPending ? 'Đang duyệt...' : `Duyệt tất cả (${filteredReports.length})`}
-                    </button>
+                    {selectedClass !== 'ALL' && (
+                        <button
+                            className="px-3 py-2 text-sm rounded bg-green-600 text-white disabled:bg-gray-300"
+                            onClick={handleBulkApprove}
+                            disabled={filteredReports.length === 0 || bulkPublishMutation.isPending}
+                        >
+                            {bulkPublishMutation.isPending ? 'Đang duyệt...' : `Duyệt tất cả (${filteredReports.length})`}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -123,9 +146,113 @@ export default function ProgressManagement() {
                 </div>
             )}
 
-            <div className="space-y-3">
-                {filteredReports.map((r: TeacherProgressReportDto) => (
-                    <div key={r.id} className="border rounded-lg p-4 bg-white">
+            {/* When viewing ALL classes, show grouped sections with per-class bulk action */}
+            {selectedClass === 'ALL' && groupedByClass && groupedByClass.length > 0 && (
+                <div className="space-y-8">
+                    {groupedByClass.map(group => (
+                        <div key={group.id}>
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-lg font-semibold">{group.className}</h2>
+                                <button
+                                    className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:bg-gray-300"
+                                    onClick={() => approveClassReports(group.id)}
+                                    disabled={bulkPublishMutation.isPending || group.items.length === 0}
+                                >
+                                    {bulkPublishMutation.isPending ? 'Đang duyệt...' : `Duyệt lớp (${group.items.length})`}
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {group.items.map(r => (
+                                    <div key={r.id} className="border rounded-lg p-4 bg-white">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-sm text-gray-500">{r.periodLabel}</div>
+                                                <div className="font-medium">
+                                                    {r.class?.subject?.name || '—'}
+                                                    <span className="text-gray-500"> · Lớp: {r.class?.name || '—'}</span>
+                                                </div>
+                                                <div className="text-sm text-gray-600">Học sinh: {r.student?.user?.fullName || '—'}{r.student?.studentCode ? ` (${r.student.studentCode})` : ''}</div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span>
+                                                    Điểm: {r.averageScore ?? '—'} · Chuyên cần: {r.attendanceRate != null ? `${r.attendanceRate}%` : '—'}
+                                                </span>
+                                                {r.trend === 'up' && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded border text-green-700 bg-green-50 border-green-200">↑ Tiến bộ</span>
+                                                )}
+                                                {r.trend === 'stable' && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded border text-blue-700 bg-blue-50 border-blue-200">→ Ổn định</span>
+                                                )}
+                                                {r.trend === 'down' && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded border text-red-700 bg-red-50 border-red-200">↓ Cần cải thiện</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="mt-3">
+                                            {editing?.id === r.id ? (
+                                                <div className="space-y-2">
+                                                    <textarea
+                                                        className="w-full border rounded p-2 text-sm"
+                                                        rows={3}
+                                                        value={editing.comment}
+                                                        onChange={(e) => setEditing({ id: r.id, comment: e.target.value })}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            className="px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                                                            onClick={() => updateMutation.mutate({ id: r.id, comment: editing.comment })}
+                                                        >
+                                                            Lưu nháp
+                                                        </button>
+                                                        <button
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-neutral-800 hover:bg-neutral-900 text-white border border-neutral-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-600 focus:ring-offset-2 transition-transform active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                                                            onClick={() => publishMutation.mutate({ id: r.id, comment: editing.comment })}
+                                                            disabled={publishMutation.isPending}
+                                                            title="Duyệt và công bố báo cáo này"
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                            {publishMutation.isPending ? 'Đang công bố...' : 'Duyệt & Công bố'}
+                                                        </button>
+                                                        <button className="px-3 py-1 text-sm rounded bg-gray-200" onClick={() => setEditing(null)}>
+                                                            Hủy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <p className="text-sm text-gray-800">
+                                                        Nhận xét: {r.overallComment || '—'}
+                                                    </p>
+                                                    <div className="shrink-0 flex gap-2">
+                                                        <button className="px-3 py-1 text-sm rounded bg-gray-100" onClick={() => setEditing({ id: r.id, comment: r.overallComment || '' })}>
+                                                            Sửa nhận xét
+                                                        </button>
+                                                        <button
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-neutral-800 hover:bg-neutral-900 text-white border border-neutral-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-600 focus:ring-offset-2 transition-transform active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                                                            onClick={() => publishMutation.mutate({ id: r.id })}
+                                                            disabled={publishMutation.isPending}
+                                                            title="Duyệt và công bố báo cáo này"
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                            {publishMutation.isPending ? 'Đang công bố...' : 'Duyệt & Công bố'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Single class view */}
+            {selectedClass !== 'ALL' && (
+                <div className="space-y-3">
+                    {filteredReports.map((r: TeacherProgressReportDto) => (
+                        <div key={r.id} className="border rounded-lg p-4 bg-white">
                         <div className="flex items-center justify-between">
                             <div>
                                 <div className="text-sm text-gray-500">{r.periodLabel}</div>
@@ -203,9 +330,10 @@ export default function ProgressManagement() {
                                 </div>
                             )}
                         </div>
-                    </div>
-                ))}
-            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

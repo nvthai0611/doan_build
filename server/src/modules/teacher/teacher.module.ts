@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
 import { AttendanceController } from './controllers/attendance.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { CommunicationController } from './controllers/communication.controller';
@@ -42,6 +43,7 @@ import { TeacherProgressReportController } from './controllers/progress-report.c
 import { TeacherProgressReportService } from './services/progress-report.service';
 import { TeacherDashboardController } from './controllers/dashboard.controller';
 import { TeacherDashboardService } from './services/dashboard.service';
+import { ProgressReportPublishProcessor } from '../shared/consumer/progress-report-publish.processor';
 
 @Module({
   imports: [
@@ -52,6 +54,9 @@ import { TeacherDashboardService } from './services/dashboard.service';
       }
     ]),
     SharedModule, // Import SharedModule để sử dụng EmailNotificationService
+    BullModule.registerQueue({
+      name: 'progress_report_publish',
+    }),
   ],
   controllers: [
     AttendanceController,
@@ -97,7 +102,8 @@ import { TeacherDashboardService } from './services/dashboard.service';
     PrismaService,
     PayrollService,
     TeacherProgressReportService,
-    TeacherDashboardService
+    TeacherDashboardService,
+    ProgressReportPublishProcessor
   ],
   exports: [
     AttendanceService,
