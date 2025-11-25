@@ -193,11 +193,20 @@ export class GradeService {
         // Validate quyền truy cập lớp
         await this.ensureTeacherCanAccessClass(userId, classId);
 
-        // Lấy các buổi học đã kết thúc (status = 'end')
+        // Lấy ngày đầu và cuối tháng hiện tại
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        // Lấy các buổi học đã kết thúc (status = 'end') trong tháng hiện tại
         const sessions = await this.prisma.classSession.findMany({
             where: {
                 classId,
-                status: 'end'
+                status: 'end',
+                sessionDate: {
+                    gte: firstDayOfMonth,
+                    lte: lastDayOfMonth
+                }
             },
             orderBy: {
                 sessionDate: 'desc'
