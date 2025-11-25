@@ -94,5 +94,14 @@ export class EnrollmentManagementController {
     async transfer(@Param('id') id: string, @Body() body: any) {
         return this.enrollmentManagementService.transfer(id, body);
     }
+
+    @Post('bulk-transfer')
+    @ApiOperation({ summary: 'Chuyển lớp cho nhiều học sinh cùng lúc (với transaction)' })
+    @ApiResponse({ status: 200, description: 'Chuyển lớp thành công' })
+    @ApiResponse({ status: 400, description: 'Lớp mới đầy, đã đăng ký, hoặc lịch học trùng' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy enrollment hoặc lớp mới' })
+    async bulkTransfer(@Body() body: { enrollmentIds: string[]; newClassId: string; reason?: string; semester?: string }) {
+        return this.enrollmentManagementService.bulkTransfer(body.enrollmentIds, body);
+    }
 }
 

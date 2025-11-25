@@ -724,7 +724,7 @@ export class EnrollmentManagementService {
               studentId,
               classId: body.classId,
               status: {
-                notIn: ['stopped', 'graduated'],
+                notIn: ['stopped', 'graduated', 'withdrawn'],
               },
             },
           });
@@ -1331,7 +1331,7 @@ export class EnrollmentManagementService {
         where: {
           classId: body.newClassId,
           status: {
-            notIn: ['stopped', 'graduated'],
+            notIn: ['stopped', 'graduated', 'withdrawn'],
           },
         },
       });
@@ -1346,13 +1346,15 @@ export class EnrollmentManagementService {
         );
       }
 
-      // Check if student already enrolled in new class
+      // Check if student already enrolled in new class with active status
+      // Chỉ chặn nếu có enrollment với status đang hoạt động (studying, not_been_updated)
+      // Cho phép chuyển nếu enrollment cũ đã withdrawn, stopped, hoặc graduated
       const existingEnrollment = await this.prisma.enrollment.findFirst({
         where: {
           studentId: enrollment.studentId,
           classId: body.newClassId,
           status: {
-            notIn: ['stopped', 'graduated'],
+            in: ['studying', 'not_been_updated'],
           },
         },
       });
@@ -1476,6 +1478,323 @@ export class EnrollmentManagementService {
         {
           success: false,
           message: 'Có lỗi xảy ra khi chuyển lớp',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Chuyển lớp cho nhiều học sinh cùng lúc (với transaction)
+  async bulkTransfer(enrollmentIds: string[], body: any) {
+    try {
+      // Validation
+      if (!body.newClassId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'newClassId là bắt buộc',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!enrollmentIds || enrollmentIds.length === 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Danh sách enrollment IDs là bắt buộc',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check new class exists
+      const newClass = await this.prisma.class.findUnique({
+        where: { id: body.newClassId },
+        include: {
+          subject: true,
+        },
+      });
+
+      if (!newClass) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không tìm thấy lớp mới',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Lấy tất cả enrollments cần chuyển
+      const enrollments = await this.prisma.enrollment.findMany({
+        where: {
+          id: {
+            in: enrollmentIds.map((id) => parseInt(id)),
+          },
+        },
+        include: {
+          class: true,
+          student: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+              parent: {
+                include: {
+                  user: {
+                    select: {
+                      email: true,
+                      fullName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (enrollments.length !== enrollmentIds.length) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Một số enrollment không tồn tại',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // ===== VALIDATE TẤT CẢ ENROLLMENTS TRƯỚC =====
+      // Kiểm tra capacity của lớp mới
+      // Đếm các enrollment đang hoạt động (studying, not_been_updated)
+      const activeEnrollments = await this.prisma.enrollment.count({
+        where: {
+          classId: body.newClassId,
+          status: {
+            in: ['studying', 'not_been_updated'],
+          },
+        },
+      });
+
+      const availableSlots = newClass.maxStudents
+        ? newClass.maxStudents - activeEnrollments
+        : null;
+
+      // Tất cả học sinh trong danh sách đều cần tạo enrollment mới
+      // (vì đã check và báo lỗi nếu có enrollment kết thúc ở trên)
+      if (availableSlots !== null && availableSlots < enrollments.length) {
+        throw new HttpException(
+          {
+            success: false,
+            message: `Lớp mới không đủ chỗ (còn ${availableSlots} chỗ, cần ${enrollments.length} chỗ)`,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Kiểm tra từng học sinh xem đã học ở lớp mới chưa
+      const invalidStudents: any[] = [];
+      const studentsWithInactiveEnrollment: any[] = [];
+      
+      for (const enrollment of enrollments) {
+        // Kiểm tra enrollment đang hoạt động (studying, not_been_updated)
+        const existingActiveEnrollment = await this.prisma.enrollment.findFirst({
+          where: {
+            studentId: enrollment.studentId,
+            classId: body.newClassId,
+            status: {
+              in: ['studying', 'not_been_updated'],
+            },
+          },
+        });
+
+        if (existingActiveEnrollment) {
+          invalidStudents.push({
+            studentName: enrollment.student?.user?.fullName || 'N/A',
+            studentId: enrollment.studentId,
+            status: 'studying',
+          });
+        } else {
+          // Kiểm tra enrollment với status kết thúc (stopped, graduated, withdrawn)
+          const existingInactiveEnrollment = await this.prisma.enrollment.findFirst({
+            where: {
+              studentId: enrollment.studentId,
+              classId: body.newClassId,
+              status: {
+                in: ['stopped', 'graduated', 'withdrawn'],
+              },
+            },
+          });
+
+          if (existingInactiveEnrollment) {
+            const statusLabels: Record<string, string> = {
+              stopped: 'đã dừng học',
+              graduated: 'đã tốt nghiệp',
+              withdrawn: 'đã chuyển lớp',
+            };
+            
+            studentsWithInactiveEnrollment.push({
+              studentName: enrollment.student?.user?.fullName || 'N/A',
+              studentId: enrollment.studentId,
+              status: existingInactiveEnrollment.status,
+              statusLabel: statusLabels[existingInactiveEnrollment.status] || existingInactiveEnrollment.status,
+            });
+          }
+        }
+      }
+
+      // Báo lỗi nếu có học sinh đang học ở lớp mới
+      if (invalidStudents.length > 0) {
+        const studentNames = invalidStudents
+          .map((s) => s.studentName)
+          .join(', ');
+        throw new HttpException(
+          {
+            success: false,
+            message: `Các học sinh sau đã được đăng ký vào lớp mới: ${studentNames}`,
+            invalidStudents,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Báo lỗi nếu có học sinh đã dừng học, tốt nghiệp, hoặc chuyển lớp ở lớp mới
+      if (studentsWithInactiveEnrollment.length > 0) {
+        const messages = studentsWithInactiveEnrollment.map((s) => 
+          `${s.studentName} (${s.statusLabel})`
+        );
+        const message = `Các học sinh sau đã ${studentsWithInactiveEnrollment[0].statusLabel} ở lớp mới: ${messages.join(', ')}`;
+        
+        throw new HttpException(
+          {
+            success: false,
+            message,
+            studentsWithInactiveEnrollment,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Kiểm tra xung đột lịch học cho từng học sinh
+      const scheduleConflicts: any[] = [];
+      for (const enrollment of enrollments) {
+        const conflicts = await this.checkScheduleConflicts(
+          enrollment.studentId,
+          newClass.recurringSchedule as any,
+          enrollment.classId,
+        );
+
+        if (conflicts.length > 0) {
+          scheduleConflicts.push({
+            studentName: enrollment.student?.user?.fullName || 'N/A',
+            studentId: enrollment.studentId,
+            conflicts,
+          });
+        }
+      }
+
+      if (scheduleConflicts.length > 0) {
+        const conflictMessages = scheduleConflicts
+          .map((sc) => {
+            const conflictDetails = sc.conflicts
+              .map(
+                (c: any) =>
+                  `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`,
+              )
+              .join('; ');
+            return `${sc.studentName}: ${conflictDetails}`;
+          })
+          .join(' | ');
+        throw new HttpException(
+          {
+            success: false,
+            message: `Lịch học bị trùng: ${conflictMessages}`,
+            scheduleConflicts,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // ===== THỰC HIỆN TRANSFER TRONG TRANSACTION =====
+      const result = await this.prisma.$transaction(async (tx) => {
+        const transferResults: any[] = [];
+
+        for (const enrollment of enrollments) {
+          const shouldDeleteOldEnrollment =
+            enrollment.class?.status === 'ready';
+
+          if (shouldDeleteOldEnrollment) {
+            await tx.enrollment.delete({
+              where: { id: enrollment.id },
+            });
+          } else {
+            // Update old enrollment to withdrawn
+            await tx.enrollment.update({
+              where: { id: enrollment.id },
+              data: {
+                status: 'withdrawn',
+                completionNotes: body.reason || 'Chuyển lớp hàng loạt',
+              },
+            });
+          }
+
+          // Tạo enrollment mới (đã validate ở trên, không có enrollment kết thúc)
+          const newEnrollment = await tx.enrollment.create({
+            data: {
+              studentId: enrollment.studentId,
+              classId: body.newClassId,
+              semester: body.semester || enrollment.semester,
+              status: 'studying',
+            },
+          });
+
+          transferResults.push({
+            oldEnrollmentId: enrollment.id,
+            newEnrollment,
+            studentName: enrollment.student?.user?.fullName || 'N/A',
+          });
+        }
+
+        return transferResults;
+      });
+
+      // ===== GỬI EMAIL THÔNG BÁO (NON-BLOCKING) =====
+      // Tất cả học sinh đều đến từ cùng một lớp (lớp hiện tại)
+      // Reuse studentIds đã khai báo ở trên
+      const oldClassId = enrollments[0]?.classId;
+      if (oldClassId) {
+        this.emailNotificationService
+          .sendBulkEnrollmentEmail(enrollments.map((e) => e.studentId), body.newClassId, {
+            oldClassId,
+            reason: body.reason || 'Chuyển lớp hàng loạt',
+          })
+          .catch((error) => {
+            console.error(
+              '❌ Lỗi khi gửi email thông báo chuyển lớp hàng loạt:',
+              error.message,
+            );
+          });
+      }
+
+      return {
+        success: true,
+        message: `Đã chuyển ${enrollments.length} học sinh sang lớp mới thành công`,
+        data: {
+          transferredCount: enrollments.length,
+          results: result,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi chuyển lớp hàng loạt',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -1718,3 +2037,4 @@ export class EnrollmentManagementService {
     }
   }
 }
+

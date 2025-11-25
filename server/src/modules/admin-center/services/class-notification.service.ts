@@ -16,6 +16,7 @@ export class ClassNotificationService {
 
   /**
    * Kiểm tra và tạo thông báo cho các lớp sắp bắt đầu
+   * Thông báo trước 4 ngày cho tất cả các lớp
    */
   async checkClassesStartingSoon() {
     this.logger.log('🔍 Đang kiểm tra các lớp sắp bắt đầu...');
@@ -24,14 +25,14 @@ export class ClassNotificationService {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
 
-      // Các mốc thời gian cần thông báo: 14, 7, 3, 1 ngày trước
-      const notificationDays = [3];
+      // Thông báo trước 4 ngày
+      const notificationDays = [4];
 
       for (const daysBefore of notificationDays) {
         const targetDate = new Date(now);
         targetDate.setDate(targetDate.getDate() + daysBefore);
 
-        // Tìm các lớp có ngày bắt đầu trong khoảng targetDate ± 1 ngày
+        // Tìm các lớp có ngày bắt đầu trong khoảng targetDate
         const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -106,14 +107,14 @@ export class ClassNotificationService {
    * Kiểm tra và tạo thông báo cho các lớp sắp kết thúc
    */
   async checkClassesEndingSoon() {
-    this.logger.log('🔍 Đang kiểm tra các lớp sắp kết thúc...');
+    this.logger.log('Đang kiểm tra các lớp sắp kết thúc...');
 
     try {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
 
-      // Các mốc thời gian cần thông báo: 30, 14, 7 ngày trước
-      const notificationDays = [30, 14, 3];
+      // Các mốc thời gian cần thông báo: 3 ngày trước
+      const notificationDays = [3];
 
       for (const daysBefore of notificationDays) {
         const targetDate = new Date(now);
@@ -160,7 +161,7 @@ export class ClassNotificationService {
         });
 
         this.logger.log(
-          `📅 Tìm thấy ${classes.length} lớp sẽ kết thúc sau ${daysBefore} ngày`,
+          `Tìm thấy ${classes.length} lớp sẽ kết thúc sau ${daysBefore} ngày`,
         );
 
         for (const classItem of classes) {
@@ -168,9 +169,9 @@ export class ClassNotificationService {
         }
       }
 
-      this.logger.log('✅ Hoàn thành kiểm tra lớp sắp kết thúc');
+      this.logger.log('Hoàn thành kiểm tra lớp sắp kết thúc');
     } catch (error) {
-      this.logger.error('❌ Lỗi khi kiểm tra lớp sắp kết thúc:', error);
+      this.logger.error('Lỗi khi kiểm tra lớp sắp kết thúc:', error);
       throw error;
     }
   }
@@ -184,20 +185,20 @@ export class ClassNotificationService {
   ) {
     try {
       // Kiểm tra xem đã tạo alert này chưa
-      // Query alerts cùng type và check payload
       const existingAlerts = await this.prisma.alert.findMany({
         where: {
           alertType: 'class_starting_soon',
-          message: {
-            contains: `${daysRemaining} ngày`,
-          },
         },
-        take: 10,
+        take: 50,
       });
 
       const existingAlert = existingAlerts.find((alert: any) => {
         const payload = alert.payload as any;
-        return payload && payload.classId === classItem.id && payload.daysRemaining === daysRemaining;
+        return (
+          payload &&
+          payload.classId === classItem.id &&
+          payload.daysRemaining === daysRemaining
+        );
       });
 
       if (existingAlert) {
@@ -207,7 +208,7 @@ export class ClassNotificationService {
         return;
       }
 
-      // Tính severity dựa trên số ngày còn lại
+      // Tính severity
       let severity = AlertSeverity.MEDIUM;
       if (daysRemaining <= 3) {
         severity = AlertSeverity.HIGH;
@@ -252,14 +253,19 @@ export class ClassNotificationService {
       });
 
       // Gửi email cho center owners
-      await this.sendClassStartingEmail(classItem, daysRemaining, startDateStr, scheduleText);
+      await this.sendClassStartingEmail(
+        classItem,
+        daysRemaining,
+        startDateStr,
+        scheduleText,
+      );
 
       this.logger.log(
         `✅ Đã tạo alert cho lớp ${classItem.name} (${daysRemaining} ngày)`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Lỗi khi tạo alert cho lớp ${classItem.name}:`,
+        `Lỗi khi tạo alert cho lớp ${classItem.name}:`,
         error,
       );
     }
@@ -292,7 +298,7 @@ export class ClassNotificationService {
 
       if (existingAlert) {
         this.logger.log(
-          `⚠️ Alert đã tồn tại cho lớp ${classItem.name} (${daysRemaining} ngày)`,
+          `Alert đã tồn tại cho lớp ${classItem.name} (${daysRemaining} ngày)`,
         );
         return;
       }
@@ -345,11 +351,11 @@ export class ClassNotificationService {
       await this.sendClassEndingEmail(classItem, daysRemaining, endDateStr, scheduleText);
 
       this.logger.log(
-        `✅ Đã tạo alert cho lớp ${classItem.name} (${daysRemaining} ngày)`,
+        `Đã tạo alert cho lớp ${classItem.name} (${daysRemaining} ngày)`,
       );
     } catch (error) {
       this.logger.error(
-        `❌ Lỗi khi tạo alert cho lớp ${classItem.name}:`,
+        `Lỗi khi tạo alert cho lớp ${classItem.name}:`,
         error,
       );
     }
@@ -367,15 +373,15 @@ export class ClassNotificationService {
     const warnings = [];
     
     if (!classItem.teacher) {
-      warnings.push('⚠️ Chưa phân công giáo viên');
+      warnings.push('Chưa phân công giáo viên');
     }
     
     if (!classItem.room) {
-      warnings.push('⚠️ Chưa phân công phòng học');
+      warnings.push('Chưa phân công phòng học');
     }
     
     if (classItem._count.enrollments === 0) {
-      warnings.push('⚠️ Chưa có học sinh đăng ký');
+      warnings.push('Chưa có học sinh đăng ký');
     }
 
     let message = `Lớp "${classItem.name}" (${classItem.subject?.name || 'N/A'}) sẽ bắt đầu sau ${daysRemaining} ngày (${startDate}).\n\n`;
@@ -388,7 +394,7 @@ export class ClassNotificationService {
     message += `- Học sinh: ${classItem._count.enrollments}/${classItem.maxStudents || 'N/A'}\n\n`;
 
     if (warnings.length > 0) {
-      message += `🔔 Cần chuẩn bị:\n${warnings.join('\n')}\n`;
+      message += `Cần chuẩn bị:\n${warnings.join('\n')}\n`;
     }
 
     return message;
@@ -404,14 +410,14 @@ export class ClassNotificationService {
     scheduleText: string,
   ): string {
     let message = `Lớp "${classItem.name}" (${classItem.subject?.name || 'N/A'}) sẽ kết thúc sau ${daysRemaining} ngày (${endDate}).\n\n`;
-    message += `📋 Thông tin lớp:\n`;
+    message += `Thông tin lớp:\n`;
     message += `- Môn học: ${classItem.subject?.name || 'N/A'}\n`;
     message += `- Khối: ${classItem.grade?.name || 'N/A'}\n`;
     message += `- Giáo viên: ${classItem.teacher?.user?.fullName || 'Chưa phân công'}\n`;
     message += `- Phòng học: ${classItem.room?.name || 'Chưa phân công'}\n`;
     message += `- Lịch học: ${scheduleText || 'Chưa cập nhật'}\n`;
     message += `- Học sinh: ${classItem._count.enrollments}/${classItem.maxStudents || 'N/A'}\n\n`;
-    message += `🔔 Cần chuẩn bị:\n`;
+    message += `Cần chuẩn bị:\n`;
     message += `- Chuẩn bị đánh giá cuối khóa\n`;
     message += `- Chuẩn bị chứng chỉ/giấy chứng nhận (nếu có)\n`;
     message += `- Thông báo cho phụ huynh về việc kết thúc lớp\n`;
@@ -464,7 +470,7 @@ export class ClassNotificationService {
       });
 
       if (centerOwners.length === 0) {
-        this.logger.warn('⚠️ Không tìm thấy center owner nào để gửi email');
+        this.logger.warn('Không tìm thấy center owner nào để gửi email');
         return;
       }
 
@@ -492,10 +498,10 @@ export class ClassNotificationService {
       }
 
       this.logger.log(
-        `📧 Đã gửi email thông báo cho ${centerOwners.length} center owner(s)`,
+        `Đã gửi email thông báo cho ${centerOwners.length} center owner(s)`,
       );
     } catch (error) {
-      this.logger.error('❌ Lỗi khi gửi email thông báo:', error);
+      this.logger.error('Lỗi khi gửi email thông báo:', error);
     }
   }
 
@@ -518,7 +524,7 @@ export class ClassNotificationService {
       });
 
       if (centerOwners.length === 0) {
-        this.logger.warn('⚠️ Không tìm thấy center owner nào để gửi email');
+        this.logger.warn('Không tìm thấy center owner nào để gửi email');
         return;
       }
 
@@ -543,10 +549,10 @@ export class ClassNotificationService {
       }
 
       this.logger.log(
-        `📧 Đã gửi email thông báo cho ${centerOwners.length} center owner(s)`,
+        `Đã gửi email thông báo cho ${centerOwners.length} center owner(s)`,
       );
     } catch (error) {
-      this.logger.error('❌ Lỗi khi gửi email thông báo:', error);
+      this.logger.error('Lỗi khi gửi email thông báo:', error);
     }
   }
 }

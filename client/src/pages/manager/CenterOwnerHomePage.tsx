@@ -12,6 +12,8 @@ import {
   Calendar,
   MapPin,
   Users,
+  FileText,
+  ArrowRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +22,7 @@ import {
   Alert,
 } from '../../services/center-owner/alerts/alert.service';
 import { centerOwnerScheduleService } from '../../services/center-owner/center-schedule/schedule.service';
+import { classService } from '../../services/center-owner/class-management/class.service';
 import { useToast } from '../../hooks/use-toast';
 
 interface TeacherInSession {
@@ -86,6 +89,22 @@ export const CenterOwnerHomePage = () => {
   });
 
   const teacherSessions: TeacherInSession[] = teacherSessionsData?.data || [];
+
+  // Get classes with students without contract
+  const {
+    data: classesWithoutContractData,
+    isLoading: isClassesLoading,
+  } = useQuery({
+    queryKey: ['classes-without-contract'],
+    queryFn: () => classService.getClassesWithoutContract(100),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+  console.log(classesWithoutContractData);
+  
+  const classesWithoutContract: any[] = Array.isArray(classesWithoutContractData?.data) 
+    ? classesWithoutContractData.data 
+    : [];
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => alertService.markAsRead(id),
@@ -237,7 +256,7 @@ export const CenterOwnerHomePage = () => {
 
   return (
     <div className="p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
             Trung tâm cập nhật thông báo tự động mỗi 5 giây
@@ -252,94 +271,177 @@ export const CenterOwnerHomePage = () => {
           </div>
         </div>
 
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-0">
-            <div className="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-              <div> 
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-blue-500" />
-                  Bảng thông báo
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Chỉ hiển thị thông báo chưa đọc
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {unreadCount > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
-                  >
-                    Đánh dấu tất cả đã đọc
-                  </Button>
-                )}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-primary hover:text-primary/80"
-                  onClick={() => navigate('/center-qn/alerts')}
-                >
-                  Xem chi tiết
-                </Button>
-              </div>
-            </div>
-
-            {displayedAlerts.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">
-                  Không có thông báo chưa đọc
-                </p>
-              </div>
-            ) : (
-              <div className="p-6 space-y-3 max-h-[520px] overflow-y-auto">
-                {displayedAlerts.map((alert: Alert) => {
-                  const style = getAlertStyle(alert.severity, alert.alertType);
-                  const Icon = style.icon;
-                  const isUnread = !alert.isRead;
-
-                  return (
-                    <div
-                      key={alert.id}
-                      onClick={() => handleAlertClick(alert)}
-                      className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                        isUnread ? 'bg-gray-50 dark:bg-gray-900/40' : ''
-                      }`}
+        {/* Alerts and Classes without contract - Side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bảng thông báo */}
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-0">
+              <div className="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div> 
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-500" />
+                    Bảng thông báo
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Chỉ hiển thị thông báo chưa đọc
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => markAllAsReadMutation.mutate()}
+                      disabled={markAllAsReadMutation.isPending}
                     >
-                      <div className={`p-2 rounded-lg ${style.bgColor}`}>
-                        <Icon className={`w-4 h-4 ${style.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h4 className="font-medium text-sm line-clamp-1">
-                            {alert.title}
-                          </h4>
-                          <Badge
-                            variant={style.badgeVariant}
-                            className="text-xs shrink-0 capitalize"
-                          >
-                            {alert.alertType.replace(/_/g, ' ')}
-                          </Badge>
-                        </div>
-
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
-                          {alert.message}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatRelativeTime(alert.triggeredAt)}</span>
-                          {isUnread && <span className="ml-1 font-bold">•</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      Đánh dấu tất cả đã đọc
+                    </Button>
+                  )}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-primary hover:text-primary/80"
+                    onClick={() => navigate('/center-qn/alerts')}
+                  >
+                    Xem chi tiết
+                  </Button>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {displayedAlerts.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">
+                    Không có thông báo chưa đọc
+                  </p>
+                </div>
+              ) : (
+                <div className="p-6 space-y-3 max-h-[520px] overflow-y-auto">
+                  {displayedAlerts.map((alert: Alert) => {
+                    const style = getAlertStyle(alert.severity, alert.alertType);
+                    const Icon = style.icon;
+                    const isUnread = !alert.isRead;
+
+                    return (
+                      <div
+                        key={alert.id}
+                        onClick={() => handleAlertClick(alert)}
+                        className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
+                          isUnread ? 'bg-gray-50 dark:bg-gray-900/40' : ''
+                        }`}
+                      >
+                        <div className={`p-2 rounded-lg ${style.bgColor}`}>
+                          <Icon className={`w-4 h-4 ${style.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h4 className="font-medium text-sm line-clamp-1">
+                              {alert.title}
+                            </h4>
+                            <Badge
+                              variant={style.badgeVariant}
+                              className="text-xs shrink-0 capitalize"
+                            >
+                              {alert.alertType.replace(/_/g, ' ')}
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
+                            {alert.message}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatRelativeTime(alert.triggeredAt)}</span>
+                            {isUnread && <span className="ml-1 font-bold">•</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Classes with students without contract */}
+          {classesWithoutContract.length > 0 ? (
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-orange-500" />
+                      Lớp có học sinh chưa có cam kết
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Cần xử lý ngay để đảm bảo chất lượng
+                    </p>
+                  </div>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-primary hover:text-primary/80"
+                    onClick={() => navigate('/center-qn/classes')}
+                  >
+                    Xem tất cả
+                  </Button>
+                </div>
+
+                {isClassesLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((item) => (
+                      <div
+                        key={item}
+                        className="h-20 rounded-lg bg-muted animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    {classesWithoutContract.map((classItem: any) => (
+                      <div
+                        key={classItem.id}
+                        onClick={() =>
+                          navigate(`/center-qn/classes/${classItem.id}#students`)
+                        }
+                        className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-sm truncate">
+                              {classItem.name}
+                            </h4>
+                            {classItem.classCode && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {classItem.classCode}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            {classItem.subject && (
+                              <span>{classItem.subject}</span>
+                            )}
+                            <span>•</span>
+                            <span>
+                              {classItem.totalStudents} học sinh
+                            </span>
+                            <span>•</span>
+                            <span className="text-orange-600 font-medium">
+                              {classItem.studentsWithoutContract} chưa có cam kết
+                            </span>
+                          </div>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0 ml-2" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div></div>
+          )}
+        </div>
 
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6 space-y-4">
