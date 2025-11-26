@@ -56,6 +56,17 @@ export default function SessionDetail() {
   const sessionData = sessionDetailResponse as any;
   const attendanceData = attendanceResponse as any;
 
+  // Log để kiểm tra dữ liệu
+  console.log('=== SESSION DETAIL DATA ===');
+  console.log('sessionData:', sessionData);
+  console.log('sessionData.teacher:', sessionData?.teacher);
+  console.log('sessionData.substituteTeacher:', sessionData?.substituteTeacher);
+  console.log('sessionData.isSubstitute:', sessionData?.isSubstitute);
+  console.log('sessionData.substituteStartDate:', sessionData?.substituteStartDate);
+  console.log('sessionData.substituteEndDate:', sessionData?.substituteEndDate);
+  console.log('sessionData.substituteTeacherId:', sessionData?.substituteTeacherId);
+  console.log('==========================');
+
   // Map attendance data to students (CHỈ CÓ 3 TRẠNG THÁI: present, absent, excused)
   const students = attendanceData?.map((attendance: any) => ({
     id: attendance.studentId || attendance.id,
@@ -176,29 +187,112 @@ export default function SessionDetail() {
                 </div>
 
                 {/* Giáo viên */}
-                {sessionData.teacher && (
+                {(sessionData.teacher || sessionData.substituteTeacher) && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
                       <User className="w-4 h-4" />
                       Giáo viên phụ trách
                     </h3>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={sessionData.teacher.user?.avatar} />
-                        <AvatarFallback className="bg-blue-100 text-blue-600">
-                          {sessionData.teacher.user?.fullName
-                            ?.split(' ')
-                            .map((n: string) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{sessionData.teacher.user?.fullName}</p>
-                        <p className="text-sm text-gray-500">{sessionData.teacher.user?.email}</p>
+                    {sessionData.isSubstitute && sessionData.substituteTeacher ? (
+                      <div className="space-y-3">
+                        {/* Giáo viên dạy thay */}
+                        <div>
+                          <div className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-12 h-12">
+                                <AvatarImage src={sessionData.substituteTeacher?.user?.avatar || sessionData.substituteTeacher?.avatar} />
+                                <AvatarFallback className="bg-orange-100 text-orange-600">
+                                  {(typeof sessionData.substituteTeacher === 'string' 
+                                    ? sessionData.substituteTeacher 
+                                    : sessionData.substituteTeacher?.user?.fullName || sessionData.substituteTeacher?.fullName)
+                                    ?.split(' ')
+                                    .map((n: string) => n[0])
+                                    .join('')
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-orange-600">
+                                    {typeof sessionData.substituteTeacher === 'string' 
+                                      ? sessionData.substituteTeacher 
+                                      : sessionData.substituteTeacher?.user?.fullName || sessionData.substituteTeacher?.fullName}
+                                  </p>
+                                  <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 bg-orange-50">
+                                    Dạy thay
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-500">
+                                  {typeof sessionData.substituteTeacher === 'object' 
+                                    ? (sessionData.substituteTeacher?.user?.email || sessionData.substituteTeacher?.email || '')
+                                    : ''}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Giáo viên chính */}
+                        {sessionData.originalTeacher && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-500 mb-2">Giáo viên chính:</h4>
+                            <div className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-12 h-12">
+                                  <AvatarImage src={sessionData.originalTeacher.user?.avatar} />
+                                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                                    {sessionData.originalTeacher.user?.fullName
+                                      ?.split(' ')
+                                      .map((n: string) => n[0])
+                                      .join('')
+                                      .slice(0, 2)
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-700 dark:text-gray-300">
+                                    {sessionData.originalTeacher.user?.fullName}
+                                  </p>
+                                  <p className="text-sm text-gray-500">{sessionData.originalTeacher.user?.email}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {/* Thời gian dạy thay */}
+                        {(sessionData.substituteStartDate || sessionData.substituteEndDate) && (
+                          <div className="text-xs text-orange-600 font-medium">
+                            Thời gian dạy thay: {
+                              sessionData.substituteStartDate 
+                                ? format(new Date(sessionData.substituteStartDate), 'dd/MM/yyyy')
+                                : '—'
+                            } - {
+                              sessionData.substituteEndDate 
+                                ? format(new Date(sessionData.substituteEndDate), 'dd/MM/yyyy')
+                                : '—'
+                            }
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={sessionData.teacher.user?.avatar} />
+                          <AvatarFallback className="bg-blue-100 text-blue-600">
+                            {sessionData.teacher.user?.fullName
+                              ?.split(' ')
+                              .map((n: string) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{sessionData.teacher.user?.fullName}</p>
+                          <p className="text-sm text-gray-500">{sessionData.teacher.user?.email}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -211,7 +305,99 @@ export default function SessionDetail() {
           <Card>
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4">Thông tin giáo viên</h3>
-              {sessionData.teacher ? (
+              {sessionData.isSubstitute && sessionData.substituteTeacher ? (
+                <div className="space-y-6">
+                  {/* Giáo viên dạy thay */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Giáo viên phụ trách</h4>
+                    <div className="p-4 bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="w-16 h-16">
+                          <AvatarImage src={
+                            typeof sessionData.substituteTeacher === 'object' 
+                              ? (sessionData.substituteTeacher?.user?.avatar || sessionData.substituteTeacher?.avatar)
+                              : null
+                          } />
+                          <AvatarFallback className="bg-orange-100 text-orange-600 text-lg">
+                            {(typeof sessionData.substituteTeacher === 'string' 
+                              ? sessionData.substituteTeacher 
+                              : sessionData.substituteTeacher?.user?.fullName || sessionData.substituteTeacher?.fullName)
+                              ?.split(' ')
+                              .map((n: string) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-xl font-semibold text-orange-600">
+                              {typeof sessionData.substituteTeacher === 'string' 
+                                ? sessionData.substituteTeacher 
+                                : sessionData.substituteTeacher?.user?.fullName || sessionData.substituteTeacher?.fullName}
+                            </p>
+                            <Badge variant="outline" className="border-orange-500 text-orange-700 bg-orange-50">
+                              Dạy thay
+                            </Badge>
+                          </div>
+                          <p className="text-gray-500">
+                            {typeof sessionData.substituteTeacher === 'object' 
+                              ? (sessionData.substituteTeacher?.user?.email || sessionData.substituteTeacher?.email || '')
+                              : ''}
+                          </p>
+                          {typeof sessionData.substituteTeacher === 'object' && sessionData.substituteTeacher?.user?.phoneNumber && (
+                            <p className="text-sm text-gray-500">{sessionData.substituteTeacher.user.phoneNumber}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Giáo viên chính */}
+                  {sessionData.originalTeacher && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">Giáo viên chính</h4>
+                      <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="w-16 h-16">
+                            <AvatarImage src={sessionData.originalTeacher.user?.avatar} />
+                            <AvatarFallback className="bg-blue-100 text-blue-600 text-lg">
+                              {sessionData.originalTeacher.user?.fullName
+                                ?.split(' ')
+                                .map((n: string) => n[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xl font-semibold text-gray-700 dark:text-gray-300">
+                              {sessionData.originalTeacher.user?.fullName}
+                            </p>
+                            <p className="text-gray-500">{sessionData.originalTeacher.user?.email}</p>
+                            {sessionData.originalTeacher.user?.phoneNumber && (
+                              <p className="text-sm text-gray-500">{sessionData.originalTeacher.user.phoneNumber}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Thời gian dạy thay */}
+                  {(sessionData.substituteStartDate || sessionData.substituteEndDate) && (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <h4 className="text-sm font-medium text-orange-600 mb-2">Thời gian dạy thay</h4>
+                      <p className="text-sm text-orange-700">
+                        Từ: {sessionData.substituteStartDate 
+                          ? format(new Date(sessionData.substituteStartDate), 'dd/MM/yyyy')
+                          : '—'}
+                        {' '}đến: {sessionData.substituteEndDate 
+                          ? format(new Date(sessionData.substituteEndDate), 'dd/MM/yyyy')
+                          : '—'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : sessionData.teacher ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="w-16 h-16">
@@ -228,7 +414,9 @@ export default function SessionDetail() {
                     <div>
                       <p className="text-xl font-semibold">{sessionData.teacher.user?.fullName}</p>
                       <p className="text-gray-500">{sessionData.teacher.user?.email}</p>
-                      <p className="text-sm text-gray-500">{sessionData.teacher.user?.phoneNumber}</p>
+                      {sessionData.teacher.user?.phoneNumber && (
+                        <p className="text-sm text-gray-500">{sessionData.teacher.user.phoneNumber}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -246,7 +434,7 @@ export default function SessionDetail() {
             </CardContent>
           </Card>
         ) : (
-          <StudentsTab students={students} />
+          <StudentsTab students={students} sessionId={sessionId} />
         );
       default:
         return (

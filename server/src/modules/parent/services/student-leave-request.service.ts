@@ -381,13 +381,13 @@ export class StudentLeaveRequestService {
         sessionId: { in: dto.sessionIds },
         leaveRequest: {
           requestType: 'student_leave',
-          studentId: dto.studentId,
+        studentId: dto.studentId,
           status: { in: ['pending', 'approved'] },
-        },
+      },
       },
       include: {
         session: {
-          select: {
+      select: {
             sessionDate: true,
             startTime: true,
             endTime: true,
@@ -586,7 +586,7 @@ export class StudentLeaveRequestService {
         },
         include: {
           session: {
-            select: {
+        select: {
               sessionDate: true,
               startTime: true,
               endTime: true,
@@ -861,13 +861,11 @@ export class StudentLeaveRequestService {
       );
     }
 
-    // Get enrolled classes
+    // Get enrolled classes - chỉ lấy enrollment đang học hoặc đã được duyệt
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
         studentId,
-        // Tạm thời bỏ điều kiện status để test
-        // TODO: Uncomment dòng này khi đã có data đúng
-        // status: 'approved',
+        status: { in: ['studying', 'approved'] }, // Chỉ lấy enrollment đang học hoặc đã duyệt
       },
     });
 
@@ -877,10 +875,11 @@ export class StudentLeaveRequestService {
 
     const classIds = enrollments.map((e) => e.classId);
 
+    // Chỉ lấy lớp có trạng thái đang hoạt động (active)
     const classes = await this.prisma.class.findMany({
       where: {
         id: { in: classIds },
-        status: 'active', // Chỉ lấy lớp có trạng thái active
+        status: 'active', // Chỉ hiển thị lớp đang hoạt động
       },
       include: {
         subject: true,

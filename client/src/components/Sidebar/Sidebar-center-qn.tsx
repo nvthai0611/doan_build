@@ -42,7 +42,8 @@ import {
     FolderOpen,
     CheckSquare,
     School,
-    Cog
+    Cog,
+    History
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -84,7 +85,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       ],
     },
     {
-      title: 'Khách hàng',
+      title: 'Khách hàng chưa đăng ký',
       icon: Users,  
       href: '/center-qn/customers',
       // children: [
@@ -170,11 +171,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           href: '/finance',
           children: [
             { title: 'Hóa đơn giáo viên', href: '/center-qn/payroll-teacher' },
-            { title: 'Định nghĩa học phí', href: '/finance/tuition' },
-            { title: 'Phiếu thu - chi', href: '/finance/receipts' },
-            { title: 'Thanh toán online', href: '/finance/online-payment' },
-            { title: 'Báo cáo thu chi', href: '/finance/reports' },
-            { title: 'Nợ học phí', href: '/finance/debts' },
+            // { title: 'Định nghĩa học phí', href: '/finance/tuition' },
+            // { title: 'Phiếu thu - chi', href: '/finance/receipts' },
+            // { title: 'Thanh toán online', href: '/finance/online-payment' },
+            // { title: 'Báo cáo thu chi', href: '/finance/reports' },
+            // { title: 'Nợ học phí', href: '/finance/debts' },
             { title: 'Học bổng & Giảm phí', href: '/finance/scholarships' },
           ],
         },
@@ -209,7 +210,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         {
           title: 'Quản lý người dùng',
           icon: UserCog,
-          href: '/users',
+          href: '/center-qn/user-management',
         },
         {
           title: 'Feedback Phụ Huynh',
@@ -225,6 +226,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           title: 'Tác Vụ Định Kỳ',
           icon: Cog,
           href: '/center-qn/trigger-cronjobs',
+        },
+        {
+          title: 'Lịch sử hệ thống',
+          icon: History,
+          href: '/center-qn/audit-log',
         },
       ],
     },
@@ -314,6 +320,11 @@ const teacherMenuItems = [
       { title: 'Báo cáo sự cố mới', href: '/teacher/incidents/report' },
       { title: 'Quản lý báo cáo', href: '/teacher/incidents/manage' },
     ],
+  },
+  {
+    title: 'Quản lý lương',
+    icon: CircleDollarSign,
+    href: '/teacher/payroll-management',
   },
   {
     title: 'Quản lý hợp đồng',

@@ -71,6 +71,10 @@ import { TriggerManagementService } from './services/trigger-management.service'
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 import { BullModule } from '@nestjs/bull';
+import { AuditLogController } from './controllers/audit-log.controller';
+import { AuditLogService } from './services/audit-log.service';
+import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
+import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 
 @Module({
   imports: [
@@ -78,12 +82,18 @@ import { BullModule } from '@nestjs/bull';
     BullModule.registerQueue({
       name: 'payroll-notification', // ✅ Register queue ở đây
     }),
+    BullModule.registerQueue({
+      name: 'payroll-recalculation', // ✅ Register queue ở đây
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-payment-notification', // ✅ Register queue ở đây
+    }),
     RouterModule.register([
       {
-        path: "admin-center", 
+        path: "admin-center",
         module: AdminCenterModule,
       },
-      ]),
+    ]),
     HttpModule, // HTTP client for AI API calls
     ConfigModule, // Config service for API keys
     SharedModule, //sử dụng email services
@@ -116,7 +126,8 @@ import { BullModule } from '@nestjs/bull';
     PayrollTeacherController,
     CenterInfoController,
     SchoolManagementController,
-    JobTriggerController
+    JobTriggerController,
+    AuditLogController
   ],
   providers: [
     PrismaService,
@@ -155,9 +166,13 @@ import { BullModule } from '@nestjs/bull';
     PayrollCronService,
     TriggerManagementService,
     FeeReminderService,
-    EmailServiceNotificationBill
+    EmailServiceNotificationBill,
+    AuditLogService,
+    ChangeStatusSessionService,
+    EmailNotificationPayrollService
+
   ],
-  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
 
 })
 //check

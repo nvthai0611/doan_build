@@ -585,7 +585,7 @@ export const ChangeStatusDialog = ({
         return;
       }
 
-      // Đảm bảo status là string value của enum (ví dụ: 'active', 'ready', etc.)
+      // Đảm bảo status là string value của enum (ví dụ: 'active', 'ready',...)
       const statusValue =
         typeof statusToUse === 'string' ? statusToUse : String(statusToUse);
 
@@ -693,9 +693,14 @@ export const ChangeStatusDialog = ({
         }
       : baseValidationMessage;
 
+  type ValidationMessageType = 
+    | { type: 'error' | 'warning' | 'info'; message: string }
+    | { type: 'error' | 'warning' | 'info'; message: string; canProceed: boolean }
+    | null;
+
   const hasCanProceedFlag = (
-    message: typeof validationMessage,
-  ): message is typeof validationMessage & { canProceed: boolean } =>
+    message: ValidationMessageType,
+  ): message is { type: 'error' | 'warning' | 'info'; message: string; canProceed: boolean } =>
     Boolean(message && 'canProceed' in message);
 
   const handleConfirmWarning = async () => {

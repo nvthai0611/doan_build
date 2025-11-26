@@ -29,7 +29,6 @@ import StudentHomepage from "../pages/Student/StudentHomepage";
 import StudentSchedule from "../pages/Student/MySchedule/StudentSchedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
-// import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import IncidentReportPage from "../pages/teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/teacher/IncidentReport/IncidentManagent";
@@ -78,6 +77,8 @@ import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
 import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
 import TeacherOverview from "../pages/teacher/TeacherOverview/TeacherOverview";
 import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
+import UserManagement from "../pages/manager/User-management/UserManagement";
+import AuditLog from "../pages/manager/Audit-log/AuditLog";
 
 export const privateRoutes = (
   <>
@@ -132,6 +133,8 @@ export const privateRoutes = (
         <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
         <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
         <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
+        <Route path="user-management" element={<UserManagement />} />
+        <Route path="audit-log" element={<AuditLog />} />
       </Route>
 
       {/* Giáo viên */}

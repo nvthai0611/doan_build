@@ -19,9 +19,7 @@ export type {
 export { studentProfileService } from './profile/profile.service'
 export type {
   StudentProfile,
-  StudentParentLink,
-  UpdateProfileRequest,
-  ChangePasswordRequest
+  StudentParentLink
 } from './profile/profile.types'
 
 // Grades / Transcript

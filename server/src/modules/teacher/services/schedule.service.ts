@@ -58,7 +58,9 @@ export class ScheduleService {
         orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       });
 
-      return schedules.map(session => ({
+      const filteredSchedules = schedules.filter(session => session.class.status !== "deleted");
+
+      return filteredSchedules.map(session => ({
         id: session.id,
         date: this.formatDateYYYYMMDD(session.sessionDate),
         startTime: session.startTime,
@@ -130,7 +132,9 @@ export class ScheduleService {
         orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       });
 
-      return schedules.map((session) => ({
+      const filteredSchedules = schedules.filter(session => session.class.status !== "deleted");
+
+      return filteredSchedules.map((session) => ({
         id: session.id,
         date: this.formatDateYYYYMMDD(session.sessionDate),
         startTime: session.startTime,

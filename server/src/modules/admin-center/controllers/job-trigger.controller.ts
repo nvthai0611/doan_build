@@ -6,6 +6,7 @@ import { PayrollCronService } from '../../cronjob/service/payroll-teacherv2.serv
 import { TriggerManagementService } from '../services/trigger-management.service';
 import { CronJobFilterDto, CronJobHistoryDto, CronJobStatsDto } from '../dto/cron-job-filter.dto';
 import { FeeReminderService } from '../../cronjob/service/send-email-bill.service';
+import { ChangeStatusSessionService } from '../../cronjob/service/change-status-session.service';
 // import { AdminGuard } from 'src_auth/guards/admin.guard'; // (RẤT QUAN TRỌNG)
 
 @ApiTags('Admin Center - Job Triggers')
@@ -20,6 +21,7 @@ export class JobTriggerController {
     private readonly feeReminder: FeeReminderService,
     private readonly prisma: PrismaService,
     private readonly triggerManagement: TriggerManagementService,
+    private readonly changeStatusSession: ChangeStatusSessionService
   ) {}
 
   /**
@@ -98,6 +100,18 @@ export class JobTriggerController {
     
     return { message: 'Quy trình gửi email nhắc hạn đóng học phí đã bắt đầu.' };
   }
+
+  @Post('change-status-session')
+  @ApiOperation({ summary: 'Trigger change status session job manually' })
+  async triggerChangeStatusSession() {
+    this.logger.warn('Kích hoạt chuyển trạng thái buổi học bằng tay!');
+    
+    await this.checkIfJobRunning('change-status-session');
+    
+    this.changeStatusSession.manualChangeStatusSession();
+    return { message: 'Quy trình chuyển trạng thái buổi học đã bắt đầu.' };
+  }
+
 
   /**
    * List all cron jobs with filters

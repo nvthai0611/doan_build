@@ -24,9 +24,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { 
-  Loader2, 
-  Download, 
+import {
+  Loader2,
+  Download,
   Calendar,
   Filter,
   X,
@@ -74,7 +74,7 @@ export default function BackPayDetails() {
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  
+
   // State cho Modal
   const [selectedItem, setSelectedItem] = useState<BackPayItem | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -93,12 +93,11 @@ export default function BackPayDetails() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
   })
-
   // Lấy dữ liệu từ response (Cấu trúc phẳng mới)
-  const payroll = response?.data?.payroll
-  const allBackPayDetails: BackPayItem[] = response?.data?.backPayDetails || []
-  const summary = response?.data?.backPaySummary
-  
+  const payroll = response?.payroll
+  const allBackPayDetails: BackPayItem[] = response?.backPayDetails || []
+  const summary = response?.backPaySummary
+
   const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
   const formatDate = (dateString?: string) => {
@@ -155,7 +154,7 @@ export default function BackPayDetails() {
 
   // Tổng tiền của danh sách đang hiển thị (đã filter)
   const currentBackPayTotal = useMemo(() => {
-      return filteredRows.reduce((sum, item) => sum + item.payoutAmount, 0)
+    return filteredRows.reduce((sum, item) => sum + item.payoutAmount, 0)
   }, [filteredRows])
 
   const handleExport = () => {
@@ -202,10 +201,10 @@ export default function BackPayDetails() {
       width: '120px',
       render: (item) => (
         <div className="flex flex-col">
-            <span className="font-medium text-gray-900">
+          <span className="font-medium text-gray-900">
             {new Date(item.sessionDate).toLocaleDateString('vi-VN')}
-            </span>
-            <span className="text-[11px] text-gray-500">Ngày thu tiền</span>
+          </span>
+          <span className="text-[11px] text-gray-500">Ngày thu tiền</span>
         </div>
       )
     },
@@ -215,25 +214,25 @@ export default function BackPayDetails() {
       width: '250px',
       render: (item) => (
         <div className="flex flex-col gap-1.5">
-            {item.class ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                    <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{item.class.name}</span>
-                    <span className="text-xs text-gray-400 font-normal">({item.class.code})</span>
-                </div>
-            ) : (
-                <span className="text-sm text-gray-400 italic">Lớp đã bị xóa</span>
-            )}
-            
-            {item.student ? (
-                <div className="flex items-center gap-2 text-sm text-gray-600 ml-1">
-                    <User className="w-3.5 h-3.5 text-gray-400" />
-                    {item.student.name}
-                    <span className="text-xs text-gray-400">({item.student.code})</span>
-                </div>
-            ) : (
-                <span className="text-sm text-gray-400 italic ml-1">Học sinh không xác định</span>
-            )}
+          {item.class ? (
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+              <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+              <span>{item.class.name}</span>
+              <span className="text-xs text-gray-400 font-normal">({item.class.code})</span>
+            </div>
+          ) : (
+            <span className="text-sm text-gray-400 italic">Lớp đã bị xóa</span>
+          )}
+
+          {item.student ? (
+            <div className="flex items-center gap-2 text-sm text-gray-600 ml-1">
+              <User className="w-3.5 h-3.5 text-gray-400" />
+              {item.student.name}
+              <span className="text-xs text-gray-400">({item.student.code})</span>
+            </div>
+          ) : (
+            <span className="text-sm text-gray-400 italic ml-1">Học sinh không xác định</span>
+          )}
         </div>
       )
     },
@@ -247,11 +246,11 @@ export default function BackPayDetails() {
             {item.description}
           </p>
           {item.source?.monthDebt && (
-             <div className="flex items-center gap-1 mt-1">
-               <Badge variant="outline" className="text-[10px] px-1 py-0 border-red-200 text-red-600 bg-red-50">
-                 Kỳ nợ: {new Date(item.source.monthDebt).toLocaleDateString('vi-VN', {month: 'long', year: 'numeric'})}
-               </Badge>
-             </div>
+            <div className="flex items-center gap-1 mt-1">
+              <Badge variant="outline" className="text-[10px] px-1 py-0 border-red-200 text-red-600 bg-red-50">
+                Kỳ nợ: {new Date(item.source.monthDebt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+              </Badge>
+            </div>
           )}
         </div>
       )
@@ -262,10 +261,10 @@ export default function BackPayDetails() {
       width: '140px',
       render: (item) => (
         <div className="flex flex-col items-end">
-            <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600">
             {fmt(item.revenueBase)} đ
-            </span>
-            <span className="text-[10px] text-gray-400">Hóa đơn gốc</span>
+          </span>
+          <span className="text-[10px] text-gray-400">Hóa đơn gốc</span>
         </div>
       )
     },
@@ -275,9 +274,9 @@ export default function BackPayDetails() {
       width: '80px',
       render: (item) => (
         <div className="flex justify-center">
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+          <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
             {(Number(item.payoutRate) * 100).toFixed(0)}%
-            </Badge>
+          </Badge>
         </div>
       )
     },
@@ -287,9 +286,9 @@ export default function BackPayDetails() {
       width: '140px',
       render: (item) => (
         <div className="flex flex-col items-end">
-            <span className="font-bold text-green-600">
+          <span className="font-bold text-green-600">
             +{fmt(item.payoutAmount)} đ
-            </span>
+          </span>
         </div>
       )
     },
@@ -299,7 +298,7 @@ export default function BackPayDetails() {
       width: '50px',
       render: (item) => (
         <Button variant="ghost" size="sm" onClick={() => handleViewDetail(item)}>
-            <Eye className="w-4 h-4 text-gray-500" />
+          <Eye className="w-4 h-4 text-gray-500" />
         </Button>
       )
     }
@@ -330,7 +329,7 @@ export default function BackPayDetails() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (Truy lĩnh nợ cũ)</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Chi tiết lương (buổi học cũ)</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Kỳ lương hiện tại: <span className="font-medium">{periodLabel}</span> • Giáo viên: {response?.data?.teacher?.fullName || "-"}
           </p>
@@ -364,7 +363,7 @@ export default function BackPayDetails() {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="text-foreground font-medium">
-              Chi tiết truy lĩnh
+              Chi tiết buổi học cũ
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
@@ -375,7 +374,7 @@ export default function BackPayDetails() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-yellow-800 text-lg">
             <Wallet className="w-5 h-5" />
-            Tổng quan truy lĩnh
+            Tổng quan buổi học cũ
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -384,17 +383,17 @@ export default function BackPayDetails() {
               <p className="text-sm text-gray-500 mb-1">Số khoản nợ thu được</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-gray-900">
-                    {summary?.count || allBackPayDetails.length}
+                  {summary?.count || allBackPayDetails.length}
                 </span>
                 <span className="text-sm text-gray-500">khoản</span>
               </div>
             </div>
-            
+
             <div className="bg-white p-4 rounded-xl border border-yellow-100 shadow-sm">
               <p className="text-sm text-gray-500 mb-1">Tổng tiền nhận thêm</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-green-600">
-                    +{fmt(Number(summary?.totalBackPayAmount || 0))}
+                  +{fmt(Number(summary?.totalBackPayAmount || 0))}
                 </span>
                 <span className="text-sm text-gray-500">VNĐ</span>
               </div>
@@ -405,10 +404,10 @@ export default function BackPayDetails() {
               <div className="flex items-center gap-2 h-[36px]">
                 <Clock className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-medium text-gray-900">
-                    {summary?.processedAt
+                  {summary?.processedAt
                     ? new Date(summary.processedAt).toLocaleDateString('vi-VN', {
-                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })
+                      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })
                     : 'N/A'}
                 </span>
               </div>
@@ -540,7 +539,7 @@ export default function BackPayDetails() {
       </Card>
 
       {/* Detail Modal */}
-      <BackPayDetailModal 
+      <BackPayDetailModal
         data={selectedItem}
         open={showModal}
         onClose={() => setShowModal(false)}

@@ -35,7 +35,7 @@ interface BackPayDetailModalProps {
 
 export default function BackPayDetailModal({ data, open, onClose }: BackPayDetailModalProps) {
   if (!data) return null
-
+  
   const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
   const formatDate = (dateString?: string) => {
@@ -57,7 +57,7 @@ export default function BackPayDetailModal({ data, open, onClose }: BackPayDetai
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-600" />
-            Chi tiết khoản truy lĩnh
+            Chi tiết khoản lương ở các buổi học cũ
           </DialogTitle>
           <DialogDescription>
             Thông tin chi tiết về nguồn gốc và cách tính khoản thanh toán này.

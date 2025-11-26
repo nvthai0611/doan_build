@@ -78,3 +78,21 @@ export type {
   ApproveRejectResponse
 } from './student-class-request.service'
 
+// User Management
+export { centerOwnerUserService } from './user-management/user.service'
+export type {
+  ManagedUser,
+  ManagedUserRole,
+  UserListResponse,
+  QueryUserParams as UserQueryParams,
+} from './user-management/user.types'
+
+// Audit Log
+export { auditLogService } from './audit-log/audit-log.service'
+export type {
+  AuditLog,
+  QueryAuditLogParams,
+  AuditLogListResponse,
+  AuditLogDetailResponse,
+} from './audit-log/audit-log.service'
+

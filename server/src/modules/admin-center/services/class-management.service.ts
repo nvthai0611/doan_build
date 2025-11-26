@@ -1358,7 +1358,7 @@ export class ClassManagementService {
           if (startDate && endDate && updatedClass.recurringSchedule) {
             // Tự động gen sessions
             console.log(
-              `Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -1651,7 +1651,7 @@ export class ClassManagementService {
           ) {
             // Tự động gen sessions
             console.log(
-              `Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -4705,7 +4705,7 @@ export class ClassManagementService {
                     select: {
                       subjectIds: true,
                       expiredAt: true,
-                    },
+                    },  
                   },
                 },
               },

@@ -91,7 +91,7 @@ export function SessionRequestModal({
         
         <div className="space-y-4">
           <div>
-            <Label>Loại yêu cầu *</Label>
+            <Label>Loại yêu cầu <span className="text-red-500">*</span></Label>
             <Select value={requestType} onValueChange={setRequestType}>
               <SelectTrigger>
                 <SelectValue placeholder="Chọn loại yêu cầu" />
@@ -104,35 +104,38 @@ export function SessionRequestModal({
           </div>
 
           <div>
-            <Label>Ngày học *</Label>
+            <Label>Ngày học <span className="text-red-500">*</span></Label>
             <Input
               type="date"
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
             />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Giờ bắt đầu *</Label>
+              <Label>Giờ bắt đầu <span className="text-red-500">*</span></Label>
               <Input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
               />
             </div>
             <div>
-              <Label>Giờ kết thúc *</Label>
+              <Label>Giờ kết thúc <span className="text-red-500">*</span></Label>
               <Input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
 
           <div>
-            <Label>Lý do yêu cầu *</Label>
+            <Label>Lý do yêu cầu <span className="text-red-500">*</span></Label>
             <Textarea
               placeholder="Ví dụ: Bù buổi nghỉ dạy ngày 15/10, Buổi học bổ sung cho học viên..."
               value={reason}
@@ -141,7 +144,7 @@ export function SessionRequestModal({
             />
           </div>
 
-          <div>
+          {/* <div>
             <Label>Ghi chú thêm</Label>
             <Textarea
               placeholder="Thông tin bổ sung (không bắt buộc)"
@@ -149,7 +152,7 @@ export function SessionRequestModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
             />
-          </div>
+          </div> */}
         </div>
 
         <DialogFooter>
