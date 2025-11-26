@@ -218,15 +218,12 @@ export const TransferStudentSheet = ({
   // === MUTATION CHUYỂN LỚP HỌC SINH ===
   const transferMutation = useMutation({
     mutationFn: async ({ enrollmentIds, newClassId }: { enrollmentIds: string[]; newClassId: string }) => {
-      // Chuyển từng enrollment (gọi API song song để nhanh hơn)
-      const promises = enrollmentIds.map((enrollmentId) =>
-        enrollmentService.transferStudent(enrollmentId, {
-          newClassId,
-          reason: 'Chuyển lớp hàng loạt', // Lý do mặc định
-        })
-      );
-      return Promise.all(promises);
-     
+      // Sử dụng API bulk transfer với transaction để đảm bảo atomicity
+      // Nếu một học sinh không thể chuyển, tất cả sẽ không được chuyển
+      return enrollmentService.bulkTransfer(enrollmentIds, {
+        newClassId,
+        reason: 'Chuyển lớp hàng loạt', // Lý do mặc định
+      });
     },
     onSuccess: () => {
       // Hiển thị thông báo thành công
@@ -253,31 +250,66 @@ export const TransferStudentSheet = ({
       onOpenChange(false);
     },
     onError: (error: any) => {
-      // Xử lý lỗi schedule conflict từ backend
       const errorData = error?.response?.data;
-      if (errorData?.conflicts && Array.isArray(errorData.conflicts)) {
-        const conflictMessages = errorData.conflicts
-          .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
-          .join('; ');
+      
+      // Xử lý lỗi học sinh đã đăng ký ở lớp mới (đang học)
+      if (errorData?.invalidStudents && Array.isArray(errorData.invalidStudents)) {
+        const studentNames = errorData.invalidStudents
+          .map((s: any) => s.studentName)
+          .join(', ');
+        toast({
+          title: 'Không thể chuyển lớp',
+          description: `Các học sinh sau đã được đăng ký vào lớp mới: ${studentNames}. Tất cả học sinh sẽ không được chuyển.`,
+          variant: 'destructive',
+          duration: 10000,
+        });
+        return;
+      }
+
+      // Xử lý lỗi học sinh đã dừng học, tốt nghiệp, hoặc chuyển lớp ở lớp mới
+      if (errorData?.studentsWithInactiveEnrollment && Array.isArray(errorData.studentsWithInactiveEnrollment)) {
+        const messages = errorData.studentsWithInactiveEnrollment.map((s: any) => 
+          `${s.studentName} (${s.statusLabel})`
+        );
+        toast({
+          title: 'Không thể chuyển lớp',
+          description: errorData.message || `Các học sinh sau đã có trạng thái kết thúc ở lớp mới: ${messages.join(', ')}. Tất cả học sinh sẽ không được chuyển.`,
+          variant: 'destructive',
+          duration: 10000,
+        });
+        return;
+      }
+
+      // Xử lý lỗi schedule conflict từ backend
+      if (errorData?.scheduleConflicts && Array.isArray(errorData.scheduleConflicts)) {
+        const conflictMessages = errorData.scheduleConflicts
+          .map((sc: any) => {
+            const conflictDetails = sc.conflicts
+              .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
+              .join('; ');
+            return `${sc.studentName}: ${conflictDetails}`;
+          })
+          .join(' | ');
         toast({
           title: 'Lịch học bị trùng',
           description: conflictMessages,
           variant: 'destructive',
           duration: 10000,
         });
-      } else {
-        // Hiển thị thông báo lỗi thông thường
-        toast({
-          title: 'Lỗi',
-          description:
-            errorData?.message ||
-            error?.response?.data?.message ||
-            error?.message ||
-            'Có lỗi xảy ra khi chuyển lớp học sinh',
-          variant: 'destructive',
-          duration: 8000,
-        });
+        return;
       }
+
+      // Hiển thị thông báo lỗi thông thường
+      toast({
+        title: 'Lỗi',
+        description:
+          errorData?.message ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Có lỗi xảy ra khi chuyển lớp học sinh',
+        variant: 'destructive',
+        duration: 8000,
+      });
     },
   });
 

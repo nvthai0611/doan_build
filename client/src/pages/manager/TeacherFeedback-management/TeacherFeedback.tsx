@@ -76,7 +76,6 @@ export function FeedbackTeacher() {
   const [dateTo, setDateTo] = useState<string>("")
   const [aiAnalysisDialog, setAiAnalysisDialog] = useState<{ classId: string; className: string } | null>(null)
 
-  // Build aggregated rows: group by class
   const { data: feedbackResp } = useQuery({
     queryKey: ['teacher-feedback', dateFrom, dateTo],
     queryFn: () => teacherFeedbackService.list({ dateFrom, dateTo }),
@@ -84,7 +83,6 @@ export function FeedbackTeacher() {
   })
 
   const classRows = useMemo<ClassRow[]>(() => {
-    // Filter source by date range first (server already filters by date)
     let source: TeacherFeedbackItem[] = [...((feedbackResp as TeacherFeedbackItem[] | undefined) || [])]
     if (dateFrom) {
       const fromTs = new Date(dateFrom).setHours(0, 0, 0, 0)
@@ -95,7 +93,6 @@ export function FeedbackTeacher() {
       source = source.filter(f => new Date(f.createdAt).getTime() <= toTs)
     }
 
-    // Filter out feedbacks without classId
     source = source.filter(f => f.classId)
 
     const map = new Map<string, ClassRow>()
@@ -123,7 +120,6 @@ export function FeedbackTeacher() {
       classRow.feedbackCount += 1
       classRow.allFeedbacks.push(f)
 
-      // Count positive/negative
       if (f.rating >= 4) {
         classRow.positiveFeedbacks += 1
       } else if (f.rating <= 2) {
@@ -131,15 +127,12 @@ export function FeedbackTeacher() {
       }
     }
 
-    // Calculate averages
     const classes = Array.from(map.values())
     classes.forEach(c => {
-      // Overall average
       const totalRating = c.allFeedbacks.reduce((sum, f) => sum + f.rating, 0)
       c.avgRating = +(totalRating / c.feedbackCount).toFixed(1)
     })
 
-    // Filter by search
     return classes.filter((c) =>
       c.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.teacherName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -294,7 +287,6 @@ export function FeedbackTeacher() {
         </CardContent>
       </Card>
 
-      {/* Feedback Table using common DataTable */}
       <Card>
         <CardHeader>
           <CardTitle>Danh sách Feedback</CardTitle>

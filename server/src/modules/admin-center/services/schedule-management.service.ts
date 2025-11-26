@@ -383,6 +383,20 @@ export class ScheduleManagementService {
             },
           },
         },
+        substituteTeacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+                avatar: true,
+              },
+            },
+          },
+        },
         attendances: {
           select: {
             id: true,
@@ -411,6 +425,43 @@ export class ScheduleManagementService {
       throw new NotFoundException('Không tìm thấy buổi học');
     }
 
+    // Xác định có phải giáo viên dạy thay không
+    const isSubstitute =
+      session.substituteTeacherId &&
+      session.substituteEndDate &&
+      new Date(session.substituteEndDate) >= session.sessionDate;
+    
+    // Lấy thông tin giáo viên chính
+    // Khi có dạy thay: session.teacher là giáo viên chính (gốc), session.substituteTeacher là giáo viên dạy thay
+    // Khi không có dạy thay: session.teacher là giáo viên phụ trách
+    const originalTeacher = isSubstitute ? session.teacher : null;
+
+    // Tìm TeacherClassTransfer để lấy substituteStartDate (effectiveDate)
+    let substituteStartDate: Date | null = null;
+    if (isSubstitute && session.substituteTeacherId && session.classId) {
+      const transfer = await this.prisma.teacherClassTransfer.findFirst({
+        where: {
+          fromClassId: session.classId,
+          replacementTeacherId: session.substituteTeacherId,
+          substituteEndDate: { 
+            not: null,
+            gte: session.sessionDate,
+          },
+          effectiveDate: { lte: session.sessionDate },
+          status: { in: ['approved', 'completed'] },
+        },
+        select: {
+          effectiveDate: true,
+        },
+        orderBy: {
+          effectiveDate: 'desc',
+        },
+      });
+      if (transfer) {
+        substituteStartDate = transfer.effectiveDate;
+      }
+    }
+
     return {
       id: session.id,
       name: session.notes || `Buổi ${session.academicYear}`,
@@ -425,7 +476,13 @@ export class ScheduleManagementService {
       createdAt: session.createdAt,
       class: session.class,
       room: session.room,
-      teacher: session.teacher,
+      teacher: isSubstitute ? session.substituteTeacher : session.teacher,
+      originalTeacher: isSubstitute ? originalTeacher : null,
+      substituteTeacher: isSubstitute ? session.substituteTeacher : null,
+      isSubstitute: isSubstitute,
+      substituteTeacherId: session.substituteTeacherId,
+      substituteEndDate: session.substituteEndDate,
+      substituteStartDate: substituteStartDate,
       attendanceCount: session.attendances.length,
     };
   }

@@ -58,6 +58,15 @@ export class ClassManagementController {
     return this.classManagementService.findAllWithTeacher(queryDto);
   }
 
+  @Get('without-contract')
+  @ApiOperation({ summary: 'Lấy danh sách lớp có học sinh chưa có cam kết' })
+  @ApiResponse({ status: 200, description: 'Danh sách lớp' })
+  async getClassesWithoutContract(@Query('limit') limit?: number) {
+    return this.classManagementService.getClassesWithStudentsWithoutContract(
+      limit ? parseInt(limit.toString()) : 10,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Lấy chi tiết 1 lớp học' })
   @ApiResponse({ status: 200, description: 'Chi tiết lớp học' })
