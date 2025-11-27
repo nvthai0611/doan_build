@@ -26,6 +26,14 @@ export default function TeacherDashboard() {
     const now = new Date()
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     
+    if (status === 'day_off') {
+      return (
+        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          Nghỉ
+        </Badge>
+      )
+    }
+    
     if (status === 'end') {
       return (
         <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -42,6 +50,14 @@ export default function TeacherDashboard() {
       )
     }
     
+    if (status === 'has_not_happened') {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          Sắp diễn ra
+        </Badge>
+      )
+    }
+    
     return <Badge variant="outline">Sắp tới</Badge>
   }
 
@@ -49,11 +65,19 @@ export default function TeacherDashboard() {
     const now = new Date()
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     
+    if (status === 'day_off') {
+      return "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+    }
+    
     if (status === 'end') {
       return "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
     }
     
     if (currentTime >= startTime && status === 'happening') {
+      return "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
+    }
+    
+    if (status === 'has_not_happened') {
       return "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
     }
     
@@ -137,7 +161,7 @@ export default function TeacherDashboard() {
                 Không có buổi học nào hôm nay
               </div>
             ) : (
-              sessions?.map((session) => (
+              sessions?.filter((session) => session.status !== 'cancelled').map((session) => (
                 <div
                   key={session.id}
                   onClick={() => navigate(`/teacher/session-details/${session.id}`)}

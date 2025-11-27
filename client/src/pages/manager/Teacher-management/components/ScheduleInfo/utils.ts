@@ -36,6 +36,24 @@ export const getStatusColor = (status: string): string => {
   return STATUS_COLORS[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 border-gray-200 dark:border-gray-700"
 }
 
+// Get class session status color - giống CenterSchedulePage
+export const getClassSessionStatusColor = (status: string): string => {
+  switch (status) {
+    case 'day_off':
+      return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm';
+    case 'happening':
+      return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm';
+    case 'end':
+      return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+    case 'has_not_happened':
+      return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm';
+    case 'cancelled':
+      return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+    default:
+      return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm';
+  }
+}
+
 // Student utility functions
 export const getStudentStatusText = (status: string): string => {
   return STUDENT_STATUS_TEXT[status] || "Chưa xác định"

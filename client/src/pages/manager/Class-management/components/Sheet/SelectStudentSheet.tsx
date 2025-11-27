@@ -55,8 +55,16 @@ export const SelectStudentSheet = ({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedStudentsMap, setSelectedStudentsMap] = useState<Map<string, any>>(new Map());
   const [showCapacityWarning, setShowCapacityWarning] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<{
+    successCount: number;
+    failedCount: number;
+    totalCount: number;
+    failedStudents: Array<{ studentId: string; reason: string; studentName?: string }>;
+  } | null>(null);
   const debouncedQuery = useDebounce(query, 500);
   
   // Use enrollment mutations hook
@@ -106,7 +114,31 @@ export const SelectStudentSheet = ({
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
 
   const handleToggle = (id: string) => {
-    setSelected(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+    setSelected(prev => {
+      const newSelected = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      
+      // Update selected students map
+      if (prev.includes(id)) {
+        // Remove from map
+        setSelectedStudentsMap(prevMap => {
+          const newMap = new Map(prevMap);
+          newMap.delete(id);
+          return newMap;
+        });
+      } else {
+        // Add to map
+        const studentInfo = current.find(s => s.id === id);
+        if (studentInfo) {
+          setSelectedStudentsMap(prevMap => {
+            const newMap = new Map(prevMap);
+            newMap.set(id, studentInfo);
+            return newMap;
+          });
+        }
+      }
+      
+      return newSelected;
+    });
   };
 
   // Get current class capacity info
@@ -168,48 +200,64 @@ export const SelectStudentSheet = ({
       const failedCount = result?.failed?.length || 0;
       const totalCount = selected.length;
 
+      // Map failed students với thông tin học sinh đã chọn
+      const failedStudents = (result?.failed || []).map((f: any) => {
+        const studentInfo = selectedStudentsMap.get(f.studentId) || current.find((s) => s.id === f.studentId);
+        return {
+          studentId: f.studentId,
+          reason: f.reason || 'Không xác định',
+          studentName: studentInfo?.fullName || 'Không tìm thấy tên',
+        };
+      });
+
       // Show appropriate toast
       if (failedCount === 0) {
         toast.success(`✅ Đã thêm ${successCount} học viên thành công!`);
       } else if (successCount > 0) {
-        // Hiển thị chi tiết lỗi, đặc biệt là schedule conflicts
-        const failedReasons = result.failed?.map((f: any) => {
-          if (f.reason?.includes('Lịch học bị trùng')) {
-            return f.reason; // Hiển thị đầy đủ thông tin conflict
-          }
-          return f.reason;
-        }).join('; ') || '';
-        
+        // Hiển thị dialog với danh sách học sinh bị lỗi
+        setErrorDetails({
+          successCount,
+          failedCount,
+          totalCount,
+          failedStudents,
+        });
+        setShowErrorDialog(true);
         toast.warning(
           `Thêm ${successCount}/${totalCount} học viên thành công. ${failedCount} thất bại.`,
           {
-            description: failedReasons.length > 200 
-              ? failedReasons.substring(0, 200) + '...' 
-              : failedReasons,
-            duration: 8000, // Hiển thị lâu hơn để user đọc được
+            description: 'Xem chi tiết trong dialog',
+            duration: 5000,
           }
         );
       } else {
-        // Tất cả đều thất bại - hiển thị chi tiết
-        const failedReasons = result.failed?.map((f: any) => f.reason).join('; ') || '';
+        // Tất cả đều thất bại - hiển thị dialog
+        setErrorDetails({
+          successCount: 0,
+          failedCount,
+          totalCount,
+          failedStudents,
+        });
+        setShowErrorDialog(true);
         toast.error(
           `Không thể thêm học viên. ${failedCount} thất bại.`,
           {
-            description: failedReasons.length > 300 
-              ? failedReasons.substring(0, 300) + '...' 
-              : failedReasons,
-            duration: 10000, // Hiển thị lâu hơn cho lỗi quan trọng
+            description: 'Xem chi tiết trong dialog',
+            duration: 5000,
           }
         );
       }
 
       // Reset and close on success
       if (successCount > 0) {
-        setSelected([]);
         setShowCapacityWarning(false);
         setPendingSubmit(false);
-        onOpenChange(false);
-        onSubmit?.(selected);
+        // Không đóng sheet nếu có lỗi để user có thể xem dialog
+        if (failedCount === 0) {
+          setSelected([]);
+          setSelectedStudentsMap(new Map());
+          onOpenChange(false);
+          onSubmit?.(selected);
+        }
       }
     } catch (error: any) {
       // Xử lý lỗi schedule conflict từ backend
@@ -243,6 +291,20 @@ export const SelectStudentSheet = ({
     setShowCapacityWarning(false);
     await performSubmit(true); // Pass true to override capacity check
   };
+
+  // Reset state when sheet closes
+  useEffect(() => {
+    if (!open) {
+      setSelected([]);
+      setSelectedStudentsMap(new Map());
+      setQuery('');
+      setPage(1);
+      setShowCapacityWarning(false);
+      setPendingSubmit(false);
+      setShowErrorDialog(false);
+      setErrorDetails(null);
+    }
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -385,6 +447,93 @@ export const SelectStudentSheet = ({
             </div>
           </div>
         </div>
+
+        {/* Error Details Dialog */}
+        <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+          <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <AlertDialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <AlertDialogTitle className="text-lg font-semibold">
+                  Chi tiết kết quả đăng ký
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="pt-2">
+                {errorDetails && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="px-3 py-1 rounded-full bg-green-50 text-green-700">
+                        ✅ Thành công: {errorDetails.successCount}
+                      </div>
+                      <div className="px-3 py-1 rounded-full bg-red-50 text-red-700">
+                        ❌ Thất bại: {errorDetails.failedCount}
+                      </div>
+                      <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700">
+                        Tổng: {errorDetails.totalCount}
+                      </div>
+                    </div>
+
+                    {errorDetails.failedCount > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-sm text-red-700">
+                          Danh sách học sinh không thể đăng ký:
+                        </h4>
+                        <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                          {errorDetails.failedStudents.map((failed, index) => (
+                            <div
+                              key={failed.studentId}
+                              className="p-3 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
+                                  {index + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm text-gray-900 mb-1">
+                                    {failed.studentName}
+                                  </div>
+                                  <div className="text-xs text-gray-600 space-y-1">
+                                    {failed.reason.includes('Lịch học bị trùng') ? (
+                                      <div className="space-y-1">
+                                        <div className="font-medium text-red-600">
+                                          ⚠️ Lịch học bị trùng:
+                                        </div>
+                                        <div className="pl-2 text-gray-700">
+                                          {failed.reason.replace('Lịch học bị trùng: ', '')}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-red-600">{failed.reason}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                setShowErrorDialog(false);
+                if (errorDetails && errorDetails.successCount > 0) {
+                  setSelected([]);
+                  setSelectedStudentsMap(new Map());
+                  onOpenChange(false);
+                  onSubmit?.(selected);
+                }
+              }}>
+                Đóng
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Capacity Warning Dialog */}
         <AlertDialog open={showCapacityWarning} onOpenChange={setShowCapacityWarning}>

@@ -36,4 +36,12 @@ export const teacherProgressService = {
     )
     return res.data
   },
+
+  async bulkPublish(reportIds: string[]) {
+    const res = await apiClient.patch<{ data: any; message: string }>(
+      '/teacher/progress-reports/bulk-publish',
+      { reportIds }
+    )
+    return res.data
+  },
 }

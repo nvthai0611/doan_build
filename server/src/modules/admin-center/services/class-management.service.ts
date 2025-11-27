@@ -1358,7 +1358,7 @@ export class ClassManagementService {
           if (startDate && endDate && updatedClass.recurringSchedule) {
             // Tự động gen sessions
             console.log(
-              `Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -1651,7 +1651,7 @@ export class ClassManagementService {
           ) {
             // Tự động gen sessions
             console.log(
-              `Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -4669,6 +4669,119 @@ export class ClassManagementService {
       },
       message: 'Lấy danh sách lớp học thành công ',
     };
+  }
+
+  // Lấy danh sách lớp có học sinh chưa có cam kết
+  async getClassesWithStudentsWithoutContract(limit: number = 10) {
+    try {
+      // Lấy tất cả lớp đang hoạt động
+      const classes = await this.prisma.class.findMany({
+        where: {
+          status: {
+            in: [ClassStatus.READY, ClassStatus.ACTIVE],
+          },
+        },
+        include: {
+          enrollments: {
+            where: {
+              status: {
+                in: [
+                  EnrollmentStatus.NOT_BEEN_UPDATED,
+                  EnrollmentStatus.STUDYING,
+                ],
+              },
+            },
+            include: {
+              student: {
+                include: {
+                  contractUploads: {
+                    where: {
+                      status: 'active',
+                      OR: [
+                        { expiredAt: null }, // Chưa có ngày hết hạn
+                        { expiredAt: { gt: new Date() } }, // Chưa hết hạn
+                      ],
+                    },
+                    select: {
+                      subjectIds: true,
+                      expiredAt: true,
+                    },  
+                  },
+                },
+              },
+            },
+          },
+          subject: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        take: limit,
+      });
+
+      // Filter và tính toán số học sinh chưa có cam kết cho mỗi lớp
+      const classesWithStats = classes
+        .map((classItem) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const studentsWithoutContract = classItem.enrollments.filter(
+            (enrollment) => {
+              if (!classItem.subject?.id) return true;
+
+              const hasValidContract = enrollment.student.contractUploads.some(
+                (contract) => {
+                  // Kiểm tra subjectIds có chứa subjectId của lớp
+                  const hasCorrectSubject =
+                    contract.subjectIds &&
+                    Array.isArray(contract.subjectIds) &&
+                    contract.subjectIds.includes(classItem.subject.id);
+
+                  // Kiểm tra cam kết còn hạn (expiredAt null hoặc > hôm nay)
+                  const isNotExpired =
+                    !contract.expiredAt ||
+                    new Date(contract.expiredAt) >= today;
+
+                  return hasCorrectSubject && isNotExpired;
+                },
+              );
+
+              return !hasValidContract;
+            },
+          ).length;
+
+          return {
+            id: classItem.id,
+            name: classItem.name,
+            classCode: classItem.classCode,
+            subject: classItem.subject?.name,
+            totalStudents: classItem.enrollments.length,
+            studentsWithoutContract,
+            academicYear: classItem.academicYear,
+          };
+        })
+        .filter((item) => item.studentsWithoutContract > 0) // Chỉ lấy lớp có học sinh chưa có cam kết
+        .sort(
+          (a, b) => b.studentsWithoutContract - a.studentsWithoutContract,
+        ); // Sắp xếp theo số học sinh chưa có cam kết giảm dần
+
+      return {
+        success: true,
+        message: 'Lấy danh sách lớp có học sinh chưa có cam kết thành công',
+        data: classesWithStats,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách lớp',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async getClassDetail(id: string) {

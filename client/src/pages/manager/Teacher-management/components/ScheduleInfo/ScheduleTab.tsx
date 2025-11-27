@@ -33,7 +33,8 @@ import {
   isToday, 
   getSessionsForDay, 
   getSubjectColor, 
-  getStatusColor, 
+  getStatusColor,
+  getClassSessionStatusColor, 
   getStudentStatusText,
   getSessionStatusText,
   navigateMonth,
@@ -487,10 +488,8 @@ export default function ScheduleTab({
                     >
                       {day}
                     </span>
-                    {hasHoliday && <span className="text-xs">🏖️</span>}
                   </div>
                   <div className="flex items-center space-x-1">
-                    {daySessions.some((s) => s.hasAlert) && <AlertTriangle className="w-3 h-3 text-orange-500" />}
                     {hasMultipleSessions && (
                       <Badge variant="secondary" className="text-xs px-1 py-0">
                         {daySessions.length}
@@ -511,23 +510,12 @@ export default function ScheduleTab({
                     return (
                       <div
                         key={session.id}
-                        className={`text-xs p-2 rounded transition-all ${
-                          isDayOff 
-                            ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
-                            : session.status === 'end'
-                            ? 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm'
-                            : isOverdue
-                            ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm'
-                            : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
-                        }`}
+                        className={`text-xs p-2 rounded transition-all ${getClassSessionStatusColor(session.status)} cursor-pointer hover:opacity-80`}
                         title={isDayOff ? `Nghỉ lễ${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : isEnded ? `${session.title} - ${statusText}` : `${session.title} - ${session.time} - ${session.room}`}
-                        onClick={() => !isDayOff && handleSessionClick(session)}
+                        onClick={() => handleSessionClick(session)}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium truncate flex items-center gap-1">
-                            {isDayOff && <span className="text-base">🏖️</span>}
-                            {session.status === 'end' && !isDayOff && <span className="text-xs">✓</span>}
-                            {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ' : session.description}</span>
                             {session.isSubstitute && !isDayOff && (
                               <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-500 text-orange-700 bg-orange-50">
@@ -535,7 +523,6 @@ export default function ScheduleTab({
                               </Badge>
                             )}
                           </span>
-                          {session.hasAlert && !isDayOff && !isEnded && <AlertTriangle className="w-3 h-3 text-orange-300" />}
                         </div>
                         <div className="text-xs opacity-90 truncate mt-0.5">
                           {isDayOff ? (session.cancellationReason || 'Ngày nghỉ') : isEnded ? statusText : session.time}
@@ -672,17 +659,9 @@ export default function ScheduleTab({
                       return (
                         <div
                           key={session.id}
-                          className={`absolute inset-1 rounded text-xs p-1 transition-all ${
-                            isDayOff 
-                              ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm' 
-                              : session.status === 'end'
-                              ? 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm'
-                              : isOverdue
-                              ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm'
-                              : `${getSubjectColor(session.subject)} cursor-pointer hover:opacity-80`
-                          }`}
+                          className={`absolute inset-1 rounded text-xs p-1 transition-all ${getClassSessionStatusColor(session.status)} cursor-pointer hover:opacity-80`}
                           title={isDayOff ? `${session.cancellationReason ? `: ${session.cancellationReason}` : ''}` : isEnded ? `${session.title} - ${statusText}` : `${session.title} - ${session.time} - ${session.room}`}
-                          onClick={() => !isDayOff && handleSessionClick(session)}
+                          onClick={() => handleSessionClick(session)}
                           style={{
                             top: `${sessionIndex * 48}px`,
                             height: session.description && session.description !== 'Phương học: Chưa cập nhật' ? '48px' : '36px',
@@ -690,9 +669,6 @@ export default function ScheduleTab({
                           }}
                         >
                           <div className="truncate font-medium flex items-center gap-0.5">
-                            {isDayOff && <span>🏖️</span>}
-                            {session.status === 'end' && !isDayOff && <span className="text-[10px]">✓</span>}
-                            {isOverdue && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                             <span>{isDayOff ? 'Nghỉ lễ' : session.title}</span>
                             {session.isSubstitute && !isDayOff && (
                               <Badge variant="outline" className="text-[9px] px-1 py-0 border-orange-500 text-orange-700 bg-orange-50">
@@ -794,10 +770,9 @@ export default function ScheduleTab({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                       <span className="text-sm font-medium">{session.date.toLocaleDateString("vi-VN")}</span>
                     </div>
-                    <Badge className={`${getSubjectColor(session.subject)} px-2 py-1`}>{session.subject}</Badge>
+                    <Badge className={`${getClassSessionStatusColor(session.status)} px-2 py-1`}>{session.subject}</Badge>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{session.title}</span>
@@ -816,17 +791,14 @@ export default function ScheduleTab({
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="text-right">
-                      <div className="text-sm font-medium flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
+                      <div className="text-sm font-medium">
                         {session.time}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                        <MapPin className="w-3 h-3 mr-1" />
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         {session.room}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {session.hasAlert && <AlertTriangle className="w-4 h-4 text-orange-500" />}
                       <Badge
                         variant={session.status === "end" ? "default" : session.status === "day_off" ? "outline" : "secondary"}
                         className={getStatusColor(session.status)}
@@ -954,28 +926,82 @@ export default function ScheduleTab({
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <div className="text-sm flex flex-col gap-1">
-                      <div>
-                        <strong>Giáo viên phụ trách:</strong>{' '}
-                        <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
-                          {selectedSession.isSubstitute 
-                            ? (selectedSession.substituteTeacher || selectedSession.teacher)
-                            : selectedSession.teacher}
-                        </span>
-                        {selectedSession.isSubstitute && (
-                          <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
-                            Thay thế
-                          </Badge>
-                        )}
-                      </div>
-                      {selectedSession.isSubstitute && selectedSession.originalTeacher && (
-                        <div className="text-xs text-gray-500 ml-6">
-                          GV chính: {selectedSession.originalTeacher}
-                        </div>
-                      )}
-                      {selectedSession.isSubstitute && (selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
-                        <div className="text-xs text-orange-600 ml-6 mt-1 font-medium">
-                          Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
+                    <div className="text-sm flex flex-col gap-2 w-full">
+                      {selectedSession.isSubstitute && selectedSession.substituteTeacher ? (
+                        <>
+                          <div>
+                            <strong>Giáo viên phụ trách:</strong>
+                            <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="w-10 h-10">
+                                  <AvatarFallback className="bg-orange-100 text-orange-600">
+                                    {selectedSession.substituteTeacher
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .slice(0, 2)
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-orange-600">{selectedSession.substituteTeacher}</span>
+                                    <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 bg-orange-50">
+                                      Dạy thay
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {selectedSession.originalTeacher && (
+                            <div>
+                              <strong>Giáo viên chính:</strong>
+                              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                  <Avatar className="w-10 h-10">
+                                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                                      {selectedSession.originalTeacher
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .slice(0, 2)
+                                        .toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">{selectedSession.originalTeacher}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {(selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
+                            <div className="text-xs text-orange-600 font-medium">
+                              Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div>
+                          <strong>Giáo viên phụ trách:</strong>
+                          <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="w-10 h-10">
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  {selectedSession.teacher
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <span className="font-semibold">{selectedSession.teacher}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1198,28 +1224,82 @@ export default function ScheduleTab({
                   </div>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <div className="text-sm flex flex-col gap-1">
-                      <div>
-                        <strong>Giáo viên phụ trách:</strong>{' '}
-                        <span className={selectedSession.isSubstitute ? 'text-orange-600 font-medium' : ''}>
-                          {selectedSession.isSubstitute 
-                            ? (selectedSession.substituteTeacher || selectedSession.teacher)
-                            : selectedSession.teacher}
-                        </span>
-                        {selectedSession.isSubstitute && (
-                          <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-700 bg-orange-50">
-                            Thay thế
-                          </Badge>
-                        )}
-                      </div>
-                      {selectedSession.isSubstitute && selectedSession.originalTeacher && (
-                        <div className="text-xs text-gray-500 ml-6">
-                          GV chính: {selectedSession.originalTeacher}
-                        </div>
-                      )}
-                      {selectedSession.isSubstitute && (selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
-                        <div className="text-xs text-orange-600 ml-6 mt-1 font-medium">
-                          Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
+                    <div className="text-sm flex flex-col gap-2 w-full">
+                      {selectedSession.isSubstitute && selectedSession.substituteTeacher ? (
+                        <>
+                          <div>
+                            <strong>Giáo viên phụ trách:</strong>
+                            <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="w-10 h-10">
+                                  <AvatarFallback className="bg-orange-100 text-orange-600">
+                                    {selectedSession.substituteTeacher
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .slice(0, 2)
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-orange-600">{selectedSession.substituteTeacher}</span>
+                                    <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 bg-orange-50">
+                                      Dạy thay
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {selectedSession.originalTeacher && (
+                            <div>
+                              <strong>Giáo viên chính:</strong>
+                              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                  <Avatar className="w-10 h-10">
+                                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                                      {selectedSession.originalTeacher
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .slice(0, 2)
+                                        .toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">{selectedSession.originalTeacher}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {(selectedSession.substituteStartDate || selectedSession.substituteEndDate) && (
+                            <div className="text-xs text-orange-600 font-medium">
+                              Thời gian dạy thay: {formatDateString(selectedSession.substituteStartDate)} - {formatDateString(selectedSession.substituteEndDate)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div>
+                          <strong>Giáo viên phụ trách:</strong>
+                          <div className="mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="w-10 h-10">
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  {selectedSession.teacher
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <span className="font-semibold">{selectedSession.teacher}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -85,7 +85,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       ],
     },
     {
-      title: 'Khách hàng',
+      title: 'Khách hàng chưa đăng ký',
       icon: Users,  
       href: '/center-qn/customers',
       // children: [

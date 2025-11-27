@@ -17,12 +17,12 @@ export class ClassNotificationCronService {
   ) {}
 
   /**
-   * Cron job chạy mỗi ngày lúc 08:00 để kiểm tra và tạo thông báo
-   * cho các lớp sắp bắt đầu và sắp kết thúc
+   * Cron job chạy mỗi ngày lúc 08:00 để kiểm tra và tạo thông báo 
+   * cho các lớp sắp bắt đầu và sắp kết thúc (EVERY_1ST_DAY_OF_MONTH_AT_NOON ,EVERY_10_SECONDS)
    */
   @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_NOON)  
   async checkClassNotifications() {
-    this.logger.log('🔄 Bắt đầu kiểm tra thông báo lớp học...');
+    this.logger.log('Bắt đầu kiểm tra thông báo lớp học...');
 
     try {
       // Kiểm tra lớp sắp bắt đầu
@@ -31,9 +31,9 @@ export class ClassNotificationCronService {
       // Kiểm tra lớp sắp kết thúc
       await this.classNotificationService.checkClassesEndingSoon();
 
-      this.logger.log('✅ Hoàn thành kiểm tra thông báo lớp học');
+      this.logger.log('Hoàn thành kiểm tra thông báo lớp học');
     } catch (error) {
-      this.logger.error('❌ Lỗi khi kiểm tra thông báo lớp học:', error);
+      this.logger.error('Lỗi khi kiểm tra thông báo lớp học:', error);
     }
   }
 
@@ -43,7 +43,7 @@ export class ClassNotificationCronService {
    */
   // @Cron(CronExpression.EVERY_MINUTE)
   // async testClassNotifications() {
-  //   this.logger.log('🧪 TEST: Kiểm tra thông báo lớp học...');
+  //   this.logger.log('TEST: Kiểm tra thông báo lớp học...');
   //   await this.checkClassNotifications();
   // }
 }
