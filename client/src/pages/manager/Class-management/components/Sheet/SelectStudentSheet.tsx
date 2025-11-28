@@ -193,6 +193,7 @@ export const SelectStudentSheet = ({
         studentIds: selected,
         overrideCapacity: overrideCapacity // Pass flag to allow exceeding capacity when user confirmed
       });
+      console.log(response);
 
       // Parse response
       const result = response?.data || response;

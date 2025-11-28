@@ -122,25 +122,25 @@ export default async function emailUtil(
 
     // Gửi email trực tiếp, không verify mỗi lần
     const transport = getTransporter();
-    console.log(`[Email] 📧 Đang gửi email đến ${to}...`);
+    console.log(` Đang gửi email đến ${to}...`);
     
     const info = await transport.sendMail({
       from: `"${SMTP_FROMNAME || 'Hệ thống'}" <${SMTP_FROMEMAIL || SMTP_USERNAME}>`,
       to,
       subject,
-      html,
+      html, 
     });
 
-    console.log(`[Email] ✅ Đã gửi email thành công đến ${to}, messageId: ${info.messageId}`);
+    console.log(` Đã gửi email thành công đến ${to}, messageId: ${info.messageId}`);
     return info;
   } catch (error: any) {
     // Reset verified status nếu có lỗi connection
     if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
       isVerified = false;
       transporter = null; // Reset transporter để retry với config mới
-      console.error(`[Email] ❌ Connection error: ${error.code} - ${error.message}`);
+      console.error(` Connection error: ${error.code} - ${error.message}`);
     } else {
-      console.error(`[Email] ❌ Send error: ${error.message}`, {
+      console.error(` Send error: ${error.message}`, {
         code: error.code,
         command: error.command,
         response: error.response,
