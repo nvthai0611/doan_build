@@ -573,7 +573,7 @@ export class EnrollmentManagementService {
     }
   }
 
-  /**
+ /**
    * Đăng ký nhiều học sinh vào lớp học cùng lúc
    *
    * @param body - Object chứa:
@@ -594,172 +594,227 @@ export class EnrollmentManagementService {
    *    - Tạo enrollment với status mặc định là 'studying'
    * 5. Gửi email thông báo cho phụ huynh (non-blocking)
    */
-  async bulkEnroll(body: any) {
-    try {
-        // Validation
-        if (!body.studentIds || !Array.isArray(body.studentIds) || body.studentIds.length === 0) {
-            throw new HttpException(
-                {
-                    success: false,
-                    message: 'studentIds phải là mảng và không được rỗng'
-                },
-                HttpStatus.BAD_REQUEST
-            );
-        }
+ async bulkEnroll(body: any) {
+  try {
+    // ===== STEP 1: VALIDATION =====
+    // Kiểm tra studentIds phải là mảng và không rỗng
+    if (
+      !body.studentIds ||
+      !Array.isArray(body.studentIds) ||
+      body.studentIds.length === 0
+    ) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'studentIds phải là mảng và không được rỗng',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-        if (!body.classId) {
-            throw new HttpException(
-                {
-                    success: false,
-                    message: 'classId là bắt buộc'
-                },
-                HttpStatus.BAD_REQUEST
-            );
-        }
+    // Kiểm tra classId là bắt buộc
+    if (!body.classId) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'classId là bắt buộc',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-        // Check class exists and count sessions
-        const classItem = await this.prisma.class.findUnique({
-            where: { id: body.classId },
-            include: {
-                _count: {
-                    select: { sessions: true }
-                }
-            }
+    // ===== STEP 2: CHECK CLASS EXISTS =====
+    // Kiểm tra lớp học tồn tại (bao gồm recurringSchedule để check conflict)
+    const classItem = await this.prisma.class.findUnique({
+      where: { id: body.classId },
+      select: {
+        id: true,
+        name: true,
+        maxStudents: true,
+        recurringSchedule: true,
+      },
+    });
+
+    if (!classItem) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Không tìm thấy lớp học',
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // ===== STEP 3: CHECK CAPACITY =====
+    // Kiểm tra sức chứa lớp (chỉ validate nếu overrideCapacity không được set)
+    if (!body.overrideCapacity) {
+      // Đếm số lượng enrollment đang active (không bao gồm stopped và graduated)
+      const activeEnrollments = await this.prisma.enrollment.count({
+        where: {
+          classId: body.classId,
+          status: {
+            notIn: ['stopped', 'graduated'],
+          },
+        },
+      });
+
+      // Tính số chỗ trống còn lại
+      const availableSlots = classItem.maxStudents
+        ? classItem.maxStudents - activeEnrollments
+        : 999999;
+
+      // Kiểm tra số học sinh muốn đăng ký có vượt quá số chỗ trống không
+      if (body.studentIds.length > availableSlots) {
+        throw new HttpException(
+          {
+            success: false,
+            message: `Không đủ chỗ. Chỉ còn ${availableSlots} chỗ trống`,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    // ===== STEP 4: SET ENROLLMENT STATUS =====
+    // Status mặc định là 'studying'
+    const enrollmentStatus = 'studying';
+
+    // Khởi tạo kết quả
+    const results = {
+      success: [],
+      failed: [],
+    };
+
+    // ===== STEP 5: PROCESS EACH STUDENT =====
+    // Xử lý từng học sinh trong danh sách
+    for (const studentId of body.studentIds) {
+      try {
+        // Kiểm tra học sinh tồn tại và tài khoản đang hoạt động
+        const student = await this.prisma.student.findUnique({
+          where: { id: studentId },
+          include: {
+            user: {
+              select: {
+                isActive: true,
+              },
+            },
+          },
         });
 
-        if (!classItem) {
-            throw new HttpException(
-                {
-                    success: false,
-                    message: 'Không tìm thấy lớp học'
-                },
-                HttpStatus.NOT_FOUND
-            );
+        if (!student) {
+          results.failed.push({
+            studentId,
+            reason: 'Không tìm thấy học sinh',
+          });
+          continue;
         }
 
-        // Check capacity (count active enrollments)
-        // Only validate capacity if overrideCapacity is not set to true
-        if (!body.overrideCapacity) {
-            const activeEnrollments = await this.prisma.enrollment.count({
-                where: {
-                    classId: body.classId,
-                    status: {
-                        notIn: ['stopped', 'graduated', 'withdrawn']
-                    }
-                }
-            });
-
-            const availableSlots = classItem.maxStudents ? classItem.maxStudents - activeEnrollments : 999999;
-            
-            if (body.studentIds.length > availableSlots) {
-                throw new HttpException(
-                    {
-                        success: false,
-                        message: `Không đủ chỗ. Chỉ còn ${availableSlots} chỗ trống`
-                    },
-                    HttpStatus.BAD_REQUEST
-                );
-            }
+        // Kiểm tra tài khoản học sinh đang hoạt động
+        if (!student.user.isActive) {
+          results.failed.push({
+            studentId,
+            reason: 'Tài khoản học sinh không hợp lệ',
+          });
+          continue;
         }
 
-        // Determine enrollment status based on class sessions
-        const hasSession = classItem._count.sessions > 0;
-        const enrollmentStatus = hasSession ? 'studying' : 'studying';
-
-        const results = {
-            success: [],
-            failed: []
-        };
-
-        // Process each student
-        for (const studentId of body.studentIds) {
-            try {
-                // Check student exists
-                const student = await this.prisma.student.findUnique({
-                    where: { id: studentId }
-                });
-
-                if (!student) {
-                    results.failed.push({
-                        studentId,
-                        reason: 'Không tìm thấy học sinh'
-                    });
-                    continue;
-                }
-
-                // Check if already enrolled (not stopped/graduated)
-                const existingEnrollment = await this.prisma.enrollment.findFirst({
-                    where: {
-                        studentId,
-                        classId: body.classId,
-                        status: {
-                            notIn: ['stopped', 'graduated', 'withdrawn']
-                        }
-                    }
-                });
-
-                if (existingEnrollment) {
-                    results.failed.push({
-                        studentId,
-                        reason: 'Đã được đăng ký vào lớp này'
-                    });
-                    continue;
-                }
-
-                // Create enrollment with dynamic status
-                const enrollment = await this.prisma.enrollment.create({
-                    data: {
-                        studentId,
-                        classId: body.classId,
-                        semester: body.semester || null,
-                        status: enrollmentStatus
-                    }
-                });
-
-                // Note: currentStudents count is now managed through _count.enrollments in Class model
-
-                results.success.push({
-                    studentId,
-                    enrollmentId: enrollment.id
-                });
-            } catch (error) {
-                results.failed.push({
-                    studentId,
-                    reason: error.message
-                });
-            }
-        }
-
-        // Gửi email thông báo hàng loạt cho phụ huynh (non-blocking)
-        const successStudentIds = results.success.map(r => r.studentId);
-        if (successStudentIds.length > 0) {
-            this.emailNotificationService.sendBulkEnrollmentEmail(
-                successStudentIds,
-                body.classId
-            ).catch(error => {
-                console.error('❌ Lỗi khi gửi email thông báo đăng ký:', error.message);
-            });
-        }
-
-        return {
-            success: true,
-            message: hasSession
-                ? `Đăng ký thành công ${results.success.length}/${body.studentIds.length} học sinh. Học sinh có thể xem lịch ngay.`
-                : `Đăng ký thành công ${results.success.length}/${body.studentIds.length} học sinh. Chờ lớp chuẩn bị lịch học.`,
-            data: results
-        };
-    } catch (error) {
-        if (error instanceof HttpException) throw error;
-        
-        throw new HttpException(
-            {
-                success: false,
-                message: 'Có lỗi xảy ra khi đăng ký nhiều học sinh',
-                error: error.message
+        // Kiểm tra học sinh chưa được đăng ký vào lớp (trạng thái active)
+        const existingEnrollment = await this.prisma.enrollment.findFirst({
+          where: {
+            studentId,
+            classId: body.classId,
+            status: {
+              notIn: ['stopped', 'graduated'],
             },
-            HttpStatus.INTERNAL_SERVER_ERROR
+          },
+        });
+
+        if (existingEnrollment) {
+          results.failed.push({
+            studentId,
+            reason: 'Đã được đăng ký vào lớp này',
+          });
+          continue;
+        }
+
+        // ===== CHECK SCHEDULE CONFLICTS =====
+        // Kiểm tra xung đột lịch học với các lớp khác của học sinh
+        const scheduleConflicts = await this.checkScheduleConflicts(
+          studentId,
+          classItem.recurringSchedule as any,
         );
+
+        if (scheduleConflicts.length > 0) {
+          const conflictMessages = scheduleConflicts
+            .map(
+              (c) =>
+                `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`,
+            )
+            .join('; ');
+
+          results.failed.push({
+            studentId,
+            reason: `Lịch học bị trùng: ${conflictMessages}`,
+          });
+          continue;
+        }
+
+        // Tạo enrollment với status mặc định là 'studying'
+        const enrollment = await this.prisma.enrollment.create({
+          data: {
+            studentId,
+            classId: body.classId,
+            semester: body.semester || null,
+            status: enrollmentStatus,
+          },
+        });
+
+        // Lưu kết quả thành công
+        results.success.push({
+          studentId,
+          enrollmentId: enrollment.id,
+        });
+      } catch (error) {
+        // Lưu kết quả thất bại
+        results.failed.push({
+          studentId,
+          reason: error.message,
+        });
+      }
     }
+
+    // ===== STEP 6: SEND EMAIL NOTIFICATION =====
+    // Gửi email thông báo hàng loạt cho phụ huynh (non-blocking)
+    const successStudentIds = results.success.map((r) => r.studentId);
+    if (successStudentIds.length > 0) {
+      this.emailNotificationService
+        .sendBulkEnrollmentEmail(successStudentIds, body.classId)
+        .catch((error) => {
+          console.error(
+            '❌ Lỗi khi gửi email thông báo đăng ký:',
+            error.message,
+          );
+        });
+    }
+
+    // ===== STEP 7: RETURN RESULTS =====
+    return {
+      success: true,
+      message: `Đăng ký thành công ${results.success.length}/${body.studentIds.length} học sinh.`,
+      data: results,
+    };
+  } catch (error) {
+    if (error instanceof HttpException) throw error;
+
+    throw new HttpException(
+      {
+        success: false,
+        message: 'Có lỗi xảy ra khi đăng ký nhiều học sinh',
+        error: error.message,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
 }
 
 
@@ -1123,18 +1178,6 @@ export class EnrollmentManagementService {
             success: false,
             message:
               'Không thể thay đổi trạng thái học sinh trong lớp đã hủy hoặc đã chuyển lớp',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Validation: Cannot change to studying if class doesn't have teacher
-      if (body.status === 'studying' && !enrollment.class.teacherId) {
-        throw new HttpException(
-          {
-            success: false,
-            message:
-              'Lớp học chưa có giáo viên, không thể chuyển học sinh sang trạng thái đang học',
           },
           HttpStatus.BAD_REQUEST,
         );
