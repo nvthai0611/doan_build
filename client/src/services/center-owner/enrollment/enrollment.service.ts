@@ -12,14 +12,7 @@ export const enrollmentService = {
     // Bulk enroll students
     bulkEnroll: async (data: any) => {
         const response = await apiClient.post(`${BASE_URL}/bulk`, data);
-        console.log('🔍 enrollment.service.ts - apiClient.post response:', response);
-        console.log('🔍 enrollment.service.ts - response.data:', response?.data);
-        
-        // Backend trả về: { success: true, status: 201, message: "...", data: { success: [], failed: [...] } }
-        // Cần return response.data để có { success: [], failed: [...] }
-        const result = response?.data || response;
-        console.log('🔍 enrollment.service.ts - returning:', result);
-        return result;
+        return response.data;
     },
 
     // Get all enrollments with filters

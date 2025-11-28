@@ -84,10 +84,10 @@ import { TasksModule } from './modules/cronjob/cron.module';
     AppService,
     AuthService,
     PrismaService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditLogInterceptor,
-    },
+    // {
+    //   provide: APP_INTERCEPTOR,
+    //   useClass: AuditLogInterceptor,
+    // },
   ],
 })
 export class AppModule implements NestModule {

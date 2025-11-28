@@ -139,7 +139,7 @@ client.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
-        console.log('🔄 Attempting to refresh token...');
+        console.log('Attempting to refresh token...');
 
         const response = await axios.post(
           `${import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1'}/auth/refresh`,
@@ -151,7 +151,7 @@ client.interceptors.response.use(
           }
         );
 
-        console.log('✅ Refresh token response:', response.data);
+        console.log('Refresh token response:', response.data);
 
         const { accessToken, refreshToken: newRefreshToken, user } = response.data.data;
         
@@ -161,7 +161,7 @@ client.interceptors.response.use(
         
         // Lưu refresh token mới (ROTATION)
         if (newRefreshToken) {
-          console.log('✅ Updating refresh token (rotation)');
+          console.log('Updating refresh token (rotation)');
           Cookies.set('refreshToken', newRefreshToken);
         }
 
@@ -172,11 +172,11 @@ client.interceptors.response.use(
         
         processQueue(null, accessToken);
         
-        console.log('✅ Token refreshed successfully, retrying original request');
+        console.log('Token refreshed successfully, retrying original request');
         
         return client(originalRequest);
       } catch (refreshError: any) {
-        console.error('❌ Refresh token failed:', refreshError);
+        console.error('Refresh token failed:', refreshError);
         
         processQueue(refreshError, null);
         Cookies.remove('user');
