@@ -63,7 +63,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
           for (const key of Object.keys(result)) {
             serializedResult[key] = serializeForJson(result[key]);
           }
-          
           return {
             success: true,
             status: statusCode,
