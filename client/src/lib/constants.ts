@@ -35,7 +35,7 @@ export const STUDENT_STATUS_LABELS: Record<StudentStatus, string> = {
   [StudentStatus.STUDYING]: 'Đang học',
   [StudentStatus.RESERVED]: 'Bảo lưu',
   [StudentStatus.STOPPED]: 'Dừng học',
-  [StudentStatus.GRADUATED]: 'Tốt nghiệp',
+  [StudentStatus.GRADUATED]: 'Đã hoàn thành',
   [StudentStatus.WITHDRAWN]: 'Đổi lớp',
 };
 
@@ -69,7 +69,7 @@ export const STUDENT_STATUS_MAPPING: Record<string, StudentStatus> = {
   'Đang học': StudentStatus.STUDYING,
   'Bảo lưu': StudentStatus.RESERVED,
   'Dừng học': StudentStatus.STOPPED,
-  'Tốt nghiệp': StudentStatus.GRADUATED,
+  'Đã hoàn thành': StudentStatus.GRADUATED,
   'Chưa cập nhật lịch học': StudentStatus.PENDING,
   'Đổi lớp': StudentStatus.WITHDRAWN,
 };
@@ -253,7 +253,7 @@ export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
   [EnrollmentStatus.NOT_BEEN_UPDATED]: 'Chưa cập nhật lịch học',
   [EnrollmentStatus.STUDYING]: 'Đang học',
   [EnrollmentStatus.STOPPED]: 'Dừng học',
-  [EnrollmentStatus.GRADUATED]: 'Tốt nghiệp',
+  [EnrollmentStatus.GRADUATED]: 'Đã hoàn thành',
   [EnrollmentStatus.WITHDRAWN]: 'Chuyển lớp',
 };
 

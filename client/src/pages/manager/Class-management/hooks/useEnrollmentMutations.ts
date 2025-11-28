@@ -23,10 +23,12 @@ export const useEnrollmentMutations = () => {
             queryClient.invalidateQueries({ queryKey: ['enrollments'] });
             queryClient.invalidateQueries({ queryKey: ['class'] });
             queryClient.invalidateQueries({ queryKey: ['classStats'] });
-            console.log(data.message || 'Đăng ký học sinh thành công');
+            const message = data?.message || data?.data?.message || 'Đăng ký học sinh thành công';
+            console.log(data);
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.data?.message || 'Có lỗi xảy ra');
+            const errorMessage = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra';
+            console.error('Error:', errorMessage);
         }
     });
 

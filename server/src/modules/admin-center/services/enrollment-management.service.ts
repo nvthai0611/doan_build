@@ -596,6 +596,8 @@ export class EnrollmentManagementService {
    */
   async bulkEnroll(body: any) {
     try {
+      console.log(body);
+      
       // ===== STEP 1: VALIDATION =====
       // Kiểm tra studentIds phải là mảng và không rỗng
       if (
@@ -653,7 +655,7 @@ export class EnrollmentManagementService {
           where: {
             classId: body.classId,
             status: {
-              notIn: ['stopped', 'graduated'],
+              notIn: ['stopped', 'graduated', 'withdrawn'],
             },
           },
         });
@@ -724,7 +726,7 @@ export class EnrollmentManagementService {
               studentId,
               classId: body.classId,
               status: {
-                notIn: ['stopped', 'graduated', 'withdrawn'],
+                notIn: ['stopped', 'graduated',],
               },
             },
           });
@@ -745,6 +747,7 @@ export class EnrollmentManagementService {
           );
 
           if (scheduleConflicts.length > 0) {
+            
             const conflictMessages = scheduleConflicts
               .map(
                 (c) =>
@@ -758,7 +761,7 @@ export class EnrollmentManagementService {
             });
             continue;
           }
-
+              
           // Tạo enrollment với status mặc định là 'studying'
           const enrollment = await this.prisma.enrollment.create({
             data: {
@@ -768,7 +771,7 @@ export class EnrollmentManagementService {
               status: enrollmentStatus,
             },
           });
-
+          
           // Lưu kết quả thành công
           results.success.push({
             studentId,
@@ -797,7 +800,7 @@ export class EnrollmentManagementService {
           });
       }
 
-      // ===== STEP 7: RETURN RESULTS =====
+      
       return {
         success: true,
         message: `Đăng ký thành công ${results.success.length}/${body.studentIds.length} học sinh.`,
