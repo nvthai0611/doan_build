@@ -73,7 +73,7 @@ export class StudentManagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService
-  ) {}
+  ) { }
 
   private formatStudentResponse(student: any) {
     return {
@@ -86,9 +86,9 @@ export class StudentManagementService {
       user: student.user,
       parent: student.parent
         ? {
-            id: student.parent.id,
-            user: student.parent.user
-          }
+          id: student.parent.id,
+          user: student.parent.user
+        }
         : null,
       school: student.school
     };
@@ -173,12 +173,12 @@ export class StudentManagementService {
       let studentCode = generateQNCode('student');
 
       //checkcode tồn tại chưa
-      while( true){
+      while (true) {
         const existingStudentWithCode = await this.prisma.student.findFirst({
           where: { studentCode: studentCode }
         });
 
-        if(!existingStudentWithCode){
+        if (!existingStudentWithCode) {
           break;
         }
         studentCode = generateQNCode('student');
@@ -223,7 +223,7 @@ export class StudentManagementService {
         // Upload application file to ContractUpload if provided
         if (createStudentData.applicationFile) {
           const file = createStudentData.applicationFile;
-          
+
           // Upload to Cloudinary
           const uploadResult = await this.cloudinaryService.uploadDocument(
             file,
@@ -682,9 +682,8 @@ export class StudentManagementService {
           previousStatus: existingStudent.user.isActive,
           newStatus
         },
-        message: `Student account has been ${
-          newStatus ? 'activated' : 'deactivated'
-        } successfully`
+        message: `Student account has been ${newStatus ? 'activated' : 'deactivated'
+          } successfully`
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -753,9 +752,8 @@ export class StudentManagementService {
           previousStatus: existingStudent.user.isActive,
           newStatus: isActive
         },
-        message: `Student account has been ${
-          isActive ? 'activated' : 'deactivated'
-        } successfully`
+        message: `Student account has been ${isActive ? 'activated' : 'deactivated'
+          } successfully`
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -975,8 +973,6 @@ export class StudentManagementService {
     }
   }
 
-
-
   async getAttendanceByStudentIdAndClassId(studentId: string, classId: string): Promise<StudentResponse> {
     if (!checkId(studentId) || !checkId(classId)) {
       throw new HttpException('Invalid student ID or class ID', HttpStatus.BAD_REQUEST);
@@ -992,10 +988,10 @@ export class StudentManagementService {
 
       const student = await this.prisma.student.findUnique({
         where: { id: studentId },
-        include:{
-          user:{
-            select:{
-              fullName:true
+        include: {
+          user: {
+            select: {
+              fullName: true
             }
           }
         }
@@ -1022,7 +1018,7 @@ export class StudentManagementService {
         _count: {
           status: true
         },
-        
+
       });
 
       let presentCount = 0;
@@ -1037,7 +1033,7 @@ export class StudentManagementService {
 
       return {
         data: {
-          studentId ,
+          studentId,
           studentName: student.user.fullName,
           classId,
           className: getClass.name,
@@ -1052,5 +1048,142 @@ export class StudentManagementService {
       throw new HttpException('Error fetching attendance', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async getStudentAttendanceForFeeCalculation(
+  studentId: string, 
+  classIds: string[]
+): Promise<any> {
+  if (!checkId(studentId)) {
+    throw new HttpException('Invalid student ID', HttpStatus.BAD_REQUEST);
+  }
+  console.log(classIds);
+  
+  try {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: { select: { fullName: true } },
+        scholarship: { select: { percent: true } }
+      }
+    });
+
+    if (!student) {
+      throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+    }
+
+    // Lấy tháng hiện tại
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const attendanceData = await Promise.all(
+      classIds?.map(async (classId) => {       
+        // Kiểm tra lớp có tồn tại không
+        const classInfo = await this.prisma.class.findUnique({
+          where: { id: classId },
+          select: {
+            id: true,
+            name: true,
+            feeAmount: true,
+            feePeriod: true,
+            subject: { select: { name: true } }
+          }
+        });
+
+        if (!classInfo) {
+          return null;
+        }
+
+        // Đếm số buổi đã học (status = 'present')
+        const attendedSessions = await this.prisma.studentSessionAttendance.count({
+          where: {
+            studentId,
+            status: {not: 'excused'}, // Tính cả 'present' và 'absent'
+            recordedAt: {
+              gte: startOfMonth,
+              lt: startOfNextMonth
+            },
+            session: { classId }
+          }
+        });
+        
+        // Đếm tổng số buổi học trong tháng (để tính % chuyên cần)
+        const totalSessions = await this.prisma.classSession.count({
+          where: {
+            classId,
+            sessionDate: {
+              gte: startOfMonth,
+              lt: startOfNextMonth
+            },
+            status: 'end' // Chỉ tính những buổi đã kết thúc
+          }
+        });
+
+        // Tính phí dựa trên số buổi đã học
+        let feePerSession = 0;
+        if (classInfo.feeAmount && classInfo.feePeriod) {
+          if (classInfo.feePeriod === 'per_session') {
+            feePerSession = Number(classInfo.feeAmount);
+          } else if (classInfo.feePeriod === 'per_month' && totalSessions > 0) {
+            feePerSession = Number(classInfo.feeAmount) / totalSessions;
+          }
+        }
+
+        const totalFeeBeforeDiscount = attendedSessions * feePerSession;
+        const scholarshipPercent = student.scholarship?.percent || 0;
+        const discountAmount = (totalFeeBeforeDiscount * Number(scholarshipPercent)) / 100;
+        const finalAmount = totalFeeBeforeDiscount - discountAmount;
+
+        return {
+          classId,
+          className: classInfo.name,
+          subjectName: classInfo.subject.name,
+          attendedSessions,
+          totalSessions,
+          attendanceRate: totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0,
+          feePerSession,
+          totalFeeBeforeDiscount,
+          scholarshipPercent: Number(scholarshipPercent),
+          discountAmount,
+          finalAmount
+        };
+      })
+    );
+
+    // Lọc bỏ các class không hợp lệ
+    const validAttendanceData = attendanceData.filter(data => data !== null);
+
+    // Tính tổng
+    const totalFeeBeforeDiscount = validAttendanceData.reduce((sum, item) => sum + item.totalFeeBeforeDiscount, 0);
+    const totalDiscountAmount = validAttendanceData.reduce((sum, item) => sum + item.discountAmount, 0);
+    const totalFinalAmount = validAttendanceData.reduce((sum, item) => sum + item.finalAmount, 0);
+    const data = {
+        studentId,
+        studentName: student.user.fullName,
+        scholarshipPercent: Number(student.scholarship?.percent || 0),
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        periodDisplay: `Tháng ${now.getMonth() + 1}/${now.getFullYear()}`,
+        classAttendances: validAttendanceData,
+        summary: {
+          totalClassesTracked: validAttendanceData.length,
+          totalSessionsAttended: validAttendanceData.reduce((sum, item) => sum + item.attendedSessions, 0),
+          totalFeeBeforeDiscount,
+          totalDiscountAmount,
+          totalFinalAmount
+        }
+      }
+    return  data
+      
+    
+  } catch (error) {
+    if (error instanceof HttpException) throw error;
+    console.error('Error getting student attendance for fee calculation:', error);
+    throw new HttpException(
+      'Error calculating student fees',
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 
 }

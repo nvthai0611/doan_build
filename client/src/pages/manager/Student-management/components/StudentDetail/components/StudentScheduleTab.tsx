@@ -1,7 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Student } from '../../../types/student';
 import {
   DataTable,
@@ -13,6 +15,7 @@ import {
 } from '../../../../../../lib/constants';
 import { centerOwnerStudentService } from '../../../../../../services/center-owner/student-management/student.service';
 import { toast } from 'sonner';
+import { Calculator, X } from 'lucide-react';
 
 interface StudentScheduleTabProps {
   student: Student;
@@ -42,15 +45,24 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null); // State for selected status
+  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<string[]>([]); // State for selected enrollments
 
   // --- attendance UI state ---
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [selectedAttendance, setSelectedAttendance] = useState<any | null>(null);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
   const [showAttendanceCard, setShowAttendanceCard] = useState(false);
+  const [showCalculationModal, setShowCalculationModal] = useState(false);
+  const [loadingCalculation, setLoadingCalculation] = useState(false);
+  const [attendanceCalculationData, setAttendanceCalculationData] = useState<any>(null);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('vi-VN');
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
   };
 
   // Hàm format lịch học
@@ -105,6 +117,31 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
     setSelectedEnrollmentId(null);
   };
 
+  // Fetch attendance-based fee calculation
+  const handleCalculateAttendanceFees = async () => {
+    if (selectedEnrollmentIds.length === 0) return;
+
+    setLoadingCalculation(true);
+    try {
+      const classIds = selectedEnrollmentsSummary.map(item => 
+        student.enrollments.find(e => e.id === item.id)?.class.id
+      ).filter(Boolean);
+
+      const response = await centerOwnerStudentService.getStudentAttendanceForFeeCalculation(
+        student.id,
+        classIds
+      );
+
+      setAttendanceCalculationData(response.data);
+      setShowCalculationModal(true);
+    } catch (error) {
+      console.error('Error calculating attendance fees:', error);
+      toast.error('Không thể tính toán chi phí dựa trên số buổi đã học');
+    } finally {
+      setLoadingCalculation(false);
+    }
+  };
+
   if (!student.enrollments || student.enrollments.length === 0) {
     return (
       <Card>
@@ -117,10 +154,16 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
     );
   }
 
+  const filterDataByStatusOrder = (enrollments: any[]) => {
+    if (!selectedStatus) return enrollments; // No filter applied
+    return enrollments.filter(enrollment => enrollment.status === selectedStatus);
+  };
+
   // Chuẩn hóa data cho DataTable
   const data = useMemo(() => {
-    // Sắp xếp theo thứ tự status yêu cầu
-    const sorted = [...student.enrollments].sort((a: any, b: any) => {
+    // Filter and sort by status order
+    const filtered = filterDataByStatusOrder(student.enrollments);
+    const sorted = [...filtered].sort((a: any, b: any) => {
       const aIdx = STATUS_ORDER.indexOf(a.status);
       const bIdx = STATUS_ORDER.indexOf(b.status);
       return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
@@ -137,10 +180,24 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
       finalGrade: enrollment.finalGrade,
       schedule: formatSchedule(enrollment.class.recurringSchedule?.schedules),
       classId: enrollment.class.id, // thêm để thao tác
+      feeAmount: enrollment.class.feeAmount || 0, // Thêm giá tiền
     }));
-  }, [student.enrollments]);
+  }, [student.enrollments, selectedStatus]); // Add selectedStatus to dependencies
 
-  
+  // Data for calculation summary (independent of table filter)
+  const selectedEnrollmentsSummary = useMemo(() => {
+    return student.enrollments
+      .filter((e: any) => selectedEnrollmentIds.includes(e.id))
+      .map((e: any) => ({
+        id: e.id,
+        className: e.class.name,
+        subjectName: e.class.subject.name,
+        feeAmount: e.class.feeAmount || 0,
+      }));
+  }, [student.enrollments, selectedEnrollmentIds]);
+
+  const scholarshipPercent = student.scholarship?.percent || 0;
+
   // Paging
   const pagedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -149,6 +206,22 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
 
   // Định nghĩa columns cho DataTable
   const columns: Column<any>[] = [
+    {
+      key: 'select',
+      header: 'Chọn',
+      render: (item) => (
+        <Checkbox
+          checked={selectedEnrollmentIds.includes(item.id)}
+          onCheckedChange={(checked) => {
+            setSelectedEnrollmentIds((prev) =>
+              checked
+                ? [...prev, item.id]
+                : prev.filter((id) => id !== item.id)
+            );
+          }}
+        />
+      ),
+    },
     {
       key: 'subjectName',
       header: 'Môn học',
@@ -263,8 +336,246 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
     showPageInfo: true,
   };
   
+  // Filter UI
+  const renderFilterButtons = () => (
+    <div className="flex space-x-2 mb-4">
+      <Button onClick={() => setSelectedStatus(null)} variant={selectedStatus === null ? 'solid' : 'outline'}>
+        Tất cả
+      </Button>
+      {STATUS_ORDER.map(status => (
+        <Button
+          key={status}
+          onClick={() => setSelectedStatus(status)}
+          variant={selectedStatus === status ? 'solid' : 'outline'}
+        >
+          {ENROLLMENT_STATUS_LABELS[status]}
+        </Button>
+      ))}
+      
+    </div>
+  );
+
+  // Updated Fee Calculation Modal Component
+  const FeeCalculationModal = () => (
+    <Dialog open={showCalculationModal} onOpenChange={setShowCalculationModal}>
+      <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Calculator className="h-5 w-5" />
+            Tính toán chi phí theo số buổi đã học
+            {attendanceCalculationData && (
+              <span className="text-sm text-muted-foreground">
+                ({attendanceCalculationData.periodDisplay} - Học bổng: {attendanceCalculationData.scholarshipPercent}%)
+              </span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+        
+        {attendanceCalculationData ? (
+          <div className="space-y-6">
+            {/* Thông tin tổng quan */}
+            <div className="p-4 bg-blue-50 rounded-lg border">
+              <h3 className="font-semibold text-lg mb-3">Thông tin chung</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Học viên:</span>
+                  <div className="font-medium">{attendanceCalculationData.studentName}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Học bổng:</span>
+                  <div className="font-medium">{attendanceCalculationData.scholarshipPercent}%</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Kỳ tính phí:</span>
+                  <div className="font-medium">{attendanceCalculationData.periodDisplay}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chi tiết từng lớp */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Chi tiết theo từng lớp học</h3>
+              {attendanceCalculationData.classAttendances.map((classData: any) => (
+                <div
+                  key={classData.classId}
+                  className="p-4 bg-secondary/20 rounded-lg border"
+                >
+                  <div className="flex flex-col lg:flex-row justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg">{classData.className}</div>
+                      <div className="text-muted-foreground">({classData.subjectName})</div>
+                      <div className="mt-2 text-sm">
+                        <div>Số buổi đã học: <span className="font-medium">{classData.attendedSessions}/{classData.totalSessions}</span></div>
+                        <div>Tỷ lệ chuyên cần: <span className="font-medium">{classData.attendanceRate.toFixed(1)}%</span></div>
+                      </div>
+                    </div>
+                    
+                    <div className="min-w-[300px]">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-muted-foreground">Giá/buổi:</span>
+                          <span className="font-medium">{formatCurrency(classData.feePerSession)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-muted-foreground">Số buổi đã học:</span>
+                          <span className="font-medium">{classData.attendedSessions} buổi</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-muted-foreground">Tạm tính:</span>
+                          <span className="font-medium">{formatCurrency(classData.totalFeeBeforeDiscount)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 text-green-600">
+                          <span>Giảm ({classData.scholarshipPercent}%):</span>
+                          <span className="font-medium">- {formatCurrency(classData.discountAmount)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 font-bold text-primary border-t pt-2">
+                          <span>Thành tiền:</span>
+                          <span className="text-lg">{formatCurrency(classData.finalAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Tổng kết */}
+            <div className="border-t pt-4">
+              <div className="flex justify-end">
+                <div className="text-right bg-primary/5 p-4 rounded-lg border-2 border-primary/20">
+                  <div className="space-y-2 text-sm text-muted-foreground mb-3">
+                    <div>Tổng số lớp: {attendanceCalculationData.summary.totalClassesTracked}</div>
+                    <div>Tổng buổi đã học: {attendanceCalculationData.summary.totalSessionsAttended}</div>
+                    <div>Tổng trước giảm: {formatCurrency(attendanceCalculationData.summary.totalFeeBeforeDiscount)}</div>
+                    <div>Tổng giảm giá: {formatCurrency(attendanceCalculationData.summary.totalDiscountAmount)}</div>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Tổng cần thanh toán:
+                  </div>
+                  <div className="text-3xl font-bold text-primary">
+                    {formatCurrency(attendanceCalculationData.summary.totalFinalAmount)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {selectedEnrollmentsSummary.map((item) => {
+              const originalFee = item.feeAmount;
+              const discountAmount = (originalFee * scholarshipPercent) / 100;
+              const finalAmount = originalFee - discountAmount;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-secondary/20 rounded-lg border gap-3"
+                >
+                  <div className="flex-1">
+                    <div className="font-semibold text-lg">{item.className}</div>
+                    <div className="text-muted-foreground">({item.subjectName})</div>
+                  </div>
+                  <div className="w-full sm:w-auto min-w-[280px]">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-muted-foreground">Giá gốc:</span>
+                        <span className="font-medium">{formatCurrency(originalFee)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 text-green-600">
+                        <span>Giảm ({scholarshipPercent}%):</span>
+                        <span className="font-medium">- {formatCurrency(discountAmount)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 font-bold text-primary border-t pt-2">
+                        <span>Sau giảm:</span>
+                        <span className="text-lg">{formatCurrency(finalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            <div className="border-t pt-4 mt-6">
+              <div className="flex justify-end">
+                <div className="text-right bg-primary/5 p-4 rounded-lg border-2 border-primary/20">
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Tổng cộng (Sau khi trừ học bổng):
+                  </div>
+                  <div className="text-3xl font-bold text-primary">
+                    {formatCurrency(
+                      selectedEnrollmentsSummary.reduce((acc, item) => {
+                        const fee = item.feeAmount;
+                        return acc + (fee - (fee * scholarshipPercent) / 100);
+                      }, 0)
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => {
+            setShowCalculationModal(false);
+            setAttendanceCalculationData(null);
+          }}>
+            Đóng
+          </Button>
+          {!attendanceCalculationData && (
+            <Button 
+              onClick={handleCalculateAttendanceFees}
+              loading={loadingCalculation}
+              className="flex items-center gap-2"
+            >
+              <Calculator className="h-4 w-4" />
+              Tính theo buổi đã học
+            </Button>
+          )}
+          <Button onClick={() => window.print()}>
+            In báo cáo
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <>
+      {renderFilterButtons()}
+
+      {/* Show calculation button when items are selected */}
+      {selectedEnrollmentsSummary.length > 0 && (
+        <div className="mb-4 flex justify-between items-center p-3 bg-primary/5 rounded-lg border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Đã chọn {selectedEnrollmentsSummary.length} lớp học để tính toán chi phí
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setShowCalculationModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Calculator className="h-4 w-4" />
+              Tính theo giá gốc
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleCalculateAttendanceFees}
+              loading={loadingCalculation}
+              className="flex items-center gap-2"
+            >
+              <Calculator className="h-4 w-4" />
+              Tính theo buổi đã học
+            </Button>
+          </div>
+        </div>
+      )}
+
       <DataTable
         data={pagedData}
         columns={columns}
@@ -276,6 +587,9 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
         striped
         pagination={paginationConfig}
       />
+
+      {/* Fee Calculation Modal */}
+      <FeeCalculationModal />
 
       {/* Attendance detail / invoice actions */}
       {showAttendanceCard && selectedAttendance && (

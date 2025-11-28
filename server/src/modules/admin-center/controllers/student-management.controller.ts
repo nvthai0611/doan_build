@@ -145,7 +145,7 @@ export class StudentManagementController {
                 if (!createStudentDto.username) {
                     throw new HttpException('Username là bắt buộc', HttpStatus.BAD_REQUEST);
                 }
-
+                
                 // Validate username format (alphanumeric and underscore only)
                 const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
                 if (!usernameRegex.test(createStudentDto.username)) {
@@ -517,4 +517,18 @@ export class StudentManagementController {
         throw new HttpException(error.message || 'Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
+
+   @ApiOperation({ summary: 'Lấy attendance của học sinh theo lớp (để tính tiền)' })
+    @Post(':studentId/attendance-fee-calculation')
+    async getStudentAttendanceForFeeCalculation(
+  @Param('studentId') studentId: string,
+  @Body() body: { classIds: string[] }
+) {
+
+  return await this.studentManagementService.getStudentAttendanceForFeeCalculation(
+    studentId, 
+    body.classIds
+  );
+}
+
 }
