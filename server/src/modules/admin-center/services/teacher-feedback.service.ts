@@ -244,7 +244,7 @@ export class TeacherFeedbackService {
           { headers: { Authorization: `Bearer ${apiKey}` } },
         ),
       );
-
+      console.log(response.data);
       const content = response.data.choices[0]?.message?.content || '{}';
       return JSON.parse(content);
     } catch (e) {
