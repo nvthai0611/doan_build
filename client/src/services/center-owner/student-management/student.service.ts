@@ -286,16 +286,37 @@ class StudentService {
       `/admin-center/student-management/${studentId}/attendance-fee-calculation`,
       { classIds }
     );
-    console.log("da chay vao day");
-    console.log(response);
-    
-    
     return response;
   } catch (error) {
     console.error('Error getting student attendance for fee calculation:', error);
     throw error;
   }
 }
+async createBillingForAttendanceFee(
+  studentId: string,
+  data: {
+    classIds: string[];
+    paymentDetails?: {
+      payNow: boolean;
+      paymentMethod?: 'cash' | 'bank_transfer';
+      amount?: number;
+      notes?: string;
+    };
+  }
+): Promise<any> {
+  try {
+    const response = await apiClient.post(
+      `/admin-center/student-management/${studentId}/create-billing`,
+      data
+    );
+    
+    return response;
+  } catch (error) {
+    console.error('Error creating billing for attendance fee:', error);
+    throw error;
+  }
+}
+
   
 }
 

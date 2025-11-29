@@ -530,5 +530,72 @@ export class StudentManagementController {
     body.classIds
   );
 }
+@Post(':studentId/create-billing')
+async createBillingForAttendanceFee(
+  @Param('studentId') studentId: string,
+  @Body() createBillingDto: {
+    classIds: string[];
+    paymentDetails?: {
+      payNow: boolean;
+      paymentMethod?: 'cash' | 'bank_transfer';
+      amount?: number;
+      notes?: string;
+    };
+  }
+) {
+  try {
+    // Validate required fields
+    if (!studentId) {
+      throw new HttpException('Thiếu ID học sinh', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!createBillingDto.classIds || !Array.isArray(createBillingDto.classIds) || createBillingDto.classIds.length === 0) {
+      throw new HttpException('Cần chọn ít nhất một lớp học', HttpStatus.BAD_REQUEST);
+    }
+
+    // Validate payment details if provided
+    if (createBillingDto.paymentDetails?.payNow) {
+      if (!createBillingDto.paymentDetails.paymentMethod) {
+        throw new HttpException('Thiếu phương thức thanh toán', HttpStatus.BAD_REQUEST);
+      }
+
+      if (createBillingDto.paymentDetails.amount !== undefined && createBillingDto.paymentDetails.amount <= 0) {
+        throw new HttpException('Số tiền thanh toán phải lớn hơn 0', HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    // Validate classIds format
+    const invalidClassIds = createBillingDto.classIds.filter(id => !id || typeof id !== 'string');
+    if (invalidClassIds.length > 0) {
+      throw new HttpException('Tất cả ID lớp học phải là chuỗi hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.studentManagementService.createBillingForAttendanceFee(
+      studentId,
+      createBillingDto.classIds,
+      createBillingDto.paymentDetails
+    );
+  } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+    
+    console.error('Lỗi khi tạo hóa đơn phí học:', error);
+    
+    // Handle specific error types
+    if (error.message.includes('không tồn tại')) {
+      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+    }
+    
+    if (error.message.includes('không đủ') || error.message.includes('bằng 0')) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+    
+    throw new HttpException(
+      error.message || 'Lỗi server khi tạo hóa đơn phí học',
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 
 }
