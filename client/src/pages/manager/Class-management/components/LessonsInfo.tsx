@@ -211,19 +211,29 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 
   const handleConfirmCancel = async () => {
     if (!cancelSession) return;
-    if (!cancelReason.trim()) {
-      toast.error('Vui lòng nhập lý do nghỉ buổi học');
-      return;
-    }
 
     setIsCancelling(true);
     try {
-      await centerOwnerScheduleService.updateSession(cancelSession.id, {
-        status: SessionStatus.DAY_OFF,
-        cancellationReason: cancelReason.trim(),
-      } as any);
+      if (cancelSession.status === SessionStatus.DAY_OFF) {
+        // Restore session to happening
+        await centerOwnerScheduleService.updateSession(cancelSession.id, {
+          status: SessionStatus.HAS_NOT_HAPPENED,
+          cancellationReason: null,
+        } as any);
+        toast.success('Đã khôi phục buổi học');
+      } else {
+        if (!cancelReason.trim()) {
+          toast.error('Vui lòng nhập lý do nghỉ buổi học');
+          setIsCancelling(false);
+          return;
+        }
+        await centerOwnerScheduleService.updateSession(cancelSession.id, {
+          status: SessionStatus.DAY_OFF,
+          cancellationReason: cancelReason.trim(),
+        } as any);
+        toast.success('Đã ghi nhận buổi học nghỉ');
+      }
 
-      toast.success('Đã ghi nhận buổi học nghỉ');
       closeCancelPopover();
       await refetch();
     } catch (error: any) {
@@ -888,41 +898,85 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700"
-                  disabled={session.status === SessionStatus.DAY_OFF || session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
+                  className={`h-8 w-8 ${
+                    session.status === SessionStatus.DAY_OFF
+                      ? 'text-green-600 hover:text-green-700'
+                      : 'text-red-600 hover:text-red-700'
+                  }`}
+                  disabled={session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
+                  title={
+                    session.status === SessionStatus.DAY_OFF
+                      ? 'Khôi phục buổi học'
+                      : 'Đánh dấu buổi nghỉ'
+                  }
                 >
-                  <XCircle className="h-4 w-4" />
+                  {session.status === SessionStatus.DAY_OFF ? (
+                    <Undo className="h-4 w-4" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 space-y-3" align="end">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">
-                    Lý do nghỉ <span className="text-red-500">*</span>
-                  </p>
-                  <Textarea
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="Ví dụ: Nghỉ lễ, giáo viên bận công tác..."
-                    className="min-h-[100px]"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeCancelPopover}
-                    disabled={isCancelling}
-                  >
-                    Thoát
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleConfirmCancel}
-                    disabled={isCancelling}
-                  >
-                    {isCancelling ? 'Đang lưu...' : 'Xác nhận'}
-                  </Button>
-                </div>
+                {session.status === SessionStatus.DAY_OFF ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-700">
+                      Buổi học này đang nghỉ với lý do:
+                    </p>
+                    <div className="rounded-md bg-gray-100 p-2 text-sm text-gray-600">
+                      {session.cancellationReason || 'Chưa cung cấp lý do'}
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      Bạn có muốn khôi phục buổi học để tiếp tục học không?
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={closeCancelPopover}
+                        disabled={isCancelling}
+                      >
+                        Thoát
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleConfirmCancel}
+                        disabled={isCancelling}
+                      >
+                        {isCancelling ? 'Đang khôi phục...' : 'Khôi phục'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Lý do nghỉ <span className="text-red-500">*</span>
+                    </p>
+                    <Textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Ví dụ: Nghỉ lễ, giáo viên bận công tác..."
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end gap-2 mt-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={closeCancelPopover}
+                        disabled={isCancelling}
+                      >
+                        Thoát
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleConfirmCancel}
+                        disabled={isCancelling}
+                      >
+                        {isCancelling ? 'Đang lưu...' : 'Xác nhận'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
           </div>
