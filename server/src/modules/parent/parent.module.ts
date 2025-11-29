@@ -10,7 +10,7 @@ import { StudentManagementController } from './controllers/student-management.co
 import { StudentLeaveRequestController } from './controllers/student-leave-request.controller';
 import { ChildClassesController } from './controllers/child-classes.controller';
 import { ClassJoinController } from './controllers/class-join.controller';
-import { AcademicTrackingService } from './services/academic-tracking.service';
+import { AcademicTrackingService } from './services/child-progress.service';
 import { ClassInformationService } from './services/class-information.service';
 import { CommunicationService } from './services/communication.service';
 import { FinancialService } from './services/financial.service';

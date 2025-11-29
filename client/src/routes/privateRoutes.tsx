@@ -79,6 +79,7 @@ import TeacherOverview from "../pages/teacher/TeacherOverview/TeacherOverview";
 import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
 import UserManagement from "../pages/manager/User-management/UserManagement";
 import AuditLog from "../pages/manager/Audit-log/AuditLog";
+import FinancialReports  from "@/pages/manager/Financial-reports/FinancialReports";
 
 export const privateRoutes = (
   <>
@@ -94,6 +95,7 @@ export const privateRoutes = (
         element={<AuthMiddleware allowedRoles={['center_owner']} />}
       >
         <Route index element={<CenterOwnerHomePage />} />
+        <Route path="reports" element={<FinancialReports />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/:id" element={<ClassDetail />} />

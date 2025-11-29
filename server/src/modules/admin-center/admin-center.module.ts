@@ -75,6 +75,8 @@ import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditLogService } from './services/audit-log.service';
 import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
 import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
+import { FinancialReportsController } from './controllers/financial-reports.controller';
+import { FinancialReportsService } from './services/financial-reports.service';
 
 @Module({
   imports: [
@@ -127,7 +129,8 @@ import { EmailNotificationPayrollService } from '../shared/services/email-notifi
     CenterInfoController,
     SchoolManagementController,
     JobTriggerController,
-    AuditLogController
+    AuditLogController,
+    FinancialReportsController,
   ],
   providers: [
     PrismaService,
@@ -169,8 +172,8 @@ import { EmailNotificationPayrollService } from '../shared/services/email-notifi
     EmailServiceNotificationBill,
     AuditLogService,
     ChangeStatusSessionService,
-    EmailNotificationPayrollService
-
+    EmailNotificationPayrollService,
+    FinancialReportsService,
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
 

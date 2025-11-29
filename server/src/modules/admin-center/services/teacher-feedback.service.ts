@@ -5,8 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 // Import thư viện Google AI
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
+import { GoogleGenAI } from "@google/genai";
 // --- INTERFACES CHO AI ---
 
 // Kết quả từ OpenAI (Analyst)
@@ -160,12 +159,21 @@ export class TeacherFeedbackService {
       let confidenceScore = 0.95; // Mặc định rất tin
       
       if (verification) {
+         // LOG: Verification result từ Gemini
+         this.logger.log('=== GEMINI VERIFICATION RESULT ===');
+         this.logger.log(`is_agreed: ${verification.is_agreed}`);
+         this.logger.log(`consensus_score: ${verification.consensus_score}`);
+         this.logger.log(`auditor_comment: ${verification.auditor_comment}`);
+         this.logger.log('=== END GEMINI VERIFICATION RESULT ===');
+         
          if (verification.consensus_score < 60) {
             confidenceScore = 0.5; // Giảm một nửa độ tin cậy
-            analysisResult.key_insights.push(`CẢNH BÁO AI: Kết quả bị nghi ngờ bởi Gemini (Độ đồng thuận thấp: ${verification.consensus_score}%). Lý do: ${verification.auditor_comment}`);
+            this.logger.warn(`Gemini consensus score thấp: ${verification.consensus_score}%`);
          } else {
-            analysisResult.key_insights.push(`Đã kiểm chứng bởi Gemini (Độ đồng thuận: ${verification.consensus_score}%)`);
+            this.logger.log(`Gemini consensus score tốt: ${verification.consensus_score}%`);
          }
+      } else {
+         this.logger.warn('Gemini verification không có (null hoặc undefined)');
       }
 
       // B6: Lưu vào Database
@@ -188,9 +196,11 @@ export class TeacherFeedbackService {
 
   // --- 3. CÁC HÀM PRIVATE XỬ LÝ AI ---
 
-  // HÀM GỌI OPENAI (Đã train Prompt kỹ)
+  // HÀM GỌI OPENAI
   private async performDeepAnalysisOpenAI(className: string, data: any[]): Promise<OpenAIAnalysisResult | null> {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const apiKey = this.configService.get<string>('OPEN_API_KEY');
+    console.log(apiKey);
+    
     if (!apiKey) return null;
 
     // --- PROMPT ENGINEERING ---
@@ -205,7 +215,7 @@ export class TeacherFeedbackService {
       4. OUTPUT: Chỉ trả về JSON hợp lệ.
     `;
 
-    // Ví dụ mẫu (Few-Shot Learning) để AI khôn hơn
+    //(Few-Shot Learning)
     const userPrompt = `
       Phân tích lớp: "${className}".
       DỮ LIỆU: ${JSON.stringify(data)}
@@ -233,7 +243,7 @@ export class TeacherFeedbackService {
         this.httpService.post(
           'https://api.openai.com/v1/chat/completions',
           {
-            model: 'gpt-4o-mini', // Dùng model mới nhất, rẻ và khôn hơn 3.5
+            model: 'gpt-4o-mini', // Model free tier, rẻ và hiệu quả nhất
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt },
@@ -256,11 +266,14 @@ export class TeacherFeedbackService {
   // HÀM GỌI GEMINI (Thanh tra viên) 
   private async crossCheckWithGemini(feedbacks: any[], openAIResult: OpenAIAnalysisResult): Promise<GeminiCheckResult | null> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    if (!apiKey) return null;
+    if (!apiKey) {
+      this.logger.warn('GEMINI_API_KEY is not set. Skipping Gemini verification.');
+      return null;
+    }
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      // Khởi tạo GoogleGenAI với API key
+      const ai = new GoogleGenAI({ apiKey });
 
       // Tóm tắt dữ liệu input (Lấy các comment có chữ để check)
       const inputSummary = feedbacks
@@ -293,12 +306,59 @@ export class TeacherFeedbackService {
         }
       `;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().replace(/```json|```/g, '').trim();
-      return JSON.parse(text);
+      // Gọi API với model gemini-2.5-flash
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      // LOG: Response raw từ Gemini
+      this.logger.log('=== GEMINI RAW RESPONSE ===');
+      this.logger.log(JSON.stringify(response, null, 2));
+      this.logger.log('=== END GEMINI RAW RESPONSE ===');
+
+      // Parse response - cần kiểm tra cấu trúc response của @google/genai
+      let text: string;
+      if (response.text) {
+        text = response.text;
+      } else if (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
+        text = response.candidates[0].content.parts[0].text;
+      } else {
+        // Fallback: thử parse từ response object
+        text = JSON.stringify(response);
+        this.logger.warn('Unexpected Gemini response structure', response);
+      }
+
+      // LOG: Text đã extract
+      this.logger.log('=== GEMINI EXTRACTED TEXT ===');
+      this.logger.log(text);
+      this.logger.log('=== END GEMINI EXTRACTED TEXT ===');
+
+      // Làm sạch JSON response
+      const cleanedText = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanedText);
+      
+      // LOG: Parsed result
+      this.logger.log('=== GEMINI PARSED RESULT ===');
+      this.logger.log(JSON.stringify(parsed, null, 2));
+      this.logger.log('=== END GEMINI PARSED RESULT ===');
+      
+      const result = {
+        is_agreed: parsed.is_agreed || false,
+        consensus_score: parsed.consensus_score || 0,
+        auditor_comment: parsed.auditor_comment || '',
+      };
+
+      // LOG: Final result
+      this.logger.log('=== GEMINI FINAL RESULT ===');
+      this.logger.log(JSON.stringify(result, null, 2));
+      this.logger.log('=== END GEMINI FINAL RESULT ===');
+
+      return result;
 
     } catch (error) {
-      this.logger.warn('Gemini Check Failed', error);
+      this.logger.warn('Gemini Check Failed - Skipping verification', error);
+      // Trả về null để không ảnh hưởng đến flow chính (OpenAI vẫn hoạt động)
       return null; 
     }
   }
@@ -320,7 +380,7 @@ export class TeacherFeedbackService {
       strengths: [],
       weaknesses: hasDanger ? ['Phát hiện từ khóa tiêu cực nghiêm trọng trong comment'] : [],
       recommendations: ['Vui lòng kiểm tra thủ công.'],
-      key_insights: ['⚠️ Đang chạy chế độ Basic (Không có AI)'],
+      key_insights: ['Đang chạy chế độ Basic (Không có AI)'],
     };
   }
 
@@ -341,7 +401,7 @@ export class TeacherFeedbackService {
         feedbackCount: feedbackCount,
         avgRating: 0, // Bạn có thể tính lại nếu cần
         confidenceScore: confidenceScore,
-        aiModel: 'gpt-4o-mini + gemini-flash', // Đánh dấu model sử dụng
+        aiModel: 'gpt-4o-mini + gemini-1.5-flash', // Đánh dấu model sử dụng (free tier)
         analyzedAt: new Date(),
       };
 
