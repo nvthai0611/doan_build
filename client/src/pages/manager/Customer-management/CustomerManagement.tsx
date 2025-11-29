@@ -251,7 +251,7 @@ export const CustomerManagementPage = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Quản lý khách hàng</h1>
+            <h1 className="text-2xl font-semibold">Quản lý khách hàng chưa đăng ký</h1>
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>

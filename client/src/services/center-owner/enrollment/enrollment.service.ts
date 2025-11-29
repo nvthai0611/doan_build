@@ -51,6 +51,15 @@ export const enrollmentService = {
         return response.data;
     },
 
+    // Bulk transfer students to another class (with transaction)
+    bulkTransfer: async (enrollmentIds: string[], data: any) => {
+        const response = await apiClient.post(`${BASE_URL}/bulk-transfer`, {
+            enrollmentIds,
+            ...data,
+        });
+        return response.data;
+    },
+
     // Delete enrollment
     deleteEnrollment: async (enrollmentId: string) => {
         const response = await apiClient.delete(`${BASE_URL}/${enrollmentId}`);

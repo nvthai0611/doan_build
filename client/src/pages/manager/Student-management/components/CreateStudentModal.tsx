@@ -131,8 +131,6 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     try {
       const response = await centerOwnerStudentService.findParentByEmail(email)
       
-      console.log("Parent search response:", response) // Debug log
-      
       // Backend returns { data: {...}, message: '...' }
       const parentData = response.data || response
       

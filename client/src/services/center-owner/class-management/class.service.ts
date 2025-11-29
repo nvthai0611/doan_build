@@ -183,4 +183,12 @@ export const classService = {
     );
     return response;
   },
+
+  // Get classes with students without contract
+  getClassesWithoutContract: async (limit?: number) => {
+    const response = await apiClient.get(`${BASE_URL}/without-contract`, {
+      params: { limit },
+    });
+    return response;
+  },
 };

@@ -79,7 +79,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       href: '/center-qn/reports',
     },
     {
-      title: 'Khách hàng',
+      title: 'Khách hàng chưa đăng ký',
       icon: Users,  
       href: '/center-qn/customers',
       // children: [

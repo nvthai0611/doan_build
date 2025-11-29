@@ -46,7 +46,8 @@ export class StudentSharedService {
   }
 
   private getRoleBasedInclude(role: string, currentUser: any) {
-    const includes: Record<string, any> = {
+    try {
+      const includes: Record<string, any> = {
       center_owner: {
         parent: {
           include: {
@@ -108,7 +109,6 @@ export class StudentSharedService {
                 class: {
                   include: {
                     subject: true,
-
                   }
                 }
               }
@@ -116,6 +116,7 @@ export class StudentSharedService {
           }
         },
         leaveRequests: true,
+        scholarship: true
       },
 
       teacher: {
@@ -279,8 +280,13 @@ export class StudentSharedService {
         },
       }
     };
-
     return includes[role] || {};
+
+    } catch (error) {
+      console.log(error);
+      
+    }
+    return {};
   }
 
   private async checkViewPermission(student: any, currentUser: any) {

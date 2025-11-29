@@ -1,4 +1,5 @@
 import { ApiService } from "../../common/api/api-client"
+import { apiClient } from "../../../utils/clientAxios"
 import type {
   CreateStudentRequest,
   UpdateStudentRequest,
@@ -276,6 +277,47 @@ class StudentService {
     // trả về trực tiếp phần data của server (nhẹ)
     return response.data?.data ?? response.data
   };
+  async getStudentAttendanceForFeeCalculation(
+  studentId: string,
+  classIds: string[]
+): Promise<any> {
+  try {
+    const response = await apiClient.post(
+      `/admin-center/student-management/${studentId}/attendance-fee-calculation`,
+      { classIds }
+    );
+    return response;
+  } catch (error) {
+    console.error('Error getting student attendance for fee calculation:', error);
+    throw error;
+  }
+}
+async createBillingForAttendanceFee(
+  studentId: string,
+  data: {
+    classIds: string[];
+    paymentDetails?: {
+      payNow: boolean;
+      paymentMethod?: 'cash' | 'bank_transfer';
+      amount?: number;
+      notes?: string;
+    };
+  }
+): Promise<any> {
+  try {
+    const response = await apiClient.post(
+      `/admin-center/student-management/${studentId}/create-billing`,
+      data
+    );
+    
+    return response;
+  } catch (error) {
+    console.error('Error creating billing for attendance fee:', error);
+    throw error;
+  }
+}
+
+  
 }
 
 export const centerOwnerStudentService = new StudentService()

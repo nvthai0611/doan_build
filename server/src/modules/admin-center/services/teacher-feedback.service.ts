@@ -127,7 +127,7 @@ export class TeacherFeedbackService {
       const startTime = Date.now()
 
       // Gọi AI để phân tích tổng hợp
-      const openaiApiKey = this.configService.get<string>('OPENAI_API_KEY')
+      const openaiApiKey = this.configService.get<string>(process.env.OPENAI_API_KEY)
 
       let analysisResult
       if (!openaiApiKey) {
@@ -514,7 +514,7 @@ Chỉ trả về JSON, không thêm text nào khác.`
         avgRating: analysis.avgRating || 0,
         confidenceScore: analysis.confidenceScore,
         processingTimeMs: analysis.processingTimeMs,
-        aiModel: this.configService.get<string>('OPENAI_API_KEY') ? 'gpt-3.5-turbo' : 'basic',
+        aiModel: this.configService.get<string>(process.env.OPENAI_API_KEY) ? 'gpt-3.5-turbo' : 'basic',
         analyzedAt: new Date(),
       }
 

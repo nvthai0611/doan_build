@@ -50,7 +50,7 @@ export class PayrollCronService {
   private readonly logger = new Logger(PayrollCronService.name);
   private readonly JOB_TYPE = 'GENERATE_TEACHER_PAYROLL';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * CRON JOB: CHẠY LÚC 02:00 SÁNG NGÀY 10 HÀNG THÁNG
@@ -105,7 +105,7 @@ export class PayrollCronService {
       const phase1Result = await this.processCurrentMonthPools(
         studyMonthStart,
         studyMonthEnd,
-        billingMonthStart,
+        previousClosingDate,
         billingMonthEnd,
         closingDate,
       );
@@ -120,7 +120,7 @@ export class PayrollCronService {
       const phase2Result = await this.processBackPay(
         previousClosingDate,
         closingDate,
-        billingMonthStart, // Các hóa đơn có dueDate < ngày này được coi là nợ cũ
+        previousClosingDate, // Các hóa đơn có dueDate < ngày này được coi là nợ cũ
       );
 
       totalSuccess += phase2Result.success;
@@ -208,7 +208,7 @@ export class PayrollCronService {
   private async processCurrentMonthPools(
     studyStart: Date,
     studyEnd: Date,
-    billingStart: Date,
+    previousClosingDate: Date,
     billingEnd: Date,
     closingDate: Date,
   ): Promise<PhaseResult> {
@@ -233,7 +233,9 @@ export class PayrollCronService {
         const feeRecords = await this.prisma.feeRecord.findMany({
           where: {
             classId: cls.id,
-            dueDate: { gte: billingStart, lte: billingEnd },
+            // dueDate LỚN HƠN 07/11 (tức là từ 08/11)
+            // tìm hóa đơn có dueDate từ 08/11 đến 30/12
+            dueDate: { gt: previousClosingDate, lte: billingEnd },
             status: 'paid',
             feeRecordPayments: {
               some: { payment: { paidAt: { lte: closingDate } } },
@@ -319,24 +321,24 @@ export class PayrollCronService {
   /**
    * PHẦN 2: TÍNH TRUY LĨNH (WINNER TAKES ALL)
    * Logic: Tiền nợ cũ thu được -> Trả hết cho GV Chính hiện tại của lớp
+   * CẬP NHẬT: Lấy Rate từ lịch sử TeacherSessionPayout của tháng nợ (nếu có)
    */
   private async processBackPay(
     paymentWindowStart: Date,
     paymentWindowEnd: Date,
-    currentBillingStart: Date,
+    currentBillingStart: Date, // Các hóa đơn có dueDate < ngày này được coi là nợ cũ ví dụ: 07/12 là hạn nộp tháng 11
+    // Hóa đơn có hạn nộp trước thì là nợ ví dụ là 07/11
   ): Promise<PhaseResult<BackPayMap>> {
     let success = 0;
     let failed = 0;
     const errors: ErrorDetail[] = [];
     const backPayMap = new Map<string, BackPayEntry>();
 
-    // 1. Tìm các khoản thanh toán NỢ:
-    // - PaidAt: Nằm trong khoảng quét (Sau chốt sổ tháng trước -> Chốt sổ tháng này)
-    // - DueDate: Nhỏ hơn kỳ hóa đơn hiện tại (Tức là nợ cũ)
+    // 1. Tìm các khoản thanh toán NỢ
     const latePayments = await this.prisma.feeRecordPayment.findMany({
       where: {
         payment: { paidAt: { gt: paymentWindowStart, lte: paymentWindowEnd } },
-        feeRecord: { dueDate: { lt: currentBillingStart }, status: 'paid' },
+        feeRecord: { dueDate: { lte: currentBillingStart }, status: 'paid' },
       },
       include: {
         feeRecord: {
@@ -361,8 +363,7 @@ export class PayrollCronService {
         const studentName = feeRecord.student?.user?.fullName || 'HS';
         const className = feeRecord.class?.name || 'Lớp';
 
-        // --- A. XÁC ĐỊNH NGƯỜI NHẬN (WINNER TAKES ALL) ---
-        // Lấy giáo viên đang đứng tên lớp (TeacherId trong bảng Class)
+        // --- A. XÁC ĐỊNH NGƯỜI NHẬN ---
         const targetTeacherId = feeRecord.class?.teacherId;
 
         if (!targetTeacherId) {
@@ -373,21 +374,53 @@ export class PayrollCronService {
           continue;
         }
 
-        // --- B. TÍNH TOÁN SỐ TIỀN ---
-        // Lấy % tại thời điểm DueDate của hóa đơn nợ để công bằng
-        const teacherRate = await this.getTeacherRate(targetTeacherId, feeRecord.dueDate);
+        // --- B. TÍNH TOÁN RATE (LOGIC MỚI) ---
+        let finalRate: Prisma.Decimal;
 
-        if (teacherRate.isZero()) {
+        // B1. Xác định tháng của hóa đơn nợ
+        const debtDate = feeRecord.dueDate;
+        const debtMonthStart = new Date(debtDate.getFullYear(), debtDate.getMonth(), 1);
+        const debtMonthEnd = new Date(debtDate.getFullYear(), debtDate.getMonth() + 1, 0);
+
+        // B2. Tìm lịch sử Payout của GV này, tại Lớp này, trong Tháng nợ đó
+        // Mục đích: "Snapshot" lại mức lương GV đã nhận lúc đó
+        const historyPayout = await this.prisma.teacherSessionPayout.findFirst({
+          where: {
+            teacherId: targetTeacherId,
+            session: {
+              classId: feeRecord.classId,
+              sessionDate: { gte: debtMonthStart, lte: debtMonthEnd },
+            },
+          },
+          select: { payoutRate: true },
+        });
+
+        if (historyPayout) {
+          // Case 1: Tìm thấy lịch sử -> Dùng Rate cũ (Chính xác tuyệt đối)
+          finalRate = historyPayout.payoutRate;
+        } else {
+          // Case 2: Không tìm thấy (VD: Tháng đó lớp nghỉ, hoặc GV nghỉ dạy) -> Fallback về Hợp đồng
+          finalRate = await this.getTeacherRate(targetTeacherId, debtDate);
+          this.logger.warn(
+            `BackPay: Không tìm thấy lịch sử Payout tháng ${debtDate.getMonth() + 1} cho GV ${targetTeacherId}. Dùng Fallback Rate theo hợp đồng.`,
+          );
+        }
+
+        // Nếu Rate vẫn = 0 (do không có HĐ) -> Bỏ qua
+        if (finalRate.isZero()) {
           success++;
           continue;
         }
 
-        // Tiền truy lĩnh = Tổng tiền nợ thu được * %
-        const teacherPayout = paymentAmount.times(teacherRate);
+        // --- C. TÍNH TIỀN ---
+        const teacherPayout = paymentAmount.times(finalRate);
 
-        // --- C. CỘNG DỒN VÀO MAP ---
+        // --- D. CỘNG DỒN VÀO MAP ---
         if (!backPayMap.has(targetTeacherId)) {
-          backPayMap.set(targetTeacherId, { amount: new Prisma.Decimal(0), details: [] });
+          backPayMap.set(targetTeacherId, {
+            amount: new Prisma.Decimal(0),
+            details: [],
+          });
         }
         const entry = backPayMap.get(targetTeacherId)!;
 
@@ -395,11 +428,11 @@ export class PayrollCronService {
 
         entry.details.push({
           feeRecordId: feeRecord.id,
-          sessionId: 'BACKPAY', // Không gắn với session cụ thể
-          sessionDate: feeRecord.dueDate.toISOString().slice(0, 10), // Dùng ngày hóa đơn làm mốc hiển thị
-          description: `Lương buổi học cũ: ${className} (${studentName}) - Rate: ${teacherRate.times(100)}%`,
+          sessionId: 'BACKPAY',
+          sessionDate: debtDate.toISOString().slice(0, 10), // Hiển thị ngày nợ
+          description: `Lương cũ T${debtDate.getMonth() + 1}: ${className} (${studentName}) - Rate áp dụng: ${finalRate.times(100)}%`,
           revenuePerSession: paymentAmount.toNumber(),
-          payoutRate: teacherRate.toNumber(),
+          payoutRate: finalRate.toNumber(),
           payoutAmount: teacherPayout.toNumber(),
         });
 
