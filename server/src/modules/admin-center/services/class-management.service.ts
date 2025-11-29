@@ -22,6 +22,29 @@ export class ClassManagementService {
     private emailNotificationService: EmailNotificationService,
   ) {}
 
+  private async notifyStatusChange(
+    classId: string,
+    previousStatus: string,
+    newStatus: string,
+  ): Promise<void> {
+    try {
+      await Promise.all([
+        this.emailNotificationService.sendClassStatusChangeEmailToParents(
+          classId,
+          previousStatus,
+          newStatus,
+        ),
+        this.emailNotificationService.sendClassStatusChangeEmailToTeacher(
+          classId,
+          previousStatus,
+          newStatus,
+        ),
+      ]);
+    } catch (error) {
+      console.error('Error notifying class status change:', error);
+    }
+  }
+
   // Helper function để tìm và gợi ý tên khóa mới
   private async suggestNextClassName(
     name: string,
@@ -1366,6 +1389,12 @@ export class ClassManagementService {
               endDate: endDate.toISOString().split('T')[0],
             });
 
+            await this.notifyStatusChange(
+              id,
+              existingClass.status,
+              updatedClass.status,
+            );
+
             return {
               success: true,
               message: `Cập nhật lớp học thành công. Đã tạo lịch học từ ${startDate.toLocaleDateString('vi-VN')} đến ${endDate.toLocaleDateString('vi-VN')}.`,
@@ -1729,21 +1758,7 @@ export class ClassManagementService {
 
       console.log(`Status: ${status}, Existing status: ${existingClass.status}`);
       
-      // Gửi email thông báo cho phụ huynh (không await để không block response)
-      this.emailNotificationService
-        .sendClassStatusChangeEmailToParents(id, existingClass.status, status)
-        .catch((error) => {
-          console.error('Lỗi khi gửi email thông báo status cho phụ huynh:', error);
-          // Không throw để không ảnh hưởng đến response
-        });
-
-      // Gửi email thông báo cho giáo viên khi thay đổi status (không await để không block response)
-      this.emailNotificationService
-        .sendClassStatusChangeEmailToTeacher(id, existingClass.status, status)
-        .catch((error) => {
-          console.error('Lỗi khi gửi email thông báo status cho giáo viên:', error);
-          // Không throw để không ảnh hưởng đến response
-        });
+      void this.notifyStatusChange(id, existingClass.status, status);
 
       return {
         success: true,

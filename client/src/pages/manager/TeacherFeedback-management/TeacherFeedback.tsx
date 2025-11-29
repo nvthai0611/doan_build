@@ -193,10 +193,10 @@ export function FeedbackTeacher() {
       render: (c) => (
         <div className="flex items-center gap-1.5">
           <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 text-xs px-2 py-0.5 h-5 border-0">
-            👍 {c.positiveFeedbacks}
+            {c.positiveFeedbacks}
           </Badge>
           <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 text-xs px-2 py-0.5 h-5 border-0">
-            👎 {c.negativeFeedbacks}
+            {c.negativeFeedbacks}
           </Badge>
         </div>
       ),
@@ -568,21 +568,18 @@ function AIAnalysisCell({
       case 'positive':
         return (
           <Badge className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs px-2 py-0.5 h-5 border-0">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
             Tích Cực
           </Badge>
         )
       case 'negative':
         return (
           <Badge className="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs px-2 py-0.5 h-5 border-0">
-            <AlertCircle className="h-3 w-3 mr-1" />
             Tiêu Cực
           </Badge>
         )
       case 'neutral':
         return (
           <Badge className="bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300 text-xs px-2 py-0.5 h-5 border-0">
-            <Brain className="h-3 w-3 mr-1" />
             Trung Lập
           </Badge>
         )
@@ -616,7 +613,6 @@ function AIAnalysisCell({
         onClick={onViewDetails}
         className="h-7 px-2 text-xs hover:bg-primary/10"
       >
-        <Sparkles className="h-3.5 w-3.5 mr-1" />
         Xem
       </Button>
     </div>
@@ -723,7 +719,6 @@ function ClassAIAnalysisDialog({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
                 Phân Tích AI • {className}
               </DialogTitle>
               <DialogDescription className="mt-2">
@@ -731,7 +726,6 @@ function ClassAIAnalysisDialog({
               </DialogDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-              <Brain className="h-4 w-4" />
               Làm mới
             </Button>
           </div>
@@ -742,8 +736,7 @@ function ClassAIAnalysisDialog({
           <Card className={`border-2 ${getSentimentColor(aiAnalysis.sentiment)}`}>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Brain className="h-5 w-5" />
-                Phân Tích Tổng Quan
+                  Phân Tích Tổng Quan
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -765,13 +758,11 @@ function ClassAIAnalysisDialog({
               {aiAnalysis.keyInsights && aiAnalysis.keyInsights.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
                     Điểm quan trọng
                   </p>
                   <ul className="space-y-1">
                     {aiAnalysis.keyInsights.map((insight, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm">
-                        <span className="text-primary mt-0.5">•</span>
                         <span>{insight}</span>
                       </li>
                     ))}
@@ -786,7 +777,6 @@ function ClassAIAnalysisDialog({
             <Card className="border-green-200 dark:border-green-900">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <CheckCircle2 className="h-5 w-5" />
                   Điểm Mạnh
                 </CardTitle>
               </CardHeader>
@@ -794,7 +784,6 @@ function ClassAIAnalysisDialog({
                 <ul className="space-y-2">
                   {aiAnalysis.strengths.map((strength, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                       <span>{strength}</span>
                     </li>
                   ))}
@@ -808,7 +797,6 @@ function ClassAIAnalysisDialog({
             <Card className="border-red-200 dark:border-red-900">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-red-700 dark:text-red-400">
-                  <AlertCircle className="h-5 w-5" />
                   Điểm Yếu
                 </CardTitle>
               </CardHeader>
@@ -830,7 +818,6 @@ function ClassAIAnalysisDialog({
             <Card className="border-blue-200 dark:border-blue-900">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                  <Brain className="h-5 w-5" />
                   Khuyến Nghị
                 </CardTitle>
               </CardHeader>
@@ -838,7 +825,6 @@ function ClassAIAnalysisDialog({
                 <ul className="space-y-2">
                   {aiAnalysis.recommendations.map((rec, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm">
-                      <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                       <span>{rec}</span>
                     </li>
                   ))}

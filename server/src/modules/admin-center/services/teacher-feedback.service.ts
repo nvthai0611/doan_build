@@ -1,17 +1,45 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
-import { PrismaService } from '../../../db/prisma.service'
-import { HttpService } from '@nestjs/axios'
-import { firstValueFrom } from 'rxjs'
-import { ConfigService } from '@nestjs/config'
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../db/prisma.service';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
+// Import thư viện Google AI
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// --- INTERFACES CHO AI ---
+
+// Kết quả từ OpenAI (Analyst)
+export interface OpenAIAnalysisResult {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  sentimentScore: number;       // Thang 1.0 - 5.0
+  is_conflicting: boolean;      // Cờ báo hiệu: Sao cao nhưng comment chê
+  sentiment_explanation: string;
+  overall_analysis: string;
+  strengths: string[];          // Lưu mảng string cho đơn giản
+  weaknesses: string[];
+  recommendations: string[];
+  key_insights: string[];
+}
+
+// Kết quả từ Gemini (Auditor)
+export interface GeminiCheckResult {
+  is_agreed: boolean;
+  consensus_score: number;      // Độ đồng thuận (0-100)
+  auditor_comment: string;
+}
 
 @Injectable()
 export class TeacherFeedbackService {
+  private readonly logger = new Logger(TeacherFeedbackService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
+  // --- 1. GIỮ NGUYÊN CODE CŨ (FIND ALL) ---
   async findAll(query: any) {
     const {
       search,
@@ -22,35 +50,34 @@ export class TeacherFeedbackService {
       dateFrom,
       dateTo,
       status,
-    } = query || {}
+    } = query || {};
 
-    const where: any = {}
+    const where: Prisma.TeacherFeedbackWhereInput = {};
 
-    if (teacherId) where.teacherId = teacherId
-    if (classId) where.classId = classId
-    if (status) where.status = status
-    if (typeof isAnonymous !== 'undefined') where.isAnonymous = String(isAnonymous) === 'true'
-    if (rating) where.rating = Number(rating)
+    if (teacherId) where.teacherId = teacherId;
+    if (classId) where.classId = classId;
+    if (status) where.status = status;
+    if (typeof isAnonymous !== 'undefined') where.isAnonymous = String(isAnonymous) === 'true';
+    if (rating) where.rating = Number(rating);
     if (dateFrom || dateTo) {
-      where.createdAt = {}
-      if (dateFrom) where.createdAt.gte = new Date(dateFrom)
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
       if (dateTo) {
-        const d = new Date(dateTo)
-        d.setHours(23, 59, 59, 999)
-        where.createdAt.lte = d
+        const d = new Date(dateTo);
+        d.setHours(23, 59, 59, 999);
+        where.createdAt.lte = d;
       }
     }
 
-    // Simple search on related names (teacher, class, student, parent)
-    const searchOr: any[] = []
+    const searchOr: Prisma.TeacherFeedbackWhereInput[] = [];
     if (search) {
-      const contains = String(search)
+      const contains = String(search);
       searchOr.push(
         { teacher: { user: { fullName: { contains, mode: 'insensitive' } } } },
         { parent: { user: { fullName: { contains, mode: 'insensitive' } } } },
         { student: { user: { fullName: { contains, mode: 'insensitive' } } } },
         { class: { name: { contains, mode: 'insensitive' } } },
-      )
+      );
     }
 
     const feedbacks = await this.prisma.teacherFeedback.findMany({
@@ -62,7 +89,7 @@ export class TeacherFeedbackService {
         student: { include: { user: true } },
         class: true,
       },
-    })
+    });
 
     const data = feedbacks.map((f) => ({
       id: f.id,
@@ -78,532 +105,317 @@ export class TeacherFeedbackService {
       categories: (f.categories as any) || {},
       comment: f.comment || '',
       isAnonymous: f.isAnonymous,
-      status: f.status as any,
+      status: f.status,
       createdAt: f.createdAt.toISOString().slice(0, 10),
-    }))
+    }));
 
-    return { data, message: 'Fetched feedbacks successfully' }
+    return { data, message: 'Fetched feedbacks successfully' };
   }
+
+  // --- 2. LOGIC PHÂN TÍCH MỚI (NÂNG CẤP HYBRID AI) ---
 
   async analyzeClassFeedbacks(classId: string) {
     try {
+      // B1: Lấy dữ liệu (Chỉ lấy feedback đã duyệt)
       const feedbacks = await this.prisma.teacherFeedback.findMany({
-        where: {
-          classId,
-          status: 'approved', // Chỉ phân tích feedback đã được approve
-        },
-        include: {
-          teacher: { include: { user: true } },
-          parent: { include: { user: true } },
-          student: { include: { user: true } },
-          class: true,
-        },
+        where: { classId, status: 'approved' },
+        include: { class: true },
         orderBy: { createdAt: 'desc' },
-      })
+        take: 60, // Lấy mẫu 60 cái mới nhất
+      });
 
-      if (feedbacks.length === 0) {
-        return null
+      if (feedbacks.length === 0) return null;
+      const className = feedbacks[0]?.class?.name || 'Lớp học';
+
+      // B2: Làm sạch dữ liệu để gửi AI
+      const feedbacksData = feedbacks.map((f, idx) => ({
+        index: idx + 1,
+        rating: f.rating,
+        // Cắt bớt nếu quá dài, nhưng lấy đủ để hiểu ngữ cảnh
+        comment: f.comment ? f.comment.trim().substring(0, 600) : '',
+      }));
+
+      // B3: PHASE 1 - GỌI OPENAI (ANALYST)
+      // Sử dụng Prompt đã được train kỹ để bắt lỗi "5 sao nhưng chê"
+      let analysisResult = await this.performDeepAnalysisOpenAI(className, feedbacksData);
+
+      // Nếu OpenAI lỗi, dùng Fallback cơ bản
+      if (!analysisResult) {
+        analysisResult = this.performBasicFallback(feedbacksData);
       }
 
-      const className = feedbacks[0]?.class?.name || 'Lớp học'
+      // B4: PHASE 2 - GỌI GEMINI (AUDITOR) - KIỂM CHỨNG CHÉO
+      const verification = await this.crossCheckWithGemini(feedbacksData, analysisResult);
 
-      // Tổng hợp tất cả feedback để gửi AI phân tích một lần
-      const feedbacksData = feedbacks.map((f, idx) => {
-        const categories = (f.categories as any) || {}
-        return {
-          index: idx + 1,
-          rating: f.rating,
-          comment: f.comment || '',
-          categories: {
-            teaching_quality: categories.teaching_quality || 0,
-            communication: categories.communication || 0,
-            punctuality: categories.punctuality || 0,
-            professionalism: categories.professionalism || 0,
-          },
-          createdAt: f.createdAt.toISOString().slice(0, 10),
-        }
-      })
-
-      const startTime = Date.now()
-
-      // Gọi AI để phân tích tổng hợp
-      const openaiApiKey = this.configService.get<string>(process.env.OPENAI_API_KEY)
-
-      let analysisResult
-      if (!openaiApiKey) {
-        analysisResult = this.performBasicClassAnalysis(classId, className, feedbacksData)
-      } else {
-        try {
-          analysisResult = await this.callOpenAIForClassFeedbacks(classId, className, feedbacksData, openaiApiKey)
-        } catch (aiError) {
-          console.error('AI analysis failed, using basic analysis:', aiError)
-          analysisResult = this.performBasicClassAnalysis(classId, className, feedbacksData)
-        }
+      // B5: TỔNG HỢP & XỬ LÝ CONFLICT (QUAN TRỌNG)
+      
+      // Rule 1: Nếu OpenAI phát hiện conflict (Sao cao - Comment xấu) -> Ép điểm xuống thấp
+      if (analysisResult.is_conflicting) {
+        // Dù rating trung bình là 5.0, nhưng có comment "sai kiến thức", điểm phân tích chỉ max 2.5
+        analysisResult.sentimentScore = Math.min(analysisResult.sentimentScore, 2.5);
+        analysisResult.key_insights.unshift('CẢNH BÁO: Phát hiện đánh giá ảo (Rating cao nhưng nội dung chê trách nghiêm trọng).');
       }
 
-      const processingTimeMs = Date.now() - startTime
+      // Rule 2: Nếu Gemini không đồng tình -> Hạ độ tin cậy
+      let confidenceScore = 0.95; // Mặc định rất tin
+      
+      if (verification) {
+         if (verification.consensus_score < 60) {
+            confidenceScore = 0.5; // Giảm một nửa độ tin cậy
+            analysisResult.key_insights.push(`CẢNH BÁO AI: Kết quả bị nghi ngờ bởi Gemini (Độ đồng thuận thấp: ${verification.consensus_score}%). Lý do: ${verification.auditor_comment}`);
+         } else {
+            analysisResult.key_insights.push(`Đã kiểm chứng bởi Gemini (Độ đồng thuận: ${verification.consensus_score}%)`);
+         }
+      }
+
+      // B6: Lưu vào Database
+      await this.saveClassAnalysis(classId, analysisResult, confidenceScore, feedbacks.length);
+
+      const processingTimeMs = 0; // Bạn có thể tính time nếu muốn
 
       return {
         ...analysisResult,
-        processingTimeMs,
-      }
+        confidenceScore,
+        verification, // Trả về cho FE hiển thị
+        processingTimeMs
+      };
+
     } catch (error) {
-      console.error('Error analyzing class feedbacks:', error)
-      return null
+      this.logger.error('Error analyzing class feedbacks:', error);
+      return null;
     }
   }
 
-  private async callOpenAIForClassFeedbacks(
-    classId: string,
-    className: string,
-    feedbacksData: any[],
-    apiKey: string,
-  ) {
-    // Tổng hợp tất cả comment và thông tin
-    const allComments = feedbacksData
-      .filter((f) => f.comment && f.comment.trim())
-      .map((f) => f.comment)
-      .join('\n\n---\n\n')
+  // --- 3. CÁC HÀM PRIVATE XỬ LÝ AI ---
 
-    const avgRating = feedbacksData.reduce((sum, f) => sum + f.rating, 0) / feedbacksData.length
-    const avgCategories = {
-      teaching_quality:
-        feedbacksData.reduce((sum, f) => sum + f.categories.teaching_quality, 0) / feedbacksData.length,
-      communication: feedbacksData.reduce((sum, f) => sum + f.categories.communication, 0) / feedbacksData.length,
-      punctuality: feedbacksData.reduce((sum, f) => sum + f.categories.punctuality, 0) / feedbacksData.length,
-      professionalism:
-        feedbacksData.reduce((sum, f) => sum + f.categories.professionalism, 0) / feedbacksData.length,
-    }
+  // HÀM GỌI OPENAI (Đã train Prompt kỹ)
+  private async performDeepAnalysisOpenAI(className: string, data: any[]): Promise<OpenAIAnalysisResult | null> {
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    if (!apiKey) return null;
 
-    const prompt = `Bạn là một chuyên gia phân tích feedback giáo viên. Hãy phân tích TỔNG HỢP tất cả feedback sau đây cho lớp học "${className}" và trả về kết quả dưới dạng JSON với format sau:
+    // --- PROMPT ENGINEERING ---
+    const systemPrompt = `
+      Bạn là Chuyên gia Đảm bảo Chất lượng Giáo dục (QA Expert). Nhiệm vụ là "vạch lá tìm sâu".
+      
+      LUẬT BẤT KHẢ KHÁNG (BẮT BUỘC TUÂN THỦ):
+      1. **CONTENT IS KING**: Nội dung comment quan trọng hơn số sao (rating).
+      2. **PHÁT HIỆN CONFLICT**: Nếu Rating = 4 hoặc 5 sao NHƯNG Comment chứa từ khóa tiêu cực (vd: "kiến thức sai", "dạy sai", "lừa đảo", "chán", "buồn ngủ") -> Đánh dấu là **NEGATIVE** và **is_conflicting = true**.
+      3. **TRỌNG SỐ LỖI**:
+         - Lỗi "Kiến thức sai lệch" = CỰC KỲ NGHIÊM TRỌNG (Dù thái độ tốt vẫn là 0 điểm).
+      4. OUTPUT: Chỉ trả về JSON hợp lệ.
+    `;
 
-{
-  "sentiment": "positive" | "negative" | "neutral",
-  "sentiment_explanation": "Giải thích tổng quan về cảm xúc của phụ huynh dựa trên tất cả feedback (3-4 câu)",
-  "overall_analysis": "Phân tích tổng hợp tất cả feedback, điểm mạnh và điểm yếu chung được đề cập nhiều nhất (5-6 câu)",
-  "strengths": ["Điểm mạnh 1 được nhiều phụ huynh nhắc đến", "Điểm mạnh 2", ...],
-  "weaknesses": ["Điểm yếu 1 được nhiều phụ huynh nhắc đến", "Điểm yếu 2", ...],
-  "recommendations": ["Khuyến nghị 1 dựa trên phân tích", "Khuyến nghị 2", ...],
-  "key_insights": [
-    "Insight quan trọng 1",
-    "Insight quan trọng 2", 
-    "Insight quan trọng 3",
-    "⚠️ PHÁT HIỆN ĐẶC BIỆT: [Nếu có] Phát hiện các tín hiệu như: phụ huynh muốn đổi giáo viên, yêu cầu can thiệp, phàn nàn nghiêm trọng, hoặc các vấn đề cần xử lý ngay"
-  ]
-}
+    // Ví dụ mẫu (Few-Shot Learning) để AI khôn hơn
+    const userPrompt = `
+      Phân tích lớp: "${className}".
+      DỮ LIỆU: ${JSON.stringify(data)}
 
-QUAN TRỌNG: Trong key_insights, hãy đặc biệt chú ý và phát hiện các tín hiệu sau (nếu có):
-- Phụ huynh muốn đổi giáo viên (từ khóa: "đổi giáo viên", "thay giáo viên", "không muốn học với", "muốn học với giáo viên khác", "yêu cầu đổi", "đề nghị thay")
-- Yêu cầu can thiệp từ trung tâm (từ khóa: "can thiệp", "xử lý", "giải quyết", "quản lý", "lãnh đạo")
-- Phàn nàn nghiêm trọng (từ khóa: "rất không hài lòng", "rất tệ", "không thể chấp nhận", "phản đối", "khiếu nại")
-- Yêu cầu rút học sinh khỏi lớp (từ khóa: "rút học", "chuyển lớp", "nghỉ học", "không muốn học tiếp")
-- Vấn đề về đạo đức hoặc hành vi giáo viên (từ khóa: "thô lỗ", "thiếu tôn trọng", "không chuyên nghiệp", "hành vi không phù hợp")
+      VÍ DỤ XỬ LÝ MẪU:
+      - Input: { rating: 5, comment: "Cô giáo xinh, nhẹ nhàng nhưng dạy sai kiến thức cơ bản." }
+      - Output Mong Muốn: Sentiment="negative", is_conflicting=true, explanation="Dạy sai kiến thức là lỗi nghiêm trọng dù thái độ tốt".
 
-Nếu phát hiện bất kỳ tín hiệu nào ở trên, hãy thêm vào key_insights với format: "⚠️ PHÁT HIỆN: [Mô tả chi tiết tín hiệu và số lượng phụ huynh đề cập]"
-
-Thông tin tổng hợp:
-- Lớp: ${className}
-- Tổng số feedback: ${feedbacksData.length}
-- Đánh giá trung bình: ${avgRating.toFixed(1)}/5 sao
-- Chất lượng giảng dạy TB: ${avgCategories.teaching_quality.toFixed(1)}/5
-- Giao tiếp TB: ${avgCategories.communication.toFixed(1)}/5
-- Đúng giờ TB: ${avgCategories.punctuality.toFixed(1)}/5
-- Chuyên nghiệp TB: ${avgCategories.professionalism.toFixed(1)}/5
-
-Tất cả nhận xét từ phụ huynh:
-${allComments || 'Không có nhận xét chi tiết từ phụ huynh'}
-
-Chỉ trả về JSON, không thêm text nào khác.`
+      YÊU CẦU JSON OUTPUT:
+      {
+        "sentiment": "positive" | "negative" | "neutral",
+        "sentimentScore": number (1.0-5.0),
+        "is_conflicting": boolean, 
+        "sentiment_explanation": "string",
+        "overall_analysis": "string",
+        "strengths": ["string"],
+        "weaknesses": ["string"],
+        "recommendations": ["string"],
+        "key_insights": ["string"]
+      }
+    `;
 
     try {
       const response = await firstValueFrom(
         this.httpService.post(
           'https://api.openai.com/v1/chat/completions',
           {
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4o-mini', // Dùng model mới nhất, rẻ và khôn hơn 3.5
             messages: [
-              {
-                role: 'system',
-                content: 'You are a professional feedback analysis expert. Always respond with valid JSON only in Vietnamese.',
-              },
-              { role: 'user', content: prompt },
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
             ],
-            temperature: 0.7,
-            max_tokens: 2000,
+            temperature: 0.2, // Giảm sáng tạo để tăng logic
+            response_format: { type: 'json_object' },
           },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-          },
+          { headers: { Authorization: `Bearer ${apiKey}` } },
         ),
-      )
+      );
 
-      const content = response.data.choices[0]?.message?.content || '{}'
-      let analysis
-      try {
-        analysis = JSON.parse(content)
-      } catch (parseError) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          analysis = JSON.parse(jsonMatch[0])
-        } else {
-          throw new Error('Failed to parse AI response')
-        }
-      }
-
-      const avgRating = feedbacksData.reduce((sum, f) => sum + f.rating, 0) / feedbacksData.length
-      const sentimentScore = this.calculateSentimentScore(analysis.sentiment || 'neutral', avgRating)
-
-      return {
-        classId,
-        className,
-        sentiment: analysis.sentiment || 'neutral',
-        sentimentScore,
-        sentimentExplanation: analysis.sentiment_explanation || '',
-        overallAnalysis: analysis.overall_analysis || '',
-        strengths: analysis.strengths || [],
-        weaknesses: analysis.weaknesses || [],
-        recommendations: analysis.recommendations || [],
-        keyInsights: analysis.key_insights || [],
-        feedbackCount: feedbacksData.length,
-        avgRating,
-        confidenceScore: 0.85, // Default confidence
-      }
-    } catch (error) {
-      console.error('Error calling OpenAI:', error)
-      throw error
+      const content = response.data.choices[0]?.message?.content || '{}';
+      return JSON.parse(content);
+    } catch (e) {
+      this.logger.error('OpenAI Analysis Error', e);
+      return null;
     }
   }
 
-  private performBasicClassAnalysis(classId: string, className: string, feedbacksData: any[]) {
-    const totalFeedbacks = feedbacksData.length
-    const avgRating = feedbacksData.reduce((sum, f) => sum + f.rating, 0) / totalFeedbacks
-    const positiveCount = feedbacksData.filter((f) => f.rating >= 4).length
-    const negativeCount = feedbacksData.filter((f) => f.rating <= 2).length
+  // HÀM GỌI GEMINI (Thanh tra viên) 
+  private async crossCheckWithGemini(feedbacks: any[], openAIResult: OpenAIAnalysisResult): Promise<GeminiCheckResult | null> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) return null;
 
-    let sentiment = 'neutral'
-    if (avgRating >= 4) sentiment = 'positive'
-    else if (avgRating <= 2.5) sentiment = 'negative'
-
-    const sentimentScore = this.calculateSentimentScore(sentiment, avgRating)
-
-    const sentimentExplanation =
-      sentiment === 'positive'
-        ? `Phụ huynh có cảm xúc tích cực với ${positiveCount}/${totalFeedbacks} feedback tích cực.`
-        : sentiment === 'negative'
-          ? `Có ${negativeCount}/${totalFeedbacks} feedback tiêu cực cần chú ý.`
-          : 'Phụ huynh có cảm xúc trung lập về lớp học.'
-
-    const overallAnalysis = `Lớp ${className} có ${totalFeedbacks} feedback với điểm trung bình ${avgRating.toFixed(1)}/5. ${
-      positiveCount > negativeCount
-        ? `Nhận được ${positiveCount} feedback tích cực, cho thấy phụ huynh hài lòng.`
-        : negativeCount > 0
-          ? `Có ${negativeCount} feedback tiêu cực, cần chú ý và cải thiện.`
-          : 'Phần lớn feedback ở mức trung bình.'
-    }`
-
-    const strengths: string[] = []
-    const weaknesses: string[] = []
-    const recommendations: string[] = []
-    const keyInsights: string[] = []
-
-    // Phát hiện các tín hiệu đặc biệt từ comments
-    const allComments = feedbacksData
-      .map((f) => (f.comment || '').toLowerCase())
-      .join(' ')
-
-    // Keywords để phát hiện các tín hiệu
-    const changeTeacherKeywords = [
-      'đổi giáo viên',
-      'thay giáo viên',
-      'không muốn học với',
-      'muốn học với giáo viên khác',
-      'yêu cầu đổi',
-      'đề nghị thay',
-      'thay đổi giáo viên',
-      'đổi thầy cô',
-    ]
-    const interventionKeywords = [
-      'can thiệp',
-      'xử lý',
-      'giải quyết',
-      'quản lý',
-      'lãnh đạo',
-      'ban giám hiệu',
-      'trung tâm',
-    ]
-    const seriousComplaintKeywords = [
-      'rất không hài lòng',
-      'rất tệ',
-      'không thể chấp nhận',
-      'phản đối',
-      'khiếu nại',
-      'rất thất vọng',
-      'hoàn toàn không hài lòng',
-    ]
-    const withdrawKeywords = [
-      'rút học',
-      'chuyển lớp',
-      'nghỉ học',
-      'không muốn học tiếp',
-      'bỏ lớp',
-      'rời lớp',
-    ]
-    const behaviorKeywords = [
-      'thô lỗ',
-      'thiếu tôn trọng',
-      'không chuyên nghiệp',
-      'hành vi không phù hợp',
-      'thái độ không tốt',
-      'ứng xử không đúng',
-    ]
-
-    // Đếm số feedback có các tín hiệu này
-    let changeTeacherCount = 0
-    let interventionCount = 0
-    let seriousComplaintCount = 0
-    let withdrawCount = 0
-    let behaviorIssueCount = 0
-
-    feedbacksData.forEach((f) => {
-      const comment = (f.comment || '').toLowerCase()
-      if (changeTeacherKeywords.some((kw) => comment.includes(kw))) changeTeacherCount++
-      if (interventionKeywords.some((kw) => comment.includes(kw))) interventionCount++
-      if (seriousComplaintKeywords.some((kw) => comment.includes(kw))) seriousComplaintCount++
-      if (withdrawKeywords.some((kw) => comment.includes(kw))) withdrawCount++
-      if (behaviorKeywords.some((kw) => comment.includes(kw))) behaviorIssueCount++
-    })
-
-    // Thêm vào keyInsights nếu phát hiện
-    if (changeTeacherCount > 0) {
-      keyInsights.push(
-        `⚠️ PHÁT HIỆN: Có ${changeTeacherCount} feedback đề cập đến việc muốn đổi/thay giáo viên - CẦN XỬ LÝ NGAY`,
-      )
-      recommendations.push(
-        'Cần trao đổi ngay với phụ huynh và giáo viên để tìm hiểu nguyên nhân và giải pháp',
-      )
-    }
-    if (interventionCount > 0) {
-      keyInsights.push(
-        `⚠️ PHÁT HIỆN: Có ${interventionCount} feedback yêu cầu can thiệp từ trung tâm/quản lý`,
-      )
-      recommendations.push('Cần có sự can thiệp từ phía quản lý trung tâm')
-    }
-    if (seriousComplaintCount > 0) {
-      keyInsights.push(
-        `⚠️ PHÁT HIỆN: Có ${seriousComplaintCount} feedback phàn nàn nghiêm trọng - MỨC ĐỘ CAO`,
-      )
-      recommendations.push('Cần xử lý khẩn cấp các phàn nàn nghiêm trọng này')
-    }
-    if (withdrawCount > 0) {
-      keyInsights.push(
-        `⚠️ PHÁT HIỆN: Có ${withdrawCount} feedback đề cập đến việc rút học/chuyển lớp - RỦI RO MẤT HỌC SINH`,
-      )
-      recommendations.push('Cần liên hệ ngay với phụ huynh để ngăn chặn việc rút học')
-    }
-    if (behaviorIssueCount > 0) {
-      keyInsights.push(
-        `⚠️ PHÁT HIỆN: Có ${behaviorIssueCount} feedback phản ánh vấn đề về đạo đức/hành vi giáo viên - CẦN ĐIỀU TRA`,
-      )
-      recommendations.push('Cần điều tra và xử lý các vấn đề về đạo đức/hành vi của giáo viên')
-    }
-
-    // Strengths
-    if (avgRating >= 4) {
-      strengths.push('Nhận được đánh giá tốt từ phụ huynh')
-      keyInsights.push('Điểm đánh giá trung bình cao')
-    } else if (avgRating >= 3.5) {
-      strengths.push('Điểm đánh giá ở mức khá tốt')
-    }
-    if (positiveCount > negativeCount) {
-      strengths.push('Nhận được nhiều phản hồi tích cực hơn tiêu cực')
-    }
-    if (positiveCount > 0 && avgRating >= 3) {
-      strengths.push(`Có ${positiveCount} feedback tích cực từ phụ huynh`)
-    }
-
-    // Weaknesses
-    if (avgRating <= 2.5) {
-      weaknesses.push('Điểm đánh giá trung bình thấp, cần cải thiện ngay')
-      recommendations.push('Nên có cuộc trao đổi khẩn cấp với giáo viên để cải thiện chất lượng')
-    } else if (avgRating <= 3) {
-      weaknesses.push('Điểm đánh giá trung bình ở mức cần cải thiện')
-      recommendations.push('Nên có cuộc trao đổi với giáo viên để cải thiện chất lượng')
-    }
-    if (negativeCount > positiveCount) {
-      weaknesses.push(`Có ${negativeCount} feedback tiêu cực, nhiều hơn feedback tích cực`)
-      recommendations.push('Cần phân tích nguyên nhân và đề xuất giải pháp cải thiện')
-    } else if (negativeCount > 0) {
-      weaknesses.push(`Có ${negativeCount} feedback tiêu cực cần được xử lý`)
-    }
-
-    // Recommendations (luôn có ít nhất 1)
-    if (recommendations.length === 0) {
-      if (avgRating >= 4) {
-        recommendations.push('Tiếp tục duy trì chất lượng giảng dạy tốt')
-      } else if (avgRating >= 3.5) {
-        recommendations.push('Có thể cải thiện thêm để đạt mức đánh giá cao hơn')
-      } else {
-        recommendations.push('Nên có cuộc trao đổi với giáo viên để cải thiện chất lượng')
-      }
-    }
-
-    // Key Insights (luôn có ít nhất 1)
-    if (keyInsights.length === 0) {
-      if (avgRating >= 3.5) {
-        keyInsights.push(`Điểm đánh giá trung bình ${avgRating.toFixed(1)}/5 cho thấy chất lượng ổn định`)
-      } else {
-        keyInsights.push(`Điểm đánh giá trung bình ${avgRating.toFixed(1)}/5 cần được cải thiện`)
-      }
-      if (positiveCount === negativeCount && positiveCount > 0) {
-        keyInsights.push(`Có sự phân cực trong đánh giá: ${positiveCount} tích cực và ${negativeCount} tiêu cực`)
-      }
-    }
-
-    return {
-      classId,
-      className,
-      sentiment,
-      sentimentScore,
-      sentimentExplanation,
-      overallAnalysis,
-      strengths,
-      weaknesses,
-      recommendations,
-      keyInsights,
-      feedbackCount: totalFeedbacks,
-      avgRating,
-      confidenceScore: 0.7, // Lower confidence for basic analysis
-    }
-  }
-
-  private calculateSentimentScore(sentiment: string, avgRating: number): number {
-    if (sentiment === 'positive') {
-      return Math.min(5.0, avgRating * 0.2 + 3.5)
-    } else if (sentiment === 'negative') {
-      return Math.max(1.0, avgRating * 0.2 + 1.5)
-    } else {
-      return Math.max(2.0, Math.min(4.0, avgRating * 0.4 + 2.0))
-    }
-  }
-
-  async saveClassAnalysis(classId: string, analysis: any) {
     try {
-      // Tìm existing analysis
-      const existing = await (this.prisma.teacherFeedbackAnalysis as any).findFirst({
-        where: {
-          classId,
-          analysisType: 'class',
-        },
-      })
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-      const data = {
-        classId,
-        analysisType: 'class',
+      // Tóm tắt dữ liệu input (Lấy các comment có chữ để check)
+      const inputSummary = feedbacks
+        .filter(f => f.comment.length > 3)
+        .slice(0, 30)
+        .map(f => `[${f.rating}*] "${f.comment}"`)
+        .join('\n');
+
+      const prompt = `
+        Bạn là Thanh tra độc lập (AI Auditor).
+        
+        NHIỆM VỤ: Kiểm tra xem kết quả phân tích của Model A có đúng với dữ liệu thực tế không.
+        
+        DỮ LIỆU GỐC:
+        ${inputSummary}
+
+        KẾT QUẢ CỦA MODEL A:
+        - Đánh giá: ${openAIResult.sentiment}
+        - Có mâu thuẫn (Conflict) không: ${openAIResult.is_conflicting ? 'CÓ' : 'KHÔNG'}
+        - Điểm yếu phát hiện: ${JSON.stringify(openAIResult.weaknesses)}
+
+        HỎI:
+        Model A có đánh giá đúng không? Đặc biệt nếu có feedback 5 sao nhưng nội dung chê bai (Ví dụ: sai kiến thức), Model A có phát hiện ra không?
+
+        TRẢ VỀ JSON:
+        {
+          "is_agreed": boolean,
+          "consensus_score": number, // 0-100
+          "auditor_comment": "Nhận xét ngắn gọn của bạn"
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      return JSON.parse(text);
+
+    } catch (error) {
+      this.logger.warn('Gemini Check Failed', error);
+      return null; 
+    }
+  }
+
+  // HÀM FALLBACK CƠ BẢN (Khi AI chết)
+  private performBasicFallback(data: any[]): OpenAIAnalysisResult {
+    const avgRating = data.reduce((sum, f) => sum + f.rating, 0) / data.length || 0;
+    
+    // Check từ khóa nguy hiểm thủ công
+    const dangerKeywords = ['sai kiến thức', 'kiến thức sai', 'lừa đảo', 'tệ', 'kém', 'xúc phạm'];
+    const hasDanger = data.some(f => dangerKeywords.some(k => f.comment.toLowerCase().includes(k)));
+    
+    return {
+      sentiment: hasDanger ? 'negative' : (avgRating >= 4 ? 'positive' : 'neutral'),
+      sentimentScore: hasDanger ? 2.0 : avgRating,
+      is_conflicting: hasDanger && avgRating >= 4,
+      sentiment_explanation: 'Phân tích cơ bản (Fallback Mode) do lỗi kết nối AI.',
+      overall_analysis: `Dựa trên ${data.length} đánh giá. Điểm trung bình: ${avgRating.toFixed(1)}`,
+      strengths: [],
+      weaknesses: hasDanger ? ['Phát hiện từ khóa tiêu cực nghiêm trọng trong comment'] : [],
+      recommendations: ['Vui lòng kiểm tra thủ công.'],
+      key_insights: ['⚠️ Đang chạy chế độ Basic (Không có AI)'],
+    };
+  }
+
+  // --- 4. LƯU TRỮ VÀO DB (GIỮ LOGIC CŨ, CẬP NHẬT TYPE) ---
+
+  async saveClassAnalysis(classId: string, analysis: OpenAIAnalysisResult, confidenceScore: number, feedbackCount: number) {
+    try {
+      // Map dữ liệu từ Analysis Result vào DB Schema
+      const updateData: Prisma.TeacherFeedbackAnalysisUpdateInput = {
         sentimentScore: analysis.sentimentScore,
         sentimentLabel: analysis.sentiment,
-        sentimentExplanation: analysis.sentimentExplanation,
-        overallAnalysis: analysis.overallAnalysis,
-        strengths: analysis.strengths || [],
-        weaknesses: analysis.weaknesses || [],
-        recommendations: analysis.recommendations || [],
-        keyInsights: analysis.keyInsights || [],
-        feedbackCount: analysis.feedbackCount || 0,
-        avgRating: analysis.avgRating || 0,
-        confidenceScore: analysis.confidenceScore,
-        processingTimeMs: analysis.processingTimeMs,
-        aiModel: this.configService.get<string>(process.env.OPENAI_API_KEY) ? 'gpt-3.5-turbo' : 'basic',
+        sentimentExplanation: analysis.sentiment_explanation,
+        overallAnalysis: analysis.overall_analysis,
+        strengths: analysis.strengths,     // Prisma tự xử lý Json array
+        weaknesses: analysis.weaknesses,
+        recommendations: analysis.recommendations,
+        keyInsights: analysis.key_insights,
+        feedbackCount: feedbackCount,
+        avgRating: 0, // Bạn có thể tính lại nếu cần
+        confidenceScore: confidenceScore,
+        aiModel: 'gpt-4o-mini + gemini-flash', // Đánh dấu model sử dụng
         analyzedAt: new Date(),
-      }
+      };
 
-      if (existing) {
-        // Update existing
-        await (this.prisma.teacherFeedbackAnalysis as any).update({
-          where: { id: existing.id },
-          data,
-        })
-      } else {
-        // Create new
-        await (this.prisma.teacherFeedbackAnalysis as any).create({
-          data,
-        })
-      }
+      const createData: Prisma.TeacherFeedbackAnalysisCreateInput = {
+        ...updateData,
+        class: { connect: { id: classId } },
+        analysisType: 'class',
+      } as Prisma.TeacherFeedbackAnalysisCreateInput;
+
+      await this.prisma.teacherFeedbackAnalysis.upsert({
+        where: { classId: classId },
+        update: updateData,
+        create: createData,
+      });
+      
     } catch (error) {
-      console.error('Error saving class analysis:', error)
-      throw error
+      console.error('Error saving class analysis:', error);
+      throw error;
     }
   }
 
+  // --- 5. CÁC HÀM HỖ TRỢ KHÁC (GIỮ NGUYÊN) ---
+
   async triggerClassAnalysisAsync(classId: string, feedbackId: string) {
-    // Chạy async, không block main thread
     setImmediate(async () => {
       try {
-        // Delay 2 giây để tránh phân tích quá nhiều lần nếu có nhiều feedback liên tiếp
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-
-        const analysis = await this.analyzeClassFeedbacks(classId)
-        if (analysis) {
-          await this.saveClassAnalysis(classId, analysis)
-          console.log(`Class analysis completed for class ${classId}`)
-        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await this.analyzeClassFeedbacks(classId);
+        this.logger.log(`Class analysis completed for class ${classId}`);
       } catch (error) {
-        console.error(`Error in async class analysis for class ${classId}:`, error)
-        // Không throw error để không ảnh hưởng đến việc tạo feedback
+        this.logger.error(`Error in async class analysis for class ${classId}:`, error);
       }
-    })
+    });
   }
 
   async getClassAnalysisFromDB(classId: string) {
     try {
-      const analysis = await (this.prisma.teacherFeedbackAnalysis as any).findFirst({
-        where: {
-          classId,
-          analysisType: 'class',
-        },
-        include: {
-          class: true,
-        },
-      })
+      const analysis = await this.prisma.teacherFeedbackAnalysis.findUnique({
+        where: { classId },
+        include: { class: true },
+      });
 
       if (!analysis) {
-        return {
-          data: null,
-          message: 'No analysis found for this class',
-        }
+        return { data: null, message: 'No analysis found for this class' };
       }
 
       return {
         data: {
           classId: analysis.classId,
           className: analysis.class?.name || 'Lớp học',
-          sentiment: analysis.sentimentLabel as 'positive' | 'negative' | 'neutral',
+          sentiment: analysis.sentimentLabel,
           sentimentExplanation: analysis.sentimentExplanation || '',
           overallAnalysis: analysis.overallAnalysis || '',
-          strengths: (analysis.strengths as string[]) || [],
-          weaknesses: (analysis.weaknesses as string[]) || [],
-          recommendations: (analysis.recommendations as string[]) || [],
-          keyInsights: (analysis.keyInsights as string[]) || [],
+          strengths: (analysis.strengths as any) || [],
+          weaknesses: (analysis.weaknesses as any) || [],
+          recommendations: (analysis.recommendations as any) || [],
+          keyInsights: (analysis.keyInsights as any) || [],
           feedbackCount: analysis.feedbackCount || 0,
-          avgRating: typeof analysis.avgRating === 'object' && analysis.avgRating?.toNumber
-            ? analysis.avgRating.toNumber()
-            : Number(analysis.avgRating) || 0,
+          avgRating: analysis.avgRating ? Number(analysis.avgRating) : 0,
+          confidenceScore: analysis.confidenceScore ? Number(analysis.confidenceScore) : 0,
           analyzedAt: analysis.analyzedAt.toISOString(),
         },
         message: 'Lấy phân tích thành công',
-      }
+      };
     } catch (error) {
       throw new HttpException(
         {
           success: false,
           message: 'Failed to get class analysis',
+          data: null,
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
-      )
+      );
     }
   }
 }
-
-

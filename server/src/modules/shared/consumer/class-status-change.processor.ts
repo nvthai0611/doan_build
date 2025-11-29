@@ -69,7 +69,7 @@ export class ClassStatusChangeProcessor {
       });
 
       // Subject cho email
-      const emailSubject = `${statusIcon} Thông báo thay đổi trạng thái lớp học - ${className}`;
+      const emailSubject = `Thông báo thay đổi trạng thái lớp học - ${className}`;
 
       // Gửi email
       await emailUtil(to, emailSubject, emailHtml);
