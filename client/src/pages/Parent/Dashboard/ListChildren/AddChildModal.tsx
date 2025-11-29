@@ -57,9 +57,9 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
       if (onSuccess) onSuccess()
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          'Có lỗi xảy ra khi thêm con'
+      const errorMessage = error?.response?.data?.message ||
+        error?.message ||
+        'Có lỗi xảy ra khi thêm con'
       toast.error(errorMessage)
     }
   })
@@ -91,7 +91,7 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin")
       return
@@ -100,7 +100,7 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
     // Prepare FormData for API call
     // Parent info will be automatically determined by backend based on logged-in user
     const formDataToSend = new FormData()
-    
+
     formDataToSend.append('fullName', formData.fullName)
     formDataToSend.append('schoolId', formData.schoolId)
     formDataToSend.append('gender', formData.gender)
@@ -124,7 +124,7 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
   // Handle input change
   const handleInputChange = (field: keyof ChildFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    
+
     if (formErrors[field]) {
       setFormErrors(prev => {
         const newErrors = { ...prev }
@@ -158,7 +158,7 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
               <User className="w-4 h-4" />
               Thông tin cá nhân
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">
@@ -259,8 +259,8 @@ export function AddChildModal({ isOpen, onClose, onSuccess }: AddChildModalProps
             <Button type="button" variant="outline" onClick={onClose}>
               Hủy
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createChildMutation.isPending}
               className="bg-primary hover:bg-primary/90"
             >

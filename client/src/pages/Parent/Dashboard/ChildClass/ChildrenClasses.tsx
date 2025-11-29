@@ -118,7 +118,7 @@ export function ChildrenClasses() {
     queryKey: ['parent', 'student-classes', expandedStudent],
     queryFn: async () => {
       if (!expandedStudent) return null
-      const result = await parentChildClassesService.getChildClasses(expandedStudent)
+      const result = await parentChildClassesService.getAllChildrenClasses(expandedStudent)
       console.log('Classes Response:', result)
       return result
     },
@@ -162,8 +162,11 @@ export function ChildrenClasses() {
   }
 
   const students = studentsResponse?.data || []
-  const enrolledClasses = classesResponse?.data?.enrolledClasses || []
-  const pendingRequests = classesResponse?.data?.pendingRequests || []
+  
+  // Handle response structure
+  const classesData = classesResponse?.data as any
+  const enrolledClasses = classesData?.enrolledClasses || []
+  const pendingRequests = classesData?.pendingRequests || []
 
   return (
     <div className="flex-1 flex flex-col">
@@ -249,7 +252,7 @@ export function ChildrenClasses() {
                             Lớp đang học ({enrolledClasses.length})
                           </h4>
                           <div className="space-y-3">
-                            {enrolledClasses.map((classItem) => {
+                            {enrolledClasses.map((classItem: any) => {
                         const statusInfo = mapClassStatusToStyle(classItem.status)
 
                         return (
@@ -423,7 +426,7 @@ export function ChildrenClasses() {
                                     </h5>
                                     {classItem.schedule && classItem.schedule.length > 0 ? (
                                       <div className="flex flex-wrap gap-3 ml-6">
-                                        {classItem.schedule.map((schedule, idx) => (
+                                        {classItem.schedule.map((schedule: any, idx: number) => (
                                           <div
                                             key={idx}
                                             className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md"
@@ -479,7 +482,7 @@ export function ChildrenClasses() {
                             Đăng ký chờ duyệt ({pendingRequests.length})
                           </h4>
                           <div className="space-y-3">
-                            {pendingRequests.map((request) => {
+                            {pendingRequests.map((request: any) => {
                               const statusInfo = mapClassStatusToStyle(request.status)
                               const requestStatusInfo = mapRequestStatusToStyle(request.requestStatus)
 

@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, Req, ForbiddenException } from '@nestjs/common'
-import { AcademicTrackingService } from '../services/academic-tracking.service'
+import { AcademicTrackingService } from '../services/child-progress.service'
 
 // ParentModule is prefixed with 'parent' via RouterModule, so controller path should be only 'children'
 @Controller('children')

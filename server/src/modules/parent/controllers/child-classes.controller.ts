@@ -19,12 +19,12 @@ export class ChildClassesController {
   constructor(
     private readonly classInformationService: ClassInformationService,
     private readonly studentLeaveRequestService: StudentLeaveRequestService,
-  ) {}
+  ) { }
 
-  @Get('children-classes')
+  @Get('students/:studentId/children-classes')
   @ApiOperation({ summary: 'Lấy tất cả lớp học của tất cả con' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách lớp học thành công' })
-  async getAllChildrenClasses(@Req() req: any) {
+  async getAllChildrenClasses(@Req() req: any, @Param('studentId') studentId: string) {
     try {
       const parentUserId = req.user?.userId;
       if (!parentUserId) {
@@ -34,9 +34,7 @@ export class ChildClassesController {
         );
       }
 
-      const result = await this.classInformationService.getAllChildrenClasses(
-        parentUserId,
-      );
+      const result = await this.classInformationService.getChildClasses(parentUserId, studentId);
 
       return {
         success: true,
