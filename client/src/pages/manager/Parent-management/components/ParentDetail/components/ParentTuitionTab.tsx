@@ -72,7 +72,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
 
   const formatCurrency = (amount: number) => {
     if (amount === null || amount === undefined) return '-';
-    return Number(amount).toLocaleString('vi-VN') + ' đ';
+    return Number(amount).toLocaleString('vi-VN') + ' vnđ';
   };
 
   const getStatusBadge = (status: string) => {
