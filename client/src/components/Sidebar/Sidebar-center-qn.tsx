@@ -74,15 +74,9 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       href: '/center-qn',
     },
     {
-      title: 'Báo cáo',
+      title: 'Báo cáo doanh thu',
       icon: ChartArea,
       href: '/center-qn/reports',
-      hasArrowRight: true,
-      children: [
-        { title: 'Báo cáo tổng quan', href: '/center-qn/reports/dashboard' },
-        { title: 'Báo cáo học phí', href: '/center-qn/reports/tuition' },
-        { title: 'Báo cáo kết quả', href: '/center-qn/reports/results' },
-      ],
     },
     {
       title: 'Khách hàng',
