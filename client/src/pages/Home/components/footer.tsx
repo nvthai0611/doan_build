@@ -1,6 +1,5 @@
 "use client"
 
-import { GraduationCap, Mail, Phone, MapPin, Facebook, Youtube, Music, Clock } from "lucide-react"
 import type { CenterInfo } from "../../../services/common/public-center-info.service"
 
 interface FooterProps {
@@ -27,7 +26,7 @@ export const Footer = ({ centerInfo }: FooterProps) => {
     ? `${centerInfo.value.address.detail || ""} ${centerInfo.value.address.street || ""}`.trim() || "123 Đường ABC, TP. HCM"
     : "123 Đường ABC, TP. HCM"
   return (
-    <footer className="gradient-bg text-white">
+    <footer className="bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
@@ -39,11 +38,7 @@ export const Footer = ({ centerInfo }: FooterProps) => {
                   alt={centerName}
                   className="h-10 w-auto bg-white/20 p-1 rounded-lg"
                 />
-              ) : (
-                <div className="bg-white/20 p-2 rounded-lg">
-                  <GraduationCap className="w-5 h-5 text-white" />
-                </div>
-              )}
+              ) : null}
               <span className="font-bold text-lg">{centerName}</span>
             </div>
             <p className="text-sm opacity-90">{centerSlogan}</p>
@@ -93,20 +88,16 @@ export const Footer = ({ centerInfo }: FooterProps) => {
           <div>
             <h3 className="font-semibold mb-4">Liên Hệ</h3>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
+              <li>
                 <span>{phone}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
+              <li>
                 <span>{email}</span>
               </li>
-              <li className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 mt-0.5" />
+              <li>
                 <span>{address}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
+              <li>
                 <div className="flex flex-col gap-1">
                   <span>
                     {centerInfo?.value?.contact?.workingHours
@@ -135,25 +126,31 @@ export const Footer = ({ centerInfo }: FooterProps) => {
           {/* Social */}
           <div>
             <h3 className="font-semibold mb-4">Theo Dõi</h3>
-            <div className="flex gap-4">
-              <a
-                href={centerInfo?.value?.contact?.facebook || '#'}
-                className="opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a
-                href={centerInfo?.value?.contact?.youtube || '#'}
-                className="opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <Youtube className="w-5 h-5" />
-              </a>
-              <a
-                href={centerInfo?.value?.contact?.tiktok || '#'}
-                className="opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <Music className="w-5 h-5" />
-              </a>
+            <div className="flex flex-col gap-2 text-sm">
+              {centerInfo?.value?.contact?.facebook && (
+                <a
+                  href={centerInfo.value.contact.facebook}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  Facebook
+                </a>
+              )}
+              {centerInfo?.value?.contact?.youtube && (
+                <a
+                  href={centerInfo.value.contact.youtube}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  YouTube
+                </a>
+              )}
+              {centerInfo?.value?.contact?.tiktok && (
+                <a
+                  href={centerInfo.value.contact.tiktok}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  TikTok
+                </a>
+              )}
             </div>
           </div>
         </div>

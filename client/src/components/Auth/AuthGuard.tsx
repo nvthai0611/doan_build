@@ -20,8 +20,11 @@ export function AuthGuard({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-center">
+          <div className="h-16 w-16 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-blue-600">Đang tải...</p>
+        </div>
       </div>
     )
   }
@@ -42,13 +45,13 @@ export function AuthGuard({
     
     if (!hasRequiredRole) {
       return (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen bg-white">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Không có quyền truy cập</h1>
-            <p className="text-gray-600">Bạn không có quyền truy cập trang này.</p>
-            <p className="text-sm text-gray-500 mt-2">
+            <h1 className="text-2xl font-bold text-blue-600 mb-4">Không có quyền truy cập</h1>
+            <p className="text-gray-700">Bạn không có quyền truy cập trang này.</p>
+            {/* <p className="text-sm text-gray-600 mt-2">
               Role hiện tại: {user.role} | Role yêu cầu: {allowedRoles.join(', ')}
-            </p>
+            </p> */}
           </div>
         </div>
       )
