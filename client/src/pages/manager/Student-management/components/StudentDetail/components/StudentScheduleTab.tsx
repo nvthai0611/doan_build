@@ -194,12 +194,12 @@ const BillingModal: React.FC<BillingModalProps> = React.memo(({
                         Tiền mặt
                       </div>
                     </SelectItem>
-                    <SelectItem value="bank_transfer">
+                    {/* <SelectItem value="bank_transfer">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
                         Chuyển khoản
                       </div>
-                    </SelectItem>
+                    </SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>
@@ -299,7 +299,7 @@ const BillingModal: React.FC<BillingModalProps> = React.memo(({
                         <Banknote className="h-4 w-4" />
                         <div className="flex-1">
                           <div className="font-medium text-lg">
-                            Tiền thối: <span className="text-blue-700">{formatCurrency(getCurrentAmount() - attendanceCalculationData.summary.totalFinalAmount)}</span>
+                            Tiền thừa: <span className="text-blue-700">{formatCurrency(getCurrentAmount() - attendanceCalculationData.summary.totalFinalAmount)}</span>
                           </div>
                           <div className="text-xs text-blue-500 mt-1">
                             {formatCurrency(getCurrentAmount())} - {formatCurrency(attendanceCalculationData.summary.totalFinalAmount)} = {formatCurrency(getCurrentAmount() - attendanceCalculationData.summary.totalFinalAmount)}

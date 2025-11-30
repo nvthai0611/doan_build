@@ -4,6 +4,8 @@ import { createOrderCode, generateQNCode } from 'src/utils/function.util';
 import hash from 'src/utils/hasing.util';
 import { checkId } from 'src/utils/validate.util';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+import emailUtil from 'src/utils/email.util';
+import { generateDroppedStudentEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 
 interface CreateStudentDto {
   fullName: string;
@@ -1056,7 +1058,6 @@ export class StudentManagementService {
   if (!checkId(studentId)) {
     throw new HttpException('Invalid student ID', HttpStatus.BAD_REQUEST);
   }
-  console.log(classIds);
   
   try {
     const student = await this.prisma.student.findUnique({
@@ -1198,281 +1199,243 @@ export class StudentManagementService {
   }
   }
 
-  async createBillingForAttendanceFee(
-  studentId: string,
-  classIds: string[],
-  paymentDetails?: {
-    payNow: boolean;
-    paymentMethod?: 'cash' | 'bank_transfer';
-    amount?: number;
-    notes?: string;
-  }
-): Promise<any> {
-  if (!checkId(studentId)) {
-    throw new HttpException('Invalid student ID', HttpStatus.BAD_REQUEST);
-  }
-
-  if (!classIds || classIds.length === 0) {
-    throw new HttpException('Cần chọn ít nhất một lớp học', HttpStatus.BAD_REQUEST);
-  }
-
-
-
-  try {
-
-    // Kiểm tra xem đã tạo hóa đơn cho các lớp này trong tháng hiện tại chưa
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    const existingFeeRecords = await this.prisma.feeRecord.findMany({
-      where: {
-        studentId,
-        classId: { in: classIds },
-        createdAt: {
-          gte: startOfMonth,
-          lt: startOfNextMonth
-        }
-      },
-      include: {
-        class: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    if (existingFeeRecords.length > 0) {
-      const duplicateClasses = existingFeeRecords.map(record => 
-        `"${record.class.name}"`
-      ).join(', ');
-      
-      throw new HttpException(
-        `Đã tạo hóa đơn cho ${existingFeeRecords.length > 1 ? 'các lớp' : 'lớp'} ${duplicateClasses} trong tháng ${now.getMonth() + 1}/${now.getFullYear()}. Mỗi lớp chỉ được tạo một hóa đơn trong một tháng.`,
-        HttpStatus.BAD_REQUEST
-      );
+async createBillingForAttendanceFee(
+    studentId: string,
+    classIds: string[],
+    paymentDetails?: {
+      payNow: boolean;
+      paymentMethod?: 'cash' | 'bank_transfer';
+      amount?: number;
+      notes?: string;
     }
-    // Lấy dữ liệu attendance để tính phí
-    const attendanceData = await this.getStudentAttendanceForFeeCalculation(studentId, classIds);
-    
-    // Kiểm tra student và parent
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-      include: {
-        user: { select: { fullName: true, email: true } },
-        parent: {
-          include: {
-            user: { select: { id: true, fullName: true, email: true } }
-          }
-        }
-      }
-    });
-
-    if (!student) {
-      throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+  ): Promise<any> {
+    if (!checkId(studentId)) {
+      throw new HttpException('Invalid student ID', HttpStatus.BAD_REQUEST);
     }
 
-    if (!student.parent) {
-      throw new HttpException(
-        'Học viên chưa có phụ huynh liên kết. Không thể tạo hóa đơn.',
-        HttpStatus.BAD_REQUEST
-      );
+    if (!classIds || classIds.length === 0) {
+      throw new HttpException('Cần chọn ít nhất một lớp học', HttpStatus.BAD_REQUEST);
     }
 
-    // Tạo transaction để đảm bảo tính nhất quán
-    return await this.prisma.$transaction(async (prisma) => {
-      // 1. Tạo FeeStructure tạm thời cho attendance fee (nếu chưa có)
-      
-
-      // 2. Tạo FeeRecord cho mỗi class
-      const feeRecords = [];
-      const skippedClasses = []; // Lưu các lớp có finalAmount = 0
+    try {
+      // ... (Giữ nguyên logic kiểm tra existing records) ...
       const now = new Date();
-      // Logic tính due date: 
-      // - Nếu tạo trước hoặc bằng ngày 7: due date là ngày 10 cùng tháng
-      // - Nếu tạo sau ngày 7: due date là ngày 5 tháng sau
-      let dueDate: Date;
-      const currentDay = now.getDate();
-      
-      if (currentDay <= 7) {
-        // Tạo trước hoặc bằng ngày 7 -> due date là ngày 10 cùng tháng
-        dueDate = new Date(now.getFullYear(), now.getMonth(), 10);
-      } else {
-        // Tạo sau ngày 7 -> due date là ngày 5 tháng sau
-        dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      }
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-      for (const classAttendance of attendanceData.classAttendances) {
-        
-        if (classAttendance.finalAmount > 0) {
-          const result = await prisma.class.findUnique({
+      const existingFeeRecords = await this.prisma.feeRecord.findMany({
         where: {
-    id: classAttendance.classId
-  },
-  select: {
-    feeStructure: true // Chỉ lấy đúng thông tin feeStructure, bỏ qua thông tin Class
-  }
-});
+          studentId,
+          classId: { in: classIds },
+          createdAt: { gte: startOfMonth, lt: startOfNextMonth }
+        },
+        include: { class: { select: { id: true, name: true } } }
+      });
 
-let attendanceFeeStructure = result?.feeStructure;
-
-      if (!attendanceFeeStructure) {
-        return new HttpException(
-          `Không tìm thấy cấu trúc phí cho lớp ${classAttendance.className}`,
+      if (existingFeeRecords.length > 0) {
+        const duplicateClasses = existingFeeRecords.map(record => `"${record.class.name}"`).join(', ');
+        throw new HttpException(
+          `Đã tạo hóa đơn cho ${existingFeeRecords.length > 1 ? 'các lớp' : 'lớp'} ${duplicateClasses} trong tháng ${now.getMonth() + 1}/${now.getFullYear()}.`,
           HttpStatus.BAD_REQUEST
         );
       }
 
+      const attendanceData = await this.getStudentAttendanceForFeeCalculation(studentId, classIds);
 
-          const feeRecord = await prisma.feeRecord.create({
-            data: {
-              studentId,
-              feeStructureId: attendanceFeeStructure.id,
-              classId: classAttendance.classId,
-              amount: classAttendance.totalFeeBeforeDiscount,
-              totalAmount: classAttendance.finalAmount,
-              scholarship: classAttendance.discountAmount,
-              dueDate,
-              status: paymentDetails?.payNow ? 'paid' : 'pending',
-              notes: `Phí học ${attendanceData.periodDisplay} - ${classAttendance.className}\n` +
-                     `Số buổi: ${classAttendance.attendedSessions}/${classAttendance.totalSessions}\n` +
-                     `Học bổng: ${classAttendance.scholarshipPercent}%`
-            }
-          });
-          feeRecords.push(feeRecord);
-        }else {
-          // Ghi nhận lớp không có phí
-          skippedClasses.push({
-            classId: classAttendance.classId,
-            className: classAttendance.className,
-            finalAmount: classAttendance.finalAmount,
-            attendedSessions: classAttendance.attendedSessions,
-            totalSessions: classAttendance.totalSessions,
-            reason: classAttendance.finalAmount === 0 ? 'Không có phí phát sinh' : 'Phí âm (không hợp lệ)'
-          });
-        }
-      }
-
-
-      let payment = null;
-
-      // 3. Nếu thanh toán ngay, tạo Payment record
-      if (paymentDetails?.payNow) {
-        
-        const totalAmount = feeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
-        const paidAmount = paymentDetails.amount || totalAmount;
-        if (paidAmount < totalAmount) {
-          throw new HttpException(
-            `Số tiền thanh toán (${paidAmount}) không đủ so với tổng phí (${totalAmount})`,
-            HttpStatus.BAD_REQUEST
-          );
-        }
-
-        // Generate unique transaction code
-        const transactionCode = createOrderCode();
-
-        payment = await prisma.payment.create({
-          data: {
-            parentId: student.parent.id,
-            amount: totalAmount,
-            paidAmount: paidAmount,
-            returnMoney: paidAmount - totalAmount,
-            status: 'completed',
-            method: paymentDetails.paymentMethod || 'cash',
-            expirationDate: dueDate ,
-            transactionCode,
-            reference: `Thanh toán phí học ${attendanceData.periodDisplay}`,
-            notes: paymentDetails.notes || `Thanh toán tại quầy bởi admin`,
-            paidAt: new Date()
-          }
-        });
-
-        // 4. Liên kết Payment với FeeRecords
-        for (const feeRecord of feeRecords) {
-          await prisma.feeRecordPayment.create({
-            data: {
-              paymentId: payment.id,
-              feeRecordId: feeRecord.id,
-              notes: `Thanh toán phí lớp ${classIds.find(id => 
-                attendanceData.classAttendances.find(ca => ca.classId === id)
-              )}`
-            }
-          });
-        }
-        
-      }
-
-      const enrollmentUpdateResult = await prisma.enrollment.updateMany({
-        where: {
-          studentId,
-          classId: { in: classIds },
-          status: { 
-            in: ['studying', 'not_been_updated'] // Chỉ update những status có thể chuyển sang stopped
-          }
-        },
-        data: {
-          status: 'stopped',
-          completedAt: now,
-          completionNotes: `Đã nghỉ học từ ngày ${now.toLocaleDateString()}`,
+      const student = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          user: { select: { fullName: true, email: true } },
+          parent: { include: { user: { select: { id: true, fullName: true, email: true } } } }
         }
       });
 
-      // 5. Trả về kết quả
-      const result = {
-        billing: {
-          studentId,
-          studentName: attendanceData.studentName,
-          parentId: student.parent.id,
-          parentName: student.parent.user.fullName,
-          period: attendanceData.periodDisplay,
-          createdAt: new Date(),
-          dueDate,
-          totalAmount: attendanceData.summary.totalFinalAmount,
-          scholarshipDiscount: attendanceData.summary.totalDiscountAmount,
-          status: paymentDetails?.payNow ? 'paid' : 'pending'
-        },
-        feeRecords: feeRecords.map(record => ({
-          id: record.id,
-          classId: record.classId,
-          className: attendanceData.classAttendances.find(ca => ca.classId === record.classId)?.className,
-          amount: Number(record.amount),
-          status: record.status,
-          dueDate: record.dueDate
-        })),
-        payment: payment ? {
-          id: payment.id,
-          transactionCode: payment.transactionCode,
-          amount: Number(payment.amount),
-          paidAmount: Number(payment.paidAmount),
-          returnMoney: Number(payment.returnMoney),
-          method: payment.method,
-          paidAt: payment.paidAt
-        } : null,
-        attendanceDetails: {
-          totalSessionsAttended: attendanceData.summary.totalSessionsAttended,
-          totalClassesTracked: attendanceData.summary.totalClassesTracked,
-          classBreakdown: attendanceData.classAttendances
+      if (!student) throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+      if (!student.parent) throw new HttpException('Học viên chưa có phụ huynh liên kết.', HttpStatus.BAD_REQUEST);
+
+      // --- BẮT ĐẦU TRANSACTION ---
+      const transactionResult = await this.prisma.$transaction(async (prisma) => {
+        const feeRecords = [];
+        const skippedClasses = [];
+        const now = new Date();
+        
+        let dueDate: Date;
+        const currentDay = now.getDate();
+        if (currentDay <= 7) {
+          dueDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 10));
+        } else {
+          dueDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
         }
-      };
 
-      return {
-        data: result,
-        message: paymentDetails?.payNow 
-          ? 'Tạo hóa đơn và thanh toán thành công'
-          : 'Tạo hóa đơn thành công. Phụ huynh có thể thanh toán online.'
-      };
-    });
+        for (const classAttendance of attendanceData.classAttendances) {
+          if (classAttendance.finalAmount > 0) {
+            const result = await prisma.class.findUnique({
+              where: { id: classAttendance.classId },
+              select: { feeStructure: true }
+            });
+            let attendanceFeeStructure = result?.feeStructure;
 
-  } catch (error) {
-    if (error instanceof HttpException) throw error;
-    console.error('Error creating billing for attendance fee:', error);
-    throw new HttpException(
-      'Lỗi khi tạo hóa đơn phí học',
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
+            if (!attendanceFeeStructure) {
+              throw new HttpException(`Không tìm thấy cấu trúc phí cho lớp ${classAttendance.className}`, HttpStatus.BAD_REQUEST);
+            }
+
+            const feeRecord = await prisma.feeRecord.create({
+              data: {
+                studentId,
+                feeStructureId: attendanceFeeStructure.id,
+                classId: classAttendance.classId,
+                amount: classAttendance.totalFeeBeforeDiscount,
+                totalAmount: classAttendance.finalAmount,
+                scholarship: classAttendance.scholarshipPercent,
+                dueDate,
+                status: paymentDetails?.payNow ? 'paid' : 'pending',
+                notes: `Phí học ${attendanceData.periodDisplay} - ${classAttendance.className}\n` +
+                  `Số buổi: ${classAttendance.attendedSessions}/${classAttendance.totalSessions}\n` +
+                  `Học bổng: ${classAttendance.scholarshipPercent}%`
+              }
+            });
+            feeRecords.push(feeRecord);
+          } else {
+            skippedClasses.push({
+              classId: classAttendance.classId,
+              className: classAttendance.className,
+              finalAmount: classAttendance.finalAmount,
+              attendedSessions: classAttendance.attendedSessions,
+              totalSessions: classAttendance.totalSessions,
+              reason: classAttendance.finalAmount === 0 ? 'Không có phí phát sinh' : 'Phí âm'
+            });
+          }
+        }
+
+        let payment = null;
+
+        if (paymentDetails?.payNow) {
+          const totalAmount = feeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
+          const paidAmount = paymentDetails.amount || totalAmount;
+          if (paidAmount < totalAmount) {
+            throw new HttpException(`Số tiền thanh toán không đủ`, HttpStatus.BAD_REQUEST);
+          }
+
+          const transactionCode = createOrderCode();
+
+          payment = await prisma.payment.create({
+            data: {
+              parentId: student.parent.id,
+              amount: totalAmount,
+              paidAmount: paidAmount,
+              returnMoney: paidAmount - totalAmount,
+              status: 'completed',
+              method: paymentDetails.paymentMethod || 'cash',
+              expirationDate: dueDate,
+              transactionCode,
+              reference: `Thanh toán phí học ${attendanceData.periodDisplay}`,
+              notes: paymentDetails.notes || `Thanh toán tại quầy bởi admin`,
+              paidAt: new Date()
+            }
+          });
+
+          for (const feeRecord of feeRecords) {
+            await prisma.feeRecordPayment.create({
+              data: {
+                paymentId: payment.id,
+                feeRecordId: feeRecord.id,
+                notes: `Thanh toán phí lớp`
+              }
+            });
+          }
+        }
+
+        await prisma.enrollment.updateMany({
+          where: {
+            studentId,
+            classId: { in: classIds },
+            status: { in: ['studying', 'not_been_updated'] }
+          },
+          data: {
+            status: 'stopped',
+            completedAt: now,
+            completionNotes: `Đã nghỉ học từ ngày ${now.toLocaleDateString()}`,
+          }
+        });
+
+        // Cấu trúc result này khớp hoàn toàn với những gì Template mong đợi
+        const result = {
+          billing: {
+            studentId,
+            studentName: attendanceData.studentName,
+            parentId: student.parent.id,
+            parentName: student.parent.user.fullName,
+            period: attendanceData.periodDisplay,
+            createdAt: new Date(),
+            dueDate,
+            totalAmount: attendanceData.summary.totalFinalAmount,
+            scholarshipDiscount: attendanceData.summary.totalDiscountAmount,
+            totalAmountBeforeDiscount: attendanceData.summary.totalOriginalAmount,
+            status: paymentDetails?.payNow ? 'paid' : 'pending'
+          },
+          feeRecords: feeRecords.map(record => ({
+            id: record.id,
+            classId: record.classId,
+            className: attendanceData.classAttendances.find(ca => ca.classId === record.classId)?.className,
+            amount: Number(record.amount), // Amount gốc
+            finalAmount: Number(record.totalAmount),
+            status: record.status,
+            dueDate: record.dueDate
+          })),
+          payment: payment ? {
+            id: payment.id,
+            transactionCode: payment.transactionCode,
+            amount: Number(payment.amount),
+            paidAmount: Number(payment.paidAmount),
+            returnMoney: Number(payment.returnMoney),
+            method: payment.method,
+            paidAt: payment.paidAt
+          } : null,
+          attendanceDetails: {
+            classBreakdown: attendanceData.classAttendances // Template cần classBreakdown để lấy số buổi học
+          }
+        };
+
+        return {
+          data: result,
+          message: paymentDetails?.payNow
+            ? 'Tạo hóa đơn và thanh toán thành công'
+            : 'Tạo hóa đơn thành công. Phụ huynh có thể thanh toán online.'
+        };
+      });
+      // --- KẾT THÚC TRANSACTION ---
+
+      // --- LOGIC GỬI EMAIL ---
+      try {
+        const { data } = transactionResult; // data đã chứa: billing, feeRecords, payment, attendanceDetails
+        const parentEmail = student.parent.user.email;
+
+        if (parentEmail) {
+            // Không cần map thủ công lại emailData vì 'data' từ transactionResult 
+            // đã có đủ cấu trúc mà hàm template yêu cầu.
+            const htmlContent = generateDroppedStudentEmailTemplate(data);
+
+            // Giả sử emailUtil là service gửi mail của bạn
+            await emailUtil(
+                parentEmail,
+               `[Thông báo] Xác nhận nghỉ học & Quyết toán - ${data.billing.studentName}`,
+                htmlContent
+            );
+        }
+      } catch (mailError) {
+        console.error("Lỗi gửi mail (không ảnh hưởng transaction):", mailError);
+      }
+
+      return transactionResult;
+
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      console.error('Error creating billing for attendance fee:', error);
+      throw new HttpException(
+        'Lỗi khi tạo hóa đơn phí học',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
-}
 
 }

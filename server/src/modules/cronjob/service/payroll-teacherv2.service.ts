@@ -48,7 +48,7 @@ interface ErrorDetail {
 @Injectable()
 export class PayrollCronService {
   private readonly logger = new Logger(PayrollCronService.name);
-  private readonly JOB_TYPE = 'GENERATE_TEACHER_PAYROLL';
+  private readonly JOB_TYPE = 'teacher_payroll_generation';
 
   constructor(private readonly prisma: PrismaService) { }
 
@@ -77,11 +77,11 @@ export class PayrollCronService {
     // A. Kỳ Học (Tháng trước - T11): Dùng để tìm ClassSession
     const studyMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const studyMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
+    studyMonthEnd.setHours(23, 59, 59, 999);
     // B. Kỳ Hóa Đơn (Tháng này - T12): Dùng để tìm FeeRecord hiện tại (vì dueDate là 07/12)
     const billingMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const billingMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
+    billingMonthEnd.setHours(23, 59, 59, 999);
     // C. Hạn Chốt Sổ Tháng Này (Mùng 7/12): Hạn cuối ghi nhận thanh toán cho kỳ này
     const closingDate = new Date(now.getFullYear(), now.getMonth(), 7);
     closingDate.setHours(23, 59, 59, 999);
@@ -90,10 +90,19 @@ export class PayrollCronService {
     // (Để không bỏ sót các khoản trả vào ngày 8/11, 9/11...)
     const previousClosingDate = new Date(now.getFullYear(), now.getMonth() - 1, 7);
     previousClosingDate.setHours(23, 59, 59, 999);
-
-    this.logger.log(`Kỳ Học (ClassSession): ${studyMonthStart.toISOString().slice(0, 10)} -> ${studyMonthEnd.toISOString().slice(0, 10)}`);
-    this.logger.log(`Kỳ Hóa Đơn (FeeRecord): ${billingMonthStart.toISOString().slice(0, 10)} -> ${billingMonthEnd.toISOString().slice(0, 10)}`);
-    this.logger.log(`Quét thanh toán (Payment) từ: ${previousClosingDate.toISOString()} -> ${closingDate.toISOString()}`);
+    const fmtDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+    
+    const fmtDateTime = (d: Date) => {
+         return d.toLocaleString('vi-VN', { hour12: false });
+    };
+    this.logger.log(`Kỳ Học: ${fmtDate(studyMonthStart)} -> ${fmtDate(studyMonthEnd)}`);
+    this.logger.log(`Kỳ Hóa Đơn: ${fmtDate(billingMonthStart)} -> ${fmtDate(billingMonthEnd)}`);
+    this.logger.log(`Quét thanh toán từ: ${fmtDateTime(previousClosingDate)} -> ${fmtDateTime(closingDate)}`);
 
     let totalSuccess = 0;
     let totalFailed = 0;
@@ -210,7 +219,7 @@ export class PayrollCronService {
     studyEnd: Date,
     previousClosingDate: Date,
     billingEnd: Date,
-    closingDate: Date,
+    closingDate: Date, // Ngay chốt sổ tháng hiện tại VD: 7/12
   ): Promise<PhaseResult> {
     let success = 0;
     let failed = 0;
@@ -225,7 +234,8 @@ export class PayrollCronService {
       },
       select: { id: true, name: true },
     });
-
+    console.log("Tính toán ngày học bắt");
+    
     for (const cls of activeClasses) {
       try {
         // A. Tính Tổng Thu (Dựa trên Hóa Đơn của Tháng Tính Lương - T12)
@@ -243,11 +253,18 @@ export class PayrollCronService {
           },
           select: { totalAmount: true, amount: true },
         });
+        console.log(previousClosingDate, billingEnd, closingDate);
+        console.log(feeRecords, feeRecords.length);
+        
+        
+        console.log("Lớp học hoạt động trong tháng: ", cls.name);
+        
 
         const totalRevenue = feeRecords.reduce(
           (sum, rec) => sum.plus(rec.totalAmount ?? rec.amount),
           new Prisma.Decimal(0),
         );
+        console.log(`Tổng doanh thu lớp ${cls.name}:`, new Intl.NumberFormat('vi-VN').format(totalRevenue.toNumber()));
 
         // B. Đếm số buổi dạy trong Kỳ Học (T11)
         const sessions = await this.prisma.classSession.findMany({
@@ -255,11 +272,15 @@ export class PayrollCronService {
             classId: cls.id,
             sessionDate: { gte: studyStart, lte: studyEnd },
             status: 'end',
+            teacherSessionPayout: { is: null }
           },
           select: { id: true, teacherId: true, substituteTeacherId: true, sessionDate: true },
         });
-
+        
         const totalSessions = sessions.length;
+        console.log(studyStart, studyEnd);
+        
+        console.log("Các buổi dạy trong tháng của lớp: ",totalSessions);
 
         // Nếu không có doanh thu hoặc không có buổi học -> Bỏ qua
         if (totalRevenue.isZero() || totalSessions === 0) {
@@ -270,7 +291,8 @@ export class PayrollCronService {
         // C. Tính Giá Trị Gốc 1 Buổi (Raw Value Per Session)
         // Doanh thu cả lớp / Số buổi = Giá trị 1 buổi
         const rawValuePerSession = totalRevenue.dividedBy(totalSessions);
-
+        console.log("Số tiền trên 1 buổi: ", rawValuePerSession);
+        
         // D. Chia tiền cho từng buổi
         for (const session of sessions) {
           const personToPayId = session.substituteTeacherId || session.teacherId;
@@ -279,15 +301,16 @@ export class PayrollCronService {
           // Lấy % động của người dạy tại thời điểm dạy
           const teacherRate = await this.getTeacherRate(personToPayId, session.sessionDate);
           if (teacherRate.isZero()) continue;
-
+          console.log("% Lương tháng này của giáo viên: ", teacherRate.toNumber());
+          
           // Tính lương thực nhận = Giá gốc 1 buổi * % của GV
           const teacherPayout = rawValuePerSession.times(teacherRate);
-
+          console.log("Tiền lương giáo viên nhận được cho buổi: ", teacherPayout.toNumber());
           // Đếm HS (cho FE hiển thị - không ảnh hưởng tiền)
           const attendanceCount = await this.prisma.studentSessionAttendance.count({
             where: { sessionId: session.id, status: { not: 'excused' } },
           });
-
+          console.log("Số học sinh tham gia buổi: ", attendanceCount);
           await this.prisma.teacherSessionPayout.create({
             data: {
               sessionId: session.id,
@@ -307,8 +330,8 @@ export class PayrollCronService {
         failed++;
         errors.push({
           itemId: cls.id,
-          itemName: `Class ${cls.name}`,
-          phase: 'Phase 1 (Current Month)',
+          itemName: `Lớp ${cls.name}`,
+          phase: 'Giai đoạn 1 (Quỹ Lớp)',
           error: err instanceof Error ? err.message : 'Unknown error',
         });
         this.logger.error(`Lỗi xử lý lớp ${cls.id}:`, err);
