@@ -950,3 +950,259 @@ export const paymentSuccessEmailTemplate = (data: {
 </body>
 </html>`;
 };
+
+export const generateDroppedStudentEmailTemplate = (data) => {
+    // 1. Helper format tiền VND
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount));
+    };
+    
+    // 2. Lấy dữ liệu
+    const { billing, feeRecords, payment, attendanceDetails } = data;
+    const isPaid = billing.status === 'paid';
+    
+    // Tính toán số tiền cuối cùng
+    const totalAmount = Number(billing.totalAmount); // Tổng tiền gốc các lớp
+    const discount = Number(billing.scholarshipDiscount); // Tổng giảm giá
+
+    // 3. Tạo danh sách các lớp đã học (Vòng lặp)
+    const feeRows = feeRecords.map((record, index) => {
+        // Tìm thông tin điểm danh của lớp này để lấy số buổi
+        const classAttendance = attendanceDetails.classBreakdown.find(ca => ca.classId === record.classId);
+        const attendedSessions = classAttendance?.attendedSessions || 0;
+        const totalSessions = classAttendance?.totalSessions || 0;
+
+        return `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${index + 1}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">
+                <div style="font-weight: bold;">${record.className}</div>
+                <div style="font-size: 12px; color: #666;">Đã học: ${attendedSessions}/${totalSessions} buổi</div>
+              </td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">
+                ${formatCurrency(record.amount)}
+              </td>
+            </tr>
+        `;
+    }).join('');
+
+    // 4. Xác định trạng thái thanh toán (Đơn giản hóa)
+    const statusLabel = isPaid 
+        ? '<span style="color: #28a745; font-weight: bold;">ĐÃ THANH TOÁN</span>' 
+        : '<span style="color: #dc3545; font-weight: bold;">CHƯA THANH TOÁN</span>';
+
+    const paymentNote = isPaid
+        ? `Đã thanh toán ngày: ${new Date(payment?.paidAt).toLocaleDateString('vi-VN')}`
+        : `Vui lòng hoàn tất học phí tại văn phòng trung tâm trước ngày ${new Date(billing.dueDate).toLocaleDateString('vi-VN')}`;
+
+    // 5. HTML Template tối giản
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
+                .header { background-color: #f8f9fa; padding: 15px; text-align: center; border-bottom: 1px solid #ddd; }
+                .content { padding: 20px; }
+                .footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #ddd; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2 style="margin: 0; color: #0056b3;">THÔNG BÁO QUYẾT TOÁN HỌC PHÍ</h2>
+                    <p style="margin: 5px 0 0;">(Xác nhận thôi học)</p>
+                </div>
+
+                <div class="content">
+                    <p>Kính gửi Phụ huynh: <strong>${billing.parentName}</strong>,</p>
+                    <p>Trung tâm xin thông báo chi tiết quyết toán cho học viên <strong>${billing.studentName}</strong> (Kỳ: ${billing.period}).</p>
+
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr style="background-color: #e9ecef;">
+                                <th style="padding: 8px; text-align: center; width: 10%;">STT</th>
+                                <th style="padding: 8px; text-align: left;">Lớp học & Số buổi</th>
+                                <th style="padding: 8px; text-align: right; width: 30%;">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${feeRows}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" style="padding: 8px; text-align: right;">Học bổng/Giảm trừ:</td>
+                                <td style="padding: 8px; text-align: right;">-${formatCurrency(discount)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="padding: 8px; text-align: right;">Tổng cộng:</td>
+                                <td style="padding: 8px; text-align: right;">${formatCurrency(totalAmount)}</td>
+                            </tr>
+                            
+                            <tr style="background-color: #fff3cd;">
+                                <td colspan="2" style="padding: 10px; text-align: right; font-weight: bold;">TỔNG CẦN TRẢ:</td>
+                                <td style="padding: 10px; text-align: right; font-weight: bold; color: #d63384; font-size: 16px;">
+                                    ${formatCurrency(totalAmount)}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; background-color: #fafafa; border-radius: 4px;">
+                        <p style="margin: 0;"><strong>Trạng thái:</strong> ${statusLabel}</p>
+                        <p style="margin: 5px 0 0; font-size: 13px; color: #555;">${paymentNote}</p>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <p style="margin: 0;">Mọi thắc mắc vui lòng liên hệ văn phòng trung tâm.</p>
+                    <p style="margin: 5px 0 0;">Cảm ơn Quý phụ huynh đã đồng hành.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+};
+
+
+// Hàm helper tạo nội dung email
+export const generateBillEmailTemplate = (data: any) => {
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+
+  const {
+    parentName, transactionCode, createdAt, expirationDate,
+    totalAmount, payNow, returnMoney, items, centerInfo,
+    cashGiven
+  } = data;
+
+  // Cấu hình giao diện: Xanh (Đã trả) hoặc Vàng (Chưa trả)
+  const config = payNow 
+    ? { title: 'BIÊN LAI THU TIỀN', color: '#28a745', status: 'ĐÃ THANH TOÁN' }
+    : { title: 'THÔNG BÁO HỌC PHÍ', color: '#ffc107', status: 'CHỜ THANH TOÁN' };
+
+  // Tạo danh sách khoản thu
+  const itemsHtml = items.map((item: any, idx: number) => `
+    <tr>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eeeeee; text-align: center; font-size: 14px;">${idx + 1}</td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eeeeee;">
+        <strong style="font-size: 14px; color: #333333;">${item.feeName}</strong><br>
+        <span style="font-size: 12px; color: #666666;">${item.studentName} - ${item.className}</span>
+      </td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eeeeee; text-align: right; font-size: 14px; font-weight: 600;">${formatCurrency(item.amount)}</td>
+    </tr>
+  `).join('');
+
+  // Nội dung hướng dẫn ở chân email
+  let footerInstruction = '';
+  
+  if (!payNow) {
+    // Nếu chưa đóng tiền: Mời đến quầy
+    footerInstruction = `
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 20px;">
+        <tr>
+          <td style="padding: 15px; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 14px; color: #856404;">Hướng dẫn thanh toán:</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #856404;">Quý phụ huynh vui lòng ghé văn phòng trung tâm để hoàn tất đóng phí.</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #856404;"><strong>Địa chỉ:</strong> ${centerInfo.address}</p>
+            <p style="margin: 0; font-size: 14px; color: #dc3545;"><strong>Hạn chót:</strong> ${new Date(expirationDate).toLocaleDateString('vi-VN')}</p>
+          </td>
+        </tr>
+      </table>
+    `;
+  } else if (returnMoney > 0) {
+    // Nếu đã đóng tiền và có tiền thừa
+    footerInstruction = `
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 20px;">
+        <tr>
+          <td style="padding: 15px; background-color: #f8f9fa; border-top: 2px dashed #dddddd;">
+            <p style="margin: 0 0 6px 0; text-align: right; font-size: 14px; color: #666666;">Tổng tiền: <strong style="color: #333333;">${formatCurrency(totalAmount)}</strong></p>
+            <p style="margin: 0 0 6px 0; text-align: right; font-size: 14px; color: #666666;">Tiền đóng: <strong style="color: #333333;">${formatCurrency(cashGiven)}</strong></p>
+            <p style="margin: 0; text-align: right; font-size: 14px; color: #666666;">Tiền thừa trả lại phụ huynh: <strong style="color: #28a745;">${formatCurrency(returnMoney)}</strong></p>
+          </td>
+        </tr>
+      </table>
+    `;
+  }
+
+  return `
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>${config.title}</title>
+    </head>
+    <body style="margin: 0; padding: 20px 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f4;">
+        <tr>
+          <td align="center">
+            <!-- Main Container -->
+            <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background-color: #007bff; padding: 20px; text-align: center;">
+                  <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: bold;">${centerInfo.centerName}</h2>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 30px 25px;">
+                  
+                  <!-- Title & Status -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-bottom: 2px solid #eeeeee; padding-bottom: 15px; margin-bottom: 20px;">
+                    <tr>
+                      <td>
+                        <h3 style="margin: 0 0 5px 0; color: #333333; font-size: 18px;">${config.title}</h3>
+                        <span style="font-size: 12px; color: #777777;">Mã GD: ${transactionCode}</span>
+                      </td>
+                      <td align="right" valign="top">
+                        <span style="display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; background-color: ${config.color}; color: #ffffff; text-transform: uppercase;">${config.status}</span>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Greeting -->
+                  <p style="margin: 0 0 10px 0; font-size: 14px; color: #333333;">Kính gửi: <strong>${parentName}</strong>,</p>
+                  <p style="margin: 0 0 20px 0; font-size: 14px; color: #555555;">Hệ thống gửi thông tin phiếu thu ngày ${new Date(createdAt).toLocaleDateString('vi-VN')}.</p>
+                  
+                  <!-- Items Table -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-top: 15px;">
+                    <tr style="background-color: #f8f9fa;">
+                      <th style="padding: 12px 8px; text-align: center; font-size: 13px; font-weight: bold; color: #333333; border-bottom: 2px solid #dddddd;">#</th>
+                      <th style="padding: 12px 8px; text-align: left; font-size: 13px; font-weight: bold; color: #333333; border-bottom: 2px solid #dddddd;">Nội dung</th>
+                      <th style="padding: 12px 8px; text-align: right; font-size: 13px; font-weight: bold; color: #333333; border-bottom: 2px solid #dddddd;">Số tiền</th>
+                    </tr>
+                    ${itemsHtml}
+                    <tr>
+                      <td colspan="2" style="text-align: right; padding: 15px 8px; font-weight: bold; font-size: 15px; color: #333333; border-top: 2px solid #dddddd;">TỔNG CỘNG:</td>
+                      <td style="text-align: right; padding: 15px 8px; font-weight: bold; font-size: 17px; color: #dc3545; border-top: 2px solid #dddddd;">${formatCurrency(totalAmount)}</td>
+                    </tr>
+                  </table>
+
+                  ${footerInstruction}
+
+                  <!-- Footer Contact -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 25px;">
+                    <tr>
+                      <td style="text-align: center; font-size: 12px; color: #999999; padding-top: 20px; border-top: 1px solid #eeeeee;">
+                        <p style="margin: 0;">Mọi thắc mắc vui lòng liên hệ: <strong style="color: #007bff;">${centerInfo.phone}</strong></p>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                </td>
+              </tr>
+              
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
