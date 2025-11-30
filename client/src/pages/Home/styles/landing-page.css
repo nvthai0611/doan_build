@@ -1,58 +1,30 @@
-/* Gradient Text */
+/* Gradient Text - Màu xanh dương nhạt */
 .gradient-text {
-  background: linear-gradient(
-    90deg,
-    #ff6b35 0%,
-    #ff1493 25%,
-    #9d4edd 50%,
-    #3a86ff 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #3b82f6;
+  font-weight: 600;
 }
 
-/* Gradient Background */
+/* Gradient Background - Màu xanh dương nhạt */
 .gradient-bg {
-  background: linear-gradient(
-    135deg,
-    #ff6b35 0%,
-    #ff1493 25%,
-    #9d4edd 50%,
-    #3a86ff 100%
-  );
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
 }
 
-/* Softer gradient backgrounds for footer and banner */
+/* Softer gradient backgrounds - Màu trắng và xanh dương nhạt */
 .gradient-bg-soft {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.15) 0%,
-    rgba(255, 20, 147, 0.15) 25%,
-    rgba(157, 78, 221, 0.15) 50%,
-    rgba(58, 134, 255, 0.15) 100%
-  );
-  background-color: #f8f9fa;
+  background-color: #f0f9ff;
 }
 
 .gradient-bg-soft-dark {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.08) 0%,
-    rgba(255, 20, 147, 0.08) 25%,
-    rgba(157, 78, 221, 0.08) 50%,
-    rgba(58, 134, 255, 0.08) 100%
-  );
-  background-color: #1a1a1a;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
 }
 
-/* Border Left Gradient */
+/* Border Left - Màu xanh dương nhạt */
 .border-l-gradient-orange {
-  border-left: 4px solid #ff6b35;
+  border-left: 4px solid #3b82f6;
 }
 
 .border-l-gradient-purple {
-  border-left: 4px solid #9d4edd;
+  border-left: 4px solid #60a5fa;
 }
 
 /* Hover Effects */
@@ -61,64 +33,53 @@
 }
 
 .card-hover:hover {
-  box-shadow: 0 20px 25px -5px rgba(255, 107, 53, 0.2);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15);
   transform: translateY(-4px);
 }
 
-/* Loading Spinner */
+/* Loading Spinner - Màu xanh dương nhạt */
 .spinner-gradient {
-  border-bottom-color: #ff6b35;
-  border-right-color: #ff1493;
-  border-top-color: #9d4edd;
-  border-left-color: #3a86ff;
+  border-bottom-color: #3b82f6;
+  border-right-color: #60a5fa;
+  border-top-color: #93c5fd;
+  border-left-color: #dbeafe;
 }
 
-/* Button Gradient */
+/* Button Gradient - Màu xanh dương nhạt */
 .btn-gradient {
-  background: linear-gradient(
-    90deg,
-    #ff6b35 0%,
-    #ff1493 33%,
-    #9d4edd 66%,
-    #3a86ff 100%
-  );
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   color: white;
   border: none;
 }
 
 .btn-gradient:hover {
-  opacity: 0.9;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
 }
 
-/* Badge Gradient */
+/* Badge Gradient - Màu xanh dương nhạt */
 .badge-gradient {
-  background: linear-gradient(90deg, #ff6b35 0%, #ff1493 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   color: white;
   border: none;
 }
 
-/* Filter Button Hover */
+/* Filter Button Hover - Màu xanh dương nhạt */
 .filter-btn-hover:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.1) 0%,
-    rgba(255, 20, 147, 0.1) 50%,
-    rgba(157, 78, 221, 0.1) 100%
-  );
+  background: #dbeafe;
 }
 
-/* Input Focus */
+/* Input Focus - Màu xanh dương nhạt */
 .input-focus:focus {
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Select Focus */
+/* Select Focus - Màu xanh dương nhạt */
 .select-focus:focus {
-  border-color: #ff6b35;
+  border-color: #3b82f6;
 }
 
-/* Gradient Underline */
+/* Gradient Underline - Màu xanh dương nhạt */
 .gradient-underline {
   position: relative;
   display: inline-block;
@@ -131,13 +92,7 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    #ff6b35 0%,
-    #ff1493 25%,
-    #9d4edd 50%,
-    #3a86ff 100%
-  );
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
 }
 
 /* New section styles */
@@ -150,12 +105,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(
-    to right,
-    rgba(255, 107, 53, 0.1),
-    rgba(255, 20, 147, 0.1),
-    rgba(157, 78, 221, 0.1)
-  );
+  background: #dbeafe;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
   margin-bottom: 1rem;
@@ -171,7 +121,7 @@
 }
 
 .top-student-card:hover {
-  box-shadow: 0 20px 25px -5px rgba(255, 107, 53, 0.15);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15);
   transform: translateY(-4px);
 }
 
@@ -179,7 +129,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff1493 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 0 0.75rem 0 0.75rem;
@@ -196,18 +146,14 @@
 }
 
 .teacher-card:hover {
-  box-shadow: 0 20px 25px -5px rgba(255, 107, 53, 0.15);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15);
   transform: translateY(-4px);
 }
 
 .teacher-avatar {
   width: 100%;
   height: 200px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.2) 0%,
-    rgba(255, 20, 147, 0.2) 100%
-  );
+  background: #dbeafe;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -220,22 +166,18 @@
   border-radius: 0.75rem;
   overflow: hidden;
   transition: all 0.3s ease;
-  border-left: 4px solid #ff6b35;
+  border-left: 4px solid #3b82f6;
 }
 
 .news-card:hover {
-  box-shadow: 0 20px 25px -5px rgba(255, 107, 53, 0.15);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15);
   transform: translateY(-4px);
 }
 
 .news-image {
   width: 100%;
   height: 200px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.1) 0%,
-    rgba(157, 78, 221, 0.1) 100%
-  );
+  background: #dbeafe;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,18 +194,14 @@
 }
 
 .showcase-item:hover {
-  box-shadow: 0 20px 25px -5px rgba(255, 107, 53, 0.15);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15);
   transform: translateY(-4px);
 }
 
 .showcase-image {
   width: 100%;
   height: 250px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 53, 0.15) 0%,
-    rgba(58, 134, 255, 0.15) 100%
-  );
+  background: #dbeafe;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -272,7 +210,7 @@
 
 .achievement-badge {
   display: inline-block;
-  background: linear-gradient(90deg, #ff6b35 0%, #ff1493 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;

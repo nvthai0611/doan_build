@@ -169,6 +169,7 @@ export class TeacherFeedbackService {
          if (verification.consensus_score < 60) {
             confidenceScore = 0.5; // Giảm một nửa độ tin cậy
             this.logger.warn(`Gemini consensus score thấp: ${verification.consensus_score}%`);
+            analysisResult.key_insights.unshift('CẢNH BÁO: Đánh giá của Gemini không đồng thuận.');
          } else {
             this.logger.log(`Gemini consensus score tốt: ${verification.consensus_score}%`);
          }

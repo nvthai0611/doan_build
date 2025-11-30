@@ -52,7 +52,7 @@ export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) =
               <Button
                 size="lg"
                 asChild
-                className="text-base bg-white text-orange-500 hover:bg-white/90 font-semibold"
+                className="text-base bg-white text-blue-600 hover:bg-white/90 font-semibold"
               >
                 <Link to="/auth/register/family">
                   Đăng Ký Ngay
