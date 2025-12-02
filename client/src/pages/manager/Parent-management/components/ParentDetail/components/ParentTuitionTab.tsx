@@ -72,7 +72,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
 
   const formatCurrency = (amount: number) => {
     if (amount === null || amount === undefined) return '-';
-    return Number(amount).toLocaleString('vi-VN') + ' vnđ';
+    return Number(amount).toLocaleString('vi-VN') + ' đ';
   };
 
   const getStatusBadge = (status: string) => {
@@ -144,7 +144,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
       header: 'Hạn thanh toán',
       render: (fee) => {
         const isOverdue = fee.dueDate
-          ? new Date(fee.dueDate) < new Date()
+          ? new Date(fee.dueDate + "T00:00:00") < new Date(new Date().setHours(23, 59, 59, 999))
           : false;
         return (
           <div className="flex items-center gap-2">

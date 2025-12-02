@@ -9,6 +9,7 @@ import {
 import { templateParentStudentAccount } from 'src/modules/shared/template-email/template-parent-student-account';
 import emailUtil from '../../../utils/email.util';
 import { checkId } from '../../../utils/validate.util';
+import { generateBillEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 
 @Injectable()
 export class ParentManagementService {
@@ -1613,7 +1614,6 @@ async updateParent(
 
         console.log(cashGiven);
         
-        
         if (isNaN(cashGiven) || cashGiven <= 0) {
           throw new HttpException(
             'Số tiền khách đưa không hợp lệ',
@@ -1730,11 +1730,59 @@ async updateParent(
         return paymentWithAllocations;
       });
 
+      try {
+        if (result.parent.user.email) {
+          // Chuẩn bị dữ liệu gửi mail (Map từ kết quả transaction)
+          const emailData = {
+            parentName: result.parent.user.fullName,
+            transactionCode: result.transactionCode,
+            createdAt: result.createdAt,
+            expirationDate: result.expirationDate,
+            totalAmount: Number(result.amount),
+            payNow: result.status === 'completed',
+            cashGiven: payNow && method === 'cash' ? Number(options?.cashGiven || 0) : null,
+            returnMoney: Number(result.returnMoney),
+            
+            // Map danh sách items
+            items: result.feeRecordPayments.map((frp) => ({
+              studentName: frp.feeRecord.student.user.fullName,
+              className: frp.feeRecord.class?.name || 'Lớp học',
+              feeName: frp.feeRecord.feeStructure?.name || 'Học phí',
+              amount: Number(frp.feeRecord.totalAmount || frp.feeRecord.amount),
+            })),
+
+            // Thông tin trung tâm cố định (Vì không cần bank info)
+            centerInfo: {
+              centerName: "Trung tâm QNEdu",
+              address: "Thủy Nguyên Hải Phòng",
+              phone: "0382657962"
+            }
+          };
+
+          // Tạo nội dung HTML
+          const htmlContent = generateBillEmailTemplate(emailData);
+
+          // Gửi Mail (Fire and forget - không await để response nhanh)
+          await emailUtil(
+            result.parent.user.email,
+            emailData.payNow 
+              ? `[Biên lai] Xác nhận thu tiền #${result.transactionCode}`
+              : `[Thông báo] Vui lòng đóng học phí #${result.transactionCode}`,
+            htmlContent,
+          );
+        }
+      } catch (mailError) {
+        // Log lỗi nhưng không chặn flow chính
+        console.error("Lỗi gửi email hóa đơn:", mailError);
+      }
+      // =========================================================
+
+      // --- PHẦN RETURN ĐÃ CHỈNH SỬA ---
       const message = payNow
         ? method === 'cash'
           ? `Tạo và thanh toán hóa đơn thành công. Tiền thừa: ${returnMoney.toLocaleString('vi-VN')}đ`
           : 'Tạo và thanh toán hóa đơn thành công'
-        : 'Tạo hóa đơn cho phụ huynh thành công';
+        : 'Tạo hóa đơn cho phụ huynh thành công. Đã gửi email thông báo.';
 
       return {
         data: result,

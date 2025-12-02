@@ -11,6 +11,8 @@ import { parentChildService } from "../../../../services/parent/child-management
 import type { Child } from "../../../../services/parent/child-management/child.types"
 import { AttendanceDetailsDialog } from "./AttendanceDetailsDialog"
 import { getDisplaySessionStatus } from "../../../../utils/session-status.util"
+import { parentChildClassesService } from "../../../../services/parent/child-classes/child-classes.service"
+import type { ChildClass } from "../../../../services/parent/child-classes/child-classes.types"
 
 interface ChildAttendanceProps {
   child: Child
@@ -20,11 +22,40 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(undefined)
   const [selectedSession, setSelectedSession] = useState<any | undefined>(undefined)
+  const [selectedClassId, setSelectedClassId] = useState<string | undefined>(undefined)
+
+  // Lấy danh sách lớp mà học sinh này đang theo học
+  const { data: childClassesData } = useQuery({
+    queryKey: ["parent-child-classes", child.id],
+    queryFn: () => parentChildClassesService.getChildClasses(child.id),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    enabled: !!child.id,
+  })
+
+  const enrolledClasses: ChildClass[] = useMemo(() => {
+    if (!childClassesData) return []
+    const topLevelData = (childClassesData as any)?.data ?? childClassesData
+
+    // Trường hợp BE trả về trực tiếp mảng classes: { success, data: Class[] }
+    if (Array.isArray(topLevelData)) {
+      return topLevelData as ChildClass[]
+    }
+
+    // Trường hợp cũ: { data: { enrolledClasses: Class[] } }
+    const nested = (topLevelData as any)?.enrolledClasses
+    return Array.isArray(nested) ? nested as ChildClass[] : []
+  }, [childClassesData])
+
+  // Mặc định chọn lớp đầu tiên khi có dữ liệu
+  if (!selectedClassId && enrolledClasses.length > 0) {
+    setSelectedClassId(enrolledClasses[0].id)
+  }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["parent-child-attendance", child.id],
+    queryKey: ["parent-child-attendance", child.id, selectedClassId],
     queryFn: async () => {
-      const attendance = await parentChildService.getChildAttendance(child.id)
+      const attendance = await parentChildService.getChildAttendance(child.id, selectedClassId)
       return attendance
     },
     staleTime: 30000,
@@ -131,6 +162,29 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
 
   return (
     <div className="space-y-6">
+      {/* Bộ lọc theo lớp */}
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Điểm danh theo lớp học</h2>
+        <p className="text-sm text-muted-foreground">
+          Chọn lớp mà con đang theo học để xem lịch sử điểm danh tương ứng.
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Lọc theo lớp:</span>
+          <select
+            className="border rounded-md px-3 py-1 text-sm bg-white"
+            value={selectedClassId || (enrolledClasses[0]?.id || "")}
+            onChange={(e) => setSelectedClassId(e.target.value as any)}
+          >
+            {enrolledClasses.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+                {cls.subject?.name ? ` - ${cls.subject.name}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Thống kê điểm danh */}
       <Card className="border-0 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b">
