@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,6 +9,8 @@ import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, File
 import Loading from "../../../../components/Loading/LoadingPage"
 import { parentMaterialsService } from "../../../../services/parent/materials/materials.service"
 import type { ParentMaterial } from "../../../../services/parent/materials/materials.types"
+import { parentChildClassesService } from "../../../../services/parent/child-classes/child-classes.service"
+import type { ChildClass } from "../../../../services/parent/child-classes/child-classes.types"
 
 interface ChildMaterialsProps {
   childId: string
@@ -15,10 +18,42 @@ interface ChildMaterialsProps {
 }
 
 export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
+  const [selectedClassId, setSelectedClassId] = useState<string | undefined>(classId)
+
+  // Lấy danh sách lớp mà học sinh này đang theo học (để filter tài liệu theo lớp)
+  const { data: childClassesData } = useQuery({
+    queryKey: ["parent-child-classes-materials", childId],
+    queryFn: () => parentChildClassesService.getChildClasses(childId),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    enabled: !!childId,
+  })
+
+  const enrolledClasses: ChildClass[] = useMemo(() => {
+    if (!childClassesData) return []
+    const topLevelData = (childClassesData as any)?.data ?? childClassesData
+
+    // Trường hợp BE trả về trực tiếp mảng classes
+    if (Array.isArray(topLevelData)) {
+      return topLevelData as ChildClass[]
+    }
+
+    // Trường hợp cũ: { data: { enrolledClasses: Class[] } }
+    const nested = (topLevelData as any)?.enrolledClasses
+    return Array.isArray(nested) ? nested as ChildClass[] : []
+  }, [childClassesData])
+
+  // Mặc định chọn lớp đầu tiên nếu chưa có classId
+  if (!selectedClassId && enrolledClasses.length > 0) {
+    setSelectedClassId(enrolledClasses[0].id)
+  }
+
+  const effectiveClassId = selectedClassId
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["parentMaterials", { childId, classId }],
+    queryKey: ["parentMaterials", { childId, classId: effectiveClassId }],
     queryFn: () => {
-      return parentMaterialsService.list({ childId, classId, limit: 50 });
+      return parentMaterialsService.list({ childId, classId: effectiveClassId, limit: 50 });
     },
     enabled: !!childId,
     staleTime: 30000,
@@ -94,12 +129,29 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-        <CardTitle className="flex items-center gap-2 text-purple-800">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <BookOpen className="h-5 w-5 text-purple-600" />
+        <div className="space-y-3">
+          <CardTitle className="flex items-center gap-2 text-purple-800">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <BookOpen className="h-5 w-5 text-purple-600" />
+            </div>
+            Tài liệu học tập của con
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Lọc theo lớp:</span>
+            <select
+              className="border rounded-md px-3 py-1 text-sm bg-white"
+              value={selectedClassId || (enrolledClasses[0]?.id || "")}
+              onChange={(e) => setSelectedClassId(e.target.value as any)}
+            >
+              {enrolledClasses.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                  {cls.subject?.name ? ` - ${cls.subject.name}` : ""}
+                </option>
+              ))}
+            </select>
           </div>
-          Tài liệu học tập của con
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="p-6">
         {isLoading ? (
