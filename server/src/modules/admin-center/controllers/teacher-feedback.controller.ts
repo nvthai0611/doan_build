@@ -17,14 +17,8 @@ export class TeacherFeedbackController {
 
   @Post('class/:classId/analyze')
   async triggerClassAnalysis(@Param('classId') classId: string) {
-    const analysis = await this.service.analyzeClassFeedbacks(classId)
-    if (analysis) {
-      await this.service.saveClassAnalysis(classId, analysis)
-      return {
-        data: analysis,
-        message: 'Class analysis completed successfully',
-      }
-    }
+    const result = await this.service.analyzeClassFeedbacks(classId)
+    
     return {
       data: null,
       message: 'No feedbacks to analyze',

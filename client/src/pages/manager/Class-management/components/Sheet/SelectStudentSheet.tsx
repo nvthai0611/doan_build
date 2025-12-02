@@ -454,9 +454,6 @@ export const SelectStudentSheet = ({
           <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                </div>
                 <AlertDialogTitle className="text-lg font-semibold">
                   Chi tiết kết quả đăng ký
                 </AlertDialogTitle>
@@ -466,10 +463,10 @@ export const SelectStudentSheet = ({
                   <div className="space-y-4">
                     <div className="flex items-center gap-4 text-sm">
                       <div className="px-3 py-1 rounded-full bg-green-50 text-green-700">
-                        ✅ Thành công: {errorDetails.successCount}
+                        Thành công: {errorDetails.successCount}
                       </div>
                       <div className="px-3 py-1 rounded-full bg-red-50 text-red-700">
-                        ❌ Thất bại: {errorDetails.failedCount}
+                        Thất bại: {errorDetails.failedCount}
                       </div>
                       <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700">
                         Tổng: {errorDetails.totalCount}
@@ -499,7 +496,7 @@ export const SelectStudentSheet = ({
                                     {failed.reason.includes('Lịch học bị trùng') ? (
                                       <div className="space-y-1">
                                         <div className="font-medium text-red-600">
-                                          ⚠️ Lịch học bị trùng:
+                                          Lịch học bị trùng:
                                         </div>
                                         <div className="pl-2 text-gray-700">
                                           {failed.reason.replace('Lịch học bị trùng: ', '')}

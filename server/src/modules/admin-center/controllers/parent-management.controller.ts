@@ -335,22 +335,23 @@ export class ParentManagementController {
             notes?: string,
             reference?: string,
             method?: 'bank_transfer' | 'cash',
-            payNow?: boolean
+            payNow?: boolean,
+            cashGiven?: number
         }
     ) {
-        const { feeRecordIds, expirationDate, notes, reference, method, payNow } = body || {};
+        const { feeRecordIds, expirationDate, notes, reference, method, payNow, cashGiven } = body || {};
 
         if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
             throw new HttpException('feeRecordIds là bắt buộc và phải là mảng có ít nhất 1 phần tử', HttpStatus.BAD_REQUEST);
         }
-
         try {
             const result = await this.parentManagementService.createBillForParent(parentId, feeRecordIds, {
                 expirationDate,
                 notes,
                 reference,
                 method,
-                payNow
+                payNow,
+                cashGiven
             });
 
             // result already in { data, message } shape in service
