@@ -1,0 +1,720 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ScheduleManagementService = void 0;
+const common_1 = require("@nestjs/common");
+const prisma_service_1 = require("../../../db/prisma.service");
+const email_notification_service_1 = require("../../shared/services/email-notification.service");
+let ScheduleManagementService = class ScheduleManagementService {
+    constructor(prisma, emailNotificationService) {
+        this.prisma = prisma;
+        this.emailNotificationService = emailNotificationService;
+    }
+    mapSessionToClientShape(session) {
+        return {
+            id: session.id,
+            name: session.class?.name || '',
+            date: session.sessionDate.toISOString().slice(0, 10),
+            startTime: session.startTime,
+            endTime: session.endTime,
+            roomName: session.room?.name || null,
+            teacherName: session.class?.teacher?.user?.fullName || '',
+            subjectName: session.class?.subject?.name || '',
+            studentCount: (session.class?._count && session.class._count.enrollments) || 0,
+            maxStudents: session.class?.maxStudents ?? 0,
+            status: session.status,
+        };
+    }
+    async getScheduleByDay(queryDto) {
+        const { date } = queryDto;
+        if (!date)
+            return [];
+        const sessions = await this.prisma.classSession.findMany({
+            where: {
+                sessionDate: new Date(date),
+                status: {
+                    notIn: ['end', 'cancelled'],
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
+            },
+            orderBy: { startTime: 'asc' },
+            include: {
+                room: { select: { name: true } },
+                class: {
+                    select: {
+                        name: true,
+                        maxStudents: true,
+                        subject: { select: { name: true } },
+                        teacher: {
+                            select: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
+                        _count: { select: { enrollments: true } },
+                    },
+                },
+            },
+        });
+        return sessions.map((s) => this.mapSessionToClientShape(s));
+    }
+    async getScheduleByWeek(queryDto) {
+        const { startDate, endDate } = queryDto;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const sessions = await this.prisma.classSession.findMany({
+            where: {
+                sessionDate: { gte: start, lte: end },
+                status: {
+                    notIn: ['end', 'cancelled'],
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
+            },
+            orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+            include: {
+                room: { select: { name: true } },
+                class: {
+                    select: {
+                        name: true,
+                        maxStudents: true,
+                        subject: { select: { name: true } },
+                        teacher: {
+                            select: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
+                        _count: { select: { enrollments: true } },
+                    },
+                },
+            },
+        });
+        return sessions.map((s) => this.mapSessionToClientShape(s));
+    }
+    async getScheduleByMonth(queryDto) {
+        const { month, year } = queryDto;
+        const monthNum = Number(month);
+        const yearNum = Number(year);
+        const firstDay = new Date(Date.UTC(yearNum, monthNum - 1, 1));
+        const firstDayNextMonth = new Date(Date.UTC(yearNum, monthNum, 1));
+        const sessions = await this.prisma.classSession.findMany({
+            where: {
+                sessionDate: { gte: firstDay, lt: firstDayNextMonth },
+                status: {
+                    notIn: ['end', 'cancelled'],
+                },
+                class: {
+                    status: {
+                        in: ['active', 'ready', 'suspended'],
+                    },
+                },
+            },
+            orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+            include: {
+                room: { select: { name: true } },
+                class: {
+                    select: {
+                        name: true,
+                        maxStudents: true,
+                        subject: { select: { name: true } },
+                        teacher: {
+                            select: {
+                                user: {
+                                    select: {
+                                        fullName: true,
+                                    },
+                                },
+                            },
+                        },
+                        _count: { select: { enrollments: true } },
+                    },
+                },
+            },
+        });
+        return sessions.map((s) => this.mapSessionToClientShape(s));
+    }
+    async getAllActiveClassesWithSchedules(expectedStartDate) {
+        const classes = await this.prisma.class.findMany({
+            where: {
+                status: {
+                    in: ['active', 'ready', 'suspended'],
+                },
+                recurringSchedule: {
+                    not: null,
+                },
+            },
+            select: {
+                id: true,
+                name: true,
+                recurringSchedule: true,
+                teacherId: true,
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                teacher: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+                subject: {
+                    select: {
+                        name: true,
+                    },
+                },
+                expectedStartDate: true,
+                actualStartDate: true,
+                actualEndDate: true,
+            },
+            orderBy: { name: 'asc' },
+        });
+        let result = classes.map((cls) => {
+            const schedule = cls.recurringSchedule;
+            return {
+                classId: cls.id,
+                className: cls.name,
+                teacherId: cls.teacherId || cls.teacher?.id || null,
+                teacherName: cls.teacher?.user?.fullName || '',
+                subjectName: cls.subject?.name || '',
+                roomId: cls.room?.id || null,
+                roomName: cls.room?.name || null,
+                expectedStartDate: cls.expectedStartDate,
+                actualStartDate: cls.actualStartDate,
+                actualEndDate: cls.actualEndDate,
+                schedules: schedule?.schedules || [],
+            };
+        });
+        let rangeStartDate;
+        if (expectedStartDate) {
+            const [year, month, day] = expectedStartDate.split('-').map(Number);
+            rangeStartDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        }
+        else {
+            const now = new Date();
+            rangeStartDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+        }
+        const nextYear = rangeStartDate.getUTCFullYear() + 1;
+        const rangeEndDate = new Date(Date.UTC(nextYear, 4, 31, 0, 0, 0, 0));
+        result = result.filter((cls) => {
+            const classStartRaw = cls.actualStartDate || cls.expectedStartDate;
+            if (!classStartRaw)
+                return false;
+            const classStart = new Date(classStartRaw);
+            const classStartDate = new Date(Date.UTC(classStart.getUTCFullYear(), classStart.getUTCMonth(), classStart.getUTCDate(), 0, 0, 0, 0));
+            let classEndDate;
+            if (cls.actualEndDate) {
+                const classEnd = new Date(cls.actualEndDate);
+                classEndDate = new Date(Date.UTC(classEnd.getUTCFullYear(), classEnd.getUTCMonth(), classEnd.getUTCDate(), 0, 0, 0, 0));
+            }
+            else {
+                const classNextYear = classStartDate.getUTCFullYear() + 1;
+                classEndDate = new Date(Date.UTC(classNextYear, 4, 31, 0, 0, 0, 0));
+            }
+            if (classEndDate.getTime() < rangeStartDate.getTime()) {
+                return false;
+            }
+            if (classStartDate.getTime() > rangeEndDate.getTime()) {
+                return false;
+            }
+            return true;
+        });
+        return result;
+    }
+    async getSessionById(sessionId) {
+        const session = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        subject: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
+                        grade: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
+                        teacher: {
+                            select: {
+                                id: true,
+                                user: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        email: true,
+                                        phone: true,
+                                        avatar: true,
+                                    },
+                                },
+                            },
+                        },
+                        _count: {
+                            select: {
+                                enrollments: true,
+                            },
+                        },
+                    },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                        capacity: true,
+                    },
+                },
+                teacher: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phone: true,
+                                avatar: true,
+                            },
+                        },
+                    },
+                },
+                attendances: {
+                    select: {
+                        id: true,
+                        status: true,
+                        note: true,
+                        recordedAt: true,
+                        student: {
+                            select: {
+                                id: true,
+                                user: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        email: true,
+                                        avatar: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
+        return {
+            id: session.id,
+            name: session.notes || `Buổi ${session.academicYear}`,
+            topic: session.notes,
+            sessionDate: session.sessionDate,
+            startTime: session.startTime,
+            endTime: session.endTime,
+            status: session.status,
+            notes: session.notes,
+            academicYear: session.academicYear,
+            cancellationReason: session.cancellationReason,
+            createdAt: session.createdAt,
+            class: session.class,
+            room: session.room,
+            teacher: session.teacher,
+            attendanceCount: session.attendances.length,
+        };
+    }
+    async getSessionAttendance(sessionId) {
+        const session = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: { id: true, classId: true },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
+        const attendances = await this.prisma.studentSessionAttendance.findMany({
+            where: {
+                sessionId: sessionId,
+            },
+            include: {
+                student: {
+                    select: {
+                        id: true,
+                        studentCode: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                phone: true,
+                                avatar: true,
+                            },
+                        },
+                    },
+                },
+                recordedByTeacher: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                student: {
+                    user: {
+                        fullName: 'asc',
+                    },
+                },
+            },
+        });
+        return attendances.map((attendance) => ({
+            id: attendance.id.toString(),
+            sessionId: attendance.sessionId,
+            studentId: attendance.studentId,
+            studentName: attendance.student.user.fullName,
+            studentCode: attendance.student.studentCode,
+            status: attendance.status,
+            checkInTime: attendance.recordedAt,
+            checkOutTime: null,
+            note: attendance.note,
+            recordedBy: attendance.recordedByTeacher?.user?.fullName,
+            recordedAt: attendance.recordedAt,
+            isSent: attendance.isSent,
+            sentAt: attendance.sentAt,
+            student: {
+                id: attendance.student.id,
+                studentCode: attendance.student.studentCode,
+                user: attendance.student.user,
+            },
+            thaiDoHoc: null,
+            kyNangLamViecNhom: null,
+        }));
+    }
+    async updateSession(sessionId, body) {
+        const oldSession = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: {
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+                cancellationReason: true,
+            },
+        });
+        if (!oldSession) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
+        const session = await this.prisma.classSession.update({
+            where: { id: sessionId },
+            data: body,
+        });
+        try {
+            const oldDate = oldSession.sessionDate ?
+                (oldSession.sessionDate instanceof Date ?
+                    oldSession.sessionDate.toISOString().split('T')[0] :
+                    new Date(oldSession.sessionDate).toISOString().split('T')[0]) : '';
+            const oldTime = oldSession.startTime && oldSession.endTime ?
+                `${oldSession.startTime} - ${oldSession.endTime}` : '';
+            let newDate = oldDate;
+            if (body.sessionDate) {
+                if (typeof body.sessionDate === 'string') {
+                    newDate = body.sessionDate.split('T')[0];
+                }
+                else if (body.sessionDate instanceof Date) {
+                    newDate = body.sessionDate.toISOString().split('T')[0];
+                }
+                else {
+                    newDate = new Date(body.sessionDate).toISOString().split('T')[0];
+                }
+            }
+            let newTime = oldTime;
+            if (body.startTime || body.endTime) {
+                const finalStartTime = body.startTime || oldSession.startTime || '';
+                const finalEndTime = body.endTime || oldSession.endTime || '';
+                if (finalStartTime && finalEndTime) {
+                    newTime = `${finalStartTime} - ${finalEndTime}`;
+                }
+            }
+            if (body.status === 'day_off' && oldSession.status !== 'day_off') {
+                await this.emailNotificationService.sendSessionChangeEmail(sessionId, 'cancelled', oldDate, oldTime, undefined, undefined, body.cancellationReason || oldSession.cancellationReason || 'Không có lý do');
+            }
+            else if ((body.sessionDate && oldDate !== newDate) ||
+                (body.startTime && oldSession.startTime !== body.startTime) ||
+                (body.endTime && oldSession.endTime !== body.endTime)) {
+                await this.emailNotificationService.sendSessionChangeEmail(sessionId, 'rescheduled', oldDate, oldTime, newDate, newTime, body.reason || '');
+            }
+        }
+        catch (emailError) {
+            console.error('Lỗi khi gửi email thông báo thay đổi lịch:', emailError);
+        }
+        return session;
+    }
+    async checkScheduleConflict(sessionId, sessionDate, startTime, endTime) {
+        const currentSession = await this.prisma.classSession.findUnique({
+            where: { id: sessionId },
+            select: { roomId: true, sessionDate: true },
+        });
+        if (!currentSession) {
+            throw new common_1.NotFoundException('Không tìm thấy buổi học');
+        }
+        if (!currentSession.roomId) {
+            return { hasConflict: false, conflicts: [] };
+        }
+        const [year, month, day] = sessionDate.split('-').map(Number);
+        const targetDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        const parseTimeToMinutes = (time) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+        const newStartMinutes = parseTimeToMinutes(startTime);
+        const newEndMinutes = parseTimeToMinutes(endTime);
+        const conflictingSessions = await this.prisma.classSession.findMany({
+            where: {
+                id: { not: sessionId },
+                roomId: currentSession.roomId,
+                sessionDate: targetDate,
+                status: { notIn: ['cancelled', 'end'] },
+            },
+            select: {
+                id: true,
+                startTime: true,
+                endTime: true,
+                notes: true,
+                class: {
+                    select: {
+                        name: true,
+                        classCode: true,
+                    },
+                },
+            },
+        });
+        const conflicts = conflictingSessions.filter((session) => {
+            const sessionStartMinutes = parseTimeToMinutes(session.startTime);
+            const sessionEndMinutes = parseTimeToMinutes(session.endTime);
+            return (newStartMinutes < sessionEndMinutes &&
+                sessionStartMinutes < newEndMinutes);
+        });
+        return {
+            hasConflict: conflicts.length > 0,
+            conflicts: conflicts.map((c) => ({
+                id: c.id,
+                className: c.class?.name || '',
+                classCode: c.class?.classCode || '',
+                notes: c.notes || '',
+                startTime: c.startTime,
+                endTime: c.endTime,
+            })),
+        };
+    }
+    async getTeachersInSessionsToday(query) {
+        const { startDate, endDate, search, attendanceStatus, page = 1, limit = 10, classId, sessionStatus, } = query;
+        const pageNum = typeof page === 'string' ? parseInt(page, 10) : Number(page);
+        const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : Number(limit);
+        let dateStart;
+        let dateEnd;
+        if (startDate && endDate) {
+            const [startYear, startMonth, startDay] = startDate
+                .split('-')
+                .map(Number);
+            const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+            dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
+            dateEnd = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999));
+        }
+        else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            dateStart = today;
+            dateEnd = new Date(today);
+            dateEnd.setHours(23, 59, 59, 999);
+        }
+        const where = {
+            sessionDate: {
+                gte: dateStart,
+                lte: dateEnd,
+            },
+            teacherId: { not: null },
+            class: {
+                status: { in: ['active', 'ready', 'suspended'] },
+            },
+        };
+        if (sessionStatus) {
+            where.status = sessionStatus;
+        }
+        else {
+            where.status = { notIn: ['end', 'cancelled'] };
+        }
+        if (search) {
+            where.teacher = {
+                user: {
+                    fullName: { contains: search, mode: 'insensitive' },
+                },
+            };
+        }
+        if (classId) {
+            where.classId = classId;
+        }
+        const total = await this.prisma.classSession.count({ where });
+        const skip = (pageNum - 1) * limitNum;
+        const sessions = await this.prisma.classSession.findMany({
+            where,
+            skip,
+            take: limitNum,
+            orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
+            include: {
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                substituteTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                avatar: true,
+                            },
+                        },
+                    },
+                },
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
+                        classCode: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                        maxStudents: true,
+                    },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                attendances: {
+                    select: {
+                        id: true,
+                        status: true,
+                    },
+                },
+                teacherSessionPayout: {
+                    select: {
+                        teacherPayout: true,
+                    },
+                },
+            },
+        });
+        const sessionEnrollmentCounts = await Promise.all(sessions.map((session) => this.prisma.enrollment.count({
+            where: {
+                classId: session.classId,
+                status: { in: ['studying', 'not_been_updated'] },
+                enrolledAt: {
+                    lte: session.sessionDate,
+                },
+            },
+        })));
+        const result = sessions.map((session, index) => {
+            const isSubstitute = session.substituteTeacherId &&
+                session.substituteEndDate &&
+                new Date(session.substituteEndDate) >= session.sessionDate;
+            const teacher = isSubstitute
+                ? session.substituteTeacher
+                : session.teacher;
+            const role = isSubstitute ? 'GV thay thế' : 'Giáo Viên';
+            return {
+                id: session.id,
+                stt: skip + index + 1,
+                teacher: {
+                    id: teacher?.id || '',
+                    userId: teacher?.userId || '',
+                    fullName: teacher?.user?.fullName || 'Chưa có tên',
+                    avatar: teacher?.user?.avatar || null,
+                    teacherCode: teacher?.teacherCode || '',
+                    email: teacher?.user?.email || '',
+                },
+                role: role,
+                session: {
+                    id: session.id,
+                    sessionNumber: session.notes?.match(/Buổi (\d+)/)?.[1] || '',
+                    status: session.status,
+                    sessionDate: session.sessionDate.toISOString().split('T')[0],
+                    startTime: session.startTime,
+                    endTime: session.endTime,
+                    dateTimeRange: `${session.sessionDate.toISOString().split('T')[0]} ${session.startTime} → ${session.endTime}`,
+                },
+                class: {
+                    id: session.class.id,
+                    name: session.class.name,
+                    classCode: session.class.classCode,
+                    subject: session.class.subject?.name || '',
+                },
+                enrollmentCount: sessionEnrollmentCounts[index],
+            };
+        });
+        return {
+            data: result,
+            meta: {
+                total: result.length,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(result.length / limitNum),
+            },
+        };
+    }
+};
+exports.ScheduleManagementService = ScheduleManagementService;
+exports.ScheduleManagementService = ScheduleManagementService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        email_notification_service_1.EmailNotificationService])
+], ScheduleManagementService);
+//# sourceMappingURL=schedule-management.service.js.map
