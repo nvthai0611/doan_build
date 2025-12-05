@@ -3317,22 +3317,7 @@ export class ClassManagementService {
         );
       }
 
-      // Gửi email hủy lớp cho giáo viên trước khi xóa
-      try {
-        await this.emailNotificationService.sendClassRemoveTeacherEmail(
-          classId,
-          teacherId,
-          'Lớp học đã được hủy phân công',
-        );
-        console.log(
-          `Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
-        );
-      } catch (emailError) {
-        console.error(
-          'Failed to queue cancellation email to teacher:',
-          emailError,
-        );
-      }
+      
 
       // Remove teacher assignment and chuyển status về draft
       const updatedClass = await this.prisma.class.update({
@@ -3342,6 +3327,17 @@ export class ClassManagementService {
           status: ClassStatus.DRAFT,
         },
       });
+
+      // Gửi email thông báo cho giáo viên qua queue
+      try {
+        await this.emailNotificationService.sendClassRemoveTeacherEmail(
+          classId,
+          teacherId,
+        );
+      } catch (emailError) {
+        // Log lỗi email nhưng không làm fail toàn bộ operation
+        console.error('Failed to queue email notification:', emailError);
+      }
 
       return {
         success: true,

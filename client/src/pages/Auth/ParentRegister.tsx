@@ -230,7 +230,43 @@ export function ParentRegister() {
     } catch (err: any) {
       console.error("Registration error:", err)
       
-      const errorMessage = err.response?.message || err.message || "Đăng ký thất bại. Vui lòng thử lại."
+      // Format error message từ backend
+      const formatErrorMessage = (message: any): string => {
+        if (!message) return "Đăng ký thất bại. Vui lòng thử lại."
+        
+        // Nếu là string, trả về trực tiếp
+        if (typeof message === 'string') {
+          return message
+        }
+        
+        // Nếu là array
+        if (Array.isArray(message)) {
+          // Nếu là array of objects (validation errors từ ValidationPipe)
+          if (message.length > 0 && typeof message[0] === 'object') {
+            return message
+              .map((obj: any) => {
+                // Lấy key và value từ object
+                const keys = Object.keys(obj)
+                return keys.map(key => `${key}: ${obj[key]}`).join(', ')
+              })
+              .join('; ')
+          }
+          // Nếu là array of strings
+          return message.join('; ')
+        }
+        
+        // Nếu là object
+        if (typeof message === 'object') {
+          return Object.entries(message)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('; ')
+        }
+        
+        return "Đăng ký thất bại. Vui lòng thử lại."
+      }
+      
+      const rawMessage = err.response?.data?.message || err.response?.message || err.message
+      const errorMessage = formatErrorMessage(rawMessage)
       const errorDetails = err.response?.error || ""
       
       setError(errorMessage)

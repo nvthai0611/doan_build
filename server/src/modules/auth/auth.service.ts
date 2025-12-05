@@ -185,7 +185,7 @@ export class AuthService {
           email: registerDto.email,
           username: registerDto.username,
           password: hashedPassword,
-          fullName: registerDto.fullName,
+          fullName: registerDto.fullName.trim(),
           phone: registerDto.phone,
           birthDate: registerDto.birthDate ? new Date(registerDto.birthDate) : null,
           role: 'parent',
@@ -217,7 +217,7 @@ export class AuthService {
             email: `${childUsername}@student.qne.edu.vn`, // Auto-generate email
             username: childUsername,
             password: defaultStudentPassword,
-            fullName: child.fullName,
+            fullName: child.fullName.trim(),
             birthDate: new Date(child.dateOfBirth),
             gender: child.gender,
             role: 'student',
