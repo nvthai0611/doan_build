@@ -91,6 +91,46 @@ const NotificationDropdown = () => {
   );
 };
 
+const CompactHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <div className="sticky top-0 z-30 w-full border-b border-gray-200 bg-white/90 backdrop-blur">
+      <div className="flex items-center justify-between h-14 px-4 sm:px-6">
+        <div>
+          <p className="text-[12px] uppercase tracking-wide text-muted-foreground">{subtitle}</p>
+          <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 via-purple-500 to-blue-500 p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-gray-600" />
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-gray-600" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>{user?.fullName || "Tài khoản"}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/profile")}>
+              <User className="mr-2 h-4 w-4" />
+              Hồ sơ cá nhân
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={async () => { await logout(); navigate("/auth"); }}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Đăng xuất
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+};
+
 const Header = () => {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -201,7 +241,19 @@ const Header = () => {
     document.addEventListener("keydown", handleKeyPress);
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, []);
-  
+
+  if (user?.role === "parent") {
+    return <CompactHeader title="Dành cho Phụ huynh" subtitle="Parent Portal" />;
+  }
+
+  if (user?.role === "student") {
+    return <CompactHeader title="Dành cho Học sinh" subtitle="Student Portal" />;
+  }
+
+  if (user?.role === "teacher") {
+    return <CompactHeader title="Dành cho Giáo viên" subtitle="Teacher Portal" />;
+  }
+
   return (
     <div className="w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">

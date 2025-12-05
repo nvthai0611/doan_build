@@ -85,6 +85,9 @@ export class RegisterParentDto {
   @IsString({ message: 'Họ và tên phải là chuỗi' })
   @IsNotEmpty({ message: 'Họ và tên không được để trống' })
   @MinLength(5, { message: 'Họ và tên phải có ít nhất 5 ký tự' })
+  @Matches(/^[\p{L}\s]+$/u, {
+    message: 'Họ và tên không được chứa ký tự đặc biệt',
+  })
   fullName: string;
 
   @IsString({ message: 'Số điện thoại phải là chuỗi' })
