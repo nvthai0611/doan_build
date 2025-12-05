@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { publicClassesService, type RecruitingClass } from "../../services/common/public-classes.service"
 import { publicShowcasesService, type Showcase } from "../../services/common/public-showcases.service"
 import { publicTeacherService } from "../../services/common/public-teacher.service"
+import { publicCenterInfoService, type CenterInfo } from "../../services/common/public-center-info.service"
 import { useAuth } from "../../lib/auth"
 import { formatScheduleArray } from "../../utils/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +24,9 @@ import {
   Star,
   Award,
   Newspaper,
+  Phone,
+  Mail,
+  MapPin,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -131,12 +135,20 @@ export const LandingPage = () => {
     queryFn: () => publicTeacherService.getTeachers(),
   })
 
+  // Fetch center info
+  const { data: centerInfoData } = useQuery({
+    queryKey: ["public-center-info"],
+    queryFn: () => publicCenterInfoService.getCenterInfo(),
+    refetchOnWindowFocus: false,
+  })
+
   const classes = classesData?.data || []
   const subjects = subjectsData?.data || []
   const grades = gradesData?.data || []
   const meta = classesData?.meta
   const showcases = showcasesData?.data || []
   const teachers = teachersData?.data || []
+  const centerInfo: CenterInfo | null = centerInfoData?.data || null
 
   // Filter by search term
   const filteredClasses = classes.filter(
@@ -175,10 +187,10 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <Header />
+      <Header centerInfo={centerInfo} />
 
       {/* Hero Banner */}
-      <HeroBanner />
+      <HeroBanner centerInfo={centerInfo} />
       {/* Classes Section */}
       <section
         id="classes"
@@ -449,7 +461,7 @@ export const LandingPage = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Đánh giá:</span>
-                          <span className="font-semibold text-orange-500">{rating ? `⭐ ${rating}` : 'Chưa có'}</span>
+                          <span className="font-semibold text-blue-500">{rating ? `⭐ ${rating}` : 'Chưa có'}</span>
                         </div>
                         {activeNamesLabel && (
                           <div className="line-clamp-1 tooltip" title={activeNamesLabel}>
@@ -565,7 +577,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <Footer />
+      <Footer centerInfo={centerInfo} />
     </div>
   );
 }
@@ -612,13 +624,13 @@ const ClassCard = ({
           {/* Subject & Grade */}
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-orange-500" />
+              <BookOpen className="w-4 h-4 text-blue-500" />
               <span>{classItem.subject?.name || "Chưa có môn"}</span>
             </div>
             {classItem.grade && (
               <Badge
                 variant="outline"
-                className="text-xs bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200"
+                className="text-xs bg-blue-50 border-blue-200 text-blue-700"
               >
                 {classItem.grade.name}
               </Badge>
@@ -627,7 +639,7 @@ const ClassCard = ({
 
           {/* Teacher */}
           <div className="flex items-center gap-2 text-sm">
-            <User className="w-4 h-4 text-pink-500" />
+            <User className="w-4 h-4 text-blue-500" />
             {classItem.teacher ? (
               <span className="truncate">{classItem.teacher.fullName}</span>
             ) : (
@@ -637,7 +649,7 @@ const ClassCard = ({
 
           {/* Students */}
           <div className="flex items-center gap-2 text-sm">
-            <Users className="w-4 h-4 text-purple-500" />
+            <Users className="w-4 h-4 text-blue-500" />
             <span>
               {classItem.currentStudents}/{classItem.maxStudents || "∞"} học sinh
             </span>
@@ -649,7 +661,7 @@ const ClassCard = ({
             {!isFull && availableSlots <= 5 && (
               <Badge
                 variant="secondary"
-                className="text-xs ml-auto bg-gradient-to-r from-orange-500/20 to-pink-500/20 text-orange-600 border-orange-200"
+                className="text-xs ml-auto bg-blue-50 text-blue-600 border-blue-200"
               >
                 Còn {availableSlots} chỗ
               </Badge>
@@ -665,7 +677,7 @@ const ClassCard = ({
                   <Badge
                     key={idx}
                     variant="outline"
-                    className="text-xs bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-200"
+                    className="text-xs bg-blue-50 border-blue-200 text-blue-700"
                   >
                     {s.day}: {s.time}
                   </Badge>
@@ -678,7 +690,7 @@ const ClassCard = ({
           {/* Expected Start Date */}
           {classItem.expectedStartDate && (
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-green-500" />
+              <Calendar className="w-4 h-4 text-blue-500" />
               <span>Dự kiến bắt đầu: {new Date(classItem.expectedStartDate).toLocaleDateString("vi-VN")}</span>
             </div>
           )}

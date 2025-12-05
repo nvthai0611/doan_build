@@ -144,7 +144,7 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
       header: 'Hạn thanh toán',
       render: (fee) => {
         const isOverdue = fee.dueDate
-          ? new Date(fee.dueDate) < new Date()
+          ? new Date(fee.dueDate + "T00:00:00") < new Date(new Date().setHours(23, 59, 59, 999))
           : false;
         return (
           <div className="flex items-center gap-2">
@@ -466,13 +466,13 @@ export function ParentTuitionTab({ parentData }: ParentTuitionTabProps) {
 
             {/* Khu vực thanh toán */}
             <div className="rounded-md border p-3 space-y-3 bg-muted/30">
-              <div className="text-sm font-medium">Thanh toán tại quầy</div>
+              <div className="text-sm font-medium">Thanh toán tại trung tâm</div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Thành tiền</span>
                 <span className="font-semibold">{formatCurrency(selectedTotalAmount)}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <label className="text-sm">Khách đưa</label>
+                <label className="text-sm">Phụ huynh đưa</label>
                 <Input
                   type="text"
                   inputMode="numeric"

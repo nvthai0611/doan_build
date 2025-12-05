@@ -179,15 +179,22 @@ export default function SessionRequestManagement() {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {(item.teacher?.user?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+              {(item.teacher?.user?.fullName || 'U')
+                .split(' ')
+                .map((n) => n[0])
+                .join('')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{item.teacher?.user?.fullName || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">{item.teacher?.user?.email || 'No email'}</p>
+            <p className="font-medium text-sm">
+              {item.teacher?.user?.fullName || 'Unknown'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {item.teacher?.user?.email || 'No email'}
+            </p>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'requestType',
@@ -195,11 +202,17 @@ export default function SessionRequestManagement() {
       render: (item: SessionRequest) => (
         <Badge
           variant="secondary"
-          className={requestTypeColors[item.requestType as keyof typeof requestTypeColors] || 'bg-gray-100 text-gray-700'}
+          className={
+            requestTypeColors[
+              item.requestType as keyof typeof requestTypeColors
+            ] || 'bg-gray-100 text-gray-700'
+          }
         >
-          {requestTypeLabels[item.requestType as keyof typeof requestTypeLabels] || item.requestType}
+          {requestTypeLabels[
+            item.requestType as keyof typeof requestTypeLabels
+          ] || item.requestType}
         </Badge>
-      )
+      ),
     },
     {
       key: 'class',
@@ -207,9 +220,11 @@ export default function SessionRequestManagement() {
       render: (item: SessionRequest) => (
         <div className="text-sm">
           <p className="font-medium">{item.class?.name || 'Unknown'}</p>
-          <p className="text-muted-foreground">{item.class?.subject?.name || 'Unknown'}</p>
+          <p className="text-muted-foreground">
+            {item.class?.subject?.name || 'Unknown'}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'sessionDetails',
@@ -217,12 +232,16 @@ export default function SessionRequestManagement() {
       render: (item: SessionRequest) => (
         <div className="text-sm">
           <p className="font-medium">{formatDate(item.sessionDate)}</p>
-          <p className="text-muted-foreground">{item.startTime} - {item.endTime}</p>
+          <p className="text-muted-foreground">
+            {item.startTime} - {item.endTime}
+          </p>
           {item.room && (
-            <p className="text-xs text-muted-foreground">Phòng: {item.room.name}</p>
+            <p className="text-xs text-muted-foreground">
+              Phòng: {item.room.name}
+            </p>
           )}
         </div>
-      )
+      ),
     },
     {
       key: 'reason',
@@ -233,7 +252,7 @@ export default function SessionRequestManagement() {
             {item.reason}
           </p>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -246,7 +265,7 @@ export default function SessionRequestManagement() {
           {getStatusIcon(item.status)}
           {statusLabels[item.status] || item.status}
         </Badge>
-      )
+      ),
     },
     {
       key: 'createdAt',
@@ -255,53 +274,60 @@ export default function SessionRequestManagement() {
         <span className="text-sm text-muted-foreground">
           {formatDateTime(item.createdAt)}
         </span>
-      )
+      ),
     },
     {
       key: 'actions',
       header: 'Thao tác',
       render: (item: SessionRequest) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item.id)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {(() => {
-              return item.status === 'pending'
-            })() && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => {
-                    handleApprove(item.id)
-                  }}
-                  className="text-green-600"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Duyệt yêu cầu
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => {
-                    handleReject(item.id)
-                  }}
-                  className="text-red-600"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  ]
+        <div>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              title="Xem chi tiết"
+              onClick={() => handleViewDetails(item.id)}
+            >
+              <Eye className="h-4 w-4"/>
+            </div>
+            <>
+              <div
+                title="Duyệt"
+                onClick={() => {
+                  if (item.status !== 'pending') {
+                    return
+                  }
+                  handleApprove(item.id);
+                }}
+                className={` flex items-center px-2 py-1 rounded-md ${
+                  item.status !== 'pending'
+                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                    : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                }`}
+              >
+                <CheckCircle className="h-4 w-4" />
+              </div>
+              <div
+                title="Từ chối"
+                onClick={() => {
+                  if (item.status !== 'pending') {
+                    return
+                  }
+                  handleReject(item.id);
+                }}
+                className={` flex items-center px-2 py-1 rounded-md ${
+                  item.status !== 'pending'
+                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                    : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                }`}
+              >
+                <XCircle className="h-4 w-4" />
+              </div>
+            </>
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">

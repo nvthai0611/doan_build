@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Search, BookOpen, Users, Calendar, GraduationCap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, Search, BookOpen, Users, Calendar, GraduationCap, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '../../../../../hooks/useDebounce';
 import { apiClient } from '../../../../../utils/clientAxios';
@@ -72,6 +72,14 @@ export const TransferStudentSheet = ({
   const [searchTerm, setSearchTerm] = useState(''); // Từ khóa tìm kiếm lớp đích
   const [selectedClassId, setSelectedClassId] = useState<string>(''); // ID lớp đích được chọn
   const [showActiveClassConfirm, setShowActiveClassConfirm] = useState(false); // Hiển thị dialog xác nhận khi chuyển từ lớp ACTIVE
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [transferResult, setTransferResult] = useState<{
+    successCount: number;
+    failedCount: number;
+    totalCount: number;
+    successes: Array<{ studentName: string; className?: string }>;
+    failures: Array<{ studentName: string; reason: string; details?: string[] }>;
+  } | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 500); // Debounce search để tránh call API liên tục
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -217,67 +225,132 @@ export const TransferStudentSheet = ({
 
   // === MUTATION CHUYỂN LỚP HỌC SINH ===
   const transferMutation = useMutation({
-    mutationFn: async ({ enrollmentIds, newClassId }: { enrollmentIds: string[]; newClassId: string }) => {
-      // Chuyển từng enrollment (gọi API song song để nhanh hơn)
-      const promises = enrollmentIds.map((enrollmentId) =>
-        enrollmentService.transferStudent(enrollmentId, {
-          newClassId,
-          reason: 'Chuyển lớp hàng loạt', // Lý do mặc định
-        })
-      );
-      return Promise.all(promises);
-     
-    },
-    onSuccess: () => {
-      // Hiển thị thông báo thành công
-      toast({
-        title: 'Thành công',
-        description: `Đã chuyển ${selectedEnrollmentIds.length} học sinh sang lớp mới thành công`,
+    mutationFn: async ({ enrollmentIds, newClassId }: { enrollmentIds: string[]; newClassId: string }) =>
+      enrollmentService.bulkTransfer(enrollmentIds, {
+        newClassId,
+        reason: 'Chuyển lớp hàng loạt',
+      }),
+    onSuccess: (response: any) => {
+      const resultPayload = response?.data || response;
+      const transferredStudents = resultPayload?.transferredStudents || [];
+      const failedStudents = resultPayload?.failedStudents || [];
+      const successCount =
+        resultPayload?.transferredCount ?? transferredStudents.length ?? 0;
+      const failedCount =
+        resultPayload?.failedCount ?? failedStudents.length ?? 0;
+      const totalCount =
+        resultPayload?.totalCount ??
+        ((successCount + failedCount) || selectedEnrollmentIds.length);
+
+      setTransferResult({
+        successCount,
+        failedCount,
+        totalCount,
+        successes: transferredStudents.map((student: any) => ({
+          studentName: student.studentName || 'Không xác định',
+          className: selectedClass?.name || '',
+        })),
+        failures: failedStudents.map((student: any) => ({
+          studentName: student.studentName || 'Không xác định',
+          reason: student.reason || 'Không rõ lý do',
+          details: Array.isArray(student.details)
+            ? student.details.map(
+                (detail: any) =>
+                  `Lớp "${detail.className}" - Thứ ${detail.dayOfWeek}: ${detail.conflictingClassTime} ↔ ${detail.newClassTime}`,
+              )
+            : undefined,
+        })),
       });
-      
-      // === INVALIDATE CACHE ĐỂ CẬP NHẬT UI ===
-      // Xóa cache để force re-fetch data mới
-      queryClient.invalidateQueries({ 
-        queryKey: ['class-enrollments'], // Danh sách học sinh trong lớp
-        exact: false // Invalidate tất cả queries có prefix này
-      });
-      queryClient.invalidateQueries({ queryKey: ['class', classData?.id] }); // Thông tin lớp hiện tại
-      queryClient.invalidateQueries({ queryKey: ['classes'] }); // Danh sách tất cả lớp
-      queryClient.invalidateQueries({ queryKey: ['available-classes-transfer'] }); // Danh sách lớp khả dụng
-      queryClient.invalidateQueries({ queryKey: ['classes-capacity'] }); // Sĩ số các lớp
-      
-      // Gọi callback từ parent component (nếu có)
-      onSuccess && onSuccess();
-      
-      // Đóng sheet
-      onOpenChange(false);
+      setShowResultDialog(true);
+
+      if (successCount > 0) {
+        toast({
+          title: 'Thành công',
+          description:
+            resultPayload?.message ||
+            `Đã chuyển ${successCount} học sinh sang lớp mới thành công`,
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ['class-enrollments'],
+          exact: false,
+        });
+        queryClient.invalidateQueries({ queryKey: ['class', classData?.id] });
+        queryClient.invalidateQueries({ queryKey: ['classes'] });
+        queryClient.invalidateQueries({ queryKey: ['available-classes-transfer'] });
+        queryClient.invalidateQueries({ queryKey: ['classes-capacity'] });
+        onSuccess && onSuccess();
+      } else {
+        toast({
+          title: 'Không thể chuyển lớp',
+          description:
+            resultPayload?.message ||
+            'Tất cả học sinh đều gặp lỗi khi chuyển lớp',
+          variant: 'destructive',
+          duration: 8000,
+        });
+      }
     },
     onError: (error: any) => {
+      const errorData = error?.response?.data || error;
+      
+      // Xử lý lỗi học sinh đã đăng ký ở lớp mới (đang học)
+      if (errorData?.invalidStudents && Array.isArray(errorData.invalidStudents)) {
+        const studentNames = errorData.invalidStudents
+          .map((s: any) => s.studentName)
+          .join(', ');
+        toast({
+          title: 'Không thể chuyển lớp',
+          description: `Các học sinh sau đã được đăng ký vào lớp mới: ${studentNames}. Tất cả học sinh sẽ không được chuyển.`,
+          variant: 'destructive',
+          duration: 10000,
+        });
+        return;
+      }
+
+      // Xử lý lỗi học sinh đã dừng học, tốt nghiệp, hoặc chuyển lớp ở lớp mới
+      if (errorData?.studentsWithInactiveEnrollment && Array.isArray(errorData.studentsWithInactiveEnrollment)) {
+        const messages = errorData.studentsWithInactiveEnrollment.map((s: any) => 
+          `${s.studentName} (${s.statusLabel})`
+        );
+        toast({
+          title: 'Không thể chuyển lớp',
+          description: errorData.message || `Các học sinh sau đã có trạng thái kết thúc ở lớp mới: ${messages.join(', ')}. Tất cả học sinh sẽ không được chuyển.`,
+          variant: 'destructive',
+          duration: 10000,
+        });
+        return;
+      }
+
       // Xử lý lỗi schedule conflict từ backend
-      const errorData = error?.response?.data;
-      if (errorData?.conflicts && Array.isArray(errorData.conflicts)) {
-        const conflictMessages = errorData.conflicts
-          .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
-          .join('; ');
+      if (errorData?.scheduleConflicts && Array.isArray(errorData.scheduleConflicts)) {
+        const conflictMessages = errorData.scheduleConflicts
+          .map((sc: any) => {
+            const conflictDetails = sc.conflicts
+              .map((c: any) => `Lớp "${c.className}" - Thứ ${c.dayOfWeek}: ${c.conflictingClassTime} trùng với ${c.newClassTime}`)
+              .join('; ');
+            return `${sc.studentName}: ${conflictDetails}`;
+          })
+          .join(' | ');
         toast({
           title: 'Lịch học bị trùng',
           description: conflictMessages,
           variant: 'destructive',
           duration: 10000,
         });
-      } else {
-        // Hiển thị thông báo lỗi thông thường
-        toast({
-          title: 'Lỗi',
-          description:
-            errorData?.message ||
-            error?.response?.data?.message ||
-            error?.message ||
-            'Có lỗi xảy ra khi chuyển lớp học sinh',
-          variant: 'destructive',
-          duration: 8000,
-        });
+        return;
       }
+
+      // Hiển thị thông báo lỗi thông thường
+      toast({
+        title: 'Lỗi',
+        description:
+          errorData?.message ||
+          error?.message ||
+          'Có lỗi xảy ra khi chuyển lớp học sinh',
+        variant: 'destructive',
+        duration: 8000,
+      });
     },
   });
 
@@ -324,9 +397,25 @@ export const TransferStudentSheet = ({
     setShowActiveClassConfirm(false); // Đóng dialog confirm
   };
 
+  const handleResultDialogClose = () => {
+    setShowResultDialog(false);
+    setTransferResult(null);
+    // Nếu có học sinh chuyển thành công thì đóng sheet để reload dữ liệu mới
+    if ((transferResult?.successCount || 0) > 0) {
+      onOpenChange(false);
+    }
+  };
+
   const selectedClass = availableClasses.find(
     (cls: any) => cls.id === selectedClassId
   );
+
+  useEffect(() => {
+    if (!open) {
+      setShowResultDialog(false);
+      setTransferResult(null);
+    }
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -533,6 +622,114 @@ export const TransferStudentSheet = ({
 
         </div>
       </SheetContent>
+
+      {/* Result dialog hiển thị chi tiết học sinh chuyển thành công/thất bại */}
+      <AlertDialog
+        open={showResultDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleResultDialogClose();
+          } else {
+            setShowResultDialog(true);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <AlertTriangle className="h-5 w-5 text-blue-600" />
+              </div>
+              <AlertDialogTitle className="text-lg font-semibold">
+                Kết quả chuyển lớp
+              </AlertDialogTitle>
+            </div>
+            {transferResult && (
+              <AlertDialogDescription className="pt-2 space-y-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <div className="px-3 py-1 rounded-full bg-green-50 text-green-700">
+                    ✅ Thành công: {transferResult.successCount}
+                  </div>
+                  <div className="px-3 py-1 rounded-full bg-red-50 text-red-700">
+                    ❌ Thất bại: {transferResult.failedCount}
+                  </div>
+                  <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700">
+                    Tổng: {transferResult.totalCount}
+                  </div>
+                </div>
+
+                {transferResult.successCount > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-green-700">
+                      Danh sách học sinh chuyển thành công:
+                    </h4>
+                    <div className="border rounded-lg divide-y max-h-[300px] overflow-y-auto">
+                      {transferResult.successes.map((student, index) => (
+                        <div
+                          key={`${student.studentName}-${index}`}
+                          className="p-3 flex items-center gap-3"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-semibold">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-sm text-gray-900">
+                              {student.studentName}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Đã chuyển sang lớp: {student.className || selectedClass?.name || 'Lớp mới'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {transferResult.failedCount > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-red-700">
+                      Danh sách học sinh không thể chuyển:
+                    </h4>
+                    <div className="border rounded-lg divide-y max-h-[300px] overflow-y-auto">
+                      {transferResult.failures.map((student, index) => (
+                        <div
+                          key={`${student.studentName}-${index}`}
+                          className="p-3 space-y-2"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-gray-900 mb-1">
+                                {student.studentName}
+                              </div>
+                              <div className="text-xs text-red-600">
+                                {student.reason}
+                              </div>
+                              {student.details && student.details.length > 0 && (
+                                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-gray-600">
+                                  {student.details.map((detail, idx) => (
+                                    <li key={idx}>{detail}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </AlertDialogDescription>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleResultDialogClose}>Đóng</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirmation Dialog for Active Class */}
       <AlertDialog open={showActiveClassConfirm} onOpenChange={setShowActiveClassConfirm}>

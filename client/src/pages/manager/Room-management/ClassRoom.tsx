@@ -9,7 +9,7 @@ import { RoomDialog } from "./components/RoomDialog"
 import { RoomsList } from "./components/RoomsList"
 
 export default function ClassroomsPage() {
-  const { rooms, addRoom, updateRoom, deleteRoom, isSubmitting } = useRooms()
+  const { rooms, addRoom, updateRoom, deleteRoom, isSubmitting, isLoading } = useRooms()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingData, setEditingData] = useState<Partial<Room> | null>(null)
@@ -56,7 +56,7 @@ export default function ClassroomsPage() {
     }
   }
 
-  // Đảm bảo rooms luôn là mảng
+  // Đảm bảo rooms luôn là mảng, ngay cả khi đang loading
   const roomsArray = Array.isArray(rooms) ? rooms : []
   
   const totalCapacity = roomsArray.reduce((sum: number, room: Room) => sum + (room.capacity || 0), 0)
@@ -112,7 +112,15 @@ export default function ClassroomsPage() {
       {/* Rooms List */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Danh sách phòng học</h2>
-        <RoomsList rooms={roomsArray} onEdit={handleEditClick} onDelete={handleDelete} isDeleting={deletingId} />
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Đang tải dữ liệu...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <RoomsList rooms={roomsArray} onEdit={handleEditClick} onDelete={handleDelete} isDeleting={deletingId} />
+        )}
       </div>
 
       {/* Dialog */}

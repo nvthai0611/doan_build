@@ -22,7 +22,12 @@ import { PublicShowcasesController } from './controllers/public-showcases.contro
 import { PublicShowcasesService } from './services/public-showcases.service';
 import { PublicTeachersController } from './controllers/public-teachers.controller';
 import { PublicTeachersService } from './services/public-teachers.service';
-  
+import { PublicCenterInfoController } from './controllers/public-center-info.controller';
+import { PublicCenterInfoService } from './services/public-center-info.service';
+import { EmailNotificationPayrollService } from './services/email-notification-payroll.service';
+import { PayrollNotificationProcessor } from './consumer/payroll-notification.processor';
+import { RecalculatedPayrollTeacherProcessor } from './consumer/recalculate-payroll-teacher';
+
 const DEFAULT_BULL_JOB_OPTIONS = {
   removeOnComplete: 10, // Giữ lại 10 job hoàn thành gần nhất
   removeOnFail: 5,      // Giữ lại 5 job thất bại gần nhất
@@ -44,44 +49,51 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     // Cấu hình Bull queue cho email
     BullModule.registerQueue({
       name: 'email',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'email_notification',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'teacher_account',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'class_assign_teacher',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'enrollment_email',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'class_status_change_email',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'class_request_email',
-      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,         
+      defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
     BullModule.registerQueue({
       name: 'session_change_email',
       defaultJobOptions: DEFAULT_BULL_JOB_OPTIONS,
     }),
+    BullModule.registerQueue({
+      name: 'payroll-notification',
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-recalculation',
+    }),
   ],
-  controllers:[
+  controllers: [
     // Shared controllers can be added here
     StudentsSharedController,
     GradesController,
     PublicClassesController,
     PublicShowcasesController,
-    PublicTeachersController
+    PublicTeachersController,
+    PublicCenterInfoController
   ],
   providers: [
     // Shared services can be added here
@@ -91,6 +103,7 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     PublicClassesService,
     PublicShowcasesService,
     PublicTeachersService,
+    PublicCenterInfoService,
     EmailQueueService,
     EmailProcessor,
     EmailNotificationService,
@@ -100,15 +113,19 @@ const DEFAULT_BULL_JOB_OPTIONS = {
     EnrollmentEmailProcessor,
     ClassStatusChangeProcessor,
     ClassRequestEmailProcessor,
-    SessionChangeEmailProcessor
+    SessionChangeEmailProcessor,
+    EmailNotificationPayrollService,
+    PayrollNotificationProcessor,
+    RecalculatedPayrollTeacherProcessor
   ],
   exports: [
-    StudentSharedService, 
-    GradeService, 
+    StudentSharedService,
+    GradeService,
     PrismaService,
     EmailQueueService,
     EmailNotificationService, // Export để các module khác sử dụng
+    EmailNotificationPayrollService
   ],
-  
+
 })
-export class SharedModule {}
+export class SharedModule { }

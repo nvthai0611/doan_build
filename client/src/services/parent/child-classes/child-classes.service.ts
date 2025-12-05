@@ -9,9 +9,9 @@ class ParentChildClassesService {
   /**
    * Lấy tất cả lớp học của tất cả con
    */
-  async getAllChildrenClasses(): Promise<ChildClassesResponse> {
+  async getAllChildrenClasses(studentId: string): Promise<ChildClassesResponse> {
     try {
-      const response = await apiClient.get(`${this.BASE_URL}/children-classes`)
+      const response = await apiClient.get(`${this.BASE_URL}/students/${studentId}/children-classes`)
       console.log('Raw response from apiClient:', response)
       return response as ChildClassesResponse
     } catch (error) {

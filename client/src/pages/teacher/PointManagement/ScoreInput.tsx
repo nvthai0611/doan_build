@@ -13,10 +13,6 @@ import { teacherPointService } from "../../../services/teacher/point-management/
 import { GradeEntry, TeacherClassItem, TeacherStudentSummary } from "../../../services/teacher/point-management/point.types"
 import { teacherCommonService } from "../../../services/teacher/common/common.service"
 import { teacherClassService } from "../../../services/teacher/class-management/class.service"
-import { apiClient } from "../../../utils/clientAxios"
-// classes sẽ fetch từ API teacher/class-management/classes
-
-// students sẽ fetch theo classId
 
 export default function GradeInputPage() {
   const [loading, setLoading] = useState(false)
@@ -25,10 +21,10 @@ export default function GradeInputPage() {
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedAssignment, setSelectedAssignment] = useState("")
   const [selectedExamType, setSelectedExamType] = useState("")
-  const [examTypes, setExamTypes] = useState<string[]>([])
-  const [examTypesConfig, setExamTypesConfig] = useState<any[]>([]) // Lưu config từ SystemSetting
-  const [currentMaxScore, setCurrentMaxScore] = useState<number>(10) // MaxScore của exam type hiện tại
-  const [examDate, setExamDate] = useState("")
+  const [examTypesConfig, setExamTypesConfig] = useState<any[]>([]) 
+  const [currentMaxScore, setCurrentMaxScore] = useState<number>(10) 
+  const [selectedSession, setSelectedSession] = useState("")
+  const [sessions, setSessions] = useState<any[]>([])
   const [examTitle, setExamTitle] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [grades, setGrades] = useState<Record<string, { score: string; comment: string }>>({})
@@ -46,7 +42,6 @@ export default function GradeInputPage() {
             id: c.id,
             name: c.name,
             subject: { name: c.subject?.name || 'N/A' },
-            studentCount: c.studentCount || 0
           }
         }) as TeacherClassItem[]
         setClasses(items)
@@ -109,22 +104,25 @@ export default function GradeInputPage() {
     run()
   }, [selectedClass, classes])
 
-  // Khi chọn lớp: cũng lấy danh sách loại kiểm tra và config từ SystemSetting
+  // Khi chọn lớp: cũng lấy danh sách loại kiểm tra, config và sessions
   useEffect(() => {
     const run = async () => {
-      if (!selectedClass) return
+      if (!selectedClass) {
+        setSessions([])
+        setSelectedSession("")
+        return
+      }
       try {
-        // Lấy danh sách tên exam types
-        const types = await teacherPointService.getAssessmentTypes(selectedClass)
-        const apiTypes = types || []
-        setExamTypes(apiTypes)
-
-        // Lấy config đầy đủ bao gồm maxScore
+        // Lấy config đầy đủ bao gồm name, maxScore, description
         const config = await teacherPointService.getExamTypesConfig()
         setExamTypesConfig(config || [])
+
+        // Lấy danh sách buổi học đã kết thúc
+        const completedSessions = await teacherPointService.getCompletedSessions(selectedClass)
+        setSessions(completedSessions || [])
       } catch (e) {
-        setExamTypes([])
         setExamTypesConfig([])
+        setSessions([])
       }
     }
     run()
@@ -133,11 +131,11 @@ export default function GradeInputPage() {
   // Cập nhật maxScore khi chọn exam type
   useEffect(() => {
     if (selectedExamType && examTypesConfig.length > 0) {
-      const config = examTypesConfig.find((item: any) => item.name === selectedExamType)
-      if (config && config.maxScore) {
-        setCurrentMaxScore(config.maxScore)
-      } else {
-        setCurrentMaxScore(10) // Default
+      try {
+        const parsed = JSON.parse(selectedExamType)
+        setCurrentMaxScore(parsed.maxScore || 10)
+      } catch {
+        setCurrentMaxScore(10)
       }
     }
   }, [selectedExamType, examTypesConfig])
@@ -189,20 +187,11 @@ export default function GradeInputPage() {
     })
   }
 
-  const handleExamDateChange = (value: string) => {
-    const today = new Date()
-    const selectedDate = new Date(value)
-    
-    // Reset time to compare only dates
-    today.setHours(0, 0, 0, 0)
-    selectedDate.setHours(0, 0, 0, 0)
-    
-    if (selectedDate > today) {
-      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
-      return
-    }
-    
-    setExamDate(value)
+  const resetGradeInputs = () => {
+    // Reset grade inputs và saved state, giữ nguyên class/exam type/session selections
+    setGrades({})
+    setSavedGrades(new Set())
+    setExamTitle("")
   }
 
   const saveIndividualGrade = async (studentId: string) => {
@@ -210,31 +199,24 @@ export default function GradeInputPage() {
     if (!grade?.score) return
     
     // Validate required fields
-    if (!selectedExamType || !examTitle || !examDate) {
-      alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Ngày kiểm tra)')
-      return
-    }
-    
-    // Validate exam date
-    const today = new Date()
-    const selectedDate = new Date(examDate)
-    today.setHours(0, 0, 0, 0)
-    selectedDate.setHours(0, 0, 0, 0)
-    
-    if (selectedDate > today) {
-      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
+    if (!selectedExamType || !examTitle || !selectedSession) {
+      alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Buổi học)')
       return
     }
     
     try {
       setLoading(true)
       
-      // Create payload for single student (không truyền maxScore, để backend lấy từ SystemSetting)
+      // Parse selectedExamType to get name and maxScore
+      const examTypeData = JSON.parse(selectedExamType)
+      
+      // Create payload for single student
       const payload = {
         classId: selectedClass,
         assessmentName: examTitle,
-        assessmentType: selectedExamType,
-        date: examDate,
+        assessmentType: examTypeData.name,
+        maxScore: examTypeData.maxScore,
+        classSessionId: selectedSession,
         grades: [{
           studentId: studentId,
           score: Number.parseFloat(grade.score),
@@ -255,19 +237,8 @@ export default function GradeInputPage() {
 
   const saveAllGrades = async () => {
     // Validate required fields first
-    if (!selectedExamType || !examTitle || !examDate) {
-      alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Ngày kiểm tra)')
-      return
-    }
-    
-    // Validate exam date
-    const today = new Date()
-    const selectedDate = new Date(examDate)
-    today.setHours(0, 0, 0, 0)
-    selectedDate.setHours(0, 0, 0, 0)
-    
-    if (selectedDate > today) {
-      alert('Ngày kiểm tra không được lớn hơn ngày hôm nay')
+    if (!selectedExamType || !examTitle || !selectedSession) {
+      alert('Vui lòng điền đầy đủ thông tin bài kiểm tra (Loại kiểm tra, Tên bài kiểm tra, Buổi học)')
       return
     }
     
@@ -291,16 +262,20 @@ export default function GradeInputPage() {
     }))
     try {
       setLoading(true)
-      // Không truyền maxScore, để backend tự động lấy từ SystemSetting dựa trên assessmentType
+      // Parse selectedExamType to get name and maxScore
+      const examTypeData = JSON.parse(selectedExamType)
+      
       await teacherPointService.recordGrades({
         classId: selectedClass,
-        assessmentName: examTitle || `${selectedExamType} - ${examDate}`,
-        assessmentType: selectedExamType,
-        date: examDate,
+        assessmentName: examTitle || examTypeData.name,
+        assessmentType: examTypeData.name,
+        maxScore: examTypeData.maxScore,
+        classSessionId: selectedSession,
         grades: payload,
       })
-      const saved = Object.keys(grades).filter((sid) => !!grades[sid]?.score)
-      setSavedGrades(new Set(saved))
+      // Sau khi lưu tất cả điểm, reset inputs nhưng giữ nguyên selections
+      resetGradeInputs()
+      alert('Đã lưu điểm thành công!')
     } catch (e) {
       console.error('Save grades error', e)
       alert('Có lỗi khi lưu điểm. Vui lòng thử lại.')
@@ -341,7 +316,7 @@ export default function GradeInputPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(!selectedExamType || !examTitle || !examDate) && (
+          {(!selectedExamType || !examTitle || !selectedSession) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <div className="flex items-center gap-2 text-yellow-800">
                 <AlertCircle className="w-4 h-4" />
@@ -364,7 +339,7 @@ export default function GradeInputPage() {
                   ) : (
                     classes.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name} - {cls.subject?.name || ''} ({cls.studentCount || 0} HS)
+                        {cls.name} - {cls.subject?.name || ''}
                       </SelectItem>
                     ))
                   )}
@@ -378,16 +353,20 @@ export default function GradeInputPage() {
                   <SelectValue placeholder="Chọn loại kiểm tra" />
                 </SelectTrigger>
                 <SelectContent>
-                  {examTypes.length === 0 ? (
+                  {examTypesConfig.length === 0 ? (
                     <SelectItem value="no-type" disabled>
                       Không có loại kiểm tra
                     </SelectItem>
                   ) : (
-                    examTypes.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))
+                    examTypesConfig.map((config: any, index: number) => {
+                      const uniqueKey = JSON.stringify({ name: config.name, maxScore: config.maxScore })
+                      return (
+                        <SelectItem key={index} value={uniqueKey}>
+                          {config.name} (Điểm tối đa: {config.maxScore})
+                        </SelectItem>
+                      )
+                    })
                   )}
-                  {/* Cho phép thêm loại mới bằng cách gõ ở input tên bài kiểm tra hoặc có thể nâng cấp thêm input riêng */}
                 </SelectContent>
               </Select>
             </div>
@@ -403,14 +382,25 @@ export default function GradeInputPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="exam-date">Ngày kiểm tra <span className="text-red-500">*</span></Label>
-              <Input 
-                type="date" 
-                id="exam-date" 
-                value={examDate} 
-                onChange={(e) => handleExamDateChange(e.target.value)}
-                max={new Date().toISOString().split('T')[0]} // Set max date to today
-              />
+              <Label htmlFor="session-select">Buổi học <span className="text-red-500">*</span></Label>
+              <Select value={selectedSession} onValueChange={setSelectedSession}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn buổi học đã kết thúc" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessions.length === 0 ? (
+                    <SelectItem value="no-session" disabled>
+                      Không có buổi học nào đã kết thúc
+                    </SelectItem>
+                  ) : (
+                    sessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.displayText}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -531,7 +521,7 @@ export default function GradeInputPage() {
               <div className="text-sm text-muted-foreground">{Object.keys(grades).filter((id) => grades[id]?.score).length} / {filteredStudents.length} học sinh đã có điểm</div>
               <Button
                 onClick={saveAllGrades}
-                disabled={!selectedExamType || !examTitle || !examDate || Object.keys(grades).length === 0}
+                disabled={!selectedExamType || !examTitle || !selectedSession || Object.keys(grades).length === 0}
                 className="flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />

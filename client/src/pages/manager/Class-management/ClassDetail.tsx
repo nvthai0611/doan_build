@@ -42,8 +42,8 @@ export default function ClassDetail() {
     queryKey: ['classDetail', classId],
     queryFn: () => classService.getClassDetail(classId),
     enabled: !!classId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 3000,
+    refetchOnWindowFocus: true
   });
 
   const classData = classDetailResponse?.data as any;

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { ClassInformationService } from '../services/class-information.service';
 import { StudentLeaveRequestService } from '../services/student-leave-request.service';
 
 @ApiTags('Parent - Child Classes')
@@ -16,13 +17,14 @@ import { StudentLeaveRequestService } from '../services/student-leave-request.se
 @UseGuards(JwtAuthGuard)
 export class ChildClassesController {
   constructor(
+    private readonly classInformationService: ClassInformationService,
     private readonly studentLeaveRequestService: StudentLeaveRequestService,
-  ) {}
+  ) { }
 
-  @Get('children-classes')
+  @Get('students/:studentId/children-classes')
   @ApiOperation({ summary: 'Lấy tất cả lớp học của tất cả con' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách lớp học thành công' })
-  async getAllChildrenClasses(@Req() req: any) {
+  async getAllChildrenClasses(@Req() req: any, @Param('studentId') studentId: string) {
     try {
       const parentUserId = req.user?.userId;
       if (!parentUserId) {
@@ -32,9 +34,7 @@ export class ChildClassesController {
         );
       }
 
-      const result = await this.studentLeaveRequestService.getAllChildrenClasses(
-        parentUserId,
-      );
+      const result = await this.classInformationService.getChildClasses(parentUserId, studentId);
 
       return {
         success: true,
@@ -66,16 +66,12 @@ export class ChildClassesController {
         );
       }
 
+      // Sử dụng StudentLeaveRequestService để trả về array trực tiếp (phù hợp với form leave request)
       const result = await this.studentLeaveRequestService.getChildClasses(parentUserId, studentId);
-      const list = Array.isArray(result)
-        ? result
-        : (result && Array.isArray((result as any).data))
-          ? (result as any).data
-          : [];
 
       return {
         success: true,
-        data: list,
+        data: result, // result là array của classes
         message: 'Lấy danh sách lớp học thành công',
       };
     } catch (error) {

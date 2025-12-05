@@ -29,7 +29,6 @@ import StudentHomepage from "../pages/Student/StudentHomepage";
 import StudentSchedule from "../pages/Student/MySchedule/StudentSchedule";
 import StudentClassesPage from "../pages/Student/MyClass/studentClass";
 import StudentClassDetailPage from "../pages/Student/MyClass/studentClassDetail";
-// import StudentProfilePage from "../pages/Student/Profile/StudentProfile";
 import StudentTranscriptPage from "../pages/Student/MyGrades/StudentTranscript";
 import IncidentReportPage from "../pages/teacher/IncidentReport/IncidentReport";
 import IncidentManagePage from "../pages/teacher/IncidentReport/IncidentManagent";
@@ -38,6 +37,7 @@ import { ListChildren } from "../pages/Parent/Dashboard/ListChildren/ListChildre
 import { StudentDetailPage } from "../pages/manager/Student-management/components/StudentDetail/student-detail-page";
 import ParentManagement from "../pages/manager/Parent-management/ParentManagement";
 import ParentDetailPage from "../pages/manager/Parent-management/components/ParentDetail/ParentDetailPage";
+import CustomerManagementPage from "../pages/manager/Customer-management/CustomerManagement";
 import ClassDetail from "../pages/manager/Class-management/ClassDetail";
 import { CenterInfoSetting } from "../pages/manager/Settings/CenterInfoSetting";
 import { HolidaySetting } from "../pages/manager/Settings/HolidaySetting";
@@ -65,9 +65,21 @@ import SessionDetail from "../pages/manager/Session-management/SessionDetail";
 import NotFound from "../pages/Error/NotFound";
 import ClassroomsPage from "../pages/manager/Room-management/ClassRoom";
 import SubjectsPage from "../pages/manager/Subject-management/Subject";
+import SchoolsPage from "../pages/manager/School_management/School";
 import PayrollManagement from "../pages/manager/Payroll-teacher-management/PayrollManagement";
 import PayrollOfTeacher from "../pages/manager/Payroll-teacher-management/PayrollOfTeacher";
 import PayrollDetail from "../pages/manager/Payroll-teacher-management/PayrollDetail";
+import TriggerDashboard from "../pages/manager/Trigger-management/TriggerDashboard";
+import ManualTriggerPanel from "../pages/manager/Trigger-management/components/manual-trigger-panel";
+import PayrollManagementTeacher from "../pages/teacher/Payroll-Management/PayrollManagementTeacher";
+import PayrollDetailTeacher from "../pages/teacher/Payroll-Management/PayrollDetail";
+import BackPayDetail from "../pages/teacher/Payroll-Management/BackPayDetail";
+import ProgressManagement from "../pages/teacher/Progress-management/ProgressManagement";
+import TeacherOverview from "../pages/teacher/TeacherOverview/TeacherOverview";
+import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayDetails";
+import UserManagement from "../pages/manager/User-management/UserManagement";
+import AuditLog from "../pages/manager/Audit-log/AuditLog";
+import FinancialReports  from "@/pages/manager/Financial-reports/FinancialReports";
 
 export const privateRoutes = (
   <>
@@ -83,6 +95,7 @@ export const privateRoutes = (
         element={<AuthMiddleware allowedRoles={['center_owner']} />}
       >
         <Route index element={<CenterOwnerHomePage />} />
+        <Route path="reports" element={<FinancialReports />} />
         <Route path="students" element={<StudentsManagement />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/:id" element={<ClassDetail />} />
@@ -97,6 +110,7 @@ export const privateRoutes = (
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />
         <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="customers" element={<CustomerManagementPage />} />
         <Route path="parents" element={<ParentManagement />} />
         <Route path="parents/:id" element={<ParentDetailPage />} />
         <Route path="settings/center-info-setting" element={<CenterInfoSetting />} />
@@ -114,9 +128,15 @@ export const privateRoutes = (
         <Route path="communication/showcases" element={<ShowcasesPage />} />
         <Route path="rooms" element={<ClassroomsPage />} />
         <Route path="courses" element={<SubjectsPage />} />
+        <Route path="schools" element={<SchoolsPage />} />
         <Route path="payroll-teacher" element={<PayrollManagement />} />
         <Route path="payroll-teacher/:id" element={<PayrollOfTeacher />} />
         <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
+        <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
+        <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
+        <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
+        <Route path="user-management" element={<UserManagement />} />
+        <Route path="audit-log" element={<AuditLog />} />
       </Route>
 
       {/* Giáo viên */}
@@ -124,12 +144,13 @@ export const privateRoutes = (
         path="/teacher"
         element={<AuthMiddleware allowedRoles={['teacher']} />}
       >
-        <Route path="profile" element={<TeacherProfilePage />} />
+        <Route index path="overview" element={<TeacherOverview />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="classes" element={<TeacherManageClass />} />
         <Route path="classes/:classId" element={<ClassDetailsPage />} />
         <Route path="grades/input" element={<ScoreInputPage />} />
         <Route path="grades/view" element={<ViewStudentPage />} />
+        <Route path="grades/evaluation" element={<ProgressManagement />} />
         <Route path="attendance" element={<AttendanceTable />} />
         <Route path="documents/upload" element={<FileUpload />} />
         <Route path="documents/manage" element={<FileManage />} />
@@ -150,6 +171,9 @@ export const privateRoutes = (
         <Route path="requests/my-requests" element={<MyRequests />} />
         <Route path="requests/student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
         <Route path="contracts" element={<ContractsManageme />} />
+        <Route path="payroll-management" element={<PayrollManagementTeacher />} />
+        <Route path="payroll-management/:payrollId" element={<PayrollDetailTeacher />} />
+        <Route path="payroll-management/:payrollId/back-pay" element={<BackPayDetail />} />
       </Route>
 
       {/* Học sinh */}

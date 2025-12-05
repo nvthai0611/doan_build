@@ -147,7 +147,7 @@ export const UploadCommitmentDialog = ({
     if (!contractFile) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng chọn file hợp đồng",
+        description: "Vui lòng chọn file cam kết",
         variant: "destructive",
       });
       return;
@@ -166,7 +166,7 @@ export const UploadCommitmentDialog = ({
 
       toast({
         title: "Thành công",
-        description: "Đã upload hợp đồng cam kết thành công",
+        description: "Đã upload cam kết thành công",
       });
 
       // Invalidate queries để refresh danh sách
@@ -183,7 +183,7 @@ export const UploadCommitmentDialog = ({
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.response?.data?.message || "Không thể upload hợp đồng. Vui lòng thử lại.",
+        description: error.response?.data?.message || "Không thể upload cam kết. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -195,7 +195,7 @@ export const UploadCommitmentDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Upload hợp đồng cam kết mới</DialogTitle>
+          <DialogTitle>Upload cam kết mới</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -249,7 +249,7 @@ export const UploadCommitmentDialog = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-medium">
-                File hợp đồng cam kết <span className="text-red-500">*</span>
+                  File cam kết <span className="text-red-500">*</span>
               </Label>
               <Button
                 type="button"
@@ -282,7 +282,7 @@ export const UploadCommitmentDialog = ({
                   <Upload className="w-8 h-8 text-muted-foreground" />
                   <div className="text-center">
                     <p className="text-sm font-medium">
-                      Click để upload hợp đồng
+                      Click để upload cam kết
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Hỗ trợ: JPG, PNG, PDF (tối đa 5MB)
@@ -353,7 +353,7 @@ export const UploadCommitmentDialog = ({
               </div>
             )}
             {!contractFile && (
-              <p className="text-xs text-red-500 mt-1">Vui lòng chọn file hợp đồng</p>
+              <p className="text-xs text-red-500 mt-1">Vui lòng chọn file cam kết</p>
             )}
           </div>
 
@@ -363,7 +363,7 @@ export const UploadCommitmentDialog = ({
             <Textarea
               value={note}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNote(e.target.value)}
-              placeholder="Nhập ghi chú về hợp đồng này..."
+              placeholder="Nhập ghi chú về cam kết này..."
               className="mt-2"
               rows={3}
             />
@@ -376,9 +376,9 @@ export const UploadCommitmentDialog = ({
               <div className="flex-1 text-sm text-blue-800 dark:text-blue-200">
                 <p className="font-medium mb-1">Lưu ý:</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Hợp đồng sẽ có hiệu lực đến 31/05 năm sau</li>
-                  <li>Hợp đồng có thể được sử dụng cho nhiều lớp học khác môn</li>
-                  <li>Bạn có thể upload hợp đồng mới bất cứ lúc nào</li>
+                  <li>Cam kết sẽ có hiệu lực đến 31/05 năm sau</li>
+                  <li>Cam kết có thể được sử dụng cho nhiều lớp học khác môn</li>
+                  <li>Bạn có thể upload cam kết mới bất cứ lúc nào</li>
                 </ul>
               </div>
             </div>
@@ -397,7 +397,7 @@ export const UploadCommitmentDialog = ({
             onClick={handleUpload}
             disabled={isUploading || !selectedStudentId || !contractFile || selectedSubjectIds.length === 0}
           >
-            {isUploading ? 'Đang upload...' : 'Upload hợp đồng'}
+            {isUploading ? 'Đang upload...' : 'Upload cam kết'}
           </Button>
         </DialogFooter>
       </DialogContent>

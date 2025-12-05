@@ -59,6 +59,10 @@ export class ClassManagementService {
                 whereCondition.status = 'active';
             }
 
+            if(status =='all'){
+                whereCondition.status  = { in: ['active', 'completed', 'draft', 'cancelled', 'ready']}
+            }
+
             // Validate page và limit
             if (page < 1) page = 1;
             if (limit < 1) limit = 10;
@@ -68,7 +72,7 @@ export class ClassManagementService {
             const totalCount = await this.prisma.class.count({
                 where: whereCondition
             });
-
+            
             // Lấy dữ liệu classes
             const classes = await this.prisma.class.findMany({
                 where: whereCondition,
@@ -102,6 +106,7 @@ export class ClassManagementService {
                     { createdAt: 'desc' }
                 ]
             });
+            
 
             if (!classes.length) {
                 throw new HttpException(
@@ -226,83 +231,84 @@ export class ClassManagementService {
     }
 
     async getCountByStatus(teacherId: string) {
-        try {
-            if (checkId(teacherId) === false) {
-                throw new HttpException(
-                    'ID giáo viên không hợp lệ',
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-
-            // Validate teacher existence
-            const teacher = await this.prisma.teacher.findUnique({
-                where: { id: teacherId }
-            });
-
-            if (!teacher) {
-                throw new HttpException(
-                    'Giáo viên không tồn tại',
-                    HttpStatus.NOT_FOUND
-                );
-            }
-
-            // Đếm classes theo status
-            const classCounts = await this.prisma.class.groupBy({
-                by: ['status'],
-                where: { 
-                    teacherId
-                },
-                _count: {
-                    status: true
-                }
-            });
-            
-            if (!classCounts.length) {
-                throw new HttpException(
-                    'Không tìm thấy lớp học nào cho giáo viên này',
-                    HttpStatus.NOT_FOUND
-                );
-            }
-
-            // Khởi tạo object với tất cả trạng thái = 0
-            const result = {
-                total: 0,
-                active: 0,
-                draft: 0,
-                completed: 0,
-                cancelled: 0,
-                ready: 0
-            };
-
-            // Tính tổng
-            classCounts.forEach(item => {
-                const count = item._count.status;
-                result.total += count;
-                
-                if (item.status === 'active') {
-                    result.active = count;
-                } else if (item.status === 'draft') {
-                    result.draft = count;
-                } else if (item.status === 'completed') {
-                    result.completed = count;
-                } else if (item.status === 'cancelled') {
-                    result.cancelled = count;
-                }else if (item.status === 'ready') {
-                    result.ready = count;
-                }
-            });
-
-            return result;
-
-        } catch (error) {
-            if (error instanceof HttpException) throw error;
-            
+    try {
+        if (checkId(teacherId) === false) {
             throw new HttpException(
-                'Có lỗi xảy ra khi lấy số lượng lớp học theo trạng thái',
-                HttpStatus.INTERNAL_SERVER_ERROR,
-            );           
+                'ID giáo viên không hợp lệ',
+                HttpStatus.BAD_REQUEST
+            );
         }
+
+        // Validate teacher existence
+        const teacher = await this.prisma.teacher.findUnique({
+            where: { id: teacherId }
+        });
+
+        if (!teacher) {
+            throw new HttpException(
+                'Giáo viên không tồn tại',
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Đếm classes theo status, loại trừ deleted
+        const classCounts = await this.prisma.class.groupBy({
+            by: ['status'],
+            where: { 
+                teacherId,
+                status: { not: 'deleted' }
+            },
+            _count: {
+                status: true
+            }
+        });
+        
+        if (!classCounts.length) {
+            throw new HttpException(
+                'Không tìm thấy lớp học nào cho giáo viên này',
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Khởi tạo object với tất cả trạng thái = 0
+        const result = {
+            total: 0,
+            active: 0,
+            draft: 0,
+            completed: 0,
+            cancelled: 0,
+            ready: 0
+        };
+
+        // Tính tổng
+        classCounts.forEach(item => {
+            const count = item._count.status;
+            result.total += count;
+            
+            if (item.status === 'active') {
+                result.active = count;
+            } else if (item.status === 'draft') {
+                result.draft = count;
+            } else if (item.status === 'completed') {
+                result.completed = count;
+            } else if (item.status === 'cancelled') {
+                result.cancelled = count;
+            } else if (item.status === 'ready') {
+                result.ready = count;
+            }
+        });
+
+        return result;
+
+    } catch (error) {
+        if (error instanceof HttpException) throw error;
+        
+        throw new HttpException(
+            'Có lỗi xảy ra khi lấy số lượng lớp học theo trạng thái',
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );           
     }
+}
 
     async getClassDetail(teacherId: string, classId: string){
         try {

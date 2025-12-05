@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScheduleHeader } from './components/ScheduleHeader';
 import { ScheduleFilters } from './components/ScheduleFilters';
 import { MonthlyView } from './components/views/MonthlyView';
@@ -33,6 +34,24 @@ export default function CenterSchedulePage() {
   const [daySessionsList, setDaySessionsList] = useState<ClassSessions[]>([]);
   const [selectedDaySessionsList, setSelectedDaySessionsList] = useState<ClassSessions[]>([]);
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+
+    const getClassSessionStatusColor = (status: string) => {
+      switch (status) {
+        case 'day_off':
+          return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm';
+        case 'happening':
+          return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm';
+        case 'end':
+          return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+        case 'has_not_happened':
+          return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm';
+        case 'cancelled':
+          return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm';
+        default:
+          return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm';
+      }
+    };
 
 
   const getWeekRange = (date: Date) => {
@@ -179,6 +198,61 @@ export default function CenterSchedulePage() {
           onClose={handleCloseDayModal}
           onSessionClick={handleSessionClick}
         />
+      </div>
+
+      {/* Legend Sidebar */}
+      <div
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-50 transition-all duration-300 ease-in-out ${
+          isLegendOpen ? 'translate-x-0' : 'translate-x-[calc(100%-3rem)]'
+        }`}
+      >
+        <div className="bg-white border-l border-t border-b border-gray-200 rounded-l-lg shadow-lg flex">
+          {/* Toggle Button */}
+          <button
+            onClick={() => setIsLegendOpen(!isLegendOpen)}
+            className="flex items-center justify-center w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-l-lg transition-colors"
+            aria-label={isLegendOpen ? 'Ẩn chú thích' : 'Hiện chú thích'}
+          >
+            {isLegendOpen ? (
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            )}
+          </button>
+
+          {/* Legend Content */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              isLegendOpen ? 'w-64 opacity-100' : 'w-0 opacity-0'
+            }`}
+          >
+            <div className="p-4">
+              <h2 className="text-lg font-bold mb-4 text-gray-800">Chú thích trạng thái</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${getClassSessionStatusColor('has_not_happened')}`}></div>
+                  <span className="text-sm text-blue-600">Chưa diễn ra</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${getClassSessionStatusColor('happening')}`}></div>
+                  <span className="text-sm text-green-600">Đang diễn ra</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${getClassSessionStatusColor('end')}`}></div>
+                  <span className="text-sm text-red-600">Đã kết thúc</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${getClassSessionStatusColor('cancelled')}`}></div>
+                  <span className="text-sm text-red-600">Đã hủy</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${getClassSessionStatusColor('day_off')}`}></div>
+                  <span className="text-sm text-orange-600">Nghỉ</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -15,19 +15,43 @@ export class SessionService {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  async getSessionDetail(teacherId: string, sessionId: string): Promise<SessionDetailResponseDto | null> {
+  async getSessionDetail(teacherId: string, sessionId: string): Promise<any | null> {
     try {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: sessionId,
-          teacherId: teacherId
+          OR: [
+            { teacherId: teacherId },
+            { substituteTeacherId: teacherId },
+          ],
         },
-        include: {
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          teacherId: true,
+          substituteTeacherId: true,
+          teacher: {
+            select: {
+              user: { select: { fullName: true } }
+            }
+          },
+          substituteTeacher: {
+            select: {
+              user: { select: { fullName: true } }
+            }
+          },
           class: {
             include: {
               subject: { select: { name: true } },
               enrollments: {
-                include: {
+                select: {
+                  status: true,
+                  studentId: true,
                   student: {
                     include: {
                       user: { select: { fullName: true, avatar: true } }
@@ -38,11 +62,6 @@ export class SessionService {
             }
           },
           room: { select: { name: true } },
-          teacher: {
-            include: {
-              user: { select: { fullName: true } }
-            }
-          },
           attendances: {
             include: {
               student: {
@@ -59,16 +78,17 @@ export class SessionService {
         return null;
       }
 
-      console.log(session);
+      //console.log(session);
 
       // Tạo danh sách học viên với trạng thái điểm danh
-      const students: StudentInSessionDto[] = session.class.enrollments.map(enrollment => {
+      const students: any[] = session.class.enrollments.map(enrollment => {
         const attendance = session.attendances.find(att => att.studentId === enrollment.studentId);
         return {
           id: enrollment.student.id,
           name: enrollment.student.user.fullName || 'Chưa có tên',
           avatar: enrollment.student.user.avatar || undefined,
-          attendanceStatus: attendance?.status || undefined
+          attendanceStatus: attendance?.status || undefined,
+          status: enrollment.status
         };
       });
 
@@ -80,13 +100,15 @@ export class SessionService {
         subject: session.class.subject.name,
         className: session.class.name,
         room: session.room?.name || 'Chưa xác định',
-        studentCount: session.class.enrollments.length,
+        studentCount: session.class.enrollments.filter(enrollment => enrollment.status === 'studying').length,
         status: session.status,
         notes: session.notes || undefined,
         type: 'regular',
         teacherId: session.teacherId,
         teacherName: session.teacher?.user.fullName || undefined,
-        students,
+        students: students.filter(student => student.status === 'studying'),
+        substituteTeacherId: session.substituteTeacherId,
+        substituteTeacherName: session.substituteTeacher?.user?.fullName || null,
         createdAt: session.createdAt,
         updatedAt: session.createdAt
       };

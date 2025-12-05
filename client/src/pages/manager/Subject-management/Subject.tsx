@@ -15,6 +15,9 @@ export default function SubjectsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
+  // Đảm bảo subjects luôn là mảng
+  const subjectsArray = Array.isArray(subjects) ? subjects : []
+
   const handleAddSubject = async (data: Parameters<typeof addSubject>[0]) => {
     setIsSubmitting(true)
     try {
@@ -82,7 +85,7 @@ export default function SubjectsPage() {
           <CardTitle className="text-sm font-medium">Tổng môn học</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{subjects.length}</div>
+          <div className="text-2xl font-bold">{subjectsArray.length}</div>
           <p className="text-xs text-muted-foreground">Môn học đã được tạo</p>
         </CardContent>
       </Card>
@@ -96,7 +99,7 @@ export default function SubjectsPage() {
         </Card>
       ) : (
         <SubjectsList
-          subjects={subjects}
+          subjects={subjectsArray}
           onEdit={handleOpenDialog}
           onDelete={handleDeleteSubject}
           isDeleting={isDeleting}
@@ -113,7 +116,7 @@ export default function SubjectsPage() {
             ? {
                 code: editingSubject.code,
                 name: editingSubject.name,
-                description: editingSubject.description,
+                description: editingSubject.description || undefined,
               }
             : undefined
         }

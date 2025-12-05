@@ -561,10 +561,18 @@ export const ClassManagement = () => {
             render: (item: any) => (
                 <div className="text-sm space-y-1">
                     <div>
-                        {item.actualStartDate ? formatDate(item.actualStartDate) : '-'}
+                        {item.actualStartDate
+                            ? formatDate(item.actualStartDate)
+                            : item.expectedStartDate
+                            ? `Dự kiến: ${formatDate(item.expectedStartDate)}`
+                            : '-'}
                     </div>
                     <div>
-                        {item.actualEndDate ? formatDate(item.actualEndDate) : '-'}
+                        {item.actualEndDate
+                            ? formatDate(item.actualEndDate)
+                            : item.expectedEndDate
+                            ? `Dự kiến: ${formatDate(item.expectedEndDate)}`
+                            : '-'}
                     </div>
                 </div>
             )

@@ -236,7 +236,7 @@ const saveMutation = useMutation({
     
     // response = { data: {...}, message: '...' }
     toast.success(
-      response?.message || 'Cập nhật trạng thái điểm danh thành công!',
+      response?.message || 'Điểm danh thành công!',
       { duration: 3000 }
     )
   },
@@ -537,7 +537,7 @@ const saveMutation = useMutation({
           <span
             onClick={() =>
               navigate(
-                `/teacher/session-details/${attendanceData?.[0]?.session?.id}`,
+                `/teacher/session-details/${classSessionId}`,
               )
             }
             className="text-gray-600 text-base cursor-pointer hover:text-blue-600"

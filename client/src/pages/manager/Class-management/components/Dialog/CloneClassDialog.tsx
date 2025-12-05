@@ -18,11 +18,7 @@ interface CloneClassDialogProps {
 
 export interface CloneClassData {
   name: string;
-  cloneSchedule: boolean;
   cloneTeacher: boolean;
-  cloneStudents: boolean;
-  cloneCurriculum: boolean;
-  cloneRoom: boolean;
 }
 
 export const CloneClassDialog = ({
@@ -34,11 +30,7 @@ export const CloneClassDialog = ({
 }: CloneClassDialogProps) => {
   const [formData, setFormData] = useState<CloneClassData>({
     name: '',
-    cloneSchedule: false,
     cloneTeacher: false,
-    cloneStudents: false,
-    cloneCurriculum: true,
-    cloneRoom: true
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -147,20 +139,6 @@ export const CloneClassDialog = ({
             <Label className="text-base font-semibold">Nội dung cần clone</Label>
             
             <div className="space-y-3 border rounded-lg p-4">
-              {/* Clone Schedule */}
-              {/* Clone Schedule (Disabled) */}
-              {/* <div className="flex items-start gap-3 opacity-60 cursor-not-allowed">
-                <Checkbox id="cloneSchedule" checked={formData.cloneSchedule} disabled />
-                <div className="flex-1">
-                  <label htmlFor="cloneSchedule" className="text-sm font-medium">
-                    Lịch học (không sao chép)
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Lịch học sẽ cần thiết lập lại cho lớp mới
-                  </p>
-                </div>
-              </div> */}
-
               {/* Clone Teacher */}
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -183,62 +161,6 @@ export const CloneClassDialog = ({
                   </p>
                 </div>
               </div>
-
-              {/* Clone Room */}
-              {/* <div className="flex items-start gap-3">
-                <Checkbox
-                  id="cloneRoom"
-                  checked={formData.cloneRoom}
-                  onCheckedChange={(checked) => handleCheckboxChange('cloneRoom', checked as boolean)}
-                />
-                <div className="flex-1">
-                  <label
-                    htmlFor="cloneRoom"
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    Phòng học
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Sử dụng cùng phòng học
-                    {classData.roomName && (
-                      <span className="ml-1 font-medium">({classData.roomName})</span>
-                    )}
-                  </p>
-                </div>
-              </div> */}
-
-              {/* Clone Curriculum */}
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="cloneCurriculum"
-                  checked={formData.cloneCurriculum}
-                  onCheckedChange={(checked) => handleCheckboxChange('cloneCurriculum', checked as boolean)}
-                />
-                <div className="flex-1">
-                  <label
-                    htmlFor="cloneCurriculum"
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    Chương trình học
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Sao chép toàn bộ chương trình học (lessons, materials)
-                  </p>
-                </div>
-              </div>
-
-              {/* Clone Students (temporarily disabled) */}
-              {/* <div className="flex items-start gap-3 opacity-60">
-                <Checkbox id="cloneStudents" checked={formData.cloneStudents} disabled />
-                <div className="flex-1">
-                  <label htmlFor="cloneStudents" className="text-sm font-medium">
-                    Học sinh
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    (Tính năng đứng lại để kiểm tra sau) {classData.studentCount || 0} học sinh
-                  </p>
-                </div>
-              </div> */}
             </div>
           </div>
 

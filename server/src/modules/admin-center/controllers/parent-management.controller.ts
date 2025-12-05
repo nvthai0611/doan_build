@@ -229,22 +229,30 @@ export class ParentManagementController {
     @ApiQuery({ name: 'search', required: false, type: String, description: 'Tìm kiếm theo tên, email, phone' })
     @ApiQuery({ name: 'isActive', required: false, type: Boolean, description: 'Lọc theo trạng thái' })
     @ApiResponse({ status: HttpStatus.OK, description: 'Lấy danh sách thành công' })
+    @ApiQuery({ name: 'hasStudents', required: false, type: Boolean, description: 'Lọc theo việc đã có học sinh hay chưa' })
+    @ApiQuery({ name: 'hasEnrollments', required: false, type: Boolean, description: 'Lọc theo việc học sinh đã đăng ký khóa học hay chưa' })
     async getAllParents(
         @Query('page') page?: number,
         @Query('limit') limit?: number,
         @Query('search') search?: string,
-        @Query('isActive') isActive?: string
+        @Query('isActive') isActive?: string,
+        @Query('hasStudents') hasStudents?: string,
+        @Query('hasEnrollments') hasEnrollments?: string
     ) {
         const pageNumber = page ? Number(page) : 1;
         const limitNumber = limit ? Number(limit) : 10;
         const isActiveBoolean = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+        const hasStudentsBoolean = hasStudents === 'true' ? true : hasStudents === 'false' ? false : undefined;
+        const hasEnrollmentsBoolean = hasEnrollments === 'true' ? true : hasEnrollments === 'false' ? false : undefined;
 
         const result = await this.parentManagementService.getAllParents(
             search,
             undefined, // gender
             isActiveBoolean !== undefined ? (isActiveBoolean ? 'active' : 'inactive') : undefined,
             pageNumber,
-            limitNumber
+            limitNumber,
+            hasStudentsBoolean,
+            hasEnrollmentsBoolean
         );
 
         return {
@@ -327,22 +335,23 @@ export class ParentManagementController {
             notes?: string,
             reference?: string,
             method?: 'bank_transfer' | 'cash',
-            payNow?: boolean
+            payNow?: boolean,
+            cashGiven?: number
         }
     ) {
-        const { feeRecordIds, expirationDate, notes, reference, method, payNow } = body || {};
+        const { feeRecordIds, expirationDate, notes, reference, method, payNow, cashGiven } = body || {};
 
         if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
             throw new HttpException('feeRecordIds là bắt buộc và phải là mảng có ít nhất 1 phần tử', HttpStatus.BAD_REQUEST);
         }
-
         try {
             const result = await this.parentManagementService.createBillForParent(parentId, feeRecordIds, {
                 expirationDate,
                 notes,
                 reference,
                 method,
-                payNow
+                payNow,
+                cashGiven
             });
 
             // result already in { data, message } shape in service

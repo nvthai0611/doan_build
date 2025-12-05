@@ -6,6 +6,7 @@ export interface TeacherFeedbackItem {
   parentName: string
   parentEmail: string
   studentName: string
+  classId: string
   className: string
   rating: number
   categories: any
@@ -31,4 +32,18 @@ export interface ApiResponse<T> {
   message: string
 }
 
+export interface ClassAIAnalysis {
+  classId: string
+  className: string
+  sentiment: 'positive' | 'negative' | 'neutral'
+  sentimentExplanation: string
+  overallAnalysis: string
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: string[]
+  keyInsights: string[]
+  feedbackCount: number
+  avgRating: number
+  analyzedAt: string
+}
 

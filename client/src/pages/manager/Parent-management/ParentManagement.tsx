@@ -71,16 +71,16 @@ export default function ParentManagement() {
       page: currentPage,
       limit: itemsPerPage,
     }),
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   // Fetch count by status
   const { data: statusData } = useQuery({
     queryKey: ["parent-status"],
     queryFn: ParentService.getCountByStatus,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 3000,
+    refetchOnWindowFocus: true,
   })
 
   // Toggle parent status mutation

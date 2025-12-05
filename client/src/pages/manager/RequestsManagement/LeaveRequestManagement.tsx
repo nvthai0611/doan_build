@@ -38,12 +38,14 @@ const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
   approved: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+  cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
 }
 
 const statusLabels = {
   pending: 'Chờ duyệt',
   approved: 'Đã duyệt',
   rejected: 'Từ chối',
+  cancelled: 'Đã hủy',
 }
 
 export default function LeaveRequestManagement() {
@@ -178,15 +180,22 @@ export default function LeaveRequestManagement() {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {(item.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+              {(item.teacherInfo?.fullName || 'U')
+                .split(' ')
+                .map((n) => n[0])
+                .join('')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{item.teacherInfo?.fullName || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">{item.teacherInfo?.email || 'No email'}</p>
+            <p className="font-medium text-sm">
+              {item.teacherInfo?.fullName || 'Unknown'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {item.teacherInfo?.email || 'No email'}
+            </p>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'requestType',
@@ -194,11 +203,15 @@ export default function LeaveRequestManagement() {
       render: (item: LeaveRequest) => (
         <Badge
           variant="secondary"
-          className={requestTypeColors[item.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+          className={
+            requestTypeColors[item.type as keyof typeof requestTypeColors] ||
+            requestTypeColors.other
+          }
         >
-          {requestTypeLabels[item.requestType as keyof typeof requestTypeLabels] || item.requestType}
+          {requestTypeLabels[item.type as keyof typeof requestTypeLabels] ||
+            item.type}
         </Badge>
-      )
+      ),
     },
     {
       key: 'leavePeriod',
@@ -206,9 +219,11 @@ export default function LeaveRequestManagement() {
       render: (item: LeaveRequest) => (
         <div className="text-sm">
           <p className="font-medium">{formatDate(item.startDate)}</p>
-          <p className="text-muted-foreground">đến {formatDate(item.endDate)}</p>
+          <p className="text-muted-foreground">
+            đến {formatDate(item.endDate)}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'reason',
@@ -219,7 +234,7 @@ export default function LeaveRequestManagement() {
             {item.reason}
           </p>
         </div>
-      )
+      ),
     },
     {
       key: 'affectedSessions',
@@ -230,7 +245,7 @@ export default function LeaveRequestManagement() {
             {item.affectedSessions?.length || 0}
           </span>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -243,7 +258,7 @@ export default function LeaveRequestManagement() {
           {getStatusIcon(item.status)}
           {statusLabels[item.status] || item.status}
         </Badge>
-      )
+      ),
     },
     {
       key: 'createdAt',
@@ -252,47 +267,58 @@ export default function LeaveRequestManagement() {
         <span className="text-sm text-muted-foreground">
           {formatDateTime(item.createdAt)}
         </span>
-      )
+      ),
     },
     {
       key: 'actions',
       header: 'Thao tác',
       render: (item: LeaveRequest) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item.id)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => handleApprove(item.id)}
-                  className="text-green-600"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Duyệt đơn
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleReject(item.id)}
-                  className="text-red-600"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  ]
+        <div>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              title="Xem chi tiết"
+              onClick={() => handleViewDetails(item.id)}
+            >
+              <Eye className="h-4 w-4" />
+            </div>
+            <div
+              title="Duyệt"
+              onClick={() => {
+                if (item.status !== 'pending') {
+                  return;
+                }
+                handleApprove(item.id);
+              }}
+              className={`flex items-center px-2 py-1 rounded-md ${
+                item.status !== 'pending'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                  : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+              }`}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </div>
+            <div
+              title="Từ chối"
+              onClick={() => {
+                if (item.status !== 'pending') {
+                  return;
+                }
+                handleReject(item.id);
+              }}
+              className={`flex items-center px-2 py-1 rounded-md ${
+                item.status !== 'pending'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                  : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+              }`}
+            >
+              <XCircle className="h-4 w-4" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -359,7 +385,7 @@ export default function LeaveRequestManagement() {
       <LeaveRequestDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        request={selectedRequest}
+        request={selectedRequest as any}
         onApprove={handleApprove}
         onReject={handleReject}
       />

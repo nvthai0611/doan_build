@@ -44,15 +44,3 @@ export interface StudentParentLink {
   }
 }
 
-export interface UpdateProfileRequest {
-  fullName?: string
-  phone?: string
-  address?: string
-  grade?: string
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string
-  newPassword: string
-  confirmPassword: string
-}

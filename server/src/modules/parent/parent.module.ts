@@ -10,7 +10,7 @@ import { StudentManagementController } from './controllers/student-management.co
 import { StudentLeaveRequestController } from './controllers/student-leave-request.controller';
 import { ChildClassesController } from './controllers/child-classes.controller';
 import { ClassJoinController } from './controllers/class-join.controller';
-import { AcademicTrackingService } from './services/academic-tracking.service';
+import { AcademicTrackingService } from './services/child-progress.service';
 import { ClassInformationService } from './services/class-information.service';
 import { CommunicationService } from './services/communication.service';
 import { FinancialService } from './services/financial.service';
@@ -26,6 +26,7 @@ import { ParentOverviewService } from './services/parent-overview.service';
 import { CommitmentsController } from './controllers/commitments.controller';
 import { CommitmentsService } from './services/commitments.service';
 import { AdminCenterModule } from '../admin-center/admin-center.module';
+import { ChildProgressController } from './controllers/child-progress.controller';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Module({
@@ -51,6 +52,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
   ChildTeacherFeedbackController,
     ParentOverviewController,
     CommitmentsController,
+    ChildProgressController,
   ],
   providers: [
     PrismaService,
@@ -63,7 +65,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
     StudentLeaveRequestService,
     ClassJoinService,
     ChildTeacherFeedbackService,
-      ParentOverviewService,
+    ParentOverviewService,
     CommitmentsService,
     CloudinaryService,
   ],

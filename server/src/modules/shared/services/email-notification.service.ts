@@ -482,6 +482,105 @@ export class EmailNotificationService {
   }
 
   /**
+   * Gửi email thông báo thay đổi trạng thái lớp học cho giáo viên
+   */
+  async sendClassStatusChangeEmailToTeacher(
+    classId: string,
+    oldStatus: string,
+    newStatus: string
+  ) {
+    try {
+      // Chỉ gửi email cho các status quan trọng
+      const importantStatuses = ['active', 'completed', 'suspended', 'cancelled', 'ready'];
+      if (!importantStatuses.includes(newStatus)) {
+        return { success: true, skipped: true, reason: 'Status không yêu cầu thông báo' };
+      }
+
+      console.log(`Bắt đầu gửi email thông báo thay đổi status lớp ${classId} từ "${oldStatus}" sang "${newStatus}" cho giáo viên`);
+
+      // Lấy thông tin lớp học
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        include: {
+          subject: true,
+          room: true,
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!classData) {
+        throw new HttpException('Không tìm thấy lớp học', HttpStatus.NOT_FOUND);
+      }
+
+      if (!classData.teacherId || !classData.teacher) {
+        console.log(`Lớp học không có giáo viên phụ trách`);
+        return { success: true, skipped: true, reason: 'Không có giáo viên phụ trách' };
+      }
+
+      if (!classData.teacher.user?.email) {
+        console.warn(`Giáo viên ${classData.teacher.user?.fullName} không có email`);
+        return { success: false, skipped: true, reason: 'Giáo viên không có email' };
+      }
+
+      const oldStatusLabel = this.getStatusLabel(oldStatus);
+      const newStatusLabel = this.getStatusLabel(newStatus);
+
+      // Xác định subject và icon dựa trên newStatus
+      const statusConfig: Record<string, { subject: string; icon: string }> = {
+        'ready': { subject: 'Thông báo lớp học sẵn sàng tuyển sinh', icon: '📋' },
+        'active': { subject: 'Thông báo lớp học bắt đầu hoạt động', icon: '✅' },
+        'completed': { subject: 'Thông báo lớp học đã hoàn thành', icon: '🎓' },
+        'suspended': { subject: 'Thông báo lớp học tạm dừng', icon: '⏸️' },
+        'cancelled': { subject: 'Thông báo lớp học đã bị hủy', icon: '❌' },
+      };
+
+      const config = statusConfig[newStatus] || { subject: 'Thông báo thay đổi trạng thái lớp học', icon: '📌' };
+      const emailSubject = `${config.icon} ${config.subject} - ${classData.name}`;
+
+      // Thêm job vào queue
+      await this.classAssignTeacherQueue.add('send_class_status_change_teacher_email', {
+        to: classData.teacher.user.email,
+        teacherId: classData.teacher.id,
+        teacherName: classData.teacher.user.fullName,
+        classId: classData.id,
+        className: classData.name,
+        subjectName: classData.subject?.name,
+        roomName: classData.room?.name,
+        oldStatus,
+        newStatus,
+        oldStatusLabel,
+        newStatusLabel,
+        emailSubject,
+      });
+
+      console.log(`Đã thêm job gửi email thay đổi status cho giáo viên ${classData.teacher.user.fullName} vào queue`);
+
+      return {
+        success: true,
+        message: 'Email job đã được thêm vào queue',
+        teacherId: classData.teacher.id,
+        classId,
+        email: classData.teacher.user.email,
+      };
+    } catch (error: any) {
+      console.error(`Lỗi khi thêm job email thay đổi status cho giáo viên: ${error.message}`);
+      throw new HttpException(
+        `Không thể gửi email thay đổi status cho giáo viên: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
    * Gửi email thông báo đăng ký lớp hoặc chuyển lớp hàng loạt cho phụ huynh
    * @param studentIds Mảng ID của các học sinh được đăng ký/chuyển lớp
    * @param classId ID của lớp học (lớp mới nếu là chuyển lớp)
@@ -681,9 +780,11 @@ export class EmailNotificationService {
       // Chỉ gửi email cho các status quan trọng
       const importantStatuses = ['active', 'completed', 'suspended', 'cancelled'];
       if (!importantStatuses.includes(newStatus)) {
+        console.log(`Status không yêu cầu thông báo`);
+        
         return { success: true, skipped: true, reason: 'Status không yêu cầu thông báo' };
       }
-
+      
       console.log(`Bắt đầu gửi email thông báo thay đổi status lớp ${classId} từ "${oldStatus}" sang "${newStatus}"`);
 
       // Lấy thông tin lớp học với enrollments

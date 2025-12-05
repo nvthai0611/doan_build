@@ -189,9 +189,70 @@ export class GradeService {
         return [];
     }
 
-    async recordGrades(userId: string, payload: RecordGradesDto) {
-        const { classId, assessmentName, assessmentType, maxScore, date, description, grades } = payload;
+    async getCompletedSessions(userId: string, classId: string) {
+        // Validate quyền truy cập lớp
         await this.ensureTeacherCanAccessClass(userId, classId);
+
+        // Lấy ngày đầu và cuối tháng hiện tại
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        // Lấy các buổi học đã kết thúc (status = 'end') trong tháng hiện tại
+        const sessions = await this.prisma.classSession.findMany({
+            where: {
+                classId,
+                status: 'end',
+                sessionDate: {
+                    gte: firstDayOfMonth,
+                    lte: lastDayOfMonth
+                }
+            },
+            orderBy: {
+                sessionDate: 'desc'
+            },
+            select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                endTime: true,
+                notes: true
+            }
+        });
+
+        return sessions.map(session => ({
+            id: session.id,
+            date: session.sessionDate.toISOString().split('T')[0],
+            startTime: session.startTime,
+            endTime: session.endTime,
+            notes: session.notes || '',
+            displayText: `${session.sessionDate.toISOString().split('T')[0]} - Buổi học (${session.startTime} - ${session.endTime})${session.notes ? ' - ' + session.notes : ''}`
+        }));
+    }
+
+    async recordGrades(userId: string, payload: RecordGradesDto) {
+        const { classId, assessmentName, assessmentType, maxScore, classSessionId, description, grades } = payload;
+        await this.ensureTeacherCanAccessClass(userId, classId);
+
+        // Kiểm tra classSession có tồn tại và thuộc class này không
+        const session = await this.prisma.classSession.findFirst({
+            where: {
+                id: classSessionId,
+                classId: classId
+            }
+        });
+
+        if (!session) {
+            throw new HttpException('Buổi học không tồn tại hoặc không thuộc lớp này', HttpStatus.BAD_REQUEST);
+        }
+
+        // Kiểm tra session đã kết thúc chưa
+        if (session.status !== 'end') {
+            throw new HttpException('Chỉ có thể nhập điểm cho các buổi học đã kết thúc', HttpStatus.BAD_REQUEST);
+        }
+
+        // Lấy date từ session
+        const date = session.sessionDate;
 
         // Lấy maxScore từ SystemSetting nếu không được cung cấp
         let finalMaxScore = maxScore;
@@ -220,17 +281,6 @@ export class GradeService {
         // Nếu vẫn không có maxScore, mặc định là 10
         if (!finalMaxScore) {
             finalMaxScore = 10;
-        }
-
-        // Validate date not in the future (server-side guard)
-        if (date) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const selectedDate = new Date(date);
-            selectedDate.setHours(0, 0, 0, 0);
-            if (selectedDate.getTime() > today.getTime()) {
-                throw new HttpException('Ngày kiểm tra không được lớn hơn ngày hôm nay', HttpStatus.BAD_REQUEST);
-            }
         }
 
         // Kiểm tra xem có học sinh nào trong danh sách không
@@ -588,7 +638,7 @@ export class GradeService {
                     testName: assessment.name,
                     score: Number(grade.score) || 0,
                     date: assessment.date.toISOString().split('T')[0],
-                    weight: this.getWeightByType(assessment.type),
+                    weight: 1,
                     assessmentId: assessment.id
                 });
             });
@@ -815,16 +865,5 @@ export class GradeService {
                 gradedAt: new Date()
             }
         });
-    }
-
-    private getWeightByType(type: string): number {
-        const t = (type || '').toLowerCase();
-        if (t.includes('15')) return 1;
-        if (t.includes('45')) return 2; // bài 45 phút
-        if (t.includes('60')) return 2; // bài 60 phút ~ hệ số 2
-        if (t.includes('90')) return 3; // bài 90 phút ~ hệ số 3
-        if (t.includes('giữa kỳ')) return 2;
-        if (t.includes('cuối kỳ')) return 3;
-        return 1;
     }
 }

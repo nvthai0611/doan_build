@@ -24,25 +24,43 @@ export class ScheduleService {
         where: {
           sessionDate: {
             gte: startDate,
-            lte: endDate
+            lte: endDate,
           },
-          teacherId: teacherId
+          OR: [{ teacherId: teacherId }, { substituteTeacherId: teacherId }],
         },
-        include: {
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          notes: true,
+          academicYear: true,
+          createdAt: true,
+          teacherId: true,
+          substituteTeacherId: true,
+          substituteTeacher: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
           class: {
             include: {
-              subject: { select: { name: true } }
-            }
+              subject: { select: { name: true } },
+            },
           },
-          room: { select: { name: true } }
+          room: { select: { name: true } },
         },
-        orderBy: [
-          { sessionDate: 'asc' },
-          { startTime: 'asc' }
-        ]
+        orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       });
 
-      return schedules.map(session => ({
+      const filteredSchedules = schedules.filter(session => session.class.status !== "deleted");
+
+      return filteredSchedules.map(session => ({
         id: session.id,
         date: this.formatDateYYYYMMDD(session.sessionDate),
         startTime: session.startTime,
@@ -57,7 +75,10 @@ export class ScheduleService {
         teacherId: session.teacherId,
         academicYear: session.academicYear,
         createdAt: session.createdAt,
-        updatedAt: session.createdAt
+        updatedAt: session.createdAt,
+        substituteTeacher: session.substituteTeacher?.user?.fullName || null,
+        isSubstitute: session.substituteTeacherId === teacherId,
+
       }));
     } catch (error) {
       throw new Error(`Lỗi khi lấy lịch dạy theo tuần: ${error.message}`);
@@ -74,11 +95,33 @@ export class ScheduleService {
         where: {
           sessionDate: {
             gte: startDate,
-            lte: endDate
+            lte: endDate,
           },
-          teacherId: teacherId
+          OR: [
+            { teacherId: teacherId },
+            { substituteTeacherId: teacherId },
+          ],
         },
-        include: {
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          notes: true,
+          academicYear: true,
+          createdAt: true,
+          teacherId: true,
+          substituteTeacherId: true,
+          substituteTeacher: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
           class: {
             include: {
               subject: { select: { name: true } },
@@ -89,7 +132,9 @@ export class ScheduleService {
         orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       });
 
-      return schedules.map((session) => ({
+      const filteredSchedules = schedules.filter(session => session.class.status !== "deleted");
+
+      return filteredSchedules.map((session) => ({
         id: session.id,
         date: this.formatDateYYYYMMDD(session.sessionDate),
         startTime: session.startTime,
@@ -105,6 +150,8 @@ export class ScheduleService {
         academicYear: session.academicYear,
         createdAt: session.createdAt,
         updatedAt: session.createdAt,
+        substituteTeacher: session.substituteTeacher?.user?.fullName || null,
+        isSubstitute: session.substituteTeacherId === teacherId,
       }));
     } catch (error) {
       throw new Error(`Lỗi khi lấy lịch dạy theo tháng: ${error.message}`);
@@ -116,16 +163,38 @@ export class ScheduleService {
       const session = await this.prisma.classSession.findFirst({
         where: {
           id: scheduleId,
-          teacherId: teacherId
+          OR: [
+            { teacherId: teacherId },
+            { substituteTeacherId: teacherId },
+          ],
         },
-        include: {
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          notes: true,
+          academicYear: true,
+          createdAt: true,
+          teacherId: true,
+          substituteTeacherId: true,
+          substituteTeacher: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
           class: {
             include: {
-              subject: { select: { name: true } }
-            }
+              subject: { select: { name: true } },
+            },
           },
-          room: { select: { name: true } }
-        }
+          room: { select: { name: true } },
+        },
       });
 
       if (!session) {
@@ -147,7 +216,9 @@ export class ScheduleService {
         teacherId: session.teacherId,
         academicYear: session.academicYear,
         createdAt: session.createdAt,
-        updatedAt: session.createdAt
+        updatedAt: session.createdAt,
+        substituteTeacher: session.substituteTeacher?.user?.fullName || null,
+        isSubstitute: session.substituteTeacherId === teacherId,
       };
     } catch (error) {
       throw new Error(`Lỗi khi lấy chi tiết buổi dạy: ${error.message}`);

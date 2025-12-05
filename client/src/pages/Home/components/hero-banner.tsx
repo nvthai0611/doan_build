@@ -3,11 +3,23 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Sparkles } from "lucide-react"
+import { CenterInfo } from "../../../services/common/public-center-info.service"
 
-export const HeroBanner = () => {
+export const HeroBanner = ({ centerInfo }: { centerInfo?: CenterInfo | null }) => {
   return (
-    <section className="relative overflow-hidden pt-20 pb-32 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 gradient-bg opacity-90"></div>
+    <section className="relative overflow-hidden pt-10 pb-10 px-4 sm:px-6 lg:px-8">
+      <div className="absolute inset-0 gradient-bg opacity-90 z-0">
+        {centerInfo?.value?.centerInfo?.banner ? (
+          <img
+            src={centerInfo.value.centerInfo.banner}
+            alt="Hero Banner"
+            className="absolute inset-0 object-cover gradient-bg opacity-90 z-0 fixed w-full h-full"
+          />
+        ) : (
+          <div className="absolute inset-0 gradient-bg opacity-90 z-0"></div>
+        )}
+        {/* <div className="absolute inset-0 gradient-bg opacity-90 z-0"></div> */}
+      </div>
 
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
@@ -21,7 +33,9 @@ export const HeroBanner = () => {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
               <Sparkles className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium text-white">Khơi nguồn tri thức</span>
+              <span className="text-sm font-medium text-white">
+                Khơi nguồn tri thức
+              </span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
@@ -29,12 +43,17 @@ export const HeroBanner = () => {
             </h1>
 
             <p className="text-lg text-white/90 max-w-xl">
-              Tìm kiếm lớp học chất lượng cao với giáo viên giàu kinh nghiệm. Phát triển kỹ năng, mở rộng kiến thức, xây
-              dựng tương lai tươi sáng.
+              Tìm kiếm lớp học chất lượng cao với giáo viên giàu kinh nghiệm.
+              Phát triển kỹ năng, mở rộng kiến thức, xây dựng tương lai tươi
+              sáng.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" asChild className="text-base bg-white text-orange-500 hover:bg-white/90 font-semibold">
+              <Button
+                size="lg"
+                asChild
+                className="text-base bg-white text-blue-600 hover:bg-white/90 font-semibold"
+              >
                 <Link to="/auth/register/family">
                   Đăng Ký Ngay
                   <ChevronRight className="ml-2 w-5 h-5" />
@@ -51,7 +70,7 @@ export const HeroBanner = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-8">
+            {/* <div className="grid grid-cols-3 gap-4 pt-8">
               <div>
                 <div className="text-2xl font-bold text-white">500+</div>
                 <div className="text-sm text-white/80">Lớp Học</div>
@@ -64,11 +83,11 @@ export const HeroBanner = () => {
                 <div className="text-2xl font-bold text-white">100+</div>
                 <div className="text-sm text-white/80">Giáo Viên</div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Right Visual */}
-          <div className="hidden lg:block">
+          {/* <div className="hidden lg:block">
             <div className="relative">
               <div className="absolute inset-0 bg-white/20 rounded-2xl blur-2xl"></div>
               <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
@@ -84,9 +103,9 @@ export const HeroBanner = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </section>
-  )
+  );
 }

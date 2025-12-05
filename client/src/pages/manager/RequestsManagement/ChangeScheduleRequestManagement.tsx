@@ -234,38 +234,50 @@ export default function ChangeScheduleRequestManagement() {
       key: 'actions',
       header: 'Thao tác',
       render: (item: ScheduleChange) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetails(item.id)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-            {item.status === 'pending' && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => handleApprove(item.id)}
-                  className="text-green-600"
+        <div>
+          <div className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600">
+            <div title="Xem chi tiết" onClick={() => {
+              handleViewDetails(item.id);
+            }}>
+              <Eye className="h-4 w-4" />
+            </div>
+          </div>
+            <>
+                <div className="h-1 w-full bg-gray-200" />
+                <div 
+                  title="Duyệt"
+                  onClick={() => {
+                    if (item.status !== 'pending') {
+                      return
+                    }
+                    handleApprove(item.id);
+                  }}
+                  className={`flex items-center px-2 py-1 rounded-md ${
+                    item.status !== 'pending'
+                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                      : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                  }`}
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Duyệt yêu cầu
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleReject(item.id)}
-                  className="text-red-600"
+                  <CheckCircle className="h-4 w-4" />
+                </div>
+                <div 
+                  title="Từ chối"
+                  onClick={() => {
+                    if (item.status !== 'pending') {
+                      return
+                    }
+                    handleReject(item.id);
+                  }}
+                  className={`flex items-center px-2 py-1 rounded-md ${
+                    item.status !== 'pending'
+                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
+                      : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                  }`}
                 >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <XCircle className="h-4 w-4" />
+                </div>
+            </>
+        </div>
       )
     }
   ]

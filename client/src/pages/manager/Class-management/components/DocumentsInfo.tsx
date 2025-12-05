@@ -46,8 +46,8 @@ export default function DocumentsInfo({ classId }: DocumentsInfoProps) {
       page,
       limit: pageSize,
     }),
-    staleTime: 30000, // Cache 30 seconds
-    refetchOnWindowFocus: false,
+    staleTime: 3000, // Cache 3 seconds
+    refetchOnWindowFocus: true,
   })
 
   // Delete mutation

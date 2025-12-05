@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
 import { AttendanceController } from './controllers/attendance.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { CommunicationController } from './controllers/communication.controller';
@@ -16,7 +17,6 @@ import { CommunicationService } from './services/communication.service';
 import { GradeService } from './services/grade.service';
 import { LeaveRequestService } from './services/leave-request.service';
 import { MaterialService } from './services/material.service';
-import { ReportService } from './services/report.service';
 import { ScheduleService } from './services/schedule.service';
 import { SessionService } from './services/session.service';
 import { SessionRequestService } from './services/session-request.service';
@@ -37,6 +37,13 @@ import { ContractsManageController } from './controllers/contracts-manage.contro
 import { ContractsManageService } from './services/contracts-manage.service';
 import { SharedModule } from '../shared/shared.module';
 import { PrismaService } from 'src/db/prisma.service';
+import { PayrollController } from './controllers/payroll.controller';
+import { PayrollService } from './services/payroll.service';
+import { TeacherProgressReportController } from './controllers/progress-report.controller';
+import { TeacherProgressReportService } from './services/progress-report.service';
+import { TeacherDashboardController } from './controllers/dashboard.controller';
+import { TeacherDashboardService } from './services/dashboard.service';
+import { ProgressReportPublishProcessor } from '../shared/consumer/progress-report-publish.processor';
 
 @Module({
   imports: [
@@ -47,6 +54,9 @@ import { PrismaService } from 'src/db/prisma.service';
       }
     ]),
     SharedModule, // Import SharedModule để sử dụng EmailNotificationService
+    BullModule.registerQueue({
+      name: 'progress_report_publish',
+    }),
   ],
   controllers: [
     AttendanceController,
@@ -66,6 +76,9 @@ import { PrismaService } from 'src/db/prisma.service';
     IncidentReportController,
     ContractsManageController,
     TeacherStudentLeaveRequestController,
+    PayrollController,
+    TeacherProgressReportController,
+    TeacherDashboardController
   ],
   providers: [
     AttendanceService,
@@ -74,7 +87,6 @@ import { PrismaService } from 'src/db/prisma.service';
     GradeService,
     LeaveRequestService,
     MaterialService,
-    ReportService,
     ScheduleService,
     SessionService,
     SessionRequestService,
@@ -88,6 +100,10 @@ import { PrismaService } from 'src/db/prisma.service';
     ContractsManageService,
     TeacherStudentLeaveRequestService,
     PrismaService,
+    PayrollService,
+    TeacherProgressReportService,
+    TeacherDashboardService,
+    ProgressReportPublishProcessor
   ],
   exports: [
     AttendanceService,

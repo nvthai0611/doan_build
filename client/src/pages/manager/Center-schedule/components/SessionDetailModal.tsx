@@ -103,7 +103,7 @@ export function SessionDetailModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <BookOpen className="h-5 w-5 text-primary" />
-            Chi tiết {session.name || "Chưa phân lớp"}
+            Chi tiết {session.name || 'Chưa phân lớp'}
             {session.hasAlert && (
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
             )}
@@ -154,19 +154,32 @@ export function SessionDetailModal({
               <div>
                 <div className="font-medium">Phòng học</div>
                 <div className="text-sm text-muted-foreground">
-                  {session.roomName || "Chưa phân phòng"}
+                  {session.roomName || 'Chưa phân phòng'}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-chart-2" />
-              <div>
-                <div className="font-medium">Giáo viên</div>
-                <div className="text-sm text-muted-foreground">
-                  {session.teacherName || "Chưa phân giáo viên"}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-chart-2" />
+                <div>
+                  <div className="font-medium">Giáo viên chính</div>
+                  <div className="text-sm text-muted-foreground">
+                    {session.teacherName || 'Chưa phân giáo viên'}
+                  </div>
                 </div>
               </div>
+              {session.substituteTeacher && session.status !== 'cancelled' && session.status !== 'day_off' && (
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <div className="font-medium">Giáo viên thay thế</div>
+                    <div className="text-sm text-muted-foreground">
+                      {session.substituteTeacher || 'Chưa phân giáo viên thay thế'}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -179,7 +192,7 @@ export function SessionDetailModal({
               <div>
                 <div className="font-medium">Môn học</div>
                 <div className="text-sm text-muted-foreground">
-                  {session.subjectName || "Chưa phân môn học"}
+                  {session.subjectName || 'Chưa phân môn học'}
                 </div>
               </div>
             </div>

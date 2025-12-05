@@ -96,7 +96,6 @@ export function TuitionSetting() {
 
   // Filter and sort fees
   useEffect(() => {
-    console.log(feesData);
     if (feesData) {
       let filtered = (feesData as any).filter((fee: FeeStructure) => {
         // Search filter

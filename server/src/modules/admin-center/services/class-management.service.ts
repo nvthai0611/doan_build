@@ -22,6 +22,29 @@ export class ClassManagementService {
     private emailNotificationService: EmailNotificationService,
   ) {}
 
+  private async notifyStatusChange(
+    classId: string,
+    previousStatus: string,
+    newStatus: string,
+  ): Promise<void> {
+    try {
+      await Promise.all([
+        this.emailNotificationService.sendClassStatusChangeEmailToParents(
+          classId,
+          previousStatus,
+          newStatus,
+        ),
+        this.emailNotificationService.sendClassStatusChangeEmailToTeacher(
+          classId,
+          previousStatus,
+          newStatus,
+        ),
+      ]);
+    } catch (error) {
+      console.error('Error notifying class status change:', error);
+    }
+  }
+
   // Helper function để tìm và gợi ý tên khóa mới
   private async suggestNextClassName(
     name: string,
@@ -1351,20 +1374,26 @@ export class ClassManagementService {
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 9);
             console.log(
-              `📅 Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
+              `Auto-calculated endDate: ${endDate.toLocaleDateString('vi-VN')}`,
             );
           }
 
           if (startDate && endDate && updatedClass.recurringSchedule) {
             // Tự động gen sessions
             console.log(
-              `🚀 Generating sessions from ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${startDate.toLocaleDateString('vi-VN')} to ${endDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
               startDate: startDate.toISOString().split('T')[0],
               endDate: endDate.toISOString().split('T')[0],
             });
+
+            await this.notifyStatusChange(
+              id,
+              existingClass.status,
+              updatedClass.status,
+            );
 
             return {
               success: true,
@@ -1513,7 +1542,6 @@ export class ClassManagementService {
 
         // Nếu chuyển từ active sang completed, update enrollments và sessions
         let updatedEnrollmentsCount = 0;
-        let updatedSessionsCount = 0;
         if (existingClass.status === 'active' && status === 'completed') {
           // Update tất cả enrollments có status là studying hoặc not_been_updated
           // nhưng không update những ai đã stopped
@@ -1530,20 +1558,6 @@ export class ClassManagementService {
             },
           });
           updatedEnrollmentsCount = updateResult.count;
-
-          // Update tất cả buổi học về status 'end'
-          const sessionsUpdateResult = await tx.classSession.updateMany({
-            where: {
-              classId: id,
-              status: {
-                notIn: ['end', 'cancelled', 'day_off'], // Chỉ update những session chưa end
-              },
-            },
-            data: {
-              status: 'end',
-            },
-          });
-          updatedSessionsCount = sessionsUpdateResult.count;
         }
 
         // Nếu chuyển sang cancelled, update tất cả enrollments sang stopped
@@ -1578,21 +1592,18 @@ export class ClassManagementService {
               status: 'cancelled',
             },
           });
-          updatedSessionsCount = sessionsUpdateResult.count;
         }
 
         return {
           class: updatedClass,
           updatedEnrollmentsCount,
-          updatedSessionsCount,
         };
       });
 
       // AUTO-GEN SESSIONS: Nếu chuyển từ ready → active hoặc suspended → active, tự động gen sessions (chỉ khi chưa có sessions)
       const isStatusChangedToActive =
-        (existingClass.status === 'ready' ||
-          existingClass.status === 'suspended') &&
-        status === 'active';
+        existingClass.status === 'ready'
+        && status === 'active';
 
       if (isStatusChangedToActive) {
         try {
@@ -1651,7 +1662,7 @@ export class ClassManagementService {
           ) {
             // Tự động gen sessions
             console.log(
-              `Generating sessions from ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
+              `Bắt đầu tạo lịch ${sessionStartDate.toLocaleDateString('vi-VN')} to ${sessionEndDate.toLocaleDateString('vi-VN')}`,
             );
 
             await this.generateSessions(id, {
@@ -1745,13 +1756,9 @@ export class ClassManagementService {
         message += `. Đã cập nhật trạng thái ${result.updatedEnrollmentsCount} học sinh sang "Đã tốt nghiệp"`;
       }
 
-      // Gửi email thông báo cho phụ huynh (không await để không block response)
-      this.emailNotificationService
-        .sendClassStatusChangeEmailToParents(id, existingClass.status, status)
-        .catch((error) => {
-          console.error('❌ Lỗi khi gửi email thông báo status:', error);
-          // Không throw để không ảnh hưởng đến response
-        });
+      console.log(`Status: ${status}, Existing status: ${existingClass.status}`);
+      
+      void this.notifyStatusChange(id, existingClass.status, status);
 
       return {
         success: true,
@@ -2824,7 +2831,7 @@ export class ClassManagementService {
       );
     }
   }
-  // Xóa lớp học (soft delete bằng cách đổi status)
+  // Xóa lớp học (hard delete - xóa hẳn khỏi database)
   async delete(id: string) {
     try {
       // Validate UUID
@@ -2842,13 +2849,7 @@ export class ClassManagementService {
       const existingClass = await this.prisma.class.findUnique({
         where: { id },
         include: {
-          enrollments: {
-            where: {
-              status: {
-                in: ['not_been_updated', 'studying'],
-              },
-            },
-          },
+          enrollments: true, // Lấy tất cả enrollments để kiểm tra
         },
       });
 
@@ -2862,9 +2863,12 @@ export class ClassManagementService {
         );
       }
 
-      // Check if there are active enrollments
+      // Check if there are active enrollments (cho lớp đang hoạt động)
+      const activeEnrollments = existingClass.enrollments.filter(
+        (e) => e.status === 'not_been_updated' || e.status === 'studying'
+      );
       if (
-        existingClass.enrollments.length > 0 &&
+        activeEnrollments.length > 0 &&
         existingClass.status === 'active'
       ) {
         throw new HttpException(
@@ -2875,6 +2879,22 @@ export class ClassManagementService {
           HttpStatus.BAD_REQUEST,
         );
       }
+
+      // Check if class is in READY status and has any enrollments
+      if (
+        existingClass.status === 'ready' &&
+        existingClass.enrollments.length > 0
+      ) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không thể xóa lớp học đang tuyển sinh có học sinh đã đăng ký',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check if class is completed
       if (existingClass.status === 'completed') {
         throw new HttpException(
           {
@@ -2885,10 +2905,9 @@ export class ClassManagementService {
         );
       }
 
-      // Soft delete by updating status
-      await this.prisma.class.update({
+      // Hard delete - xóa hẳn lớp học và tất cả dữ liệu liên quan (enrollments, sessions, etc.)
+      await this.prisma.class.delete({
         where: { id },
-        data: { status: 'deleted' },
       });
 
       return {
@@ -3229,7 +3248,7 @@ export class ClassManagementService {
           body.teacherId,
         );
         console.log(
-          `📧 Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
+          `Email phân công lớp đã được queue cho giáo viên ${body.teacherId} và lớp ${classId}`,
         );
       } catch (emailError) {
         // Log lỗi email nhưng không làm fail toàn bộ operation
@@ -3298,22 +3317,7 @@ export class ClassManagementService {
         );
       }
 
-      // Gửi email hủy lớp cho giáo viên trước khi xóa
-      try {
-        await this.emailNotificationService.sendClassRemoveTeacherEmail(
-          classId,
-          teacherId,
-          'Lớp học đã được hủy phân công',
-        );
-        console.log(
-          `📧 Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
-        );
-      } catch (emailError) {
-        console.error(
-          'Failed to queue cancellation email to teacher:',
-          emailError,
-        );
-      }
+      
 
       // Remove teacher assignment and chuyển status về draft
       const updatedClass = await this.prisma.class.update({
@@ -3323,6 +3327,17 @@ export class ClassManagementService {
           status: ClassStatus.DRAFT,
         },
       });
+
+      // Gửi email thông báo cho giáo viên qua queue
+      try {
+        await this.emailNotificationService.sendClassRemoveTeacherEmail(
+          classId,
+          teacherId,
+        );
+      } catch (emailError) {
+        // Log lỗi email nhưng không làm fail toàn bộ operation
+        console.error('Failed to queue email notification:', emailError);
+      }
 
       return {
         success: true,
@@ -4336,7 +4351,6 @@ export class ClassManagementService {
   // Lấy dashboard data đầy đủ
   async getDashboard(classId: string) {
     try {
-      console.log(classId);
       // Validate class exists
       const classItem = await this.prisma.class.findUnique({
         where: { id: classId },
@@ -4392,12 +4406,22 @@ export class ClassManagementService {
       const studentsCount = classItem.enrollments.length;
 
       // 3. Số buổi học đã diễn ra
+      // Chỉ tính các buổi học có status 'end' VÀ sessionDate <= ngày hiện tại
+      // Format ngày hiện tại thành YYYY-MM-DD để so sánh với @db.Date (chỉ có ngày, không có giờ)
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0]; 
+      
       const completedSessions = await this.prisma.classSession.count({
         where: {
           classId: classId,
           status: 'end',
+          sessionDate: {
+            lte: new Date(todayString), // Chỉ tính buổi học đã qua ngày (đã diễn ra)
+          },
         },
       });
+
+      
 
       // 4. Doanh thu từ học phí đã thanh toán (chỉ tính cho lớp này)
       const revenue = await this.prisma.payment.aggregate({
@@ -4453,9 +4477,65 @@ export class ClassManagementService {
         attendance.unexcusedAbsence;
       attendance.notMarked = totalPossibleAttendances - totalMarkedAttendances;
 
-      // 6. Đánh giá trung bình (chưa có trong schema, để mặc định)
-      const rating = 0;
-      const reviews = 0;
+      // 6. Đánh giá trung bình và reviews
+      const feedbacks = await this.prisma.teacherFeedback.findMany({
+        where: {
+          classId: classId,
+          status: 'approved', // Chỉ tính các feedback đã được approve
+        },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          parent: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          student: {
+            select: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 5, // Lấy 5 reviews gần đây nhất
+      });
+
+      const reviewsCount = await this.prisma.teacherFeedback.count({
+        where: {
+          classId: classId,
+          status: 'approved',
+        },
+      });
+
+      // Tính rating trung bình từ tất cả reviews (không chỉ 5 gần đây)
+      let rating = 0;
+      if (reviewsCount > 0) {
+        const allFeedbacks = await this.prisma.teacherFeedback.findMany({
+          where: {
+            classId: classId,
+            status: 'approved',
+          },
+          select: {
+            rating: true,
+          },
+        });
+        const totalRating = allFeedbacks.reduce((sum, f) => sum + f.rating, 0);
+        rating = totalRating / reviewsCount;
+      }
 
       return {
         success: true,
@@ -4465,8 +4545,17 @@ export class ClassManagementService {
           students: studentsCount,
           lessons: completedSessions,
           revenue: revenue._sum.amount || 0,
-          rating,
-          reviews,
+          rating: Number(rating.toFixed(1)),
+          reviews: reviewsCount,
+          recentReviews: feedbacks.map((f) => ({
+            id: f.id,
+            rating: f.rating,
+            comment: f.comment,
+            createdAt: f.createdAt,
+            parentName: f.parent?.user?.fullName || 'Ẩn danh',
+            parentAvatar: f.parent?.user?.avatar,
+            studentName: f.student?.user?.fullName,
+          })),
           attendance,
           homework: {
             assigned: 0,
@@ -4491,12 +4580,41 @@ export class ClassManagementService {
 
   // Legacy methods (keep for backward compatibility)
   async getClassByTeacherId(query: any, teacherId: string) {
-    const { status, page = 1, limit = 10, search } = query;
-
+    const { status, page = 1, limit = 10, search, includeSubstitute } = query;
+    
+    const includeSubstituteFlag =
+      includeSubstitute === true ||
+      includeSubstitute === 'true' ||
+      includeSubstitute === '1';
+    
+    // Tập classId giáo viên này từng/đang dạy thay (từ class sessions)
+    let substituteClassIds: string[] = [];
+    if (includeSubstituteFlag) {
+      const substituteSessions = await this.prisma.classSession.findMany({
+        where: {
+          substituteTeacherId: teacherId,
+        },
+        select: { classId: true },
+        distinct: ['classId'],
+      });
+      
+      substituteClassIds = substituteSessions
+        .map((session) => session.classId)
+        .filter((id): id is string => Boolean(id));
+    }
+    
     const where: any = {
-      teacherId: teacherId,
       status: { not: 'deleted' },
     };
+
+    if (includeSubstituteFlag && substituteClassIds.length > 0) {
+      where.OR = [
+        { teacherId },
+        { id: { in: substituteClassIds } },
+      ];
+    } else {
+      where.teacherId = teacherId;
+    }
 
     if (status && status !== 'all') {
       where.status = status;
@@ -4531,25 +4649,30 @@ export class ClassManagementService {
     });
 
     // Transform the data to match frontend expectations
-    const transformedClasses = classes.map((cls) => ({
-      id: cls.id,
-      code: cls.classCode,
-      name: cls.name,
-      subject: cls.subject?.name || '',
-      students: cls._count.enrollments,
-      schedule: DataTransformer.formatScheduleArray(cls.recurringSchedule),
-      status: cls.status,
-      startDate:
-        cls.actualStartDate?.toISOString().split('T')[0] ||
-        cls.expectedStartDate?.toISOString().split('T')[0] ||
-        '',
-      endDate: cls.actualEndDate?.toISOString().split('T')[0] || '',
-      room: cls.room?.name || 'Chưa xác định',
-      description: cls.description || '',
-      teacherId: cls.teacherId,
-      gradeName: cls.grade?.name || '',
-      feeStructureName: cls.feeStructure?.name || '',
-    }));
+    const transformedClasses = classes.map((cls) => {
+      const isSubstitute =
+        includeSubstituteFlag && substituteClassIds.includes(cls.id);
+      return {
+        id: cls.id,
+        code: cls.classCode,
+        name: cls.name,
+        subject: cls.subject?.name || '',
+        students: cls._count.enrollments,
+        schedule: DataTransformer.formatScheduleArray(cls.recurringSchedule),
+        status: cls.status,
+        startDate:
+          cls.actualStartDate?.toISOString().split('T')[0] ||
+          cls.expectedStartDate?.toISOString().split('T')[0] ||
+          '',
+        endDate: cls.actualEndDate?.toISOString().split('T')[0] || '',
+        room: cls.room?.name || 'Chưa xác định',
+        description: cls.description || '',
+        teacherId: cls.teacherId,
+        gradeName: cls.grade?.name || '',
+        feeStructureName: cls.feeStructure?.name || '',
+        isSubstitute,
+      };
+    });
 
     return {
       data: transformedClasses,
@@ -4561,6 +4684,119 @@ export class ClassManagementService {
       },
       message: 'Lấy danh sách lớp học thành công ',
     };
+  }
+
+  // Lấy danh sách lớp có học sinh chưa có cam kết
+  async getClassesWithStudentsWithoutContract(limit: number = 10) {
+    try {
+      // Lấy tất cả lớp đang hoạt động
+      const classes = await this.prisma.class.findMany({
+        where: {
+          status: {
+            in: [ClassStatus.READY, ClassStatus.ACTIVE],
+          },
+        },
+        include: {
+          enrollments: {
+            where: {
+              status: {
+                in: [
+                  EnrollmentStatus.NOT_BEEN_UPDATED,
+                  EnrollmentStatus.STUDYING,
+                ],
+              },
+            },
+            include: {
+              student: {
+                include: {
+                  contractUploads: {
+                    where: {
+                      status: 'active',
+                      OR: [
+                        { expiredAt: null }, // Chưa có ngày hết hạn
+                        { expiredAt: { gt: new Date() } }, // Chưa hết hạn
+                      ],
+                    },
+                    select: {
+                      subjectIds: true,
+                      expiredAt: true,
+                    },  
+                  },
+                },
+              },
+            },
+          },
+          subject: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        take: limit,
+      });
+
+      // Filter và tính toán số học sinh chưa có cam kết cho mỗi lớp
+      const classesWithStats = classes
+        .map((classItem) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const studentsWithoutContract = classItem.enrollments.filter(
+            (enrollment) => {
+              if (!classItem.subject?.id) return true;
+
+              const hasValidContract = enrollment.student.contractUploads.some(
+                (contract) => {
+                  // Kiểm tra subjectIds có chứa subjectId của lớp
+                  const hasCorrectSubject =
+                    contract.subjectIds &&
+                    Array.isArray(contract.subjectIds) &&
+                    contract.subjectIds.includes(classItem.subject.id);
+
+                  // Kiểm tra cam kết còn hạn (expiredAt null hoặc > hôm nay)
+                  const isNotExpired =
+                    !contract.expiredAt ||
+                    new Date(contract.expiredAt) >= today;
+
+                  return hasCorrectSubject && isNotExpired;
+                },
+              );
+
+              return !hasValidContract;
+            },
+          ).length;
+
+          return {
+            id: classItem.id,
+            name: classItem.name,
+            classCode: classItem.classCode,
+            subject: classItem.subject?.name,
+            totalStudents: classItem.enrollments.length,
+            studentsWithoutContract,
+            academicYear: classItem.academicYear,
+          };
+        })
+        .filter((item) => item.studentsWithoutContract > 0) // Chỉ lấy lớp có học sinh chưa có cam kết
+        .sort(
+          (a, b) => b.studentsWithoutContract - a.studentsWithoutContract,
+        ); // Sắp xếp theo số học sinh chưa có cam kết giảm dần
+
+      return {
+        success: true,
+        message: 'Lấy danh sách lớp có học sinh chưa có cam kết thành công',
+        data: classesWithStats,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi lấy danh sách lớp',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async getClassDetail(id: string) {

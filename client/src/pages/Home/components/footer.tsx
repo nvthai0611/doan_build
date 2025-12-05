@@ -1,21 +1,48 @@
 "use client"
 
-import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Linkedin } from "lucide-react"
+import type { CenterInfo } from "../../../services/common/public-center-info.service"
 
-export const Footer = () => {
+interface FooterProps {
+  centerInfo?: CenterInfo | null
+}
+
+const daysOfWeek = [
+  { value: "sunday", label: "Chủ Nhật" }  ,
+  { value: "monday", label: "Thứ Hai" }  ,
+  { value: "tuesday", label: "Thứ Ba" }  ,
+  { value: "wednesday", label: "Thứ Tư" }  ,
+  { value: "thursday", label: "Thứ Năm" }  ,
+  { value: "friday", label: "Thứ Sáu" }  ,
+  { value: "saturday", label: "Thứ Bảy" }  ,
+];
+
+export const Footer = ({ centerInfo }: FooterProps) => {
+  const centerName = centerInfo?.value?.centerInfo?.name || "Trung Tâm Giáo Dục"
+  const centerSlogan = centerInfo?.value?.centerInfo?.slogan || "Nơi khơi nguồn tri thức, nuôi dưỡng tương lai của thế hệ trẻ."
+  const centerDescription = centerInfo?.value?.centerInfo?.description || "Nơi khơi nguồn tri thức, nuôi dưỡng tương lai của thế hệ trẻ."
+  const phone = centerInfo?.value?.contact?.phone || "1900 1234"
+  const email = centerInfo?.value?.contact?.email || "info@center.edu"
+  const address = centerInfo?.value?.address
+    ? `${centerInfo.value.address.detail || ""} ${centerInfo.value.address.street || ""}`.trim() || "123 Đường ABC, TP. HCM"
+    : "123 Đường ABC, TP. HCM"
   return (
-    <footer className="gradient-bg text-white">
+    <footer className="bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="bg-white/20 p-2 rounded-lg">
-                <GraduationCap className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-lg">Trung Tâm Giáo Dục</span>
+              {centerInfo?.value?.centerInfo?.logo ? (
+                <img
+                  src={centerInfo.value.centerInfo.logo}
+                  alt={centerName}
+                  className="h-10 w-auto bg-white/20 p-1 rounded-lg"
+                />
+              ) : null}
+              <span className="font-bold text-lg">{centerName}</span>
             </div>
-            <p className="text-sm opacity-90">Nơi khơi nguồn tri thức, nuôi dưỡng tương lai của thế hệ trẻ.</p>
+            <p className="text-sm opacity-90">{centerSlogan}</p>
+            {/* <p className="text-sm opacity-90">{centerDescription}</p> */}
           </div>
 
           {/* Quick Links */}
@@ -23,22 +50,34 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Liên Kết Nhanh</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
+                <a
+                  href="#"
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
                   Về Chúng Tôi
                 </a>
               </li>
               <li>
-                <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
+                <a
+                  href="#"
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
                   Lớp Học
                 </a>
               </li>
               <li>
-                <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
+                <a
+                  href="#"
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
                   Blog
                 </a>
               </li>
               <li>
-                <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
+                <a
+                  href="#"
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
                   Liên Hệ
                 </a>
               </li>
@@ -49,17 +88,37 @@ export const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Liên Hệ</h3>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span>1900 1234</span>
+              <li>
+                <span>{phone}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>info@center.edu</span>
+              <li>
+                <span>{email}</span>
               </li>
-              <li className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 mt-0.5" />
-                <span>123 Đường ABC, TP. HCM</span>
+              <li>
+                <span>{address}</span>
+              </li>
+              <li>
+                <div className="flex flex-col gap-1">
+                  <span>
+                    {centerInfo?.value?.contact?.workingHours
+                      ?.map(
+                        (hour) =>
+                          `${
+                            daysOfWeek.find((day) => day.value === hour.fromDay)
+                              ?.label
+                          } - ${
+                            daysOfWeek.find((day) => day.value === hour.toDay)
+                              ?.label
+                          }`,
+                      )
+                      .join(', ')}
+                  </span>
+                  <span>
+                    {centerInfo?.value?.contact?.workingHours
+                      ?.map((hour) => `${hour.open} - ${hour.close}`)
+                      .join(', ')}
+                  </span>
+                </div>
               </li>
             </ul>
           </div>
@@ -67,24 +126,39 @@ export const Footer = () => {
           {/* Social */}
           <div>
             <h3 className="font-semibold mb-4">Theo Dõi</h3>
-            <div className="flex gap-4">
-              <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="opacity-90 hover:opacity-100 transition-opacity">
-                <Linkedin className="w-5 h-5" />
-              </a>
+            <div className="flex flex-col gap-2 text-sm">
+              {centerInfo?.value?.contact?.facebook && (
+                <a
+                  href={centerInfo.value.contact.facebook}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  Facebook
+                </a>
+              )}
+              {centerInfo?.value?.contact?.youtube && (
+                <a
+                  href={centerInfo.value.contact.youtube}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  YouTube
+                </a>
+              )}
+              {centerInfo?.value?.contact?.tiktok && (
+                <a
+                  href={centerInfo.value.contact.tiktok}
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  TikTok
+                </a>
+              )}
             </div>
           </div>
         </div>
 
         <div className="border-t border-white/20 pt-8 text-center text-sm opacity-90">
-          <p>&copy; 2025 Trung Tâm Giáo Dục. Tất cả quyền được bảo lưu.</p>
+          <p>&copy; 2025 {centerName}. Tất cả quyền được bảo lưu.</p>
         </div>
       </div>
     </footer>
-  )
+  );
 }

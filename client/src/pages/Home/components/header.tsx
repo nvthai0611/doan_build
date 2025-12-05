@@ -5,8 +5,13 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../../lib/auth"
 import { Button } from "@/components/ui/button"
 import { Menu, X, GraduationCap } from "lucide-react"
+import type { CenterInfo } from "../../../services/common/public-center-info.service"
 
-export const Header = () => {
+interface HeaderProps {
+  centerInfo?: CenterInfo | null
+}
+
+export const Header = ({ centerInfo }: HeaderProps) => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -16,10 +21,20 @@ export const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity">
-            <div className="gradient-bg p-1.5 rounded-lg">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <span className="hidden sm:inline gradient-text font-bold">Quang Nguyễn Education</span>
+            {centerInfo?.value?.centerInfo?.logo ? (
+              <img
+                src={centerInfo.value.centerInfo.logo}
+                alt={centerInfo.value.centerInfo.name || "Logo"}
+                className="h-10 w-auto"
+              />
+            ) : (
+              <div className="gradient-bg p-1.5 rounded-lg">
+                <GraduationCap className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <span className="hidden sm:inline gradient-text font-bold">
+              {centerInfo?.value?.centerInfo?.name || "Quang Nguyễn Education"}
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -47,9 +62,9 @@ export const Header = () => {
                 </Button>
                 <Button
                   asChild
-                  className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 hover:opacity-90 text-white border-0"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white border-0"
                 >
-                  <Link to="/auth/register?portal=family">Đăng Ký</Link>
+                  <Link to="/auth/register/family">Đăng Ký</Link>
                 </Button>
               </>
             )}

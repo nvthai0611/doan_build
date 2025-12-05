@@ -20,9 +20,7 @@ export const classService = {
 
   // Get teacher classes
   getClassByTeacherId: async (teacherId: string, params?: any) => {
-    const response = await apiClient.get(`${BASE_URL}/${teacherId}/teacher`, {
-      params,
-    });
+    const response = await apiClient.get(`${BASE_URL}/${teacherId}/teacher`, params || {});
     return response;
   },
 
@@ -183,6 +181,14 @@ export const classService = {
       `${BASE_URL}/transfers/${transferId}/reject`,
       data,
     );
+    return response;
+  },
+
+  // Get classes with students without contract
+  getClassesWithoutContract: async (limit?: number) => {
+    const response = await apiClient.get(`${BASE_URL}/without-contract`, {
+      params: { limit },
+    });
     return response;
   },
 };

@@ -100,14 +100,14 @@ export const TransferTeacherSheet = ({
     const run = async () => {
       setConflictInfo(null);
       if (!open || !classData?.id || !selectedTeacherId) return;
-      if (isTemporary && (!effectiveDate || !substituteEndDate)) return;
+      if (isTemporary && !substituteEndDate) return;
       try {
         const params: any = { replacementTeacherId: selectedTeacherId };
-        if (isTemporary) {
+        if (effectiveDate) {
           params.effectiveDate = effectiveDate;
+        }
+        if (isTemporary && substituteEndDate) {
           params.substituteEndDate = substituteEndDate;
-        } else if (effectiveDate) {
-          params.effectiveDate = effectiveDate;
         }
         const res = await apiClient.get(`/admin-center/classes/${classData.id}/transfer-teacher/validate`, { params });
         const raw = (res as any)?.data || (res as any);
@@ -149,7 +149,9 @@ export const TransferTeacherSheet = ({
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       onOpenChange(false);
       //refresh page
-      //window.location.reload();
+      setTimeout(() => {
+        window.location.reload();
+      }, 2500);
     },
     onError: (error: any) => {
       toast({
@@ -207,6 +209,13 @@ export const TransferTeacherSheet = ({
         });
         return;
       }
+    } else if (!effectiveDate) {
+      toast({
+        title: 'Lỗi',
+        description: 'Vui lòng chọn ngày có hiệu lực',
+        variant: 'destructive',
+      });
+      return;
     }
 
     if (conflictInfo?.inactive) {
@@ -554,6 +563,20 @@ export const TransferTeacherSheet = ({
             />
           </div>
 
+          {/* Effective Date - Always visible */}
+          <div className="space-y-2">
+            <Label htmlFor="effective-date">
+              Ngày có hiệu lực <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="effective-date"
+              type="date"
+              value={effectiveDate}
+              onChange={(e) => setEffectiveDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
           {/* Temporary Toggle */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -568,34 +591,20 @@ export const TransferTeacherSheet = ({
             </div>
           </div>
 
-          {/* Effective & End Dates (when temporary) */}
+          {/* End Date (only when temporary) */}
           {isTemporary && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="effective-date">
-                  Ngày có hiệu lực <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="effective-date"
-                  type="date"
-                  value={effectiveDate}
-                  onChange={(e) => setEffectiveDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="substitute-end-date">
-                  Ngày kết thúc tạm thời <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="substitute-end-date"
-                  type="date"
-                  value={substituteEndDate}
-                  onChange={(e) => setSubstituteEndDate(e.target.value)}
-                  min={effectiveDate || new Date().toISOString().split('T')[0]}
-                />
-              </div>
-            </>
+            <div className="space-y-2">
+              <Label htmlFor="substitute-end-date">
+                Ngày kết thúc tạm thời <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="substitute-end-date"
+                type="date"
+                value={substituteEndDate}
+                onChange={(e) => setSubstituteEndDate(e.target.value)}
+                min={effectiveDate || new Date().toISOString().split('T')[0]}
+              />
+            </div>
           )}
 
           {/* Selected Teacher Preview */}

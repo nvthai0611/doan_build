@@ -9,6 +9,7 @@ import {
 import { templateParentStudentAccount } from 'src/modules/shared/template-email/template-parent-student-account';
 import emailUtil from '../../../utils/email.util';
 import { checkId } from '../../../utils/validate.util';
+import { generateBillEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 
 @Injectable()
 export class ParentManagementService {
@@ -649,12 +650,15 @@ export class ParentManagementService {
     accountStatus?: string,
     page: number = 1,
     limit: number = 10,
+    hasStudents?: boolean,
+    hasEnrollments?: boolean,
   ) {
     try {
       const skip = (page - 1) * limit;
 
       // Build where condition
       const whereCondition: any = {};
+      const andConditions: any[] = [];
 
       // Search by name, email, phone
       if (search && search.trim()) {
@@ -703,6 +707,40 @@ export class ParentManagementService {
         };
       }
 
+      if (typeof hasStudents === 'boolean') {
+        andConditions.push({
+          students: hasStudents ? { some: {} } : { none: {} },
+        });
+      }
+
+      if (typeof hasEnrollments === 'boolean') {
+        andConditions.push(
+          hasEnrollments
+            ? {
+                students: {
+                  some: {
+                    enrollments: {
+                      some: {},
+                    },
+                  },
+                },
+              }
+            : {
+                students: {
+                  none: {
+                    enrollments: {
+                      some: {},
+                    },
+                  },
+                },
+              },
+        );
+      }
+
+      if (andConditions.length > 0) {
+        whereCondition.AND = [...(whereCondition.AND || []), ...andConditions];
+      }
+
       // Get total count
       const totalCount = await this.prisma.parent.count({
         where: whereCondition,
@@ -741,23 +779,39 @@ export class ParentManagementService {
                   email: true,
                 },
               },
+              enrollments: {
+                select: {
+                  id: true,
+                },
+              },
             },
           },
         },
       });
 
-      const formattedParents = parents.map((parent) => ({
-        id: parent.id,
-        createdAt: parent.createdAt,
-        updatedAt: parent.updatedAt,
-        user: parent.user,
-        students: parent.students.map((student) => ({
+      const formattedParents = parents.map((parent) => {
+        const students = parent.students.map((student) => ({
           id: student.id,
           studentCode: student.studentCode,
           user: student.user,
-        })),
-        studentCount: parent.students.length,
-      }));
+          enrollments: student.enrollments || [],
+        }));
+
+        const enrollmentCount = students.reduce(
+          (total, student) => total + (student.enrollments?.length || 0),
+          0,
+        );
+
+        return {
+          id: parent.id,
+          createdAt: parent.createdAt,
+          updatedAt: parent.updatedAt,
+          user: parent.user,
+          students,
+          studentCount: students.length,
+          enrollmentCount,
+        };
+      });
 
       return {
         data: formattedParents,
@@ -1560,7 +1614,6 @@ async updateParent(
 
         console.log(cashGiven);
         
-        
         if (isNaN(cashGiven) || cashGiven <= 0) {
           throw new HttpException(
             'Số tiền khách đưa không hợp lệ',
@@ -1677,11 +1730,59 @@ async updateParent(
         return paymentWithAllocations;
       });
 
+      try {
+        if (result.parent.user.email) {
+          // Chuẩn bị dữ liệu gửi mail (Map từ kết quả transaction)
+          const emailData = {
+            parentName: result.parent.user.fullName,
+            transactionCode: result.transactionCode,
+            createdAt: result.createdAt,
+            expirationDate: result.expirationDate,
+            totalAmount: Number(result.amount),
+            payNow: result.status === 'completed',
+            cashGiven: payNow && method === 'cash' ? Number(options?.cashGiven || 0) : null,
+            returnMoney: Number(result.returnMoney),
+            
+            // Map danh sách items
+            items: result.feeRecordPayments.map((frp) => ({
+              studentName: frp.feeRecord.student.user.fullName,
+              className: frp.feeRecord.class?.name || 'Lớp học',
+              feeName: frp.feeRecord.feeStructure?.name || 'Học phí',
+              amount: Number(frp.feeRecord.totalAmount || frp.feeRecord.amount),
+            })),
+
+            // Thông tin trung tâm cố định (Vì không cần bank info)
+            centerInfo: {
+              centerName: "Trung tâm QNEdu",
+              address: "Thủy Nguyên Hải Phòng",
+              phone: "0382657962"
+            }
+          };
+
+          // Tạo nội dung HTML
+          const htmlContent = generateBillEmailTemplate(emailData);
+
+          // Gửi Mail (Fire and forget - không await để response nhanh)
+          await emailUtil(
+            result.parent.user.email,
+            emailData.payNow 
+              ? `[Biên lai] Xác nhận thu tiền #${result.transactionCode}`
+              : `[Thông báo] Vui lòng đóng học phí #${result.transactionCode}`,
+            htmlContent,
+          );
+        }
+      } catch (mailError) {
+        // Log lỗi nhưng không chặn flow chính
+        console.error("Lỗi gửi email hóa đơn:", mailError);
+      }
+      // =========================================================
+
+      // --- PHẦN RETURN ĐÃ CHỈNH SỬA ---
       const message = payNow
         ? method === 'cash'
           ? `Tạo và thanh toán hóa đơn thành công. Tiền thừa: ${returnMoney.toLocaleString('vi-VN')}đ`
           : 'Tạo và thanh toán hóa đơn thành công'
-        : 'Tạo hóa đơn cho phụ huynh thành công';
+        : 'Tạo hóa đơn cho phụ huynh thành công. Đã gửi email thông báo.';
 
       return {
         data: result,
@@ -1736,7 +1837,7 @@ async updateStatusPayment(paymentId: string, status: string, customNotes?: strin
       note = customNotes.trim();
     } 
     // Otherwise, use default note
-    else if (existingPayment.status === "partially_paid" && status === "completed") {
+    else if (customNotes === null && existingPayment.status === "partially_paid" && status === "completed") {
       note += " => Phụ huynh đã thanh toán phần còn lại của hóa đơn.";
     }
 

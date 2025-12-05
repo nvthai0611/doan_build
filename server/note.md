@@ -102,3 +102,5 @@ npm i -D @types/bcrypt // hỗ trợ typescrypt
 ## kiểm tra redis đã được lưu chưa
 
 127.0.0.1:6379> KEYs \*
+
+// api : lặp for check toàn bộ giao dịch

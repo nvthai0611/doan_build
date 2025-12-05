@@ -25,6 +25,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState(search)
+  const [includeSubstitute, setIncludeSubstitute] = useState(true)
   
   const pagination = usePagination({
     initialPage: 1,
@@ -59,12 +60,20 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     status: activeTab,
     search: debouncedSearch,
     page: pagination.currentPage,
-    limit: pagination.itemsPerPage
+    limit: pagination.itemsPerPage,
+    includeSubstitute,
   })
   
   const meta = (teacherClassesData as any)?.meta
   const totalItems = meta?.total || 0
   const totalPages = meta?.totalPages || 0
+
+  // Update pagination when meta changes
+  useEffect(() => {
+    if (meta) {
+      pagination.setTotalItems(meta.total || 0)
+    }
+  }, [meta])
  
 
   const formatDate = (dateString: string): string => {
@@ -98,12 +107,16 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
   const filteredData = useMemo(() => {
     if (!teacherClassesData?.data || !Array.isArray(teacherClassesData.data)) return []
     
-    let data = teacherClassesData.data.map((item: any) => ({
-      ...item,
-      role: item.role || "Giáo viên chính", // Add default role if not present
-      late: item.late || 0,
-      absent: item.absent || 0
-    }))
+    let data = teacherClassesData.data.map((item: any) => {
+      const isSubstitute = Boolean(item.isSubstitute || item.substitute === true || item.role === 'substitute')
+      return {
+        ...item,
+        isSubstitute,
+        role: isSubstitute ? "GV thay thế" : (item.role || "GV chính"),
+        late: item.late || 0,
+        absent: item.absent || 0
+      }
+    })
 
     // Filter by status tab (local filter as backup)
     if (activeTab !== 'all') {
@@ -128,6 +141,13 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
       )
     }
 
+    // Filter by includeSubstitute switch
+    // If switch is OFF, hide substitute classes
+    // If switch is ON, show all classes (both main and substitute)
+    if (!includeSubstitute) {
+      data = data.filter((item: any) => !item.isSubstitute)
+    }
+
     // Sort by status với custom order: draft → ready → active → suspended → completed → cancelled
     const statusOrder: Record<string, number> = {
       [ClassStatus.DRAFT]: 1,      // Chưa cập nhật
@@ -137,12 +157,22 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
       [ClassStatus.COMPLETED]: 5,  // Đã kết thúc
       [ClassStatus.CANCELLED]: 6,  // Đã hủy
     };
+    const roleOrder = {
+      main: 1,
+      substitute: 2,
+    }
 
     data = [...data].sort((a: any, b: any) => {
       const orderA = statusOrder[a.status] || 999;
       const orderB = statusOrder[b.status] || 999;
       if (orderA !== orderB) {
         return orderA - orderB; // Sort asc: draft → ready → active → ...
+      }
+      // Ưu tiên lớp chính trước lớp dạy thay
+      const roleA = a.isSubstitute ? roleOrder.substitute : roleOrder.main
+      const roleB = b.isSubstitute ? roleOrder.substitute : roleOrder.main
+      if (roleA !== roleB) {
+        return roleA - roleB
       }
       // If same status, sort by createdAt desc (mới nhất trước)
       const dateA = new Date(a.createdAt || a.startDate || 0).getTime();
@@ -151,7 +181,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     });
     
     return data
-  }, [teacherClassesData, activeTab, debouncedSearch])
+  }, [teacherClassesData, activeTab, debouncedSearch, includeSubstitute])
 
   // Tab counts based on filtered data
   const tabCounts = useMemo(() => {
@@ -205,7 +235,14 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         const scheduleArray = ensureScheduleArray(item.schedule)
         return (
           <div className="space-y-1">
-            <div className="text-blue-600 font-medium hover:underline cursor-pointer" onClick={() => handleViewClass(item.id)}>{item.name}</div>
+            <div className="text-blue-600 font-medium hover:underline cursor-pointer flex items-center gap-2" onClick={() => handleViewClass(item.id)}>
+              {item.name}
+              {item.isSubstitute && (
+                <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 bg-orange-50">
+                  Thay thế
+                </Badge>
+              )}
+            </div>
             {scheduleArray.map((scheduleItem: any, idx: number) => (
               <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
                 <span className="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
@@ -225,7 +262,7 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
     },
     {
       key: "role",
-      header: "Vai trò",
+      header: "Giáo viên",
       width: "100px",
       render: (item) => (
         <div className="space-y-1">
@@ -301,20 +338,26 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Tìm kiếm theo tên, mã lớp"
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-10"
-          />
-          {/* Loading indicator khi đang debounce */}
-          {search !== debouncedSearch && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
-            </div>
-          )}
+        <div className="flex items-center justify-between gap-6">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Tìm kiếm theo tên, mã lớp"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10"
+            />
+            {/* Loading indicator khi đang debounce */}
+            {search !== debouncedSearch && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch checked={includeSubstitute} onCheckedChange={setIncludeSubstitute} className="data-[state=checked]:bg-blue-600" />
+            <span className="text-sm text-gray-700">Bao gồm lớp dạy thay</span>
+          </div>
         </div>
       </div>
 
@@ -328,13 +371,18 @@ function ClassesTab({ teacherId, activeTab, search, setActiveTab, setSearch }: C
           emptyMessage="Không có dữ liệu lớp học"
           hoverable={true}
           pagination={{
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: filteredData.length,
-            itemsPerPage: filteredData.length,
-            onPageChange: () => {},
-            onItemsPerPageChange: () => {},
-            showItemsPerPage: false,
+            currentPage: pagination.currentPage,
+            totalPages: totalPages || 1,
+            totalItems: totalItems || 0,
+            itemsPerPage: pagination.itemsPerPage,
+            onPageChange: (page: number) => {
+              pagination.setCurrentPage(page)
+            },
+            onItemsPerPageChange: (itemsPerPage: number) => {
+              pagination.setItemsPerPage(itemsPerPage)
+              pagination.setCurrentPage(1)
+            },
+            showItemsPerPage: true,
             showPageInfo: true,
           }}
         />

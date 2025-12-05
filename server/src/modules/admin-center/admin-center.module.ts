@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
 import { ApprovalManagementController } from './controllers/approval-management.controller';
 import { ClassManagementController } from './controllers/class-management.controller';
 import { EnrollmentManagementController } from './controllers/enrollment-management.controller';
@@ -47,6 +49,7 @@ import { MiddlewareCenterOwner } from 'src/common/middleware/center-owner/center
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { SessionSchedulerService } from './crons/session-scheduler.service';
 import { ClassNotificationCronService } from './crons/class-notification-cron.service';
+import { FeedbackAnalysisCronService } from './crons/feedback-analysis-cron.service';
 import { ClassNotificationService } from './services/class-notification.service';
 import { ContractUploadController } from './controllers/contract-upload.controller';
 import { ContractUploadService } from './services/contract-upload.service';
@@ -56,18 +59,47 @@ import { SubjectManagementController } from './controllers/subject-management.co
 import { SubjectManagementService } from './services/subject-management.service';
 import { PayRollTeacherService } from './services/payroll-teacher.service';
 import { PayrollTeacherController } from './controllers/payroll-teacher.controller';
+import { CenterInfoController } from './controllers/center-info.controller';
+import { CenterInfoService } from './services/center-info.service';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { SchoolManagementController } from './controllers/school-management.controller';
+import { SchoolManagementService } from './services/school-management.service';
+import { JobTriggerController } from './controllers/job-trigger.controller';
+import { BillCronService } from '../cronjob/service/bill-cron.service';
+import { PayrollCronService } from '../cronjob/service/payroll-teacherv2.service';
+import { TriggerManagementService } from './services/trigger-management.service';
+import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
+import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
+import { BullModule } from '@nestjs/bull';
+import { AuditLogController } from './controllers/audit-log.controller';
+import { AuditLogService } from './services/audit-log.service';
+import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
+import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
+import { FinancialReportsController } from './controllers/financial-reports.controller';
+import { FinancialReportsService } from './services/financial-reports.service';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Enable cron jobs
+    BullModule.registerQueue({
+      name: 'payroll-notification', // ✅ Register queue ở đây
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-recalculation', // ✅ Register queue ở đây
+    }),
+    BullModule.registerQueue({
+      name: 'payroll-payment-notification', // ✅ Register queue ở đây
+    }),
     RouterModule.register([
       {
-        path: "admin-center", 
+        path: "admin-center",
         module: AdminCenterModule,
       },
     ]),
-    
+    HttpModule, // HTTP client for AI API calls
+    ConfigModule, // Config service for API keys
     SharedModule, //sử dụng email services
+    CloudinaryModule, // Cloudinary service cho upload ảnh
   ],
   controllers: [
     ApprovalManagementController,
@@ -93,7 +125,12 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     ContractUploadController,
     RoomsManagementController,
     SubjectManagementController,
-    PayrollTeacherController
+    PayrollTeacherController,
+    CenterInfoController,
+    SchoolManagementController,
+    JobTriggerController,
+    AuditLogController,
+    FinancialReportsController,
   ],
   providers: [
     PrismaService,
@@ -124,9 +161,21 @@ import { PayrollTeacherController } from './controllers/payroll-teacher.controll
     // SessionSchedulerService, // Cron jobs service
     ClassNotificationService,
     ClassNotificationCronService, // Cron job cho thông báo lớp học
-    PayRollTeacherService
+    FeedbackAnalysisCronService, // Cron job phân tích feedback mỗi 7 ngày
+    PayRollTeacherService,
+    CenterInfoService,
+    SchoolManagementService,
+    BillCronService,
+    PayrollCronService,
+    TriggerManagementService,
+    FeeReminderService,
+    EmailServiceNotificationBill,
+    AuditLogService,
+    ChangeStatusSessionService,
+    EmailNotificationPayrollService,
+    FinancialReportsService,
   ],
-  exports: [AlertService, HolidaysSettingService], // Export để dùng ở module khác
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
 
 })
 //check

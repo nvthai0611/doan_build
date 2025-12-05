@@ -1,29 +1,62 @@
-import { useState } from 'react';
-import { useAuth } from '../../lib/auth';
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '../../assets/shadcn-ui/components/ui/badge';
-// Đã loại bỏ Tabs, TabsList, TabsTrigger, TabsContent khỏi import vì không dùng nữa
 import {
   Bell,
-  Briefcase,
-  FileText,
   Clock,
   CheckCircle,
   Info,
   AlertTriangle,
   XCircle,
+  Calendar,
+  MapPin,
+  Users,
+  FileText,
+  ArrowRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { alertService, Alert } from '../../services/center-owner/alerts/alert.service';
+import {
+  alertService,
+  Alert,
+} from '../../services/center-owner/alerts/alert.service';
+import { centerOwnerScheduleService } from '../../services/center-owner/center-schedule/schedule.service';
+import { classService } from '../../services/center-owner/class-management/class.service';
 import { useToast } from '../../hooks/use-toast';
 
+interface TeacherInSession {
+  id: string;
+  teacher: {
+    id: string;
+    fullName: string;
+    teacherCode?: string;
+  };
+  session: {
+    id: string;
+    status?: string;
+    startTime?: string;
+    endTime?: string;
+    sessionNumber?: string;
+  };
+  class: {
+    id: string;
+    name: string;
+    classCode?: string;
+    subject?: string;
+    room?: {
+      name?: string;
+    };
+  };
+  enrollmentCount?: number;
+  attendanceStatus?: string;
+}
+
 export const CenterOwnerHomePage = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   // Get all alerts for stats calculation
   const { data: allAlertsData } = useQuery({
@@ -34,18 +67,44 @@ export const CenterOwnerHomePage = () => {
   });
 
   const allAlerts = allAlertsData?.data || [];
-  const totalTasks = allAlerts.length;
-  const completedTasks = allAlerts.filter((a: any) => a.processed).length;
-  const completionRate =
-    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const unreadAlerts = allAlerts.filter((a: any) => !a.isRead);
+  const unreadCount = unreadAlerts.length;
+  const displayedAlerts = unreadAlerts;
 
-  const pendingTasks = allAlerts.filter((a: any) => !a.processed);
-  const pendingCount = pendingTasks.length;
+  const {
+    data: teacherSessionsData,
+    isLoading: isSessionsLoading,
+    isError: isSessionsError,
+  } = useQuery({
+    queryKey: ['center-owner', 'sessions', 'today', todayDate],
+    queryFn: () =>
+      centerOwnerScheduleService.getTeachersInSessionsToday({
+        startDate: todayDate,
+        endDate: todayDate,
+        page: 1,
+        limit: 20,
+      }),
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+  });
 
-  const notificationAlerts = allAlerts.slice(0, 100000).filter((a: any) => !a.isRead); // Dùng cho cả 2 thẻ
+  const teacherSessions: TeacherInSession[] = teacherSessionsData?.data || [];
+
+  // Get classes with students without contract
+  const {
+    data: classesWithoutContractData,
+    isLoading: isClassesLoading,
+  } = useQuery({
+    queryKey: ['classes-without-contract'],
+    queryFn: () => classService.getClassesWithoutContract(100),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+  console.log(classesWithoutContractData);
   
-  const unreadCount = allAlerts.filter((a: any) => !a.isRead).length;
-
+  const classesWithoutContract: any[] = Array.isArray(classesWithoutContractData?.data) 
+    ? classesWithoutContractData.data 
+    : [];
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => alertService.markAsRead(id),
@@ -147,143 +206,128 @@ export const CenterOwnerHomePage = () => {
     }
   };
 
-  // Get current time period
-  const currentHour = new Date().getHours();
-  const getGreeting = () => {
-    if (currentHour < 12) return 'Chào buổi sáng';
-    if (currentHour < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
+  const getSessionStatusStyle = (status?: string) => {
+    const styles: Record<
+      string,
+      { label: string; badgeClass: string; dotClass: string }
+    > = {
+      has_not_happened: {
+        label: 'Sắp diễn ra',
+        badgeClass: 'bg-blue-50 text-blue-600',
+        dotClass: 'bg-blue-500',
+      },
+      happening: {
+        label: 'Đang diễn ra',
+        badgeClass: 'bg-green-50 text-green-600',
+        dotClass: 'bg-green-500',
+      },
+      end: {
+        label: 'Đã hoàn thành',
+        badgeClass: 'bg-emerald-50 text-emerald-600',
+        dotClass: 'bg-emerald-500',
+      },
+      cancelled: {
+        label: 'Đã hủy',
+        badgeClass: 'bg-red-50 text-red-600',
+        dotClass: 'bg-red-500',
+      },
+      day_off: {
+        label: 'Nghỉ',
+        badgeClass: 'bg-orange-50 text-orange-600',
+        dotClass: 'bg-orange-500',
+      },
+      default: {
+        label: 'Chưa rõ',
+        badgeClass: 'bg-gray-100 text-gray-600',
+        dotClass: 'bg-gray-400',
+      },
+    };
+    return styles[status || 'default'] || styles.default;
   };
 
-  // Get avatar based on gender
-  const getAvatarUrl = () => {
-    if (user?.gender === 'female') {
-      return 'https://res.cloudinary.com/dgqkmqkdz/image/upload/v1761731781/character-9_hq69pe.webp';
-    }
-    return 'https://res.cloudinary.com/dgqkmqkdz/image/upload/v1761731781/character-9_hq69pe.webp';
+  const formatSessionTime = (session?: { startTime?: string; endTime?: string }) => {
+    if (!session) return '--:--';
+    const start = session.startTime?.slice(0, 5) || '--:--';
+    const end = session.endTime?.slice(0, 5) || '--:--';
+    return `${start} - ${end}`;
   };
 
-  // Quick stats với real data
-  const stats = [
-    {
-      title: 'Tiến độ hoàn thành công việc',
-      value: `${completionRate}%`,
-      icon: Briefcase,
-      color: 'text-blue-600',
-      bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100',
-    },
-    {
-      title: 'Số lượng công việc (Chưa xử lý)', // Làm rõ tiêu đề
-      value: pendingCount.toString(), // Sử dụng pendingCount đã tính
-      icon: FileText,
-      color: 'text-green-600',
-      bgGradient: 'bg-gradient-to-br from-green-50 to-green-100',
-    },
-  ];
+
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Greeting Card */}
-      <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-0 shadow-sm">
-        <CardContent className="p-8">
-          {/* Greeting, Avatar và Thời gian trong cùng 1 hàng */}
-          <div className="flex items-center justify-between gap-4">
-            {/* Avatar và Greeting */}
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0">
-                <img
-                  src={getAvatarUrl()}
-                  alt="Avatar"
-                  className="w-16 h-16 md:w-20 md:h-20 object-contain rounded-full"
-                />
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-2xl md:text-3xl font-bold">
-                  <span className="text-pink-600">{getGreeting()}, </span>
-                  <span className="text-purple-600">{user?.fullName}</span>
-                </h1>
-              </div>
-            </div>
-
-            {/* Thời gian dropdown */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Thời gian</span>
-              <select className="px-3 py-1.5 border border-gray-200 rounded-lg bg-white font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pink-500/20">
-                <option>Tuần</option>
-                <option>Tháng</option>
-                <option>Quý</option>
-              </select>
-            </div>
+    <div className="p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Trung tâm cập nhật thông báo tự động mỗi 5 giây
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600">
+              Tổng: {allAlerts.length}
+            </span>
+            <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-600">
+              Chưa đọc: {unreadCount}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {stats.map((stat, index) => (
-          <Card
-            key={index}
-            className="shadow-sm hover:shadow-md transition-shadow"
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div
-                  className={`p-3 rounded-xl ${stat.bgGradient} ${stat.color}`}
-                >
-                  <stat.icon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {stat.title}
+        {/* Alerts and Classes without contract - Side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bảng thông báo */}
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-0">
+              <div className="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div> 
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-500" />
+                    Bảng thông báo
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Chỉ hiển thị thông báo chưa đọc
                   </p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => markAllAsReadMutation.mutate()}
+                      disabled={markAllAsReadMutation.isPending}
+                    >
+                      Đánh dấu tất cả đã đọc
+                    </Button>
+                  )}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-primary hover:text-primary/80"
+                    onClick={() => navigate('/center-qn/alerts')}
+                  >
+                    Xem chi tiết
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
-      {/* Tasks Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* === KHỐI ĐÃ THAY ĐỔI (THEO YÊU CẦU) === */}
-        {/* All Tasks (List tất cả, highlight cái chưa processed) */}
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              {/* 1. Đổi tiêu đề */}
-              <h3 className="font-semibold">Công việc</h3>
-              <Button
-                variant="link"
-                size="sm"
-                className="text-primary hover:text-primary/80"
-                onClick={() => navigate('/center-qn/tasks')}
-              >
-                Xem tất cả
-              </Button>
-            </div>
-
-            <div className="mt-4">
-              {/* 2. Kiểm tra allAlerts thay vì pendingCount */}
-              {allAlerts.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p className="text-sm">Không có dữ liệu</p>
+              {displayedAlerts.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">
+                    Không có thông báo chưa đọc
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {/* 3. Lặp qua allAlerts thay vì pendingTasks */}
-                  {allAlerts.slice(0, 1000).map((task: Alert) => {
-                    const style = getAlertStyle(task.severity, task.alertType);
+                <div className="p-6 space-y-3 max-h-[520px] overflow-y-auto">
+                  {displayedAlerts.map((alert: Alert) => {
+                    const style = getAlertStyle(alert.severity, alert.alertType);
                     const Icon = style.icon;
+                    const isUnread = !alert.isRead;
 
                     return (
                       <div
-                        key={task.id}
-                        onClick={() => handleAlertClick(task)}
-                        // 4. Thay đổi logic highlight: nền xám nếu CHƯA PROCESSED
+                        key={alert.id}
+                        onClick={() => handleAlertClick(alert)}
                         className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                          !task.processed ? 'bg-gray-100 dark:bg-gray-800' : ''
+                          isUnread ? 'bg-gray-50 dark:bg-gray-900/40' : ''
                         }`}
                       >
                         <div className={`p-2 rounded-lg ${style.bgColor}`}>
@@ -292,28 +336,23 @@ export const CenterOwnerHomePage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <h4 className="font-medium text-sm line-clamp-1">
-                              {task.title}
+                              {alert.title}
                             </h4>
                             <Badge
                               variant={style.badgeVariant}
-                              className="text-xs shrink-0"
+                              className="text-xs shrink-0 capitalize"
                             >
-                              {task.alertType}
+                              {alert.alertType.replace(/_/g, ' ')}
                             </Badge>
                           </div>
-                          {/* 5. Giữ lại span status (giờ đã hoạt động đúng) */}
-                          <span className={`flex items-center gap-1 text-xs font-medium ${
-                            task.processed ? 'text-green-600' : 'text-orange-600'
-                          }`}>
-                            {task.processed ? <CheckCircle className="w-3 h-3" /> : <Info className="w-3 h-3" />}
-                            {task.processed ? 'Đã xử lý' : 'Chưa xử lý'}
-                          </span>
+
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
-                            {task.message}
+                            {alert.message}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock className="w-3 h-3" />
-                            <span>{formatRelativeTime(task.triggeredAt)}</span>
+                            <span>{formatRelativeTime(alert.triggeredAt)}</span>
+                            {isUnread && <span className="ml-1 font-bold">•</span>}
                           </div>
                         </div>
                       </div>
@@ -321,120 +360,213 @@ export const CenterOwnerHomePage = () => {
                   })}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-
-        {/* Notifications - (Đã khôi phục logic unreadCount) */}
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Bell className="w-4 h-4 text-blue-500" />
-                Thông báo chưa đọc
-                <span className="ml-2 text-sm text-muted-foreground">
-                  ({unreadCount})
-                </span>
-              </h3>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
+          {/* Classes with students without contract */}
+          {classesWithoutContract.length > 0 ? (
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-orange-500" />
+                      Lớp có học sinh chưa có cam kết
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Cần xử lý ngay để đảm bảo chất lượng
+                    </p>
+                  </div>
                   <Button
-                    variant="ghost"
+                    variant="link"
                     size="sm"
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
+                    className="text-primary hover:text-primary/80"
+                    onClick={() => navigate('/center-qn/classes')}
                   >
-                    Đánh dấu tất cả đã đọc
+                    Xem tất cả
                   </Button>
+                </div>
+
+                {isClassesLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((item) => (
+                      <div
+                        key={item}
+                        className="h-20 rounded-lg bg-muted animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    {classesWithoutContract.map((classItem: any) => (
+                      <div
+                        key={classItem.id}
+                        onClick={() =>
+                          navigate(`/center-qn/classes/${classItem.id}#students`)
+                        }
+                        className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-sm truncate">
+                              {classItem.name}
+                            </h4>
+                            {classItem.classCode && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {classItem.classCode}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            {classItem.subject && (
+                              <span>{classItem.subject}</span>
+                            )}
+                            <span>•</span>
+                            <span>
+                              {classItem.totalStudents} học sinh
+                            </span>
+                            <span>•</span>
+                            <span className="text-orange-600 font-medium">
+                              {classItem.studentsWithoutContract} chưa có cam kết
+                            </span>
+                          </div>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0 ml-2" />
+                      </div>
+                    ))}
+                  </div>
                 )}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-primary hover:text-primary/80"
-                  onClick={() => navigate('/center-qn/alerts')}
-                >
-                  Xem tất cả
-                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div></div>
+          )}
+        </div>
+
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-500" />
+                  Lịch dạy hôm nay
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(todayDate).toLocaleDateString('vi-VN', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: '2-digit',
+                  })}
+                </p>
               </div>
+              <Button
+                variant="link"
+                size="sm"
+                className="text-primary hover:text-primary/80"
+                onClick={() => navigate('/center-qn/lich-day-hom-nay')}
+              >
+                Xem tất cả
+              </Button>
             </div>
 
-            {notificationAlerts.length === 0 ? (
+            {isSessionsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="h-16 rounded-lg bg-muted animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : isSessionsError ? (
+              <div className="border rounded-lg p-4 text-sm text-red-600 bg-red-50">
+                Không thể tải danh sách buổi học hôm nay. Vui lòng thử lại sau.
+              </div>
+            ) : teacherSessions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Không có thông báo</p>
+                <Calendar className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Hôm nay chưa có buổi học nào.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {notificationAlerts.map((alert: Alert) => {
-                  const style = getAlertStyle(alert.severity, alert.alertType);
-                  const Icon = style.icon;
-                  const isUnread = !alert.isRead; // Logic này vẫn đúng
+              <div className="space-y-3">
+                {teacherSessions.slice(0, 6).map((item) => {
+                  const statusStyle = getSessionStatusStyle(item.session.status);
+                  const gradient =
+                    statusStyle.label === 'Đang diễn ra'
+                      ? 'from-green-500 to-green-600'
+                      : statusStyle.label === 'Sắp diễn ra'
+                        ? 'from-blue-500 to-blue-600'
+                        : 'from-red-500 to-red-600';
 
                   return (
                     <div
-                      key={alert.id}
-                      onClick={() => handleAlertClick(alert)}
-                      className={`flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors ${
-                        isUnread ? 'bg-gray-100 dark:bg-gray-800' : ''
-                      }`}
+                      key={item.id}
+                      className="flex items-center gap-3 px-1 py-1 rounded-xl hover:bg-muted/50 transition-colors"
                     >
-                      <div className={`p-2 rounded-lg ${style.bgColor}`}>
-                        <Icon className={`w-4 h-4 ${style.color}`} />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 block" />
+                        <span className="font-medium text-foreground">
+                          {item.session.startTime?.slice(0, 5) || '--:--'}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h4 className="font-medium text-sm line-clamp-1">
-                            {alert.title}
-                          </h4>
-                          <Badge
-                            variant={style.badgeVariant}
-                            className="text-xs shrink-0"
-                          >
-                            {alert.alertType}
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
-                          {alert.message}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatRelativeTime(alert.triggeredAt)}</span>
-                          {isUnread && (
-                            <span className="ml-1 font-bold">•</span>
-                          )}
+                      <div className="flex-1">
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-white bg-gradient-to-r ${gradient}`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {item.class?.name || 'Chưa cập nhật'}
+                              </p>
+                              <p className="text-xs text-white/80">
+                                {item.class?.subject || 'Môn học chưa rõ'}
+                              </p>
+                              <p className="text-xs text-white/70">
+                                Giáo viên: {item.teacher.fullName}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              {item.session.sessionNumber && (
+                                <span className="text-xs bg-white/20 px-2 py-1 rounded-full font-medium">
+                                  Buổi {item.session.sessionNumber}
+                                </span>
+                              )}
+                              <span className="text-[11px] uppercase tracking-wide text-white/70">
+                                {statusStyle.label}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/80">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3 h-3" />
+                              <span>{item.enrollmentCount ?? '--'} HV</span>
+                            </div>
+                            {item.class?.room?.name && (
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="w-3 h-3" />
+                                <span>{item.class.room.name}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              <span>{formatSessionTime(item.session)}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
                     </div>
                   );
                 })}
+                {teacherSessions.length > 6 && (
+                  <div className="text-center text-sm text-muted-foreground">
+                    Và {teacherSessions.length - 6} buổi khác...
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Schedule Today - Full width (Khối này giữ nguyên) */}
-      <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Lịch dạy hôm nay</h3>
-            <Button
-              variant="link"
-              size="sm"
-              className="text-primary hover:text-primary/80"
-              onClick={() => navigate('/center-qn/schedule')}
-            >
-              Xem tất cả
-            </Button>
-          </div>
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-sm">Không có dữ liệu</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

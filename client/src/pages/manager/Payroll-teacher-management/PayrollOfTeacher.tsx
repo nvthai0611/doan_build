@@ -122,7 +122,7 @@ export default function PayrollOfTeacher() {
   }, [rawPayrolls])
 
   const payrollColumns: Column<any>[] = [
-    { key: "period", header: "Kỳ" },
+    { key: "period", header: "Thời gian" },
     { key: "hourlyRate", header: "Đơn giá", render: r => r.hourlyRate.toLocaleString("vi-VN") },
     { key: "bonuses", header: "Thưởng", render: r => r.bonuses.toLocaleString("vi-VN") },
     { key: "deductions", header: "Khấu trừ", render: r => r.deductions.toLocaleString("vi-VN") },

@@ -21,7 +21,7 @@ import {
 
 interface LeaveRequest {
   id: string
-  requestType: string
+  type: string
   teacherId: string
   startDate: string
   endDate: string
@@ -80,12 +80,14 @@ const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
   approved: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+  cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
 }
 
 const statusLabels = {
   pending: 'Chờ duyệt',
   approved: 'Đã duyệt',
   rejected: 'Từ chối',
+  cancelled: 'Đã hủy',
 }
 
 const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
@@ -145,9 +147,9 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
-                className={requestTypeColors[request?.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors.other}
               >
-                {requestTypeLabels[request?.requestType as keyof typeof requestTypeLabels] || request?.requestType}
+                {requestTypeLabels[request?.type as keyof typeof requestTypeLabels] || request?.type}
               </Badge>
               <Badge
                 variant="secondary"
@@ -245,7 +247,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
                   {request?.affectedSessions.map((session) => (
                     <div key={session?.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div>

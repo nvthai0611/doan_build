@@ -4,6 +4,8 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 // import { UsersModule } from './modules/users/users.module';
@@ -78,7 +80,15 @@ import { TasksModule } from './modules/cronjob/cron.module';
     TasksModule
   ],
   controllers: [AppController],
-  providers: [AppService, AuthService, PrismaService],
+  providers: [
+    AppService,
+    AuthService,
+    PrismaService,
+    // {
+    //   provide: APP_INTERCEPTOR,
+    //   useClass: AuditLogInterceptor,
+    // },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

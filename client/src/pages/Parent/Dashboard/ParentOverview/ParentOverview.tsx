@@ -257,7 +257,7 @@ export function ParentOverview() {
               <p className="text-sm text-muted-foreground px-1">Chưa có lớp học nào.</p>
             )}
             {activeCourses.map((c) => (
-              <Card key={c.id}>
+              <Card key={`${c.id}-${c.studentName}`}>
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">

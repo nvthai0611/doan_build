@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Calendar, 
   Star, 
-
   AlertCircle,
   FileText,
- 
+  User,
 } from "lucide-react"
+import { format } from "date-fns"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { classService } from "../../../../services/center-owner/class-management/class.service"
 import Loading from "../../../../components/Loading/LoadingPage"
 
@@ -36,6 +37,7 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     revenue: 0,
     rating: 0,
     reviews: 0,
+    recentReviews: [],
     attendance: {
       onTime: 0,
       late: 0,
@@ -49,6 +51,9 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
       notSubmitted: 0
     }
   }
+
+  console.log(dashboardData);
+  
 
   const getStarRating = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -256,115 +261,58 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
             })()}
           </CardContent>
         </Card>
-
-        {/* Báo cáo bài tập */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Báo cáo bài tập</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dashboardData.homework.assigned === 0 ? (
-              <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
-                <div className="text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-2" />
-                  <p>Chưa có bài tập nào</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                    Đã giao
-                  </div>
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {dashboardData.homework.assigned}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {/* Đã nộp */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Đã nộp</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {dashboardData.homework.submitted}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${(dashboardData.homework.submitted / dashboardData.homework.assigned) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  {/* Chưa nộp */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Chưa nộp</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {dashboardData.homework.notSubmitted}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-orange-400 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${(dashboardData.homework.notSubmitted / dashboardData.homework.assigned) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Evaluation Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Đánh giá */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Đánh giá trung bình</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {dashboardData.reviews === 0 ? (
-              <div className="text-center text-gray-400 dark:text-gray-500">
-                <Star className="h-12 w-12 mx-auto mb-2" />
-                <p>Chưa có đánh giá nào</p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                  {dashboardData.rating.toFixed(1)}
-                </div>
-                <div className="flex justify-center space-x-1 mb-2">
-                  {getStarRating(dashboardData.rating)}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {dashboardData.reviews} đánh giá
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Reviews */}
         <Card>
           <CardHeader>
             <CardTitle>Đánh giá gần đây</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="text-center text-gray-400 dark:text-gray-500">
-              <div className="w-32 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                <FileText className="h-8 w-8" />
+            {dashboardData.recentReviews && dashboardData.recentReviews.length > 0 ? (
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {dashboardData.recentReviews.map((review: any) => (
+                  <div key={review.id} className="border-b dark:border-gray-700 pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={review.parentAvatar} alt={review.parentName} />
+                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                          {review.parentName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-gray-900 dark:text-white">
+                              {review.parentName}
+                            </p>
+                            {review.studentName && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                (Phụ huynh của {review.studentName})
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {getStarRating(review.rating)}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                            {review.comment}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {format(new Date(review.createdAt), 'dd/MM/yyyy HH:mm')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="text-sm">Tính năng đang được phát triển</p>
-            </div>
+            ) : (
+              <div className="text-center text-gray-400 dark:text-gray-500 py-8">
+                <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Chưa có đánh giá nào</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
