@@ -161,20 +161,6 @@ export class ClassManagementService {
       const skip = (page - 1) * limit;
       const take = limit;
 
-      // Determine current academic year
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1; // 1-12
-
-      // Academic year logic:
-      // - If current month is 9-12: current academic year is currentYear-currentYear+1
-      // - If current month is 1-8: current academic year is currentYear-1-currentYear
-      let currentAcademicYear: string;
-      if (currentMonth >= 9) {
-        currentAcademicYear = `${currentYear}-${currentYear + 1}`;
-      } else {
-        currentAcademicYear = `${currentYear - 1}-${currentYear}`;
-      }
-
       const where: any = {
         status: { not: 'deleted' }, // Exclude deleted classes
       };
@@ -1705,6 +1691,8 @@ export class ClassManagementService {
 
             let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.`;
 
+            void this.notifyStatusChange(id, existingClass.status, status);
+
             return {
               success: true,
               message,
@@ -1729,6 +1717,8 @@ export class ClassManagementService {
             }[status] || status;
 
           let message = `Đã chuyển trạng thái lớp sang "${statusLabel}" nhưng có lỗi khi tạo lịch học tự động`;
+
+          void this.notifyStatusChange(id, existingClass.status, status);
 
           return {
             success: true,
