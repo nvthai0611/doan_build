@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Search, X, ChevronUp, ChevronDown } from "lu
 
 export interface Column<T> {
   key: string
-  header: string
+  header: string | (() => React.ReactNode)
   width?: string
   align?: "left" | "center" | "right"
   render?: (item: T, index: number) => React.ReactNode
@@ -449,7 +449,7 @@ export function DataTable<T>({
                 >
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between">
-                      <span>{column.header}</span>
+                      <span>{typeof column.header === 'function' ? column.header() : column.header}</span>
                       {renderSortButton(column)}
                     </div>
                     {renderSearchInput(column)}
