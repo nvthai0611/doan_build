@@ -45,12 +45,14 @@ export default function SessionDetail() {
     refetchOnWindowFocus: false
   });
 
+  console.log("chạy");
+  
   const { data: attendanceResponse, isLoading: attendanceLoading } = useQuery({
     queryKey: ['sessionAttendance', sessionId],
     queryFn: () => centerOwnerScheduleService.getSessionAttendance(sessionId),
     enabled: !!sessionId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 0,
+    refetchOnWindowFocus: true
   });
 
   const sessionData = sessionDetailResponse as any;
@@ -73,7 +75,7 @@ export default function SessionDetail() {
     name: attendance.student?.user?.fullName || attendance.studentName || 'N/A',
     email: attendance.student?.user?.email || '',
     avatar: attendance.student?.user?.avatar || null,
-    status: attendance.status || 'absent', // Mặc định là vắng mặt nếu chưa có dữ liệu
+    status: attendance.status || 'null', // Mặc định là vắng mặt nếu chưa có dữ liệu
     attendanceTime: attendance.checkInTime 
       ? `${format(new Date(attendance.checkInTime), 'HH:mm')} → ${attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'HH:mm') : '—'}` 
       : '—',
