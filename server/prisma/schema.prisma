@@ -38,6 +38,7 @@ model User {
   blogs                   Blog[]                   @relation("BlogAuthor")
   roleData                Role?                    @relation(fields: [roleId], references: [id])
   payrollPaymentsMade     PayrollPayment[]         @relation("PaidBy")
+  passwordResetTokens     PasswordResetToken[]
 
   @@map("users")
 }
@@ -731,6 +732,20 @@ model UserSession {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_sessions")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+  @@index([token])
+  @@index([userId])
 }
 
 model schema_audit {
