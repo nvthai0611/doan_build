@@ -56,6 +56,12 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
         return status
     }
   }
+
+  if(!fee){
+    return <div>
+      <p>Không có dữ liệu học phí</p>
+    </div>
+  }
   
   return (
     <Card className={`transition-all ${isSelected ? "ring-2 ring-primary" : ""}`}>

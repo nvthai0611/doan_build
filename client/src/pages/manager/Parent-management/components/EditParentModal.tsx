@@ -24,7 +24,7 @@ interface EditParentModalProps {
 export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditParentModalProps) {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState("info")
-  
+
   // Form state
   const [formData, setFormData] = useState({
     fullName: "",
@@ -107,6 +107,8 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
         newErrors.fullName = "Họ và tên không được để trống"
       } else if (sanitizedFullName.length < 2) {
         newErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
+      } else if (sanitizedFullName.length > 30) {
+        newErrors.fullName = "Họ và tên không được vượt quá 30 ký tự"
       }
     }
 
@@ -133,7 +135,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin")
       return
@@ -279,7 +281,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
                 </Label>
                 <Select
                   value={formData.relationshipType}
-                  onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") => 
+                  onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") =>
                     handleInputChange("relationshipType", value)
                   }
                 >

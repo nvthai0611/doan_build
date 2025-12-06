@@ -51,7 +51,9 @@ export class PayrollCronService {
   private readonly JOB_TYPE = 'teacher_payroll_generation';
 
   constructor(private readonly prisma: PrismaService) { }
-
+  private roundMoney(amount: Prisma.Decimal): Prisma.Decimal {
+    return new Prisma.Decimal(amount.toFixed(0));
+  }
   /**
    * CRON JOB: CHẠY LÚC 02:00 SÁNG NGÀY 10 HÀNG THÁNG
    * Ví dụ: Chạy ngày 10/12 để tính lương cho công việc của Tháng 11
@@ -290,7 +292,7 @@ export class PayrollCronService {
 
         // C. Tính Giá Trị Gốc 1 Buổi (Raw Value Per Session)
         // Doanh thu cả lớp / Số buổi = Giá trị 1 buổi
-        const rawValuePerSession = totalRevenue.dividedBy(totalSessions);
+        const rawValuePerSession = this.roundMoney(totalRevenue).dividedBy(totalSessions); 
         console.log("Số tiền trên 1 buổi: ", rawValuePerSession);
         
         // D. Chia tiền cho từng buổi
@@ -304,7 +306,7 @@ export class PayrollCronService {
           console.log("% Lương tháng này của giáo viên: ", teacherRate.toNumber());
           
           // Tính lương thực nhận = Giá gốc 1 buổi * % của GV
-          const teacherPayout = rawValuePerSession.times(teacherRate);
+          const teacherPayout = this.roundMoney(rawValuePerSession.times(teacherRate))
           console.log("Tiền lương giáo viên nhận được cho buổi: ", teacherPayout.toNumber());
           // Đếm HS (cho FE hiển thị - không ảnh hưởng tiền)
           const attendanceCount = await this.prisma.studentSessionAttendance.count({
@@ -436,7 +438,7 @@ export class PayrollCronService {
         }
 
         // --- C. TÍNH TIỀN ---
-        const teacherPayout = paymentAmount.times(finalRate);
+        const teacherPayout = this.roundMoney(paymentAmount.times(finalRate));
 
         // --- D. CỘNG DỒN VÀO MAP ---
         if (!backPayMap.has(targetTeacherId)) {

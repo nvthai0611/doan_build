@@ -31,7 +31,7 @@ interface StudentData {
 export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentModalProps) {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<"with-students" | "parent-only">("with-students")
-  
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -59,25 +59,25 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["parents"] })
       queryClient.invalidateQueries({ queryKey: ["parent-status"] })
-      
+
       const studentCount = response.data?.studentCount || 0
       toast.success(`Tạo thành công phụ huynh và ${studentCount} học sinh!`, {
         description: "Thông tin đăng nhập đã được tạo cho tất cả tài khoản."
       })
-      
+
       handleClose()
       onSuccess?.()
     },
     onError: (error: any) => {
       console.error('Full error object:', error)
-      
+
       // Extract error message from different possible structures
-      const message = 
-        error?.response?.data?.message || 
-        error?.message || 
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
         error?.data?.message ||
         "Có lỗi xảy ra khi tạo phụ huynh và học sinh"
-      
+
       toast.error(message, {
         description: error?.response?.data?.error || undefined
       })
@@ -117,6 +117,8 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       newErrors.fullName = "Họ và tên không được để trống"
     } else if (sanitizedFullName.length < 2) {
       newErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
+    } else if (sanitizedFullName.length > 30) {
+      newErrors.fullName = "Họ và tên không được vượt quá 30 ký tự"
     }
 
     // Phone validation
@@ -146,6 +148,8 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
         newErrors[`students.${index}.fullName`] = "Họ và tên không được để trống"
       } else if (sanitizedName.length < 2) {
         newErrors[`students.${index}.fullName`] = "Họ và tên phải có ít nhất 2 ký tự"
+      } else if (sanitizedName.length > 30) {
+        newErrors[`students.${index}.fullName`] = "Họ và tên không được vượt quá 30 ký tự"
       }
 
       // Validate gender (required)
@@ -157,6 +161,30 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       if (!student.schoolId) {
         newErrors[`students.${index}.schoolId`] = "Vui lòng chọn trường học"
       }
+
+      // Validate birthDate
+      if (!student.birthDate) {
+        newErrors[`students.${index}.birthDate`] = "Ngày sinh không được để trống"
+      } else {
+        const birthDate = new Date(student.birthDate)
+        const today = new Date()
+
+        // Check if future
+        if (birthDate > today) {
+          newErrors[`students.${index}.birthDate`] = "Ngày sinh không được ở tương lai"
+        } else {
+          // Check age >= 10
+          let age = today.getFullYear() - birthDate.getFullYear()
+          const m = today.getMonth() - birthDate.getMonth()
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--
+          }
+
+          if (age < 12) {
+            newErrors[`students.${index}.birthDate`] = "Học sinh phải từ 12 tuổi trở lên"
+          }
+        }
+      }
     })
 
     setErrors(newErrors)
@@ -165,7 +193,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate parent info
     if (!validateParentForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin phụ huynh")
@@ -250,7 +278,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
               {/* Parent Form */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Thông tin phụ huynh</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   {/* Username */}
                   <div className="space-y-2">
@@ -350,7 +378,7 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
                     </Label>
                     <Select
                       value={formData.relationshipType}
-                      onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") => 
+                      onValueChange={(value: "FATHER" | "MOTHER" | "OTHER") =>
                         handleInputChange("relationshipType", value)
                       }
                     >
