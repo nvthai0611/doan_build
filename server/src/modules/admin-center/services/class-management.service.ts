@@ -920,9 +920,13 @@ export class ClassManagementService {
       // Check room exists if provided và lấy capacity để làm maxStudents
       let roomCapacity: number | null = null;
       if (createClassDto.roomId) {
+        console.log('createClassDto.roomId', createClassDto.roomId);
+        
         const room = await this.prisma.room.findUnique({
           where: { id: createClassDto.roomId },
         });
+
+        console.log('room', room);
 
         if (!room) {
           throw new HttpException(
@@ -938,6 +942,7 @@ export class ClassManagementService {
         roomCapacity = room.capacity;
       }
 
+      console.log('roomCapacity', roomCapacity);
       // Check grade exists if provided
       if (createClassDto.gradeId) {
         const grade = await this.prisma.grade.findUnique({
@@ -2616,9 +2621,11 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa lớp học (soft delete bằng cách đổi status)
+ 
   async updateClassSchedules(id: string, body: any) {
     try {
+      console.log("check: ", id, body);
+      
       // Validate UUID
       if (!this.isValidUUID(id)) {
         throw new HttpException(
@@ -2722,6 +2729,7 @@ export class ClassManagementService {
 
           if (room) {
             updateData.roomId = firstSchedule.roomId;
+            updateData.maxStudents = room.capacity;
           } else {
             // Nếu roomId không hợp lệ, log warning nhưng vẫn tiếp tục
             console.warn(
