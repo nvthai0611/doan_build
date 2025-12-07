@@ -14,9 +14,12 @@ import { LoginDto } from './dto/loginDto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RegisterParentDto } from './dto/register-parent.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthService } from './auth.service';
 import { PermissionService } from './permission.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { BadRequestException } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -173,5 +176,25 @@ export class AuthController {
       message: 'Lấy danh sách tất cả quyền thành công',
       data: permissions,
     };
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    const result = await this.authService.forgotPassword(forgotPasswordDto.email);
+    return result;
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    // Validate confirm password
+    if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
+      throw new BadRequestException('Mật khẩu xác nhận không khớp');
+    }
+
+    const result = await this.authService.resetPassword(
+      resetPasswordDto.token,
+      resetPasswordDto.newPassword
+    );
+    return result;
   }
 }

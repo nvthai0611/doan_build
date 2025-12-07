@@ -4,6 +4,8 @@ import Home from "../pages/Home/Home";
 import LandingPage from "../pages/Home/LandingPage";
 import { PortalSelection } from "../pages/Auth/PortalSelection";
 import { ParentRegister } from "../pages/Auth/ParentRegister";
+import { ForgotPassword } from "../pages/Auth/ForgotPassword";
+import { ResetPassword } from "../pages/Auth/ResetPassword";
 import NotFound from "../pages/Error/NotFound";
 import { Route, Navigate, useParams } from "react-router-dom";
 import GuestMiddleware from "../middlewares/GuestMiddleware";
@@ -69,6 +71,12 @@ export const publicRoutes = (
         
         {/* Family Portal Registration */}
         <Route path="/auth/register/family" element={<ParentRegister />} />
+        
+        {/* Forgot Password */}
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        
+        {/* Reset Password */}
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
       </Route>
     </Route>
 

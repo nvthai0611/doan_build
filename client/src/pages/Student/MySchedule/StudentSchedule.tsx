@@ -18,6 +18,8 @@ interface StudentScheduleItem {
   subject: string
   className: string
   room?: string
+  status?: string // Status của session: has_not_happened, happening, end, cancelled, day_off
+  notes?: string // Ghi chú của session
   attendanceStatus?: "present" | "absent" | "late" | "excused" | null
   attendanceNote?: string | null
   attendanceRecordedAt?: string | null
@@ -94,6 +96,8 @@ export default function StudentSchedule() {
             subject: subjectData?.name as string || "",
             className: classData?.name as string || "",
             room: roomData?.name as string || undefined,
+            status: s.status as string || undefined, // Status của session
+            notes: s.notes as string || undefined, // Ghi chú của session
             attendanceStatus: s.attendanceStatus as "present" | "absent" | "late" | "excused" | null,
             attendanceNote: s.attendanceNote as string | null,
             attendanceRecordedAt: s.attendanceRecordedAt as string | null,
@@ -137,26 +141,38 @@ export default function StudentSchedule() {
     return map
   }, [schedules])
 
+  const getClassSessionStatusColor = (status?: string) => {
+    if (!status) return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm'
+    switch (status) {
+      case "day_off": return 'bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-300 text-orange-800 shadow-sm'
+      case "happening": return 'bg-gradient-to-br from-green-100 to-green-50 border-2 border-green-300 text-green-800 shadow-sm'
+      case "end": return 'bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm'
+      case "has_not_happened": return 'bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 text-blue-800 shadow-sm'
+      case "cancelled": return "bg-gradient-to-br from-red-100 to-red-50 border-2 border-red-300 text-red-800 shadow-sm"
+      default: return 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400 text-yellow-900 shadow-sm'
+    }
+  }
+
   const getAttendanceBadge = (status?: string | null) => {
     switch (status) {
       case 'present':
-        return <Badge className="bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+        return <Badge className="bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           Có mặt
         </Badge>
       case 'absent':
-        return <Badge className="bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
-          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+        return <Badge className="bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           Vắng mặt
         </Badge>
       case 'late':
-        return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 flex items-center gap-1">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           Đi muộn
         </Badge>
       case 'excused':
-        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+        return <Badge className="bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           Có phép
         </Badge>
       case null:
@@ -232,7 +248,11 @@ export default function StudentSchedule() {
 
                 <div className="space-y-1 max-h-28 overflow-y-auto">
                   {dayList.slice(0, 2).map((s) => (
-                    <div key={s.id} className="text-xs p-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm" title={`${s.subject} - ${s.className} - ${s.room || ''}${s.teacher ? ` - GV: ${s.teacher.fullName}` : ''}`}>
+                    <div 
+                      key={s.id} 
+                      className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(s.status)}`}
+                      title={`${s.subject} - ${s.className} - ${s.room || ''}${s.teacher ? ` - GV: ${s.teacher.fullName}` : ''}${s.notes ? ` - Ghi chú: ${s.notes}` : ''}`}
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium truncate flex items-center gap-1">
                           <BookOpen className="w-3 h-3" />
@@ -243,12 +263,20 @@ export default function StudentSchedule() {
                         <Clock className="w-3 h-3" />
                         {s.startTime}-{s.endTime}
                       </div>
-                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                      <div className="flex items-center justify-between gap-1 text-[10px] mb-1">
                         <span className="inline-flex items-center gap-1 truncate flex-1">
                           <MapPin className="w-3 h-3" />
                           <span className="truncate">{s.room || 'Chưa phân phòng'}</span>
                         </span>
                       </div>
+                      {/* Hiển thị status text như teacher */}
+                      {s.status === 'day_off' ? (
+                        <span style={{ fontSize: '10px' }}>(Nghỉ)</span>
+                      ) : s.status === 'end' ? (
+                        <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span>
+                      ) : s.status === 'cancelled' ? (
+                        <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                      ) : null}
                       <div className="mt-1 flex justify-center">
                         {getAttendanceBadge(s.attendanceStatus)}
                       </div>
@@ -305,15 +333,21 @@ export default function StudentSchedule() {
                 return (
                   <div key={`${hour}-${dayIdx}`} className="min-h-[60px] border-b border-r bg-white hover:bg-gray-50 transition-colors relative">
                     {list.map((s, si) => (
-                      <div key={s.id} className="absolute inset-1 rounded-lg text-xs p-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm" style={{ top: `${si * 45}px`, height: '40px', fontSize: '11px' }} title={`${s.subject} - ${s.className} - ${s.room || ''}${s.teacher ? ` - GV: ${s.teacher.fullName}` : ''}`}>
-                        <div className="truncate font-medium flex items-center gap-1">
-                          <BookOpen className="w-3 h-3" />
-                          {s.className}
-                        </div>
-                        <div className="truncate opacity-90 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {s.startTime}-{s.endTime}
-                        </div>
+                      <div 
+                        key={s.id} 
+                        className={`absolute inset-1 rounded text-xs p-1 cursor-pointer hover:opacity-80 transition-opacity ${getClassSessionStatusColor(s.status)}`}
+                        title={`${s.subject} - ${s.className} - ${s.room || ''}${s.teacher ? ` - GV: ${s.teacher.fullName}` : ''}${s.notes ? ` - Ghi chú: ${s.notes}` : ''}`}
+                        style={{ top: `${si * 20}px`, height: '58px', fontSize: '10px' }}
+                      >
+                        <div className="truncate font-medium">{s.className} - {s.room || 'Chưa phân phòng'}</div>
+                        <div className="truncate opacity-90">{s.startTime}-{s.endTime}</div>
+                        {s.status === "day_off" ? (
+                          <span style={{ fontSize: '10px' }}>(Nghỉ)</span>
+                        ) : s.status === "end" ? (
+                          <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span>
+                        ) : s.status === "cancelled" ? (
+                          <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -345,15 +379,15 @@ export default function StudentSchedule() {
           ) : (
             <div className="space-y-4">
               {list.map((s) => (
-                <div key={s.id} className="border rounded-xl p-5 hover:shadow-lg transition-all bg-white border-l-4 border-l-purple-500">
+                <div key={s.id} className="border rounded-xl p-5 hover:shadow-lg transition-all bg-white border-l-4 border-l-blue-600">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-4 mb-3">
                         <div className="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-full">
-                          <CalendarDays className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-semibold text-blue-800">{new Date(s.date).toLocaleDateString("vi-VN")}</span>
+                          <CalendarDays className="w-4 h-4 text-blue-700" />
+                          <span className="text-sm font-semibold text-blue-900">{new Date(s.date).toLocaleDateString("vi-VN")}</span>
                         </div>
-                        <Badge className="px-3 py-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white flex items-center gap-1">
+                        <Badge className="px-3 py-1 bg-blue-700 text-white flex items-center gap-1">
                           <GraduationCap className="w-3 h-3" />
                           {s.subject}
                         </Badge>
@@ -365,8 +399,8 @@ export default function StudentSchedule() {
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="flex items-center space-x-2">
-                          <div className="bg-green-50 p-2 rounded-lg">
-                            <Clock className="w-4 h-4 text-green-600" />
+                          <div className="bg-blue-50 p-2 rounded-lg">
+                            <Clock className="w-4 h-4 text-blue-700" />
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{s.startTime}-{s.endTime}</div>
@@ -375,8 +409,8 @@ export default function StudentSchedule() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <div className="bg-orange-50 p-2 rounded-lg">
-                            <MapPin className="w-4 h-4 text-orange-600" />
+                          <div className="bg-blue-50 p-2 rounded-lg">
+                            <MapPin className="w-4 h-4 text-blue-700" />
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{s.room || 'Chưa phân phòng'}</div>
@@ -404,8 +438,8 @@ export default function StudentSchedule() {
                       )}
                       
                       {s.attendanceNote && (
-                        <div className="mt-2 p-2 bg-yellow-50 rounded-lg border-l-2 border-yellow-400">
-                          <div className="text-xs text-yellow-800">Ghi chú: {s.attendanceNote}</div>
+                        <div className="mt-2 p-2 bg-blue-50 rounded-lg border-l-2 border-blue-400">
+                          <div className="text-xs text-blue-800">Ghi chú: {s.attendanceNote}</div>
                         </div>
                       )}
                     </div>
@@ -432,20 +466,20 @@ export default function StudentSchedule() {
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
+        <CardHeader className="bg-blue-50 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-3 rounded-xl">
+              <div className="bg-blue-700 p-3 rounded-xl">
                 <CalendarDays className="w-6 h-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Lịch học</CardTitle>
+                <CardTitle className="text-2xl font-bold text-blue-900">Lịch học</CardTitle>
                 <p className="text-sm text-gray-600">Xem lịch học và trạng thái điểm danh</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <Select value={viewType} onValueChange={(v: ViewType) => setViewType(v)}>
-                <SelectTrigger className="w-32 bg-white border-purple-200 focus:border-purple-400">
+                <SelectTrigger className="w-32 bg-white border-blue-200 focus:border-blue-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -454,13 +488,13 @@ export default function StudentSchedule() {
                   <SelectItem value="list">📋 Danh sách</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handlePrev} className="border-purple-200 hover:bg-purple-50">
+              <Button variant="outline" size="sm" onClick={handlePrev} className="border-blue-200 hover:bg-blue-50">
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleNext} className="border-purple-200 hover:bg-purple-50">
+              <Button variant="outline" size="sm" onClick={handleNext} className="border-blue-200 hover:bg-blue-50">
                 <ChevronRight className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={handleToday} className="border-purple-200 hover:bg-purple-50">
+              <Button variant="outline" size="sm" onClick={handleToday} className="border-blue-200 hover:bg-blue-50">
                 Hôm nay
               </Button>
             </div>
@@ -468,14 +502,14 @@ export default function StudentSchedule() {
           {viewType === "month" && (
             <div className="mt-3 flex items-center space-x-2">
               <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-                <span className="text-lg font-semibold text-purple-700">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</span>
+                <span className="text-lg font-semibold text-blue-800">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</span>
               </div>
             </div>
           )}
           {viewType === "week" && (
             <div className="mt-3 flex items-center space-x-2">
               <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-                <span className="text-lg font-semibold text-purple-700">
+                <span className="text-lg font-semibold text-blue-800">
                   {getWeekRange().startOfWeek.toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })} 
                   - {getWeekRange().endOfWeek.toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" })}
                 </span>
@@ -485,18 +519,18 @@ export default function StudentSchedule() {
           {viewType === "list" && (
             <div className="mt-3 flex items-center space-x-2">
               <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-                <span className="text-lg font-semibold text-purple-700">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</span>
+                <span className="text-lg font-semibold text-blue-800">{MONTH_NAMES[currentDate.getMonth()]}, {currentDate.getFullYear()}</span>
               </div>
             </div>
           )}
         </CardHeader>
         <CardContent>
           {error ? (
-            <Card className="border-orange-200 bg-orange-50">
+            <Card className="border-blue-200 bg-blue-50">
               <CardContent className="p-4">
                 <div className="flex items-center">
-                  <AlertTriangle className="w-5 h-5 text-orange-500 mr-2" />
-                  <span className="text-orange-700 text-sm">{error}</span>
+                  <AlertTriangle className="w-5 h-5 text-blue-600 mr-2" />
+                  <span className="text-blue-800 text-sm">{error}</span>
                 </div>
               </CardContent>
             </Card>

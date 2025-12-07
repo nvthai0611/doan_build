@@ -731,7 +731,13 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                 {(() => {
                                     const isExactMatch = pathname === item.href
                                     const hasChildMatch = (item as any).children?.some((c: any) => c.href === pathname)
-                                    const isPartialMatch = pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
+                                
+                                    const hasChildren = (item as any).children && (item as any).children.length > 0
+                                    const isPartialMatch = hasChildren && 
+                                        item.href && 
+                                        item.href !== '/' && 
+                                        pathname.startsWith(item.href + '/') && 
+                                        !isExactMatch
                                     const isTopActive = isExactMatch || hasChildMatch || isPartialMatch
 
                                     return (
