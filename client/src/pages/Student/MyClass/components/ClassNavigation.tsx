@@ -35,7 +35,7 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
       <div className="container mx-auto px-6">
         <div className="flex gap-2 overflow-x-auto relative">
           <div
-            className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ease-in-out"
+            className="absolute bottom-0 h-0.5 bg-blue-700 transition-all duration-300 ease-in-out"
             style={{
               left: `${indicatorStyle.left}px`,
               width: `${indicatorStyle.width}px`,
@@ -50,8 +50,8 @@ export function ClassNavigation({ activeTab, onTabChange }: ClassNavigationProps
                 onClick={() => onTabChange(tab.id)}
                 className={`py-4 px-2 text-sm font-medium whitespace-nowrap transition-all duration-300 ease-in-out flex items-center gap-2 ${
                   activeTab === tab.id
-                    ? "text-primary transform scale-105"
-                    : "text-muted-foreground hover:text-foreground hover:scale-102"
+                    ? "text-blue-700 transform scale-105"
+                    : "text-muted-foreground hover:text-blue-700 hover:scale-102"
                 }`}
               >
                 <IconComponent className="h-4 w-4" />

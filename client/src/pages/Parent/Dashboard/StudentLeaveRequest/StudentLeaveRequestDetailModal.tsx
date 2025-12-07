@@ -296,11 +296,11 @@ export default function StudentLeaveRequestDetailModal({
                 {/* Right Column - Sessions and Approver */}
                 <div className="space-y-6">
                   {/* All Affected Sessions */}
-                  <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <BookOpen className="h-5 w-5" />
+                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <BookOpen className="h-5 w-5" />
                       Tất cả buổi học xin nghỉ ({sessionCount})
-                    </h3>
+                      </h3>
                     {sessionCount === 0 ? (
                       <div className="text-sm text-muted-foreground italic">
                         Không có buổi học nào trong đơn này.
@@ -335,8 +335,8 @@ export default function StudentLeaveRequestDetailModal({
                             </Badge>
                           </div>
                         ))}
-                      </div>
-                    )}
+                        </div>
+                      )}
                   </div>
                   {/* Approver Info */}
                   {leaveRequest.approvedByUser && (

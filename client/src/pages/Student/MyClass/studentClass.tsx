@@ -12,7 +12,6 @@ import {
   GraduationCap, 
   MapPin, 
   Users, 
-  Calendar, 
   Clock, 
   ArrowRight,
   RefreshCw,
@@ -22,6 +21,7 @@ import {
 import { studentEnrollmentService } from "../../../services/student/enrollment/enrollment.service"
 import Loading from "../../../components/Loading/LoadingPage"
 import { studentClassInformationService } from "../../../services/student/classInformation/classInformation.service"
+import { EnrollmentStatus, ENROLLMENT_STATUS_LABELS } from "../../../lib/constants"
 
 export default function StudentClassesPage() {
   const navigate = useNavigate()
@@ -43,36 +43,41 @@ export default function StudentClassesPage() {
   const enrollments: any[] = useMemo(() => Array.isArray(data) ? data : [], [data])
 
   const toVietnameseStatus = (status?: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'active':
-      case 'studying':
-        return 'Đang học'
-      case 'completed':
-        return 'Hoàn thành'
-      case 'dropped':
-        return 'Đã bỏ học'
-      case 'not_been_updated':
-        return 'Chưa cập nhật'
-      default:
-        return status || 'Không xác định'
+    if (!status) return 'Không xác định'
+    const normalizedStatus = status.toLowerCase()
+    // Sử dụng labels từ constants để đảm bảo nhất quán
+    const statusMap: Record<string, string> = {
+      'studying': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STUDYING],
+      'not_been_updated': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.NOT_BEEN_UPDATED],
+      'stopped': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STOPPED],
+      'graduated': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
+      'withdrawn': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.WITHDRAWN],
     }
+    return statusMap[normalizedStatus] || status || 'Không xác định'
   }
 
   const statusClasses = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'active' || s === 'studying') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
-    if (s === 'not_been_updated') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
-    if (s === 'completed') return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border border-blue-300 shadow-sm'
-    if (s === 'dropped') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
-    return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 shadow-sm'
+    // Đang học - màu xanh lá (tích cực)
+    if (s === 'studying') return 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
+    // Chưa cập nhật - màu vàng (cảnh báo)
+    if (s === 'not_been_updated') return 'bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm'
+    // Đã hoàn thành - màu xanh dương (thành công)
+    if (s === 'graduated') return 'bg-blue-100 text-blue-800 border border-blue-300 shadow-sm'
+    // Dừng học - màu đỏ (dừng lại)
+    if (s === 'stopped') return 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
+    // Chuyển lớp - màu cam (trung tính)
+    if (s === 'withdrawn') return 'bg-orange-100 text-orange-800 border border-orange-300 shadow-sm'
+    return 'bg-gray-100 text-gray-800 border border-gray-300 shadow-sm'
   }
 
   const getStatusIcon = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'active' || s === 'studying') return <CheckCircle2 className="w-3 h-3" />
+    if (s === 'studying') return <CheckCircle2 className="w-3 h-3" />
     if (s === 'not_been_updated') return <Clock className="w-3 h-3" />
-    if (s === 'completed') return <CheckCircle2 className="w-3 h-3" />
-    if (s === 'dropped') return <AlertCircle className="w-3 h-3" />
+    if (s === 'graduated') return <CheckCircle2 className="w-3 h-3" />
+    if (s === 'stopped') return <AlertCircle className="w-3 h-3" />
+    if (s === 'withdrawn') return <AlertCircle className="w-3 h-3" />
     return <AlertCircle className="w-3 h-3" />
   }
 
@@ -105,10 +110,10 @@ export default function StudentClassesPage() {
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <CardTitle className="text-xl font-bold flex items-center gap-2 text-blue-800">
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="text-xl font-bold flex items-center gap-2 text-blue-900">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <GraduationCap className="w-5 h-5 text-blue-600" />
+              <GraduationCap className="w-5 h-5 text-blue-700" />
             </div>
             Môn học đã ghi danh
           </CardTitle>
@@ -127,7 +132,7 @@ export default function StudentClassesPage() {
           ) : (
             <div className="flex flex-wrap gap-3">
               {(Array.isArray(subjectsQuery.data) ? subjectsQuery.data : []).map((s: any) => (
-                <Badge key={s.id} variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200 px-3 py-1">
+                <Badge key={s.id} variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1">
                   <BookOpen className="w-3 h-3 mr-1" />
                   {s.name}
                 </Badge>
@@ -144,10 +149,10 @@ export default function StudentClassesPage() {
       </Card>
 
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
-          <CardTitle className="text-2xl font-bold flex items-center gap-2 text-green-800">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2 text-blue-900">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="w-6 h-6 text-blue-700" />
             </div>
             Lớp học của tôi
           </CardTitle>
@@ -177,18 +182,18 @@ export default function StudentClassesPage() {
                       <div className="mt-2 space-y-2">
                         {en.class?.subject?.name && (
                           <div className="flex items-center gap-2">
-                            <div className="p-1 bg-purple-100 rounded">
-                              <BookOpen className="w-3 h-3 text-purple-600" />
+                            <div className="p-1 bg-blue-100 rounded">
+                              <BookOpen className="w-3 h-3 text-blue-700" />
                             </div>
-                            <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-200">
                               {en.class?.subject?.name}
                             </Badge>
                           </div>
                         )}
                         {en.class?.room?.name && (
                           <div className="flex items-center gap-2">
-                            <div className="p-1 bg-orange-100 rounded">
-                              <MapPin className="w-3 h-3 text-orange-600" />
+                            <div className="p-1 bg-blue-100 rounded">
+                              <MapPin className="w-3 h-3 text-blue-700" />
                             </div>
                             <span className="text-sm text-gray-600">Phòng: {en.class?.room?.name}</span>
                           </div>
