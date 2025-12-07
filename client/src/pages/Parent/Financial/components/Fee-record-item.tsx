@@ -89,7 +89,7 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground text-sm">{fee.courseName}</p>
-                  <p className="text-xs text-muted-foreground">{fee.attendanceCount || 0} buổi đã học</p>
+                  {/* <p className="text-xs text-muted-foreground">{fee.attendanceCount || 0} buổi đã học</p> */}
                   <p className="text-xs text-muted-foreground">{fee.feeStructureAmount}/ 1 buổi</p>
                 </div>
               </div>

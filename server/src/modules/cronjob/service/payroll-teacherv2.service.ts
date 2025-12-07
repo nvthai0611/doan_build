@@ -54,6 +54,11 @@ export class PayrollCronService {
   private roundMoney(amount: Prisma.Decimal): Prisma.Decimal {
     return new Prisma.Decimal(amount.toFixed(0));
   }
+
+  private toDbDate(date: Date): Date {
+    // Cộng thêm 7 tiếng (7 * 60 * 60 * 1000 ms)
+    return new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  }
   /**
    * CRON JOB: CHẠY LÚC 02:00 SÁNG NGÀY 10 HÀNG THÁNG
    * Ví dụ: Chạy ngày 10/12 để tính lương cho công việc của Tháng 11
@@ -93,10 +98,22 @@ export class PayrollCronService {
     const previousClosingDate = new Date(now.getFullYear(), now.getMonth() - 1, 7);
     previousClosingDate.setHours(23, 59, 59, 999);
     const fmtDate = (d: Date) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
+        // const y = d.getFullYear();
+        // const m = String(d.getMonth() + 1).padStart(2, '0');
+        // const day = String(d.getDate()).padStart(2, '0');
+        // return `${y}-${m}-${day}`;
+        
+      return d.toLocaleString('vi-VN', { 
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false 
+      });
+    
     };
     
     const fmtDateTime = (d: Date) => {
@@ -278,10 +295,10 @@ export class PayrollCronService {
           },
           select: { id: true, teacherId: true, substituteTeacherId: true, sessionDate: true },
         });
+        console.log(studyStart, studyEnd);
+        console.log(cls.id);
         
         const totalSessions = sessions.length;
-        console.log(studyStart, studyEnd);
-        
         console.log("Các buổi dạy trong tháng của lớp: ",totalSessions);
 
         // Nếu không có doanh thu hoặc không có buổi học -> Bỏ qua
@@ -320,7 +337,7 @@ export class PayrollCronService {
               status: 'calculated',
               studentCount: attendanceCount,
               sessionFeePerStudent: 0, // Không quan trọng trong mô hình pool
-              totalRevenue: rawValuePerSession, // Lưu giá trị gốc 1 buổi
+              totalRevenue: this.roundMoney(rawValuePerSession), // Lưu giá trị gốc 1 buổi
               payoutRate: teacherRate,
               teacherPayout: teacherPayout,
             },
@@ -516,11 +533,24 @@ export class PayrollCronService {
 
     for (const teacherId of allTeacherIds) {
       try {
+        const checkStart = new Date(startDate);
+        checkStart.setDate(checkStart.getDate() - 5); 
+        console.log(checkStart);
+        
+        const checkEnd = new Date(startDate);
+        checkEnd.setDate(checkEnd.getDate() + 5);
+        console.log(checkEnd);
+        
         // Idempotency: Kiểm tra đã có Payroll tháng này chưa
         const exists = await this.prisma.payroll.findFirst({
-          where: { teacherId, periodStart: startDate, periodEnd: endDate },
+          where: { teacherId, periodStart: {
+                  gte: checkStart,
+                  lte: checkEnd
+              } },
+          include: { teacher: true },
         });
         if (exists) {
+          this.logger.debug(`Payroll ${exists.id} for teacher ${exists.teacher.teacherCode} already exists. Skipping...`);
           success++;
           continue;
         }
@@ -552,8 +582,8 @@ export class PayrollCronService {
         const payroll = await this.prisma.payroll.create({
           data: {
             teacherId,
-            periodStart: startDate,
-            periodEnd: endDate,
+            periodStart: this.toDbDate(startDate),
+            periodEnd: this.toDbDate(endDate),
             totalAmount: totalAmount,
             backPayAmount: backPayAmount,
             bonuses: 0,

@@ -69,16 +69,38 @@ const PayrollManagementTeacher: React.FC = () => {
       key: 'periodStart',
       header: 'Kỳ lương',
       width: '200px',
-      render: (payroll) => (
-        <div className="flex flex-col">
-          <span className="font-medium">
-            {new Date(payroll.periodStart).toLocaleDateString('vi-VN')}
-          </span>
-          <span className="text-xs text-gray-500">
-            đến {new Date(payroll.periodEnd).toLocaleDateString('vi-VN')}
-          </span>
-        </div>
-      )
+      render: (payroll) => {
+  // Tạo bộ format cố định theo giờ VN
+  const formatVietnamDate = (dateString : string) => {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            
+            // Lấy giờ UTC (17:00 ngày 30) + 7 tiếng = Giờ VN (00:00 ngày 1)
+            // Chúng ta dùng phương pháp UTC methods để không phụ thuộc vào giờ máy tính
+            
+            // Logic: Chuyển đổi timestamp sang giờ VN
+            // Offset VN là +7 giờ = 7 * 60 * 60 * 1000 ms
+            const vnTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+            
+            // Sau khi cộng 7 tiếng, ta lấy ngày/tháng/năm theo chuẩn UTC của thời gian mới
+            const day = vnTime.getUTCDate().toString().padStart(2, '0');
+            const month = (vnTime.getUTCMonth() + 1).toString().padStart(2, '0');
+            const year = vnTime.getUTCFullYear();
+            
+            return `${day}/${month}/${year}`;
+        };
+
+  return (
+    <div className="flex flex-col">
+      <span className="font-medium">
+        {formatVietnamDate(payroll.periodStart)} 
+      </span>
+      <span className="text-xs text-gray-500">
+        đến {formatVietnamDate(payroll.periodEnd)}
+      </span>
+    </div>
+  );
+}
     },
     {
       key: 'totalAmount',
