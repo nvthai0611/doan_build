@@ -65,10 +65,10 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
   if (!childId) {
     return (
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BookOpen className="h-5 w-5 text-blue-600" />
             </div>
             Tài liệu học tập của con
           </CardTitle>
@@ -80,10 +80,10 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
   if (isError) {
     return (
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BookOpen className="h-5 w-5 text-blue-600" />
             </div>
             Tài liệu học tập của con
           </CardTitle>
@@ -128,14 +128,14 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
 
   return (
     <Card className="border-0 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+      <CardHeader className="bg-blue-50 border-b">
         <div className="space-y-3">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-            </div>
-            Tài liệu học tập của con
-          </CardTitle>
+        <CardTitle className="flex items-center gap-2 text-blue-800">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <BookOpen className="h-5 w-5 text-blue-600" />
+          </div>
+          Tài liệu học tập của con
+        </CardTitle>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Lọc theo lớp:</span>
             <select
@@ -170,10 +170,10 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
                       <div className="text-sm text-gray-600">Tổng dung lượng</div>
                     </div>
                     <div className="text-center">
-                      <div className="p-2 bg-purple-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <FileDown className="w-6 h-6 text-purple-600" />
+                      <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <FileDown className="w-6 h-6 text-blue-600" />
                       </div>
-                      <div className="text-xl font-bold text-purple-600">{(data as any).stats.recentUploads || 0}</div>
+                      <div className="text-xl font-bold text-blue-600">{(data as any).stats.recentUploads || 0}</div>
                       <div className="text-sm text-gray-600">Tài liệu mới</div>
                     </div>
                   </div>
@@ -181,16 +181,16 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
 
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={(item as any).id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-purple-500">
+                    <div key={(item as any).id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-500">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-3">
-                            <div className="p-1 bg-purple-100 rounded">
-                              <FileType className="w-4 h-4 text-purple-600" />
+                            <div className="p-1 bg-blue-100 rounded">
+                              <FileType className="w-4 h-4 text-blue-600" />
                             </div>
                             <h3 className="font-semibold text-lg text-gray-800">{(item as any).title}</h3>
                             {(item as any).category && (
-                              <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-200">
                                 {getCategoryDisplayName((item as any).category)}
                               </Badge>
                             )}
@@ -236,7 +236,7 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
                             size="sm" 
                             onClick={() => handleDownload(item)} 
                             disabled={!(item as any).fileUrl}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0"
                           >
                             <Download className="w-4 h-4" />
                             Tải xuống
