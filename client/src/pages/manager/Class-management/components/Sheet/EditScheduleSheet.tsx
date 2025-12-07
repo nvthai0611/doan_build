@@ -165,7 +165,7 @@ export const EditScheduleSheet = ({
                     {classData?.status === ClassStatus.ACTIVE && (
                         <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                             <AlertDescription className="text-sm text-red-800 dark:text-red-200">
-                                ⚠️ Lớp học đang ở trạng thái hoạt động. Vui lòng chắc chắn rằng bạn muốn đổi lịch học này
+                                Lớp học đang ở trạng thái hoạt động. Vui lòng chắc chắn rằng bạn muốn đổi lịch học này
                             </AlertDescription>
                         </Alert>
                     )}
