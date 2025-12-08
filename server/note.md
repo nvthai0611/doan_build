@@ -14,6 +14,7 @@ npm i @nestjs/config
 
 nest g middleware ten\_...
 
+// hướng dẫn
 - middleware sẽ dùng cho các tình huống phần quyền, xác thực, log các thứ......
 - đăng kí middleware trong app.module.ts
   // console.log(req.baseUrl);
