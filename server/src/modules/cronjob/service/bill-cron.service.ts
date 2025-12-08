@@ -35,15 +35,19 @@ export class BillCronService {
 
     try {
       const now = new Date();
-      const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), 7);
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const firstDayOfLastMonth = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+      const lastDayOfLastMonth = new Date(Date.UTC(currentYear, currentMonth, 0));
+      // const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      // const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const dueDate = new Date(Date.UTC(currentYear, currentMonth, 7)); // Hạn thanh toán: ngày 7 của tháng hiện tại
       const billingPeriodStr = `T${firstDayOfLastMonth.getMonth() + 1}/${firstDayOfLastMonth.getFullYear()}`;
       const formatLocalDate = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
 };
       this.logger.log(
         `Kỳ hóa đơn: ${formatLocalDate(firstDayOfLastMonth)} - ${formatLocalDate(lastDayOfLastMonth)}`,
@@ -62,7 +66,9 @@ this.logger.log(
         },
         select: { id: true },
       });
-
+      console.log(firstDayOfLastMonth, lastDayOfLastMonth);
+      
+      this.logger.log(`Số buổi trên tháng của lớp: ${sessionsInMonth.length}`);
       if (sessionsInMonth.length === 0) {
         this.logger.log('Không có buổi học nào trong tháng trước. Dừng lại.');
         await this.updateCronExecution(cronExecutionId, {
@@ -155,8 +161,8 @@ this.logger.log(
             failedCount++;
             errorDetails.push({
               itemId: studentId,
-              itemName: `Student ${studentId}`,
-              error: 'Missing fee structure configuration',
+              itemName: `Học Sinh ${studentId}`,
+              error: 'Thiếu cấu hình học phí',
             });
             continue;
           }
@@ -172,8 +178,8 @@ this.logger.log(
             failedCount++;
             errorDetails.push({
               itemId: studentId,
-              itemName: `Student ${studentId}`,
-              error: 'Session fee is zero or null',
+              itemName: `Học Sinh ${studentId}`,
+              error: 'Không có mức học phí cho buổi học',
             });
             continue;
           }
@@ -212,7 +218,7 @@ this.logger.log(
               feeStructureId: classInfo.feeStructureId,
               amount: totalBeforeDiscount,
               totalAmount: totalAmount,
-              scholarship: scholarshipAmount,
+              scholarship: scholarshipPercent.isZero() ? null : scholarshipPercent,
               dueDate,
               status: 'calculated', // ✅ NEW: Admin-only status
               notes: scholarshipAmount.isZero() 
@@ -227,11 +233,11 @@ this.logger.log(
           );
         } catch (itemError) {
           failedCount++;
-          const studentId = group?.studentId || 'unknown';
+          const studentId = group?.studentId || 'Không xác định';
           errorDetails.push({
             itemId: studentId,
-            itemName: `Student ${studentId}`,
-            error: itemError instanceof Error ? itemError.message : 'Unknown error',
+            itemName: `Học Sinh ${studentId}`,
+            error: itemError instanceof Error ? itemError.message : 'Lỗi không xác định',
           });
           this.logger.error(`Lỗi xử lý học sinh ${studentId}:`, itemError);
         }
@@ -239,9 +245,9 @@ this.logger.log(
 
       // Cập nhật Cron Execution thành công
       const durationMs = Date.now() - startTime;
-      const status = failedCount > 0 ? 'completed_with_errors' : 'success';
+      const status = failedCount > 0 ? 'success_with_errors' : 'success';
       const errorMessage =
-        failedCount > 0 ? `Failed to generate ${failedCount}/${totalItemsProcessed} bills` : null;
+        failedCount > 0 ? `Không tạo được ${failedCount}/${totalItemsProcessed} hóa đơn` : null;
 
       await this.updateCronExecution(cronExecutionId, {
         status,
@@ -262,7 +268,7 @@ this.logger.log(
 
       await this.updateCronExecution(cronExecutionId, {
         status: 'failed',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorMessage: error instanceof Error ? error.message : 'Lỗi không xác định',
         failedCount: totalItemsProcessed,
         durationMs,
         errorDetails: errorDetails.length > 0 ? errorDetails : null,

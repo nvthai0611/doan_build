@@ -444,7 +444,7 @@ export class PayrollCronService {
           // Case 2: Không tìm thấy (VD: Tháng đó lớp nghỉ, hoặc GV nghỉ dạy) -> Fallback về Hợp đồng
           finalRate = await this.getTeacherRate(targetTeacherId, debtDate);
           this.logger.warn(
-            `BackPay: Không tìm thấy lịch sử Payout tháng ${debtDate.getMonth() + 1} cho GV ${targetTeacherId}. Dùng Fallback Rate theo hợp đồng.`,
+            `Hóa đơn cũ: Không tìm thấy lịch sử bảng lương tháng ${debtDate.getMonth() + 1} cho GV ${targetTeacherId}. Dùng tỷ lệ theo hợp đồng.`,
           );
         }
 
@@ -472,7 +472,7 @@ export class PayrollCronService {
           feeRecordId: feeRecord.id,
           sessionId: 'BACKPAY',
           sessionDate: debtDate.toISOString().slice(0, 10), // Hiển thị ngày nợ
-          description: `Lương cũ T${debtDate.getMonth() + 1}: ${className} (${studentName}) - Rate áp dụng: ${finalRate.times(100)}%`,
+          description: `Lương cũ T${debtDate.getMonth() + 1}: ${className} (${studentName}) - tỷ lệ áp dụng: ${finalRate.times(100)}%`,
           revenuePerSession: paymentAmount.toNumber(),
           payoutRate: finalRate.toNumber(),
           payoutAmount: teacherPayout.toNumber(),
@@ -485,7 +485,7 @@ export class PayrollCronService {
           itemId: p.id.toString(),
           itemName: `Payment ID ${p.id}`,
           phase: 'Phase 2 (Back Pay)',
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi xử lý BackPay ID ${p.id}:`, err);
       }
@@ -550,7 +550,7 @@ export class PayrollCronService {
           include: { teacher: true },
         });
         if (exists) {
-          this.logger.debug(`Payroll ${exists.id} for teacher ${exists.teacher.teacherCode} already exists. Skipping...`);
+          this.logger.debug(`Bảng lương ${exists.id} cho giáo viên ${exists.teacher.teacherCode} đã tồn tại. Bỏ qua...`);
           success++;
           continue;
         }
@@ -609,7 +609,7 @@ export class PayrollCronService {
           itemId: teacherId,
           itemName: `Teacher ID ${teacherId}`,
           phase: 'Phase 3 (Aggregation)',
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi tạo Payroll cho GV ${teacherId}:`, err);
       }
