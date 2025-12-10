@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Calendar, X } from "lucide-react"
+import { Calendar, X, RefreshCcw, AlertCircle } from "lucide-react"
 import { DataTable, Column, PaginationConfig } from "../../../../../../components/common/Table/DataTable"
 import {
   Select,
@@ -12,6 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { centerOwnerStudentService } from "@/services/center-owner/student-management/student.service"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toast } from "sonner"
 
 interface Class {
   id: string
@@ -30,10 +41,12 @@ interface Enrollment {
 interface FeeRecord {
   id: string
   amount: number
+  totalAmount: number
   paidAmount: number
   createdAt: string
   dueDate: string
   classId: string
+  status: string
   feeStructure?: {
     name: string
   }
@@ -41,20 +54,26 @@ interface FeeRecord {
 
 interface StudentTuitionTabProps {
   student: {
+    id: string
     feeRecords?: FeeRecord[]
     enrollments?: Enrollment[]
   }
+  onRefresh?: () => void
 }
 
 enum FeeStatus {
   Pending = "pending",
+  Calculated = "calculated",
+  Processing = "processing",
   PartiallyPaid = "partially_paid",
-  Completed = "completed",
+  Completed = "paid",
+  Cancelled = "cancelled",
+  Overdue = "overdue",
 }
 
 const ITEMS_PER_PAGE = 10
 
-export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student }) => {
+export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, onRefresh }) => {
   const feeRecords = student?.feeRecords || []
   const enrollments = student?.enrollments || []
   
@@ -63,6 +82,12 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
   const [month, setMonth] = useState("")
   const [classFilter, setClassFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
+  
+  // Checkbox states
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([])
+  const [isRecalculating, setIsRecalculating] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [recalculationPreview, setRecalculationPreview] = useState<any>(null)
 
   /**
    * Tạo Map classId -> Class từ enrollments để lookup nhanh
@@ -71,15 +96,10 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     const map = new Map<string, Class>()
     
     const arrayFeeRecordsClassIds = feeRecords.map(fee => fee.classId)
-    console.log(arrayFeeRecordsClassIds);
-    
     const arrayEnrollmentsClassIds = enrollments.map(enrollment => enrollment.classId)
-    console.log(arrayEnrollmentsClassIds);
-    const filterClassIds = arrayEnrollmentsClassIds.filter(classId =>{
-      if(arrayFeeRecordsClassIds.includes(classId)){
-        return classId   
-      }
-    })
+    const filterClassIds = arrayEnrollmentsClassIds.filter(classId => 
+      arrayFeeRecordsClassIds.includes(classId)
+    )
 
     enrollments.forEach((enrollment) => {
       if (filterClassIds.includes(enrollment.classId)) {
@@ -88,42 +108,70 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     })
     
     return map
-  }, [enrollments])
-  console.log(feeRecords);
-  console.log(enrollments);
-  console.log(classMap);
-  
-  
+  }, [enrollments, feeRecords])
   
   /**
-   * Lấy danh sách các lớp từ enrollments (chỉ lấy lớp có status !== 'deleted')
+   * Lấy danh sách các lớp từ enrollments
    */
   const availableClasses = useMemo(() => {
     return Array.from(classMap.values()).sort((a, b) => 
       a.name.localeCompare(b.name, 'vi')
     )
   }, [classMap])
-  console.log(feeRecords);
   
   /**
    * Tính trạng thái thanh toán của hóa đơn
    */
   const getFeeStatus = (fee: FeeRecord): FeeStatus => {
-    const paidAmount = fee.paidAmount || 0
+    // Ưu tiên trạng thái từ server
+    if (fee.status === 'cancelled') return FeeStatus.Cancelled
+    if (fee.status === 'paid' || fee.status === 'completed') return FeeStatus.Completed
+    if (fee.status === 'processing') return FeeStatus.Processing
+    if (fee.status === 'overdue') return FeeStatus.Overdue
+    if (fee.status === 'calculated') return FeeStatus.Calculated
     
+    const paidAmount = fee.paidAmount || 0
+    const totalAmount = fee.amount
+    
+    // Kiểm tra theo số tiền đã thanh toán
     if (paidAmount === 0) return FeeStatus.Pending
-    if (paidAmount >= fee.amount) return FeeStatus.Completed
-    return FeeStatus.PartiallyPaid
+    if (paidAmount >= totalAmount) return FeeStatus.Completed
+    if (paidAmount > 0 && paidAmount < totalAmount) return FeeStatus.PartiallyPaid
+    
+    return FeeStatus.Pending
   }
 
   /**
    * Kiểm tra hóa đơn có quá hạn không
    */
   const isOverdue = (fee: FeeRecord): boolean => {
+    const status = getFeeStatus(fee)
+    
+    // Chỉ kiểm tra overdue cho pending, calculated và partially paid
+    if (status !== FeeStatus.Pending && 
+        status !== FeeStatus.Calculated && 
+        status !== FeeStatus.PartiallyPaid) {
+      return false
+    }
+    
     const dueDate = new Date(fee.dueDate)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return dueDate < today && getFeeStatus(fee) !== FeeStatus.Completed
+    dueDate.setHours(0, 0, 0, 0)
+    
+    return dueDate < today
+  }
+
+  /**
+   * Kiểm tra hóa đơn có thể tính toán lại không
+   */
+  const canRecalculate = (fee: FeeRecord): boolean => {
+    const status = getFeeStatus(fee)
+    // Chỉ cho phép tính lại: pending, calculated, cancelled, hoặc overdue
+    return status === FeeStatus.Pending || 
+           status === FeeStatus.Calculated ||
+           status === FeeStatus.Cancelled ||
+           isOverdue(fee)
   }
 
   /**
@@ -132,16 +180,21 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
   const filteredRecords = useMemo(() => {
     let filtered = feeRecords
     
-    // // Bỏ qua fee records của lớp đã deleted
-    // filtered = filtered.filter((fee) => {
-    //   const classInfo = classMap.get(fee.classId)
-    //   return classInfo && classInfo.status !== 'deleted'
-    // })
-    
     // Filter theo status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((fee) => getFeeStatus(fee) === statusFilter)
+      filtered = filtered.filter((fee) => {
+        const feeStatus = getFeeStatus(fee)
+        
+        // Xử lý riêng cho Overdue
+        if (statusFilter === FeeStatus.Overdue) {
+          return isOverdue(fee)
+        }
+        
+        // Các trạng thái khác
+        return feeStatus === statusFilter
+      })
     }
+    
     // Filter theo tháng
     if (month) {
       filtered = filtered.filter((fee) => {
@@ -155,8 +208,16 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     if (classFilter !== "all") {
       filtered = filtered.filter((fee) => fee.classId === classFilter)
     }
+    
     return filtered
-  }, [feeRecords, classMap, statusFilter, month, classFilter])
+  }, [feeRecords, statusFilter, month, classFilter])
+
+  /**
+   * Lấy danh sách các hóa đơn có thể chọn để tính toán lại
+   */
+  const recalculatableFees = useMemo(() => {
+    return filteredRecords.filter(fee => canRecalculate(fee))
+  }, [filteredRecords])
 
   /**
    * Pagination
@@ -171,36 +232,56 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
   )
 
   /**
-   * Thống kê học phí (dựa trên dữ liệu đã lọc)
+   * Thống kê học phí
    */
   const tuitionStats = useMemo(() => {
     const stats = {
       totalAmount: 0,
       paidAmount: 0,
       pendingCount: 0,
+      calculatedCount: 0,
+      processingCount: 0,
       partiallyPaidCount: 0,
-      overdueCount: 0
+      completedCount: 0,
+      overdueCount: 0,
+      cancelledCount: 0
     }
 
-    filteredRecords.forEach((fee) => {
+    // Tính toán dựa trên TOÀN BỘ feeRecords
+    feeRecords.forEach((fee) => {
       const status = getFeeStatus(fee)
+      const overdue = isOverdue(fee)
       
-      stats.totalAmount += fee.amount
-      stats.paidAmount += fee.paidAmount || 0
+      // Chỉ tính tổng tiền cho các hóa đơn không bị hủy
+      if (status !== FeeStatus.Cancelled) {
+        stats.totalAmount += fee.totalAmount       
+      }
+
+      if(status === FeeStatus.Completed) {
+        stats.paidAmount += fee.totalAmount
+      }
       
-      if (status === FeeStatus.Pending) stats.pendingCount++
-      if (status === FeeStatus.PartiallyPaid) stats.partiallyPaidCount++
-      if (isOverdue(fee)) stats.overdueCount++
+      // Đếm số lượng theo từng trạng thái
+      if (status === FeeStatus.Pending && !overdue) stats.pendingCount++
+      if (status === FeeStatus.Calculated && !overdue) stats.calculatedCount++
+      if (status === FeeStatus.Processing) stats.processingCount++
+      if (status === FeeStatus.PartiallyPaid && !overdue) stats.partiallyPaidCount++
+      if (status === FeeStatus.Completed) stats.completedCount++
+      if (status === FeeStatus.Cancelled) stats.cancelledCount++
+      
+      // Đếm overdue (có thể là pending, calculated hoặc partially_paid)
+      if (overdue) stats.overdueCount++
     })
 
     return stats
-  }, [filteredRecords])
+  }, [feeRecords])
 
   /**
    * Handle filter change với reset page
    */
   const handleFilterChange = (type: 'status' | 'class', value: string) => {
     setCurrentPage(1)
+    setSelectedFeeIds([])
     if (type === 'status') {
       setStatusFilter(value as FeeStatus | "all")
     } else if (type === 'class') {
@@ -216,6 +297,57 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     setMonth('')
     setClassFilter("all")
     setCurrentPage(1)
+    setSelectedFeeIds([])
+  }
+
+  /**
+   * Handle selection change
+   */
+  const handleSelectionChange = (selectedIds: string[]) => {
+    const validIds = selectedIds.filter(id => {
+      const fee = feeRecords.find(f => f.id === id)
+      return fee && canRecalculate(fee)
+    })
+    setSelectedFeeIds(validIds)
+  }
+
+  /**
+   * Xử lý tính toán lại
+   */
+  const handleRecalculate = async () => {
+    if (selectedFeeIds.length === 0) {
+      toast.error("Chưa chọn hóa đơn. Vui lòng chọn ít nhất một hóa đơn để tính toán lại.")
+      return
+    }
+    setShowConfirmDialog(true)
+  }
+
+  /**
+   * Confirm và thực hiện tính toán lại
+   */
+  const confirmRecalculate = async () => {
+    setIsRecalculating(true)
+    try {
+      const response = await centerOwnerStudentService.reCreateBillingForStudent(
+        student.id,
+        selectedFeeIds
+      )
+
+      toast.success(response.message || "Hóa đơn đã được tính toán lại dựa trên điểm danh thực tế")
+
+      setSelectedFeeIds([])
+      setShowConfirmDialog(false)
+      setRecalculationPreview(response.data)
+      
+      if (onRefresh) {
+        onRefresh()
+      }
+    } catch (error: any) {
+      console.error('Error recalculating billing:', error)
+      toast.error(error.message || "Không thể tính toán lại hóa đơn. Vui lòng thử lại sau.")
+    } finally {
+      setIsRecalculating(false)
+    }
   }
 
   /**
@@ -232,7 +364,19 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
     return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
-  
+  /**
+   * Get selected fees info
+   */
+  const selectedFeesInfo = useMemo(() => {
+    const selectedFees = feeRecords.filter(fee => selectedFeeIds.includes(fee.id))
+    const totalAmount = selectedFees.reduce((sum, fee) => sum + fee.amount, 0)
+    return {
+      count: selectedFees.length,
+      totalAmount,
+      fees: selectedFees
+    }
+  }, [selectedFeeIds, feeRecords])
+
   // Table columns
   const columns: Column<FeeRecord>[] = [
     {
@@ -262,7 +406,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
       header: "Số tiền",
       render: (fee) => (
         <span className="font-medium text-foreground">
-          {formatCurrency(fee.amount)}
+          {formatCurrency(fee.totalAmount)}
         </span>
       ),
       align: "left",
@@ -285,23 +429,45 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
         let variant: "default" | "secondary" | "destructive" = "default"
         let className = ""
         
-        if (status === FeeStatus.Completed) {
+        if (status === FeeStatus.Cancelled) {
+          label = "Đã hủy"
+          className = "bg-red-300 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
+        } else if (status === FeeStatus.Completed) {
           label = "Đã thanh toán"
           className = "bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-100"
+        } else if (status === FeeStatus.Processing) {
+          label = "Đang xử lý"
+          className = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-100"
+        } else if (status === FeeStatus.Calculated) {
+          if (overdue) {
+            label = "Đã tính toán (Quá hạn)"
+            variant = "destructive"
+          } else {
+            label = "Đã tính toán"
+            className = "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-100"
+          }
         } else if (status === FeeStatus.PartiallyPaid) {
-          label = "Trả 1 phần"
-          variant = "secondary"
+          if (overdue) {
+            label = "Trả 1 phần (Quá hạn)"
+            variant = "destructive"
+          } else {
+            label = "Trả 1 phần"
+            className = "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-100"
+          }
         } else {
-          label = overdue ? "Quá hạn" : "Chưa thanh toán"
-          variant = overdue ? "destructive" : "secondary"
-          if (!overdue) {
+          // Pending
+          if (overdue) {
+            label = "Quá hạn"
+            variant = "destructive"
+          } else {
+            label = "Chưa thanh toán"
             className = "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100"
           }
         }
         
         return <Badge className={className} variant={variant}>{label}</Badge>
       },
-      width: "140px"
+      width: "180px"
     },
   ]
 
@@ -322,11 +488,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
   return (
     <div className="space-y-6">
       {/* Thống kê tổng quan */}
-      <div className={
-        tuitionStats.partiallyPaidCount > 0
-          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
-          : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      }>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-blue-600">
@@ -345,18 +507,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
           </CardContent>
         </Card>
         
-        {tuitionStats.partiallyPaidCount > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {tuitionStats.partiallyPaidCount}
-              </p>
-              <p className="text-sm text-muted-foreground">Hóa đơn trả 1 phần</p>
-            </CardContent>
-          </Card>
-        )}
-        
-        <Card>
+        {/* <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-yellow-600">
               {tuitionStats.pendingCount}
@@ -364,16 +515,80 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
             <p className="text-sm text-muted-foreground">Chưa thanh toán</p>
           </CardContent>
         </Card>
+
+        {tuitionStats.calculatedCount > 0 && (
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-cyan-600">
+                {tuitionStats.calculatedCount}
+              </p>
+              <p className="text-sm text-muted-foreground">Đã tính toán</p>
+            </CardContent>
+          </Card>
+        )}
+        
+        {tuitionStats.processingCount > 0 && (
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">
+                {tuitionStats.processingCount}
+              </p>
+              <p className="text-sm text-muted-foreground">Đang xử lý</p>
+            </CardContent>
+          </Card>
+        )}
+        
+        {tuitionStats.partiallyPaidCount > 0 && (
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-purple-600">
+                {tuitionStats.partiallyPaidCount}
+              </p>
+              <p className="text-sm text-muted-foreground">Trả 1 phần</p>
+            </CardContent>
+          </Card>
+        )}
         
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">
+            <p className="text-2xl font-bold text-red-600">
               {tuitionStats.overdueCount}
             </p>
             <p className="text-sm text-muted-foreground">Quá hạn</p>
           </CardContent>
         </Card>
+
+        {tuitionStats.cancelledCount > 0 && (
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-gray-600">
+                {tuitionStats.cancelledCount}
+              </p>
+              <p className="text-sm text-muted-foreground">Đã hủy</p>
+            </CardContent>
+          </Card>
+        )} */}
       </div>
+
+      {/* Alert hiển thị số hóa đơn đã chọn */}
+      {selectedFeeIds.length > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Đã chọn {selectedFeesInfo.count} hóa đơn</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>Tổng số tiền: <strong>{formatCurrency(selectedFeesInfo.totalAmount)}</strong></span>
+            <Button
+              size="sm"
+              onClick={handleRecalculate}
+              disabled={isRecalculating}
+              className="ml-4"
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              {isRecalculating ? "Đang tính..." : "Tính toán lại"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Bộ lọc */}
       <Card>
@@ -393,15 +608,42 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
               size="sm"
               onClick={() => handleFilterChange('status', FeeStatus.Pending)}
             >
-              Chưa thanh toán
+              Chưa thanh toán ({tuitionStats.pendingCount})
             </Button>
+            {tuitionStats.calculatedCount > 0 && (
+              <Button
+                variant={statusFilter === FeeStatus.Calculated ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleFilterChange('status', FeeStatus.Calculated)}
+              >
+                Đã tính toán ({tuitionStats.calculatedCount})
+              </Button>
+            )}
+            {tuitionStats.processingCount > 0 && (
+              <Button
+                variant={statusFilter === FeeStatus.Processing ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleFilterChange('status', FeeStatus.Processing)}
+              >
+                Đang xử lý ({tuitionStats.processingCount})
+              </Button>
+            )}
             {tuitionStats.partiallyPaidCount > 0 && (
               <Button
                 variant={statusFilter === FeeStatus.PartiallyPaid ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleFilterChange('status', FeeStatus.PartiallyPaid)}
               >
-                Trả 1 phần
+                Trả 1 phần ({tuitionStats.partiallyPaidCount})
+              </Button>
+            )}
+            {tuitionStats.overdueCount > 0 && (
+              <Button
+                variant={statusFilter === FeeStatus.Overdue ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleFilterChange('status', FeeStatus.Overdue)}
+              >
+                Quá hạn ({tuitionStats.overdueCount})
               </Button>
             )}
             <Button
@@ -409,17 +651,23 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
               size="sm"
               onClick={() => handleFilterChange('status', FeeStatus.Completed)}
             >
-              Đã thanh toán
+              Đã thanh toán ({tuitionStats.completedCount})
             </Button>
+            {tuitionStats.cancelledCount > 0 && (
+              <Button
+                variant={statusFilter === FeeStatus.Cancelled ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleFilterChange('status', FeeStatus.Cancelled)}
+              >
+                Đã hủy ({tuitionStats.cancelledCount})
+              </Button>
+            )}
           </div>
 
           {/* Lọc theo tháng và lớp */}
           <div className="flex gap-4 items-end flex-wrap">
-            {/* Filter tháng */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-1">
-                Tháng
-              </label>
+              <label className="block text-sm font-medium mb-1">Tháng</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
                 <Input
@@ -428,6 +676,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
                   onChange={(e) => {
                     setMonth(e.target.value)
                     setCurrentPage(1)
+                    setSelectedFeeIds([])
                   }}
                   className="pl-10 pr-10"
                   max={new Date().toISOString().slice(0, 7)}
@@ -439,6 +688,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
                     onClick={() => {
                       setMonth('')
                       setCurrentPage(1)
+                      setSelectedFeeIds([])
                     }}
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 z-10"
                   >
@@ -448,11 +698,8 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
               </div>
             </div>
 
-            {/* Filter lớp */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-1">
-                Lớp
-              </label>
+              <label className="block text-sm font-medium mb-1">Lớp</label>
               <Select 
                 value={classFilter} 
                 onValueChange={(value) => handleFilterChange('class', value)}
@@ -471,7 +718,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
               </Select>
             </div>
 
-            {/* Nút reset filter */}
             {hasActiveFilters && (
               <Button
                 variant="outline"
@@ -490,7 +736,14 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
       {/* Chi tiết học phí */}
       <Card>
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Chi tiết học phí</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Chi tiết học phí
+            {recalculatableFees.length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({recalculatableFees.length} hóa đơn có thể tính toán lại)
+              </span>
+            )}
+          </h3>
           <DataTable
             data={pagedRecords}
             columns={columns}
@@ -499,9 +752,78 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student })
             enableSearch={false}
             striped
             pagination={paginationConfig}
+            enableCheckbox={true}
+            selectedItems={selectedFeeIds}
+            onSelectionChange={handleSelectionChange}
+            getItemId={(fee) => fee.id}
+            allData={recalculatableFees}
           />
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận tính toán lại hóa đơn</DialogTitle>
+            <DialogDescription>
+              Bạn đang chuẩn bị tính toán lại <strong>{selectedFeesInfo.count}</strong> hóa đơn 
+              với tổng số tiền <strong>{formatCurrency(selectedFeesInfo.totalAmount)}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Danh sách hóa đơn sẽ được tính toán lại:</p>
+            <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-2">
+              {selectedFeesInfo.fees.map((fee) => {
+                const classInfo = classMap.get(fee.classId)
+                return (
+                  <div key={fee.id} className="text-sm flex justify-between py-1">
+                    <span>{classInfo?.name || 'N/A'}</span>
+                    <span className="font-medium">{formatCurrency(fee.amount)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Lưu ý</AlertTitle>
+            <AlertDescription>
+              • Hóa đơn cũ sẽ bị hủy<br/>
+              • Hóa đơn mới sẽ được tạo dựa trên điểm danh thực tế<br/>
+              • Phụ huynh sẽ nhận email thông báo về sự thay đổi
+            </AlertDescription>
+          </Alert>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isRecalculating}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={confirmRecalculate}
+              disabled={isRecalculating}
+            >
+              {isRecalculating ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                  Đang tính toán...
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  Xác nhận tính toán lại
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
