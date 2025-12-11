@@ -86,22 +86,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   
 
   
-  // Fetch subjects, rooms, and grades
+  // Fetch subjects và grades
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
       const response = await apiClient.get('/subjects');
-      return response;
-    },
-    enabled: !!classData.id,
-    staleTime: 3000,
-    refetchOnWindowFocus: true
-  });
-
-  const { data: roomsData } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: async () => {
-      const response = await apiClient.get('/rooms');
       return response;
     },
     enabled: !!classData.id,
@@ -167,7 +156,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
 
   const subjects = (subjectsData as any)?.data || [];
-  const rooms = (roomsData as any)?.data || [];
   const grades = (gradesData as any)?.data || [];
   const sessions = (sessionsData as any)?.data || [];
   const hasSessions = sessions.length > 0;
@@ -191,7 +179,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   useEffect(() => {
     setEditData({
       name: classData.name || '',
-      roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
       subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -205,7 +192,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   
   const [editData, setEditData] = useState({
     name: classData.name || '',
-    roomId: classData.roomId || classData.room?.id || '',
     gradeId: classData.gradeId || '',
     subjectId: classData.subjectId || classData.subject?.id || '',
     expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -274,7 +260,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     const hasChanges = 
       editData.name.trim() !== classData.name ||
       editData.description !== (classData.description || '') ||
-      editData.roomId !== (classData.roomId || '') ||
       editData.gradeId !== (classData.gradeId || '') ||
       editData.subjectId !== (classData.subjectId || classData.subject?.id || '') ||
       editData.status !== classData.status ||
@@ -298,8 +283,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const updateData = {
         name: editData.name.trim(),
         description: editData.description,
-        // Xử lý roomId: chỉ gửi nếu có giá trị hợp lệ, không gửi nếu rỗng hoặc 'none'
-        ...(editData.roomId && editData.roomId !== 'none' && editData.roomId !== '' ? { roomId: editData.roomId } : {}),
         // Xử lý gradeId: chỉ gửi nếu có giá trị hợp lệ
         ...(editData.gradeId && editData.gradeId !== 'none' ? { gradeId: editData.gradeId } : {}),
         // Xử lý subjectId: chỉ gửi nếu có giá trị hợp lệ
@@ -332,6 +315,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       // Hiển thị chi tiết lỗi validation từ backend
       const errorMessage = error.response?.data?.message || 
                           error.response?.message || 
+                          error.message ||
                           "Có lỗi xảy ra khi cập nhật lớp học";
       toast({
         title: "Lỗi",
@@ -361,7 +345,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const handleCancel = () => {
     setEditData({
       name: classData.name || '',
-      roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
       subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -629,33 +612,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Chọn phòng học
+                  Phòng học
                 </label>
-                {isEditing ? (
-                  <Select
-                  disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED}
-                    value={editData.roomId}
-                    onValueChange={(value) => handleInputChange('roomId', value)}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Chọn phòng học" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Chọn phòng học</SelectItem>
-                      {rooms &&
-                        rooms.length > 0 &&
-                        rooms.map((room: any) => (
-                          <SelectItem disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED} key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-base mt-1">
-                    {classData.roomName || classData.room?.name || 'Chưa phân công'}
-                  </p>
-                )}
+                <p className="text-base mt-1 text-gray-700">
+                  {classData.roomName || classData.room?.name || 'Chưa phân công'}
+                </p>
               </div>
 
               {/* Lịch học hàng tuần */}

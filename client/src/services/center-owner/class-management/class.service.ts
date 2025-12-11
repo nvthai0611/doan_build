@@ -123,7 +123,7 @@ export const classService = {
     } catch (error) {
       const anyErr: any = error as any;
       const message =
-        anyErr?.response?.message || anyErr?.message || 'Lỗi không xác định';
+        anyErr?.response?.message || anyErr?.message || 'Không thể tạo buổi học';
       const status = anyErr?.response?.status ?? 0;
       throw { status, message };
     }

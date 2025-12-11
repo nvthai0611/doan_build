@@ -1103,7 +1103,7 @@ export class TeacherManagementService {
         results.errors.push({
           row: rowNumber,
           field: 'general',
-          message: error.message || 'Lỗi không xác định',
+          message: error.message || 'Không thể validate giáo viên',
           value: '',
         });
         results.errorCount++;
@@ -1219,7 +1219,7 @@ export class TeacherManagementService {
         results.errors.push({
           row: rowNumber,
           field: 'general',
-          message: error.message || 'Lỗi không xác định',
+          message: error.message || 'Không thể import giáo viên',
           value: JSON.stringify(teacherData),
         });
         results.errorCount++;
