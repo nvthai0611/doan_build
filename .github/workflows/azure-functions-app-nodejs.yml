@@ -1,66 +1,63 @@
-# Tên của workflow
 name: Deploy NestJS SERVER to Azure App Service
 
-# Kích hoạt workflow khi có push lên branch 'main'
 on:
   push:
     branches: [ "main" ]
 
-# Định nghĩa các biến môi trường
-# !!! HÃY SỬA LẠI 2 GIÁ TRỊ DƯỚI ĐÂY THEO TÊN CỦA BẠN !!!
 env:
-  AZURE_APP_NAME: "nestjs-sep490-kkk"      # (Tên App Service của bạn)
-  AZURE_RESOURCE_GROUP: "nestjs-rg"         # (Tên Resource Group của bạn)
-  NODE_VERSION: "20.x"                   # (Phiên bản Node.js bạn dùng)
+  AZURE_APP_NAME: "nestjs-sep490-kkk"       # Tên App Service của bạn
+  AZURE_RESOURCE_GROUP: "nestjs-rg"         # Resource Group
+  NODE_VERSION: "20.x"                      # Node Version
 
-# Các công việc (jobs) cần chạy
 jobs:
   build-and-deploy-server:
     runs-on: ubuntu-latest
     
     steps:
-    # Bước 1: Checkout code từ repo
+    # 1. Lấy code về
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Bước 2: Cài đặt Node.js
+    # 2. Cài Node.js trên GitHub Runner
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: server/package-lock.json # Chỉ cache cho server
+        cache-dependency-path: server/package-lock.json
 
-    # Bước 3: Cài đặt dependencies cho server
-    # Thêm 'working-directory' để chạy lệnh bên trong thư mục 'server'
-    - name: npm install (server)
-      run: npm install
+    # 3. Test Build trên GitHub Runner
+    # Bước này để đảm bảo code của bạn không bị lỗi cú pháp trước khi đẩy đi
+    # Nhưng ta KHÔNG dùng kết quả build này để deploy
+    - name: Install and Build (Check)
+      run: |
+        npm install
+        npm run build
       working-directory: ./server
 
-    # Bước 4: Build project NestJS (server)
-    - name: npm build (server)
-      run: npm run build
+    # 4. DỌN DẸP (Bước quan trọng nhất để fix lỗi)
+    # Xóa sạch node_modules và dist để gửi code sạch lên Azure
+    - name: Clean artifacts before deploy
+      run: |
+        rm -rf node_modules
+        rm -rf dist
       working-directory: ./server
 
-    # Bước 5: Xóa devDependencies (server)
-    - name: Prune production dependencies (server)
-      run: npm prune --production
-      working-directory: ./server
-
-    # Bước 6: Đăng nhập vào Azure
+    # 5. Đăng nhập Azure
     - name: Login to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Bước 7: Deploy lên Azure App Service
+    # 6. Deploy code sạch lên Azure
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_APP_NAME }}
-        # Chỉ định deploy nội dung của thư mục 'server'
         package: ./server 
-        
-    # Bước 8: Đăng xuất
+        # Biến này bắt buộc Azure phải tự chạy npm install và build lại từ đầu
+        # Đảm bảo bcrypt và prisma chạy đúng trên môi trường đích
+    
+    # 7. Đăng xuất
     - name: Logout from Azure
       run: az logout
