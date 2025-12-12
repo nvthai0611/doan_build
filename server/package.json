@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "prestart:prod": "npm rebuild && npx prisma generate && npx prisma migrate deploy",
+    "prestart:prod": "npm rebuild --ignore-scripts && npx prisma generate && npx prisma migrate deploy",
     "start:prod": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
