@@ -82,22 +82,22 @@ export function ScholarshipManageTab() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Bạn chắc chắn muốn xóa học bổng này?')) {
-      setDeletingId(id)
-      try {
-        await deleteScholarship(id)
-        toast.success('Xóa học bổng thành công')
-      } catch (error: any) {
-        console.error('Error deleting scholarship:', error)
-        toast.error(
-          error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học bổng',
-        )
-      } finally {
-        setDeletingId(null)
-      }
-    }
-  }
+  // const handleDelete = async (id: string) => {
+  //   if (confirm('Bạn chắc chắn muốn xóa học bổng này?')) {
+  //     setDeletingId(id)
+  //     try {
+  //       await deleteScholarship(id)
+  //       toast.success('Xóa học bổng thành công')
+  //     } catch (error: any) {
+  //       console.error('Error deleting scholarship:', error)
+  //       toast.error(
+  //         error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học bổng',
+  //       )
+  //     } finally {
+  //       setDeletingId(null)
+  //     }
+  //   }
+  // }
 
   // Define columns - use useMemo to prevent recreation on every render
   const columns: Column<Scholarship>[] = useMemo(
@@ -178,9 +178,7 @@ export function ScholarshipManageTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Danh sách học bổng</h2>
-          <p className="text-sm text-muted-foreground">
-            Quản lý các chương trình học bổng
-          </p>
+          
         </div>
         <Button onClick={handleAddClick} disabled={isLoading}>
           <Plus className="w-4 h-4 mr-2" />
