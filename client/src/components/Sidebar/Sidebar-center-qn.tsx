@@ -170,7 +170,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
             // { title: 'Thanh toán online', href: '/finance/online-payment' },
             // { title: 'Báo cáo thu chi', href: '/finance/reports' },
             // { title: 'Nợ học phí', href: '/finance/debts' },
-            { title: 'Học bổng & Giảm phí', href: '/finance/scholarships' },
+            { title: 'Học bổng & Giảm phí', href: '/center-qn/finance/scholarships' },
           ],
         },
         {

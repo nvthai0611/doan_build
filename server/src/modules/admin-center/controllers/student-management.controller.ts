@@ -31,6 +31,7 @@ export class StudentManagementController {
              query.accountStatus,
              query.customerConnection,
              query.course,
+             query.scholarshipStatus,
              parseInt(query.page),
              parseInt(query.limit)
         );

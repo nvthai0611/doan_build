@@ -80,6 +80,7 @@ import BackPayDetails from "../pages/manager/Payroll-teacher-management/BackPayD
 import UserManagement from "../pages/manager/User-management/UserManagement";
 import AuditLog from "../pages/manager/Audit-log/AuditLog";
 import FinancialReports  from "@/pages/manager/Financial-reports/FinancialReports";
+import ScholarshipManagement from "../pages/manager/Scholarship-management/ScholarshipManagement";
 
 export const privateRoutes = (
   <>
@@ -137,6 +138,7 @@ export const privateRoutes = (
         <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
         <Route path="user-management" element={<UserManagement />} />
         <Route path="audit-log" element={<AuditLog />} />
+        <Route path="finance/scholarships" element={<ScholarshipManagement />} />
       </Route>
 
       {/* Giáo viên */}
