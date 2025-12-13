@@ -51,6 +51,29 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? (exception.getResponse() as any)
         : { message: exception.message };
+    const normalizeMessage = (input: any): string => {
+      // Array of objects [{field: msg}]
+      if (Array.isArray(input)) {
+        const parts = input
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object') {
+              const firstVal = Object.values(item)[0];
+              if (Array.isArray(firstVal)) return firstVal.join(', ');
+              return String(firstVal);
+            }
+            return String(item);
+          })
+          .filter(Boolean);
+        return parts.join('; ');
+      }
+      if (input && typeof input === 'object') {
+        const firstVal = Object.values(input)[0];
+        if (Array.isArray(firstVal)) return firstVal.join(', ');
+        return String(firstVal);
+      }
+      return input || 'Something went wrong';
+    };
     let message: string;
     let error: string;
 
@@ -61,7 +84,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error = this.getErrorNameFromStatus(status);
     } else if (response && typeof response === 'object') {
       // Có object với message và có thể có error
-      message = response.message || 'Something went wrong';
+      message = normalizeMessage(response.message);
       error = response.error || this.getErrorNameFromStatus(status);
     } else {
       message = 'Something went wrong';

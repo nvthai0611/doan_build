@@ -2504,7 +2504,7 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa nhiều buổi học
+  // Xóa mềm nhiều buổi học (set status = cancelled)
   async deleteSessions(classId: string, sessionIds: string[]) {
     try {
       // Validate input
@@ -2589,11 +2589,16 @@ export class ClassManagementService {
         );
       }
 
-      // Delete sessions
-      const deletedResult = await this.prisma.classSession.deleteMany({
+      //
+      // Soft delete: set status = cancelled
+      const deletedResult = await this.prisma.classSession.updateMany({
         where: {
           id: { in: sessionIds },
           classId: classId,
+        },
+        data: {
+          status: 'cancelled',
+          cancellationReason: null,
         },
       });
 
@@ -2615,6 +2620,87 @@ export class ClassManagementService {
         {
           success: false,
           message: 'Có lỗi xảy ra khi xóa buổi học',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Khôi phục các buổi học đã xóa mềm
+  async restoreSessions(classId: string, sessionIds: string[]) {
+    try {
+      if (
+        !sessionIds ||
+        !Array.isArray(sessionIds) ||
+        sessionIds.length === 0
+      ) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Vui lòng chọn ít nhất 1 buổi học để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { id: true, name: true },
+      });
+
+      if (!classData) {
+        throw new HttpException(
+          { success: false, message: 'Không tìm thấy lớp học' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const sessions = await this.prisma.classSession.findMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        select: { id: true },
+      });
+
+      if (sessions.length === 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không có buổi học nào ở trạng thái đã xóa để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const restored = await this.prisma.classSession.updateMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        data: {
+          status: 'has_not_happened',
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          restoredCount: restored.count,
+          requestedCount: sessionIds.length,
+          classId,
+          className: classData.name,
+        },
+        message: `Đã khôi phục ${restored.count} buổi học`,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi khôi phục buổi học',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

@@ -176,7 +176,7 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         {
           title: 'Quản lý đào tạo',
           icon: School,
-          href: '/center-qn',
+          // Không có href vì đây là parent item chỉ có children
           children: [
             { title: 'Quản lý môn học', href: '/center-qn/courses' },
             { title: 'Quản lý phòng học', href: '/center-qn/rooms' },
@@ -428,14 +428,25 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const menuItems = isCenterOwner ? null : (user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems)
     const centerOwnerMenu = isCenterOwner ? centerOwnerMenuItems : null
 
+    // Helper function to check if a path matches an item (exact match only, no partial)
+    const isPathMatch = (itemHref: string | undefined, checkPath: string): boolean => {
+        if (!itemHref) return false
+        // Exact match only
+        return checkPath === itemHref
+    }
+
     // Helper function to check if item should be expanded
     const shouldExpandItem = (item: MenuItem) => {
         if (!item.children) return false
-        const isMatch = item.href && pathname.startsWith(item.href) && item.href !== '/'
-        const hasChildMatch = item.children.some((c: MenuItem) =>
-            c.href && (pathname === c.href || pathname.startsWith(c.href))
-        )
-        return isMatch || hasChildMatch
+        const hasChildMatch = item.children.some((c: MenuItem) => {
+            if (isPathMatch(c.href, pathname)) return true
+            // Check nested children
+            if (c.children) {
+                return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+            }
+            return false
+        })
+        return hasChildMatch
     }
 
     // Helper function to check and expand nested items recursively
@@ -504,12 +515,17 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
             const hasChildren = child.children && child.children.length > 0
             const childKey = `${child.title}-${level}`
             const isExpanded = expandedItems.includes(childKey)
-            const isExactActive = pathname === child.href
-            const hasChildMatch = child.children?.some((c: MenuItem) =>
-                c.href && (pathname === c.href || pathname.startsWith(c.href))
-            )
-            const isPartialActive = child.href && pathname.startsWith(child.href) && child.href !== '/' && !isExactActive
-            const isChildActive = isExactActive || isPartialActive || hasChildMatch
+            const isExactActive = isPathMatch(child.href, pathname)
+            // Check nested children for exact match only
+            const hasChildMatch = child.children?.some((c: MenuItem) => {
+                if (isPathMatch(c.href, pathname)) return true
+                if (c.children) {
+                    return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                }
+                return false
+            })
+            // Chỉ active khi exact match hoặc có child match, không dùng partial match
+            const isChildActive = isExactActive || hasChildMatch
 
             return (
                 <div key={childKey}>
@@ -593,10 +609,19 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                         <>
                             {/* Top Level Items */}
                             {centerOwnerMenu.topLevel.map((item) => {
-                                const isExactMatch = pathname === item.href
-                                const hasChildMatch = item.children?.some((c: MenuItem) => c.href === pathname)
-                                const isPartialMatch = item.href && pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
-                                const isActive = isExactMatch || hasChildMatch || isPartialMatch
+                                // Special case: "Trang chủ" should be active when pathname is '/' or '/center-qn'
+                                const isHomePage = (pathname === '/' || pathname === '/center-qn') && item.href === '/center-qn'
+                                const isExactMatch = isPathMatch(item.href, pathname) || isHomePage
+                                const hasChildMatch = item.children?.some((c: MenuItem) => {
+                                    if (isPathMatch(c.href, pathname)) return true
+                                    // Check nested children
+                                    if (c.children) {
+                                        return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                                    }
+                                    return false
+                                })
+                                // Chỉ active khi exact match hoặc có child match (chỉ 1 item active tại một thời điểm)
+                                const isActive = isExactMatch || hasChildMatch
                                 const isExpanded = expandedItems.includes(item.title)
                                 const hasChildren = item.children && item.children.length > 0
 
@@ -665,10 +690,18 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                     {/* Section Items */}
                                     <div className="space-y-1 mt-1">
                                         {section.items.map((item) => {
-                                            const isExactMatch = pathname === item.href
-                                            const hasChildMatch = item.children?.some((c: MenuItem) => c.href === pathname)
-                                            const isPartialMatch = item.href && pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
-                                            const isActive = isExactMatch || hasChildMatch || isPartialMatch
+                                            const isExactMatch = isPathMatch(item.href, pathname)
+                                            const hasChildMatch = item.children?.some((c: MenuItem) => {
+                                                // Check exact match với child hoặc nested child
+                                                if (isPathMatch(c.href, pathname)) return true
+                                                // Check nested children
+                                                if (c.children) {
+                                                    return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                                                }
+                                                return false
+                                            })
+                                            // Chỉ active khi exact match hoặc có child match, không dùng partial match
+                                            const isActive = isExactMatch || hasChildMatch
                                             const isExpanded = expandedItems.includes(item.title)
                                             const hasChildren = item.children && item.children.length > 0
 
