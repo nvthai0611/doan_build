@@ -364,4 +364,12 @@ export const centerOwnerTeacherService = {
     const response = await apiClient.post(`${centerOwnerTeacherService.BASE_URL}`, sessionData)
     return response
   },
+
+  getAllPayrolls: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get<any>(
+      `${centerOwnerTeacherService.BASE_URL}/payrolls`,
+      params
+    )
+    return response
+  },
 }

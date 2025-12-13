@@ -490,7 +490,7 @@ export class PayrollCronService {
         errors.push({
           itemId: p.id.toString(),
           itemName: `Payment ID ${p.id}`,
-          phase: 'Phase 2 (Back Pay)',
+          phase: 'Giai đoạn 2 (Truy Lĩnh Nợ Cũ)',
           error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi xử lý BackPay ID ${p.id}:`, err);
@@ -611,10 +611,13 @@ export class PayrollCronService {
         this.logger.log(`Đã tạo Payroll [${payroll.id}] cho GV ${teacherId}`);
       } catch (err) {
         failed++;
+        const findTeacher = await this.prisma.teacher.findUnique({
+          where: { id: teacherId },
+        });
         errors.push({
           itemId: teacherId,
-          itemName: `Teacher ID ${teacherId}`,
-          phase: 'Phase 3 (Aggregation)',
+          itemName: `Teacher Code ${findTeacher?.teacherCode || teacherId}`,
+          phase: 'Giai đoạn 3 (Tạo Payroll)',
           error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi tạo Payroll cho GV ${teacherId}:`, err);
