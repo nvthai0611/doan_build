@@ -162,6 +162,12 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
     if (!formData.fullName.trim()) {
       errors.fullName = "Họ tên là bắt buộc"
+    }else if (formData.fullName.length < 2) {
+        errors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
+    } else if (formData.fullName.length > 30) {
+        errors.fullName = "Họ và tên không được vượt quá 30 ký tự"
+    }else if( !/^[a-zA-ZÀ-ỹ\s]+$/.test(formData.fullName)) {
+        errors.fullName = "Họ và tên chỉ được chứa chữ cái và khoảng trắng"
     }
 
     if (!parentInfo?.id) {
@@ -174,7 +180,26 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
     if (!formData.birthDate) {
       errors.birthDate = "Vui lòng chọn ngày sinh"
-    }
+    }else {
+        const birthDate = new Date(formData.birthDate)
+        const today = new Date()
+
+        // Check if future
+        if (birthDate > today) {
+          errors.birthDate = "Ngày sinh không được ở tương lai"
+        } else {
+          // Check age >= 10
+          let age = today.getFullYear() - birthDate.getFullYear()
+          const m = today.getMonth() - birthDate.getMonth()
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--
+          }
+
+          if (age < 12) {
+            errors.birthDate = "Học sinh phải từ 12 tuổi trở lên"
+          }
+        }
+      }
 
     if (!formData.schoolId) {
       errors.schoolId = "Vui lòng chọn trường học"

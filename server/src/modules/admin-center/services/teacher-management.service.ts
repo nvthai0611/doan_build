@@ -1421,4 +1421,168 @@ export class TeacherManagementService {
       throw error;
     }
   }
+
+async getAllPayRolls(queryDto: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  month?: string;
+  year?: string;
+  teacherId?: string;
+  teacherName?: string;
+}) {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      month,
+      year,
+      teacherId,
+      teacherName,
+    } = queryDto;
+    
+    const pageNum = parseInt(page.toString());
+    const limitNum = parseInt(limit.toString());
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+
+    // Filter theo status
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    // Filter theo teacherId
+    if (teacherId) {
+      where.teacherId = teacherId;
+    }
+
+    // Filter theo teacher name
+    if (teacherName) {
+      where.teacher = {
+        user: {
+          fullName: {
+            contains: teacherName,
+            mode: 'insensitive',
+          },
+        },
+      };
+    }
+
+    // Filter theo month (YYYY-MM)
+    if (month && month.match(/^\d{4}-\d{2}$/)) {
+      const [yearStr, monthNum] = month.split('-');
+      const startDate = new Date(parseInt(yearStr), parseInt(monthNum) - 1, 1);
+      const endDate = new Date(parseInt(yearStr), parseInt(monthNum), 0, 23, 59, 59, 999);
+      
+      where.periodStart = {
+        gte: startDate,
+      };
+      where.periodEnd = {
+        lte: endDate,
+      };
+    } 
+    // Filter theo year (YYYY)
+    else if (year && year.match(/^\d{4}$/)) {
+      const startDate = new Date(parseInt(year), 0, 1);
+      const endDate = new Date(parseInt(year) + 1, 0, 1);
+      
+      where.periodStart = {
+        gte: startDate,
+        lt: endDate,
+      };
+    }
+
+    const [payrolls, total] = await Promise.all([
+      this.prisma.payroll.findMany({
+        where,
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              teacherCode: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+          payrollPayment: {
+            select: {
+              id: true,
+              totalAmount: true,
+              paymentMethod: true,
+              paidAt: true,
+              notes: true,
+            },
+          },
+          payoutDetails: {
+            select: {
+              id: true,
+              teacherPayout: true,
+              sessionId: true,
+            },
+          },
+        },
+        orderBy: [
+          { periodStart: 'desc' },
+          { id: 'desc' },
+        ],
+        skip,
+        take: limitNum,
+      }),
+      this.prisma.payroll.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      data: payrolls.map((payroll) => ({
+        id: payroll.id.toString(),
+        periodStart: payroll.periodStart,
+        periodEnd: payroll.periodEnd,
+        totalAmount: payroll.totalAmount,
+        backPayAmount: payroll.backPayAmount,
+        bonuses: payroll.bonuses,
+        deductions: payroll.deductions,
+        teachingHours: payroll.teachingHours,
+        hourlyRate: payroll.hourlyRate,
+        status: payroll.status,
+        adminPublishedAt: payroll.adminPublishedAt,
+        teacherActionAt: payroll.teacherActionAt,
+        teacherRejectionReason: payroll.teacherRejectionReason,
+        teacher: {
+          id: payroll.teacher.id,
+          code: payroll.teacher.teacherCode,
+          name: payroll.teacher.user.fullName,
+          email: payroll.teacher.user.email,
+          phone: payroll.teacher.user.phone,
+        },
+        payrollPayment: payroll.payrollPayment ? {
+          id: payroll.payrollPayment.id.toString(),
+          totalAmount: payroll.payrollPayment.totalAmount,
+          paymentMethod: payroll.payrollPayment.paymentMethod,
+          paidAt: payroll.payrollPayment.paidAt,
+          notes: payroll.payrollPayment.notes,
+        } : null,
+        sessionCount: payroll.payoutDetails.length,
+      })),
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      },
+      message: 'Lấy danh sách bảng lương thành công',
+    };
+  } catch (error) {
+    console.error('Error in getAllPayRolls:', error);
+    throw new Error('Không thể lấy danh sách bảng lương');
+  }
+}
 }

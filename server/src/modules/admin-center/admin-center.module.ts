@@ -77,6 +77,8 @@ import { ChangeStatusSessionService } from '../cronjob/service/change-status-ses
 import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 import { FinancialReportsController } from './controllers/financial-reports.controller';
 import { FinancialReportsService } from './services/financial-reports.service';
+import { ScholarshipManagementController } from './controllers/scholarship-management.controller';
+import { ScholarshipManagementService } from './services/scholarship-management.service';
 
 @Module({
   imports: [
@@ -131,6 +133,7 @@ import { FinancialReportsService } from './services/financial-reports.service';
     JobTriggerController,
     AuditLogController,
     FinancialReportsController,
+    ScholarshipManagementController,
   ],
   providers: [
     PrismaService,
@@ -174,6 +177,7 @@ import { FinancialReportsService } from './services/financial-reports.service';
     ChangeStatusSessionService,
     EmailNotificationPayrollService,
     FinancialReportsService,
+    ScholarshipManagementService,
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
 

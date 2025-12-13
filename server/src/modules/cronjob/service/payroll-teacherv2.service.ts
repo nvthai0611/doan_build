@@ -54,6 +54,11 @@ export class PayrollCronService {
   private roundMoney(amount: Prisma.Decimal): Prisma.Decimal {
     return new Prisma.Decimal(amount.toFixed(0));
   }
+
+  private toDbDate(date: Date): Date {
+    // Cộng thêm 7 tiếng (7 * 60 * 60 * 1000 ms)
+    return new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  }
   /**
    * CRON JOB: CHẠY LÚC 02:00 SÁNG NGÀY 10 HÀNG THÁNG
    * Ví dụ: Chạy ngày 10/12 để tính lương cho công việc của Tháng 11
@@ -75,28 +80,42 @@ export class PayrollCronService {
 
     // === THIẾT LẬP THỜI GIAN (QUAN TRỌNG) ===
     const now = new Date(); // Ví dụ: 10/12/2025
-
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // Tháng 0 - 11  
     // A. Kỳ Học (Tháng trước - T11): Dùng để tìm ClassSession
-    const studyMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const studyMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    // Bắt đầu: 01/11 00:00 UTC
+    const studyMonthStart = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+    const studyMonthEnd = new Date(Date.UTC(currentYear, currentMonth, 1));
     studyMonthEnd.setHours(23, 59, 59, 999);
     // B. Kỳ Hóa Đơn (Tháng này - T12): Dùng để tìm FeeRecord hiện tại (vì dueDate là 07/12)
-    const billingMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const billingMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    billingMonthEnd.setHours(23, 59, 59, 999);
-    // C. Hạn Chốt Sổ Tháng Này (Mùng 7/12): Hạn cuối ghi nhận thanh toán cho kỳ này
-    const closingDate = new Date(now.getFullYear(), now.getMonth(), 7);
-    closingDate.setHours(23, 59, 59, 999);
+    const billingMonthStart = new Date(Date.UTC(currentYear, currentMonth, 1));
+    // End Limit: 01/01 năm sau 00:00 UTC (Dùng làm mốc chặn trên <)
+    const billingMonthEnd = new Date(Date.UTC(currentYear, currentMonth + 1, 1));
 
-    // D. Hạn Chốt Sổ Tháng Trước (Mùng 7/11): Điểm bắt đầu để quét các khoản thanh toán nợ
-    // (Để không bỏ sót các khoản trả vào ngày 8/11, 9/11...)
-    const previousClosingDate = new Date(now.getFullYear(), now.getMonth() - 1, 7);
-    previousClosingDate.setHours(23, 59, 59, 999);
+    // C. Hạn Chốt Sổ Tháng Này (Mùng 7/12)
+    // Limit: 08/12 00:00 UTC (Dùng làm mốc chặn trên <, nghĩa là lấy hết ngày 7)
+    const closingDate = new Date(Date.UTC(currentYear, currentMonth, 8));
+
+    // D. Hạn Chốt Sổ Tháng Trước (Mùng 7/11)
+    // Limit: 08/11 00:00 UTC (Dùng làm mốc chặn dưới >=, nghĩa là bắt đầu từ ngày 8)
+    const previousClosingDate = new Date(Date.UTC(currentYear, currentMonth - 1, 8));
     const fmtDate = (d: Date) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
+        // const y = d.getFullYear();
+        // const m = String(d.getMonth() + 1).padStart(2, '0');
+        // const day = String(d.getDate()).padStart(2, '0');
+        // return `${y}-${m}-${day}`;
+        
+      return d.toLocaleString('vi-VN', { 
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false 
+      });
+    
     };
     
     const fmtDateTime = (d: Date) => {
@@ -231,13 +250,13 @@ export class PayrollCronService {
     const activeClasses = await this.prisma.class.findMany({
       where: {
         sessions: {
-          some: { sessionDate: { gte: studyStart, lte: studyEnd }, status: 'end' },
+          some: { sessionDate: { gte: studyStart, lt: studyEnd }, status: 'end' },
         },
       },
       select: { id: true, name: true },
     });
-    console.log("Tính toán ngày học bắt");
-    
+    console.log("Tính toán các buổi học để tính lương: ");
+    console.log(studyStart, studyEnd);
     for (const cls of activeClasses) {
       try {
         // A. Tính Tổng Thu (Dựa trên Hóa Đơn của Tháng Tính Lương - T12)
@@ -247,10 +266,10 @@ export class PayrollCronService {
             classId: cls.id,
             // dueDate LỚN HƠN 07/11 (tức là từ 08/11)
             // tìm hóa đơn có dueDate từ 08/11 đến 30/12
-            dueDate: { gt: previousClosingDate, lte: billingEnd },
+            dueDate: { gt: previousClosingDate, lt: billingEnd },
             status: 'paid',
             feeRecordPayments: {
-              some: { payment: { paidAt: { lte: closingDate } } },
+              some: { payment: { paidAt: { lt: closingDate } } },
             },
           },
           select: { totalAmount: true, amount: true },
@@ -272,16 +291,16 @@ export class PayrollCronService {
         const sessions = await this.prisma.classSession.findMany({
           where: {
             classId: cls.id,
-            sessionDate: { gte: studyStart, lte: studyEnd },
+            sessionDate: { gte: studyStart, lt: studyEnd },
             status: 'end',
             teacherSessionPayout: { is: null }
           },
           select: { id: true, teacherId: true, substituteTeacherId: true, sessionDate: true },
         });
+        console.log(studyStart, studyEnd);
+        console.log(cls.id);
         
         const totalSessions = sessions.length;
-        console.log(studyStart, studyEnd);
-        
         console.log("Các buổi dạy trong tháng của lớp: ",totalSessions);
 
         // Nếu không có doanh thu hoặc không có buổi học -> Bỏ qua
@@ -320,7 +339,7 @@ export class PayrollCronService {
               status: 'calculated',
               studentCount: attendanceCount,
               sessionFeePerStudent: 0, // Không quan trọng trong mô hình pool
-              totalRevenue: rawValuePerSession, // Lưu giá trị gốc 1 buổi
+              totalRevenue: this.roundMoney(rawValuePerSession), // Lưu giá trị gốc 1 buổi
               payoutRate: teacherRate,
               teacherPayout: teacherPayout,
             },
@@ -362,8 +381,8 @@ export class PayrollCronService {
     // 1. Tìm các khoản thanh toán NỢ
     const latePayments = await this.prisma.feeRecordPayment.findMany({
       where: {
-        payment: { paidAt: { gt: paymentWindowStart, lte: paymentWindowEnd } },
-        feeRecord: { dueDate: { lte: currentBillingStart }, status: 'paid' },
+        payment: { paidAt: { gte: paymentWindowStart, lt: paymentWindowEnd } },
+        feeRecord: { dueDate: { lt: currentBillingStart }, status: 'paid' },
       },
       include: {
         feeRecord: {
@@ -404,8 +423,12 @@ export class PayrollCronService {
 
         // B1. Xác định tháng của hóa đơn nợ
         const debtDate = feeRecord.dueDate;
-        const debtMonthStart = new Date(debtDate.getFullYear(), debtDate.getMonth(), 1);
-        const debtMonthEnd = new Date(debtDate.getFullYear(), debtDate.getMonth() + 1, 0);
+        const dY = debtDate.getFullYear();
+        const dM = debtDate.getMonth();
+        const debtMonthStart = new Date(Date.UTC(dY, dM, 1));
+        const debtMonthEnd = new Date(Date.UTC(dY, dM + 1, 1)); // <--- Đầu tháng sau
+        // const debtMonthStart = new Date(debtDate.getFullYear(), debtDate.getMonth(), 1);
+        // const debtMonthEnd = new Date(debtDate.getFullYear(), debtDate.getMonth() + 1, 0);
 
         // B2. Tìm lịch sử Payout của GV này, tại Lớp này, trong Tháng nợ đó
         // Mục đích: "Snapshot" lại mức lương GV đã nhận lúc đó
@@ -414,7 +437,7 @@ export class PayrollCronService {
             teacherId: targetTeacherId,
             session: {
               classId: feeRecord.classId,
-              sessionDate: { gte: debtMonthStart, lte: debtMonthEnd },
+              sessionDate: { gte: debtMonthStart, lt: debtMonthEnd },
             },
           },
           select: { payoutRate: true },
@@ -427,7 +450,7 @@ export class PayrollCronService {
           // Case 2: Không tìm thấy (VD: Tháng đó lớp nghỉ, hoặc GV nghỉ dạy) -> Fallback về Hợp đồng
           finalRate = await this.getTeacherRate(targetTeacherId, debtDate);
           this.logger.warn(
-            `BackPay: Không tìm thấy lịch sử Payout tháng ${debtDate.getMonth() + 1} cho GV ${targetTeacherId}. Dùng Fallback Rate theo hợp đồng.`,
+            `Hóa đơn cũ: Không tìm thấy lịch sử bảng lương tháng ${debtDate.getMonth() + 1} cho GV ${targetTeacherId}. Dùng tỷ lệ theo hợp đồng.`,
           );
         }
 
@@ -455,7 +478,7 @@ export class PayrollCronService {
           feeRecordId: feeRecord.id,
           sessionId: 'BACKPAY',
           sessionDate: debtDate.toISOString().slice(0, 10), // Hiển thị ngày nợ
-          description: `Lương cũ T${debtDate.getMonth() + 1}: ${className} (${studentName}) - Rate áp dụng: ${finalRate.times(100)}%`,
+          description: `Lương cũ T${debtDate.getMonth() + 1}: ${className} (${studentName}) - tỷ lệ áp dụng: ${finalRate.times(100)}%`,
           revenuePerSession: paymentAmount.toNumber(),
           payoutRate: finalRate.toNumber(),
           payoutAmount: teacherPayout.toNumber(),
@@ -467,8 +490,8 @@ export class PayrollCronService {
         errors.push({
           itemId: p.id.toString(),
           itemName: `Payment ID ${p.id}`,
-          phase: 'Phase 2 (Back Pay)',
-          error: err instanceof Error ? err.message : 'Unknown error',
+          phase: 'Giai đoạn 2 (Truy Lĩnh Nợ Cũ)',
+          error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi xử lý BackPay ID ${p.id}:`, err);
       }
@@ -493,10 +516,10 @@ export class PayrollCronService {
     const newPayouts = await this.prisma.teacherSessionPayout.findMany({
       where: {
         status: 'calculated',
-        session: { sessionDate: { gte: startDate, lte: endDate } },
+        session: { sessionDate: { gte: startDate, lt: endDate } },
       },
     });
-
+    const displayPeriodEnd = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), 0));
     // Gom dữ liệu lương tháng này
     const currentPayMap = new Map<string, Prisma.Decimal>();
     const payoutIdsMap = new Map<string, bigint[]>();
@@ -516,11 +539,24 @@ export class PayrollCronService {
 
     for (const teacherId of allTeacherIds) {
       try {
+        const checkStart = new Date(startDate);
+        checkStart.setDate(checkStart.getDate() - 5); 
+        console.log(checkStart);
+        
+        const checkEnd = new Date(startDate);
+        checkEnd.setDate(checkEnd.getDate() + 5);
+        console.log(checkEnd);
+        
         // Idempotency: Kiểm tra đã có Payroll tháng này chưa
         const exists = await this.prisma.payroll.findFirst({
-          where: { teacherId, periodStart: startDate, periodEnd: endDate },
+          where: { teacherId, periodStart: {
+                  gte: checkStart,
+                  lte: checkEnd
+              } },
+          include: { teacher: true },
         });
         if (exists) {
+          this.logger.debug(`Bảng lương ${exists.id} cho giáo viên ${exists.teacher.teacherCode} đã tồn tại. Bỏ qua...`);
           success++;
           continue;
         }
@@ -553,7 +589,7 @@ export class PayrollCronService {
           data: {
             teacherId,
             periodStart: startDate,
-            periodEnd: endDate,
+            periodEnd: displayPeriodEnd,
             totalAmount: totalAmount,
             backPayAmount: backPayAmount,
             bonuses: 0,
@@ -575,11 +611,14 @@ export class PayrollCronService {
         this.logger.log(`Đã tạo Payroll [${payroll.id}] cho GV ${teacherId}`);
       } catch (err) {
         failed++;
+        const findTeacher = await this.prisma.teacher.findUnique({
+          where: { id: teacherId },
+        });
         errors.push({
           itemId: teacherId,
-          itemName: `Teacher ID ${teacherId}`,
-          phase: 'Phase 3 (Aggregation)',
-          error: err instanceof Error ? err.message : 'Unknown error',
+          itemName: `Teacher Code ${findTeacher?.teacherCode || teacherId}`,
+          phase: 'Giai đoạn 3 (Tạo Payroll)',
+          error: err instanceof Error ? err.message : 'Lỗi không xác định',
         });
         this.logger.error(`Lỗi tạo Payroll cho GV ${teacherId}:`, err);
       }

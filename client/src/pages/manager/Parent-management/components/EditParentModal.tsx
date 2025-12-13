@@ -62,7 +62,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
       handleClose()
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Có lỗi xảy ra khi cập nhật"
+      const message = error?.message || "Có lỗi xảy ra khi cập nhật"
       toast.error(message)
     }
   })
@@ -78,7 +78,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
       setSearchedStudent(null)
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Có lỗi xảy ra khi liên kết học sinh"
+      const message = error?.message || "Có lỗi xảy ra khi liên kết học sinh"
       toast.error(message)
     }
   })
@@ -92,7 +92,7 @@ export function EditParentModal({ isOpen, onClose, parentId, parentData }: EditP
       toast.success("Hủy liên kết học sinh thành công!")
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Có lỗi xảy ra khi hủy liên kết"
+      const message = error?.message || "Có lỗi xảy ra khi hủy liên kết"
       toast.error(message)
     }
   })
