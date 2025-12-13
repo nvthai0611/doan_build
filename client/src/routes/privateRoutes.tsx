@@ -214,16 +214,16 @@ export const privateRoutes = (
 
       {/* Admin */}
       <Route
-        path="/admin"
+        path="/adminit"
         element={<AuthMiddleware allowedRoles={['admin']} />}
       >
         <Route index element={<div>Admin Dashboard - Coming Soon</div>} />
         <Route
-          path="users"
+          path="user_validate"
           element={<div>User Management - Coming Soon</div>}
         />
         <Route
-          path="system"
+          path="data_system_validate"
           element={<div>System Settings - Coming Soon</div>}
         />
       </Route>

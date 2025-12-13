@@ -379,7 +379,7 @@ export class ClassManagementService {
           enrollments: {
             where: {
               status: {
-                not: 'withdrawn', // Loại bỏ enrollments đã chuyển lớp
+                notIn: ['withdrawn', 'stopped'], // Loại bỏ enrollments đã chuyển lớp
               },
             },
             select: {

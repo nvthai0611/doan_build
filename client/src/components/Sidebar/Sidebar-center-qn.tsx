@@ -43,7 +43,8 @@ import {
     CheckSquare,
     School,
     Cog,
-    History
+    History,
+    User
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -417,6 +418,19 @@ const parentMenuItems = [
 
 ]
 
+const adminMenuItems = [
+    {
+        title: "Quản lý người dùng",
+        icon: User,
+        href: "/adminit/user_validate",
+    },
+    {
+        title: "Dữ liệu hệ thống",
+        icon: Target,
+        href: "/adminit/data_system_validate",
+    },
+]
+
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
     const [expandedItems, setExpandedItems] = useState<string[]>([])
@@ -425,8 +439,18 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { pathname } = useLocation()
     
     const isCenterOwner = user?.role === "center_owner"
-    const menuItems = isCenterOwner ? null : (user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems)
+    const isAdmin = (user?.role as string) === "admin"
+    const menuItems = isCenterOwner ? null : (isAdmin ? adminMenuItems : user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems)
     const centerOwnerMenu = isCenterOwner ? centerOwnerMenuItems : null
+    
+    // Debug: Log role để kiểm tra
+    useEffect(() => {
+        if (user?.role) {
+            console.log('Current user role:', user.role)
+            console.log('isAdmin:', isAdmin)
+            console.log('menuItems:', menuItems)
+        }
+    }, [user?.role, isAdmin, menuItems])
 
     // Helper function to check if a path matches an item (exact match only, no partial)
     const isPathMatch = (itemHref: string | undefined, checkPath: string): boolean => {
@@ -466,7 +490,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     useEffect(() => {
         if (!isCollapsed) {
             // Handle center owner menu structure
-            if (centerOwnerMenu) {
+            if (centerOwnerMenu && 'topLevel' in centerOwnerMenu) {
                 // Check top level items
                 centerOwnerMenu.topLevel.forEach((item) => {
                     checkAndExpandNested(item, 0)
@@ -586,7 +610,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             <div>
                                 <h2 className="font-semibold text-lg">QN Edu System</h2>
                                 <p className="text-xs text-muted-foreground">
-                                    {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : "Phụ Huynh/Học Sinh"}
+                                    {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : (user?.role as string) === "admin" ? "Quản trị viên" : "Phụ Huynh/Học Sinh"}
                                 </p>
                             </div>
                         </div>
@@ -839,53 +863,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                 </div>
             </ScrollArea>
 
-            {/* User Profile */}
-            <div className="p-4 border-t">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className={cn("w-full h-12 transition-all", isCollapsed ? "justify-center px-0" : "justify-start gap-3")}
-                        >
-                            <Avatar className="w-8 h-8 flex-shrink-0">
-                                <AvatarImage src="/placeholder.svg" />
-                                <AvatarFallback>
-                                    {user?.fullName
-                                        ?.split(" ")
-                                        .map((n: string) => n[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                            {!isCollapsed && (
-                                <>
-                                    <div className="flex-1 text-left">
-                                        <p className="text-sm font-medium">{user?.fullName}</p>
-                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                                    </div>
-                                    <ChevronDown className="w-4 h-4" />
-                                </>
-                            )}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <Settings className="mr-2 h-4 w-4" />
-                            Cài đặt
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={async () => {
-                            await logout()
-                            navigate('/auth')
-                        }}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Đăng xuất
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+            
         </div>
     )
 }
