@@ -145,6 +145,15 @@ export const classService = {
     return response;
   },
 
+  // Restore multiple soft-deleted sessions
+  restoreSessions: async (classId: string, sessionIds: string[]) => {
+    const response = await apiClient.patch(
+      `${BASE_URL}/${classId}/sessions/restore`,
+      { sessionIds },
+    );
+    return response;
+  },
+
   // Get dashboard data
   getDashboard: async (classId: string) => {
     const response = await apiClient.get(`${BASE_URL}/${classId}/dashboard`);
