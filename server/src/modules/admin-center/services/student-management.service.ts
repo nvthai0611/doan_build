@@ -92,7 +92,14 @@ export class StudentManagementService {
           user: student.parent.user
         }
         : null,
-      school: student.school
+      school: student.school,
+      scholarship: student.scholarship
+        ? {
+            id: student.scholarship.id,
+            name: student.scholarship.name,
+            percent: Number(student.scholarship.percent),
+          }
+        : null,
     };
   }
 
@@ -353,6 +360,7 @@ export class StudentManagementService {
     accountStatus?: string,
     customerConnection?: string,
     course?: string,
+    scholarshipStatus?: string,
     page: number = 1,
     limit: number = 10
   ): Promise<StudentResponse> {
@@ -452,6 +460,15 @@ export class StudentManagementService {
             : null;
       }
 
+      // Handle scholarship status filter
+      if (scholarshipStatus && scholarshipStatus.trim() && scholarshipStatus !== 'all') {
+        if (scholarshipStatus === 'has') {
+          where.scholarshipId = { not: null };
+        } else if (scholarshipStatus === 'none') {
+          where.scholarshipId = null;
+        }
+      }
+
       // Handle search filter
       if (search?.trim()) {
         const searchTerm = search.trim();
@@ -508,6 +525,14 @@ export class StudentManagementService {
             user: { select: STUDENT_USER_SELECT },
             parent: { include: PARENT_INCLUDE },
             school: { select: SCHOOL_SELECT },
+            scholarship: {
+              select: {
+                id: true,
+                name: true,
+                percent: true,
+                isActive: true,
+              },
+            },
             enrollments: {
               include: {
                 class: {
