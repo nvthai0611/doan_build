@@ -26,6 +26,8 @@ export function AdminLogin() {
       // Validate role - chỉ cho phép Admin
       const allowedRoles = ['admin']
       if (!allowedRoles.includes(result?.user?.role)) {
+        console.log("nhảy vào rồi");
+        
         const roleNames: any = {
           center_owner: 'Chủ trung tâm',
           teacher: 'Giáo viên',
@@ -35,7 +37,7 @@ export function AdminLogin() {
         
         // CHẶN NGAY - Logout ngay lập tức không cho vào hệ thống
         await logout()
-        setError(`🚫 Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Trị. Chỉ dành cho Quản trị viên IT.`)
+        setError(`Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Trị. Chỉ dành cho Quản trị viên IT.`)
         return
       }
       
@@ -45,7 +47,7 @@ export function AdminLogin() {
         sessionStorage.removeItem('redirectAfterLogin')
         navigate(redirectPath, { replace: true })
       } else {
-        navigate('/admin', { replace: true })
+        navigate('/adminit', { replace: true })
       }
     } catch (err: any) {
       setError(err.message || "Email/Tên đăng nhập hoặc mật khẩu không đúng")

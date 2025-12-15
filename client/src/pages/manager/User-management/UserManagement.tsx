@@ -65,7 +65,7 @@ import {
   type ManagedUserRole,
   type UserListResponse,
 } from '@/services/center-owner'
-import type { CreateUserPayload, ManagedUserStatus, UpdateUserPayload } from '@/services/center-owner/user-management/user.types'
+import type { CreateUserPayload, ManagedUserStatus, UpdateUserPayload } from '@/services/adminit/user-management/user.types'
 
 const statusOptions: Array<{ label: string; value: ManagedUserStatus }> = [
   { label: 'Tất cả', value: 'all' },

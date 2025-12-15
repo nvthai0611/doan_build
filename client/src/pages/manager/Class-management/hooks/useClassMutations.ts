@@ -4,15 +4,23 @@ import { toast } from 'sonner';
 
 export const useClassMutations = () => {
     const queryClient = useQueryClient();
+    const getErrorMessage = (error: any) =>
+        error?.response?.data?.message ||
+        error?.response?.message ||
+        error?.message ||
+        'Không thể thực hiện hành động';
 
     const createClass = useMutation({
         mutationFn: classService.createClass,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['classes'] });
-            console.log('Tạo lớp học thành công');
+            toast.success('Tạo lớp học thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            
+            const message = getErrorMessage(error);
+            toast.error(message);
+            console.error('Error:', message);
         }
     });
 
@@ -22,10 +30,14 @@ export const useClassMutations = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['classes'] });
             queryClient.invalidateQueries({ queryKey: ['class'] });
-            console.log('Cập nhật lớp học thành công');
+            toast.success('Cập nhật lớp học thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            console.log(error);
+            
+            const message = getErrorMessage(error);
+            toast.error(message);
+            console.error('Error:', message);
         }
     });
 
@@ -38,7 +50,7 @@ export const useClassMutations = () => {
             console.log('Cập nhật lịch học thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.response?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.response?.message || 'Không thể cập nhật lịch học');
         }
     });
 
@@ -50,8 +62,8 @@ export const useClassMutations = () => {
             console.log('Xóa lớp học thành công');
         },
         onError: (error: any) => {
-            toast.error(error?.message || 'Có lỗi xảy ra');
-            console.error('Error:', error?.message || 'Có lỗi xảy ra');
+            toast.error(error?.message || 'Không thể xóa lớp học');
+            console.error('Error:', error?.message || 'Không thể xóa lớp học');
         }
     });
     
@@ -65,7 +77,7 @@ export const useClassMutations = () => {
             console.log('Phân công giáo viên thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.message || 'Không thể phân công giáo viên');
         }
     });
 
@@ -79,7 +91,7 @@ export const useClassMutations = () => {
             console.log('Xóa phân công giáo viên thành công');
         },
         onError: (error: any) => {
-            console.error('Error:', error?.message || 'Có lỗi xảy ra');
+            console.error('Error:', error?.message || 'Không thể xóa phân công giáo viên');
         }
     });
 

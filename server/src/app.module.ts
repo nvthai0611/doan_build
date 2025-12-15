@@ -36,6 +36,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ApiKeyMiddleware } from './common/middleware/api-key.middleware';
 import { PaymentModule } from './modules/payment/payment.module';
 import { TasksModule } from './modules/cronjob/cron.module';
+import { AdminitModule } from './modules/adminit/adminit.module';
 // ...existing code...
 
 @Module({
@@ -75,7 +76,8 @@ import { TasksModule } from './modules/cronjob/cron.module';
     CloudinaryModule,
     SharedModule,
     PaymentModule,
-    TasksModule
+    TasksModule,
+    AdminitModule
   ],
   controllers: [AppController],
   providers: [

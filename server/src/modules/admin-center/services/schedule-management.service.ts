@@ -21,6 +21,8 @@ export class ScheduleManagementService {
   private mapSessionToClientShape(session: any) {
     return {
       id: session.id,
+      classId: session.class?.id || '',
+      teacherId: session.class?.teacher?.id || '',
       name: session.class?.name || '',
       date: session.sessionDate.toISOString().slice(0, 10),
       startTime: session.startTime,
@@ -55,11 +57,13 @@ export class ScheduleManagementService {
         room: { select: { name: true } },
         class: {
           select: {
+            id: true,
             name: true,
             maxStudents: true,
             subject: { select: { name: true } },
             teacher: {
               select: {
+                id: true,
                 user: {
                   select: {
                     fullName: true,
@@ -97,11 +101,13 @@ export class ScheduleManagementService {
         room: { select: { name: true } },
         class: {
           select: {
+            id: true,
             name: true,
             maxStudents: true,
             subject: { select: { name: true } },
             teacher: {
               select: {
+                id: true,
                 user: {
                   select: {
                     fullName: true,
@@ -141,11 +147,13 @@ export class ScheduleManagementService {
         room: { select: { name: true } },
         class: {
           select: {
+            id: true,
             name: true,
             maxStudents: true,
             subject: { select: { name: true } },
             teacher: {
               select: {
+                id: true,
                 user: {
                   select: {
                     fullName: true,

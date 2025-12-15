@@ -355,12 +355,11 @@ export const CreateClass = () => {
 
     createClass.mutate(submitData as any, {
       onSuccess: () => {
-        toast.success('Tạo lớp học thành công');
         navigate('/center-qn/classes');
       },
       onError: (error: any) => {
-        const errorMessage = error?.message || error?.error || 'Có lỗi xảy ra khi tạo lớp học';
-        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Có lỗi xảy ra khi tạo lớp học');
+        // Toast đã được handle trong hook useClassMutations
+        console.error('Create class error:', error);
       },
     });
   };

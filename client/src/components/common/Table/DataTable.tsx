@@ -57,6 +57,7 @@ export interface DataTableProps<T> {
   onSelectionChange?: (selectedItems: string[]) => void
   getItemId?: (item: T) => string
   allData?: T[] // Toàn bộ data sau khi filter (để select all qua các trang)
+  getRowClassName?: (item: T, index: number) => string
 }
 
 export function DataTable<T>({
@@ -81,6 +82,7 @@ export function DataTable<T>({
   onSelectionChange,
   getItemId,
   allData,
+  getRowClassName,
 }: DataTableProps<T>) {
   // State cho search filters
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>({})
@@ -252,6 +254,7 @@ export function DataTable<T>({
           ${hoverable ? "hover:bg-gray-50" : ""}
           ${striped && index % 2 === 1 ? "bg-gray-50" : ""}
           ${onRowClick ? "cursor-pointer" : ""}
+          ${getRowClassName ? getRowClassName(item, index) : ""}
         `}
         onClick={() => onRowClick?.(item, index)}
       >

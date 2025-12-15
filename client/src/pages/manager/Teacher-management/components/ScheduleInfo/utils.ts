@@ -7,6 +7,7 @@ export const getDaysInMonth = (year: number, month: number): number => {
 }
 
 export const getFirstDayOfMonth = (year: number, month: number): number => {
+  // lấy ra thứ của ngày đầu tiên trong tháng
   return new Date(year, month, 1).getDay()
 }
 
@@ -19,6 +20,7 @@ export const isToday = (day: number, year: number, month: number): boolean => {
 // Session utility functions
 export const getSessionsForDay = (sessions: TeachingSession[], day: number, year: number, month: number): TeachingSession[] => {
   const dayDate = new Date(year, month, day)
+  console.log(dayDate);
   return sessions.filter(
     (session) =>
       session.date.getDate() === day &&

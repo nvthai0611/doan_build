@@ -35,7 +35,7 @@ export function LoginForm() {
         
         // CHẶN NGAY - Logout ngay lập tức không cho vào hệ thống
         await logout()
-        setError(`🚫 Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Lý. Vui lòng sử dụng cổng phù hợp.`)
+        setError(`Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Lý. Vui lòng sử dụng cổng phù hợp.`)
         return
       }
       

@@ -12,12 +12,10 @@ type SortDirection = 'asc' | 'desc';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị viên',
-  manager: 'Quản lý',
   teacher: 'Giáo viên',
   parent: 'Phụ huynh',
   student: 'Học sinh',
   center_owner: 'Chủ trung tâm',
-  staff: 'Nhân sự',
 };
 
 @Injectable()

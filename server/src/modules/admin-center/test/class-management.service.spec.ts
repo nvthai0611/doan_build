@@ -166,11 +166,9 @@ describe('ClassManagementService', () => {
         name: 'New Class',
         subjectId: 'sub-1',
         gradeId: 'grade-1',
-        roomId: 'room-1',
         teacherId: 'teacher-1',
         recurringSchedule: { schedules: [{ day: 'monday' }] }
       };
-
       // Mock checks
       prisma.class.findFirst.mockResolvedValue(null); // name check
       prisma.subject.findUnique.mockResolvedValue({ id: 'sub-1', name: 'Math' });
@@ -178,17 +176,50 @@ describe('ClassManagementService', () => {
       prisma.room.findUnique.mockResolvedValue({ id: 'room-1', capacity: 30 });
       prisma.teacher.findUnique.mockResolvedValue({ id: 'teacher-1' });
       prisma.class.findUnique.mockResolvedValue(null); // code check unique
-
-      const createdClass = { id: 'new-id', ...createClassDto, status: 'ready' };
+      prisma.feeStructure.findUnique.mockResolvedValue(null);
+      const createdClass = {
+        id: 'new-id',
+        ...createClassDto,
+        classCode: 'CLASS-123',
+        maxStudents: 30,
+        status: 'ready',
+        feeStructureId: 'fee-1',
+        feeAmount: null,
+        feePeriod: null,
+        feeCurrency: 'VND'
+      };
       prisma.class.create.mockResolvedValue(createdClass);
-
       // Act
       const result = await service.create(createClassDto as any);
-
       // Assert
       expect(result.success).toBe(true);
-      expect(result.data.name).toBe('New Class');
-      expect(prisma.class.create).toHaveBeenCalled();
+      expect(result.data).toMatchObject(createdClass);
+      expect(prisma.subject.findUnique).toHaveBeenCalledWith({ where: { id: 'sub-1' } });
+      expect(prisma.grade.findUnique).toHaveBeenCalledWith({ where: { id: 'grade-1' } });
+      expect(prisma.room.findUnique).toHaveBeenCalledWith({ where: { id: 'room-1' } });
+      expect(prisma.teacher.findUnique).toHaveBeenCalledWith({ where: { id: 'teacher-1' } });
+      expect(prisma.class.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'New Class',
+            classCode: 'CLASS-123',
+            subjectId: 'sub-1',
+            gradeId: 'grade-1',
+            roomId: 'room-1',
+            teacherId: 'teacher-1',
+            recurringSchedule: { schedules: [{ day: 'monday' }] },
+            maxStudents: 30,
+            status: 'ready',
+            feeStructureId: 'fee-1',
+            feeAmount: null,
+            feePeriod: null,
+            feeCurrency: 'VND',
+            expectedStartDate: null,
+            actualStartDate: null,
+            actualEndDate: null,
+          }),
+        }),
+      );
     });
   });
 

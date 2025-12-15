@@ -43,7 +43,8 @@ import {
     CheckSquare,
     School,
     Cog,
-    History
+    History,
+    User
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -170,13 +171,13 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
             // { title: 'Thanh toán online', href: '/finance/online-payment' },
             // { title: 'Báo cáo thu chi', href: '/finance/reports' },
             // { title: 'Nợ học phí', href: '/finance/debts' },
-            { title: 'Học bổng & Giảm phí', href: '/finance/scholarships' },
+            { title: 'Học bổng & Giảm phí', href: '/center-qn/finance/scholarships' },
           ],
         },
         {
           title: 'Quản lý đào tạo',
           icon: School,
-          href: '/center-qn',
+          // Không có href vì đây là parent item chỉ có children
           children: [
             { title: 'Quản lý môn học', href: '/center-qn/courses' },
             { title: 'Quản lý phòng học', href: '/center-qn/rooms' },
@@ -211,11 +212,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         //     { title: 'Thông báo tự động', href: '/center-qn/communication/auto-notifications' },
         //   ],
         // },
-        {
-          title: 'Quản lý người dùng',
-          icon: UserCog,
-          href: '/center-qn/user-management',
-        },
+        // {
+        //   title: 'Quản lý người dùng',
+        //   icon: UserCog,
+        //   href: '/center-qn/user-management',
+        // },
         {
           title: 'Feedback Phụ Huynh',
           icon: MessageSquare,
@@ -231,11 +232,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           icon: Cog,
           href: '/center-qn/trigger-cronjobs',
         },
-        {
-          title: 'Lịch sử hệ thống',
-          icon: History,
-          href: '/center-qn/audit-log',
-        },
+        // {
+        //   title: 'Lịch sử hệ thống',
+        //   icon: History,
+        //   href: '/center-qn/audit-log',
+        // },
       ],
     },
     {
@@ -417,6 +418,19 @@ const parentMenuItems = [
 
 ]
 
+const adminMenuItems = [
+    {
+        title: "Quản lý người dùng",
+        icon: User,
+        href: "/adminit/user_validate",
+    },
+    {
+        title: "Dữ liệu hệ thống",
+        icon: Target,
+        href: "/adminit/data_system_validate",
+    },
+]
+
 export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth()
     const [expandedItems, setExpandedItems] = useState<string[]>([])
@@ -425,17 +439,38 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     const { pathname } = useLocation()
     
     const isCenterOwner = user?.role === "center_owner"
-    const menuItems = isCenterOwner ? null : (user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems)
+    const isAdmin = (user?.role as string) === "admin"
+    const menuItems = isCenterOwner ? null : (isAdmin ? adminMenuItems : user?.role === "teacher" ? teacherMenuItems : user?.role === "student" ? studentMenuItems : parentMenuItems)
     const centerOwnerMenu = isCenterOwner ? centerOwnerMenuItems : null
+    
+    // Debug: Log role để kiểm tra
+    useEffect(() => {
+        if (user?.role) {
+            console.log('Current user role:', user.role)
+            console.log('isAdmin:', isAdmin)
+            console.log('menuItems:', menuItems)
+        }
+    }, [user?.role, isAdmin, menuItems])
+
+    // Helper function to check if a path matches an item (exact match only, no partial)
+    const isPathMatch = (itemHref: string | undefined, checkPath: string): boolean => {
+        if (!itemHref) return false
+        // Exact match only
+        return checkPath === itemHref
+    }
 
     // Helper function to check if item should be expanded
     const shouldExpandItem = (item: MenuItem) => {
         if (!item.children) return false
-        const isMatch = item.href && pathname.startsWith(item.href) && item.href !== '/'
-        const hasChildMatch = item.children.some((c: MenuItem) =>
-            c.href && (pathname === c.href || pathname.startsWith(c.href))
-        )
-        return isMatch || hasChildMatch
+        const hasChildMatch = item.children.some((c: MenuItem) => {
+            if (isPathMatch(c.href, pathname)) return true
+            // Check nested children
+            if (c.children) {
+                return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+            }
+            return false
+        })
+        return hasChildMatch
     }
 
     // Helper function to check and expand nested items recursively
@@ -455,7 +490,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
     useEffect(() => {
         if (!isCollapsed) {
             // Handle center owner menu structure
-            if (centerOwnerMenu) {
+            if (centerOwnerMenu && 'topLevel' in centerOwnerMenu) {
                 // Check top level items
                 centerOwnerMenu.topLevel.forEach((item) => {
                     checkAndExpandNested(item, 0)
@@ -504,12 +539,17 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
             const hasChildren = child.children && child.children.length > 0
             const childKey = `${child.title}-${level}`
             const isExpanded = expandedItems.includes(childKey)
-            const isExactActive = pathname === child.href
-            const hasChildMatch = child.children?.some((c: MenuItem) =>
-                c.href && (pathname === c.href || pathname.startsWith(c.href))
-            )
-            const isPartialActive = child.href && pathname.startsWith(child.href) && child.href !== '/' && !isExactActive
-            const isChildActive = isExactActive || isPartialActive || hasChildMatch
+            const isExactActive = isPathMatch(child.href, pathname)
+            // Check nested children for exact match only
+            const hasChildMatch = child.children?.some((c: MenuItem) => {
+                if (isPathMatch(c.href, pathname)) return true
+                if (c.children) {
+                    return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                }
+                return false
+            })
+            // Chỉ active khi exact match hoặc có child match, không dùng partial match
+            const isChildActive = isExactActive || hasChildMatch
 
             return (
                 <div key={childKey}>
@@ -570,7 +610,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                             <div>
                                 <h2 className="font-semibold text-lg">QN Edu System</h2>
                                 <p className="text-xs text-muted-foreground">
-                                    {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : "Phụ Huynh/Học Sinh"}
+                                    {user?.role === "center_owner" ? "Quản lý trung tâm" : user?.role === "teacher" ? "Giáo viên" : (user?.role as string) === "admin" ? "Quản trị viên" : "Phụ Huynh/Học Sinh"}
                                 </p>
                             </div>
                         </div>
@@ -593,10 +633,19 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                         <>
                             {/* Top Level Items */}
                             {centerOwnerMenu.topLevel.map((item) => {
-                                const isExactMatch = pathname === item.href
-                                const hasChildMatch = item.children?.some((c: MenuItem) => c.href === pathname)
-                                const isPartialMatch = item.href && pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
-                                const isActive = isExactMatch || hasChildMatch || isPartialMatch
+                                // Special case: "Trang chủ" should be active when pathname is '/' or '/center-qn'
+                                const isHomePage = (pathname === '/' || pathname === '/center-qn') && item.href === '/center-qn'
+                                const isExactMatch = isPathMatch(item.href, pathname) || isHomePage
+                                const hasChildMatch = item.children?.some((c: MenuItem) => {
+                                    if (isPathMatch(c.href, pathname)) return true
+                                    // Check nested children
+                                    if (c.children) {
+                                        return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                                    }
+                                    return false
+                                })
+                                // Chỉ active khi exact match hoặc có child match (chỉ 1 item active tại một thời điểm)
+                                const isActive = isExactMatch || hasChildMatch
                                 const isExpanded = expandedItems.includes(item.title)
                                 const hasChildren = item.children && item.children.length > 0
 
@@ -665,10 +714,18 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                     {/* Section Items */}
                                     <div className="space-y-1 mt-1">
                                         {section.items.map((item) => {
-                                            const isExactMatch = pathname === item.href
-                                            const hasChildMatch = item.children?.some((c: MenuItem) => c.href === pathname)
-                                            const isPartialMatch = item.href && pathname.startsWith(item.href) && item.href !== '/' && !isExactMatch
-                                            const isActive = isExactMatch || hasChildMatch || isPartialMatch
+                                            const isExactMatch = isPathMatch(item.href, pathname)
+                                            const hasChildMatch = item.children?.some((c: MenuItem) => {
+                                                // Check exact match với child hoặc nested child
+                                                if (isPathMatch(c.href, pathname)) return true
+                                                // Check nested children
+                                                if (c.children) {
+                                                    return c.children.some((nested: MenuItem) => isPathMatch(nested.href, pathname))
+                                                }
+                                                return false
+                                            })
+                                            // Chỉ active khi exact match hoặc có child match, không dùng partial match
+                                            const isActive = isExactMatch || hasChildMatch
                                             const isExpanded = expandedItems.includes(item.title)
                                             const hasChildren = item.children && item.children.length > 0
 
@@ -806,53 +863,7 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                 </div>
             </ScrollArea>
 
-            {/* User Profile */}
-            <div className="p-4 border-t">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className={cn("w-full h-12 transition-all", isCollapsed ? "justify-center px-0" : "justify-start gap-3")}
-                        >
-                            <Avatar className="w-8 h-8 flex-shrink-0">
-                                <AvatarImage src="/placeholder.svg" />
-                                <AvatarFallback>
-                                    {user?.fullName
-                                        ?.split(" ")
-                                        .map((n: string) => n[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                            {!isCollapsed && (
-                                <>
-                                    <div className="flex-1 text-left">
-                                        <p className="text-sm font-medium">{user?.fullName}</p>
-                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                                    </div>
-                                    <ChevronDown className="w-4 h-4" />
-                                </>
-                            )}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <Settings className="mr-2 h-4 w-4" />
-                            Cài đặt
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={async () => {
-                            await logout()
-                            navigate('/auth')
-                        }}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Đăng xuất
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+            
         </div>
     )
 }

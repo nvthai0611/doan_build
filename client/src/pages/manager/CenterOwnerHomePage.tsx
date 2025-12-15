@@ -206,43 +206,16 @@ export const CenterOwnerHomePage = () => {
     }
   };
 
-  const getSessionStatusStyle = (status?: string) => {
-    const styles: Record<
-      string,
-      { label: string; badgeClass: string; dotClass: string }
-    > = {
-      has_not_happened: {
-        label: 'Sắp diễn ra',
-        badgeClass: 'bg-blue-50 text-blue-600',
-        dotClass: 'bg-blue-500',
-      },
-      happening: {
-        label: 'Đang diễn ra',
-        badgeClass: 'bg-green-50 text-green-600',
-        dotClass: 'bg-green-500',
-      },
-      end: {
-        label: 'Đã hoàn thành',
-        badgeClass: 'bg-emerald-50 text-emerald-600',
-        dotClass: 'bg-emerald-500',
-      },
-      cancelled: {
-        label: 'Đã hủy',
-        badgeClass: 'bg-red-50 text-red-600',
-        dotClass: 'bg-red-500',
-      },
-      day_off: {
-        label: 'Nghỉ',
-        badgeClass: 'bg-orange-50 text-orange-600',
-        dotClass: 'bg-orange-500',
-      },
-      default: {
-        label: 'Chưa rõ',
-        badgeClass: 'bg-gray-100 text-gray-600',
-        dotClass: 'bg-gray-400',
-      },
+  const getSessionStatusLabel = (status?: string): string => {
+    const statusLabels: Record<string, string> = {
+      has_not_happened: 'Chưa diễn ra',
+      happening: 'Đang diễn ra',
+      end: 'Đã hoàn thành',
+      cancelled: 'Đã hủy',
+      day_off: 'Nghỉ',
+      default: 'Chưa rõ',
     };
-    return styles[status || 'default'] || styles.default;
+    return statusLabels[status || 'default'] || statusLabels.default;
   };
 
   const formatSessionTime = (session?: { startTime?: string; endTime?: string }) => {
@@ -448,7 +421,6 @@ export const CenterOwnerHomePage = () => {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-emerald-500" />
                   Lịch dạy hôm nay
                 </h3>
                 <p className="text-sm text-muted-foreground">
@@ -490,18 +462,13 @@ export const CenterOwnerHomePage = () => {
             ) : (
               <div className="space-y-3">
                 {teacherSessions.slice(0, 6).map((item) => {
-                  const statusStyle = getSessionStatusStyle(item.session.status);
-                  const gradient =
-                    statusStyle.label === 'Đang diễn ra'
-                      ? 'from-green-500 to-green-600'
-                      : statusStyle.label === 'Sắp diễn ra'
-                        ? 'from-blue-500 to-blue-600'
-                        : 'from-red-500 to-red-600';
+                  const statusLabel = getSessionStatusLabel(item.session.status);
 
                   return (
                     <div
                       key={item.id}
                       className="flex items-center gap-3 px-1 py-1 rounded-xl hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate('/center-qn/lich-day-hom-nay')}
                     >
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="w-2 h-2 rounded-full bg-amber-500 block" />
@@ -511,32 +478,32 @@ export const CenterOwnerHomePage = () => {
                       </div>
                       <div className="flex-1">
                         <div
-                          className={`rounded-2xl px-4 py-3 text-white bg-gradient-to-r ${gradient}`}
+                          className="rounded-2xl px-4 py-3 border bg-card"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="text-sm font-semibold">
+                              <p className="text-sm font-semibold text-foreground">
                                 {item.class?.name || 'Chưa cập nhật'}
                               </p>
-                              <p className="text-xs text-white/80">
+                              <p className="text-xs text-muted-foreground">
                                 {item.class?.subject || 'Môn học chưa rõ'}
                               </p>
-                              <p className="text-xs text-white/70">
+                              <p className="text-xs text-muted-foreground">
                                 Giáo viên: {item.teacher.fullName}
                               </p>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               {item.session.sessionNumber && (
-                                <span className="text-xs bg-white/20 px-2 py-1 rounded-full font-medium">
+                                <span className="text-xs bg-muted px-2 py-1 rounded-full font-medium text-foreground">
                                   Buổi {item.session.sessionNumber}
                                 </span>
                               )}
-                              <span className="text-[11px] uppercase tracking-wide text-white/70">
-                                {statusStyle.label}
+                              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                {statusLabel}
                               </span>
                             </div>
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/80">
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             <div className="flex items-center gap-1.5">
                               <Users className="w-3 h-3" />
                               <span>{item.enrollmentCount ?? '--'} HV</span>
