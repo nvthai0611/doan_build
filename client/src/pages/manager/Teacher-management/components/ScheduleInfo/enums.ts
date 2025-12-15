@@ -1,5 +1,5 @@
 // View types
-export type ViewType = "month" | "week" | "day" | "list"
+export type ViewType = "month" | "week" | "list"
 
 // Session status - aligned with constants.ts
 // ClassSession.status: happening, has_not_happened, end, day_off
