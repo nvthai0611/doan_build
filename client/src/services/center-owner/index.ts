@@ -79,22 +79,22 @@ export type {
 } from './student-class-request.service'
 
 // User Management
-export { centerOwnerUserService } from './user-management/user.service'
+export { centerOwnerUserService } from '../adminit/user-management/user.service'
 export type {
   ManagedUser,
   ManagedUserRole,
   UserListResponse,
   QueryUserParams as UserQueryParams,
-} from './user-management/user.types'
+} from '../adminit/user-management/user.types'
 
 // Audit Log
-export { auditLogService } from './audit-log/audit-log.service'
+export { auditLogService } from '../adminit/audit-log/audit-log.service'
 export type {
   AuditLog,
   QueryAuditLogParams,
   AuditLogListResponse,
   AuditLogDetailResponse,
-} from './audit-log/audit-log.service'
+} from '../adminit/audit-log/audit-log.service'
 
 // Scholarship Management
 export { scholarshipService } from './scholarship-management/scholarship.service'

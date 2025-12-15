@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { QueryAuditLogDto } from '../dto/audit-log/query-audit-log.dto';
 
-@ApiTags('Admin Center - Audit Log')
+@ApiTags('Admin it - Audit Log')
 @Controller('audit-log')
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}

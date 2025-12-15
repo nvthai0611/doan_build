@@ -10,7 +10,7 @@ import type {
   UserListResponse,
 } from './user.types';
 
-const BASE_URL = '/admin-center/user-management';
+const BASE_URL = '/adminit/user-management';
 
 export const centerOwnerUserService = {
   async getUsers(params?: QueryUserParams): Promise<UserListResponse> {

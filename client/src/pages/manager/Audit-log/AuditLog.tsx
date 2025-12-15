@@ -31,7 +31,7 @@ import { usePagination } from '@/hooks/usePagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { DataTable, type Column, type PaginationConfig } from '@/components/common/Table'
 import { cn } from '@/lib/utils'
-import { auditLogService, type AuditLog, type QueryAuditLogParams } from '@/services/center-owner/audit-log/audit-log.service'
+import { auditLogService, type AuditLog, type QueryAuditLogParams } from '@/services/adminit/audit-log/audit-log.service'
 import {
   Collapsible,
   CollapsibleContent,
