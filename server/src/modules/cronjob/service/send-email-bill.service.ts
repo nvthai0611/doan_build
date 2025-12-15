@@ -25,9 +25,9 @@ export class FeeReminderService {
   }
 
   /**
-   * Cronjob: Gửi email nhắc hạn cuối vào ngày 7 hàng tháng lúc 8:00 AM
+   * Cronjob: Gửi email nhắc hạn cuối vào ngày 6 hàng tháng lúc 8:00 AM
    */
-  @Cron('0 8 7 * *', {
+  @Cron('0 8 6 * *', {
     name: 'due-fee-reminder',
     timeZone: 'Asia/Ho_Chi_Minh',
   })
@@ -51,7 +51,7 @@ export class FeeReminderService {
       const feeRecords = await this.prisma.feeRecord.findMany({
         where: {
           status: {
-            in: ['pending','processing', 'overdue'],
+            in: ['pending','processing'],
           },
           dueDate: {
             gte: new Date(currentYear, currentMonth - 1, 1),
@@ -103,22 +103,6 @@ export class FeeReminderService {
             feeRecords: fees,
             dueDate: fees[0].dueDate,
           });
-
-          // Tạo notification trong hệ thống
-        //   await this.prisma.notification.create({
-        //     title:
-        //       type === 'early'
-        //         ? '🔔 Nhắc nhở đóng học phí'
-        //         : '⚠️ Hạn đóng học phí hôm nay',
-        //     body: `Bạn có ${fees.length} hóa đơn cần thanh toán. Tổng: ${this.formatCurrency(
-        //       fees.reduce((sum, f) => sum + Number(f.totalAmount || 0), 0),
-        //     )}`,
-        //     audience: {
-        //       userIds: [parent.userId],
-        //     },
-        //     type: 'fee_reminder',
-        //     createdBy: 'system',
-        //   });
 
           successCount++;
         } catch (error: any) {
