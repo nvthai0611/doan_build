@@ -796,6 +796,7 @@ export class ClassManagementService {
                       id: true,
                       fullName: true,
                       avatar: true,
+                      email: true,
                     },
                   },
                   parent: {
