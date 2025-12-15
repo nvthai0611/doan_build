@@ -129,6 +129,24 @@ export class AuthService {
    * Đăng ký tài khoản phụ huynh
    */
   async registerParent(registerDto: RegisterParentDto) {
+    // Defensive check để tránh lỗi runtime khi payload không hợp lệ
+    if (!registerDto || !Array.isArray(registerDto.children)) {
+      throw new BadRequestException('Dữ liệu không hợp lệ: thiếu danh sách con');
+    }
+
+    // Kiểm tra nhanh từng con trước khi vào transaction để tránh lỗi null/undefined
+    for (const child of registerDto.children) {
+      if (!child) {
+        throw new BadRequestException('Dữ liệu con không hợp lệ');
+      }
+      if (!child.fullName || !child.dateOfBirth || !child.gender) {
+        throw new BadRequestException('Vui lòng nhập đầy đủ họ tên, ngày sinh và giới tính cho con');
+      }
+      if (!child.schoolName || !child.schoolName.trim()) {
+        throw new BadRequestException(`Thiếu thông tin trường học cho con ${child.fullName || ''}`);
+      }
+    }
+
     // Tìm role parent và student role TRƯỚC transaction (không thay đổi)
     const parentRole = await this.prisma.role.findUnique({
       where: { name: 'parent' },
@@ -439,7 +457,7 @@ export class AuthService {
     // Trả về CẢ 2 tokens mới
     return {
       accessToken: newAccessToken,
-      refreshToken: newRefreshToken, // ✅ QUAN TRỌNG!
+      refreshToken: newRefreshToken, //Quan trọng!
       user: {
         id: user.id,
         email: user.email,

@@ -54,7 +54,7 @@ export class EmailNotificationService {
         );
       }
 
-      console.log(`🚀 Bắt đầu xử lý gửi email cho ${studentIds.length} học sinh`);
+      console.log(` Bắt đầu xử lý gửi email cho ${studentIds.length} học sinh`);
 
       // Kiểm tra học sinh đã được gửi email
       const attendanceRecords = await this.prisma.studentSessionAttendance.findMany({
@@ -82,7 +82,7 @@ export class EmailNotificationService {
 
       // Nếu tất cả đã gửi email
       if (studentsToSendEmail.length === 0) {
-        console.log(`⚠️ Tất cả ${studentIds.length} học sinh đã được gửi email`);
+        console.log(` Tất cả ${studentIds.length} học sinh đã được gửi email`);
         
         return {
           success: true,
@@ -96,7 +96,7 @@ export class EmailNotificationService {
       }
 
       console.log(
-        `📊 Thống kê:\n` +
+        ` Thống kê:\n` +
         `   - Tổng: ${studentIds.length} học sinh\n` +
         `   - Cần gửi: ${studentsToSendEmail.length}\n` +
         `   - Đã gửi trước đó: ${alreadySentStudentIds.length}`
@@ -174,7 +174,7 @@ export class EmailNotificationService {
         
         if (!parentEmail) {
           console.warn(
-            `⚠️ Không tìm thấy email phụ huynh cho học sinh ${student.user?.fullName}`
+            ` Không tìm thấy email phụ huynh cho học sinh ${student.user?.fullName}`
           );
           
           emailResults.push({
@@ -232,7 +232,7 @@ export class EmailNotificationService {
             }
           });
 
-          console.log(`📨 Đã thêm job gửi email cho ${student.user?.fullName} vào queue`);
+          console.log(` Đã thêm job gửi email cho ${student.user?.fullName} vào queue`);
 
           emailResults.push({
             studentId: student.id,
@@ -242,7 +242,7 @@ export class EmailNotificationService {
           });
         } catch (error: any) {
           console.error(
-            `❌ Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
+            `Lỗi khi thêm job cho ${student.user?.fullName}: ${error.message}`
           );
           
           emailResults.push({
@@ -261,7 +261,7 @@ export class EmailNotificationService {
       const failCount = emailResults.filter(r => !r.success).length;
 
       console.log(
-        `✅ Đã thêm ${successCount}/${studentsToSendEmail.length} email vào queue thành công\n` +
+        `Đã thêm ${successCount}/${studentsToSendEmail.length} email vào queue thành công\n` +
         `   - Thành công: ${successCount}\n` +
         `   - Thất bại: ${failCount}\n` +
         `   - Đã gửi trước: ${alreadySentStudentIds.length}`
@@ -277,7 +277,7 @@ export class EmailNotificationService {
         message: `Đã thêm ${successCount} email vào hàng đợi. Email sẽ được gửi trong giây lát.`
       };
     } catch (error: any) {
-      console.error('❌ Lỗi khi xử lý gửi email:', error);
+      console.error(' Lỗi khi xử lý gửi email:', error);
       throw new HttpException(
         error.message || 'Lỗi khi gửi email thông báo vắng học',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR

@@ -50,18 +50,16 @@ import { AdminitModule } from './modules/adminit/adminit.module';
         port: parseInt(process.env.REDIS_PORT) || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
         db: parseInt(process.env.REDIS_DB) || 0,
-        connectTimeout: 60000, // 60 giây timeout cho connection
-        commandTimeout: 5000,  // 5 giây timeout cho mỗi command
-        retryStrategy: (times: number) => {
-          // Retry với exponential backoff
-          const delay = Math.min(times * 50, 2000);
-          return delay;
-        },
-        maxRetriesPerRequest: 3, // Retry tối đa 3 lần cho mỗi request
+        connectTimeout: 10000,   // 10 giây timeout cho connection
+        commandTimeout: 30000,   // 30 giây timeout cho mỗi command (tăng lên để tránh timeout)
+        enableReadyCheck: false, // Tắt ready check để tránh timeout
+        maxRetriesPerRequest: null, // Retry không giới hạn
       },
       settings: {
-        stalledInterval: 30000, // 30 giây - kiểm tra job bị stuck
-        maxStalledCount: 1,      // Chỉ cho phép 1 lần stalled trước khi fail
+        stalledInterval: 10000,  // 10 giây - kiểm tra job bị stuck
+        maxStalledCount: 3,      // Chỉ cho phép 3 lần stalled
+        lockDuration: 30000,     // Job được lock trong 30s
+        lockRenewTime: 10000,    // Renew lock mỗi 10s
       },
     }),
     AuthModule,
