@@ -221,6 +221,9 @@ export class AttendanceService {
       );
     }
 
+
+
+    //Comment 
     if (!records || records.length === 0) {
       throw new HttpException(
         'Danh sách bản ghi điểm danh không được để trống',
