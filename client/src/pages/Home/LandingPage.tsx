@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Header } from "./components/header"
 import { Footer } from "./components/footer"
 import { HeroBanner } from "./components/hero-banner"
-import { BlogSection } from "./components/blog-section"
+// import { BlogSection } from "./components/blog-section"
 // import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
@@ -77,13 +77,13 @@ const news = [
   { id: 6, title: "Những sai lầm phổ biến khi học Hóa học", category: "Hóa học", date: "2024-01-10", icon: "⚗️" },
 ]
 
-// Legacy showcases data (nếu cần giữ lại section này)
-const legacyShowcases = [
-  { id: 1, title: "Học sinh đạt điểm 10 Toán THPT QG 2023", category: "Thành tích", icon: "🏆" },
-  { id: 2, title: "Lớp học Tiếng Anh đạt IELTS 8.0+", category: "Thành tích", icon: "🎯" },
-  { id: 3, title: "Dự án khoa học của học sinh được công nhận", category: "Dự án", icon: "🔬" },
-  { id: 4, title: "Học sinh giỏi Quốc gia từ trung tâm", category: "Vinh danh", icon: "⭐" },
-]
+// // Legacy showcases data (nếu cần giữ lại section này)
+// const legacyShowcases = [
+//   { id: 1, title: "Học sinh đạt điểm 10 Toán THPT QG 2023", category: "Thành tích", icon: "🏆" },
+//   { id: 2, title: "Lớp học Tiếng Anh đạt IELTS 8.0+", category: "Thành tích", icon: "🎯" },
+//   { id: 3, title: "Dự án khoa học của học sinh được công nhận", category: "Dự án", icon: "🔬" },
+//   { id: 4, title: "Học sinh giỏi Quốc gia từ trung tâm", category: "Vinh danh", icon: "⭐" },
+// ]
 
 export const LandingPage = () => {
   const navigate = useNavigate()
@@ -484,7 +484,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="section-header">
             <div className="section-badge">
@@ -517,7 +517,7 @@ export const LandingPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
         <div className="max-w-7xl mx-auto">
@@ -553,13 +553,13 @@ export const LandingPage = () => {
       </section> */}
 
       {/* Blog Section */}
-      <BlogSection />
+      {/* <BlogSection /> */}
 
       {/* Contribute Section */}
       {/* <ContributeSection /> */}
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 text-white">
             Sẵn sàng bắt đầu hành trình học tập?
@@ -574,7 +574,7 @@ export const LandingPage = () => {
             </Link>
           </Button>
         </div>
-      </section>
+      </section> */}
 
       {/* Footer */}
       <Footer centerInfo={centerInfo} />
