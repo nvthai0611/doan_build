@@ -7,11 +7,10 @@ on:
     branches: [ "main" ]
 
 # Định nghĩa các biến môi trường
-# !!! HÃY SỬA LẠI 2 GIÁ TRỊ DƯỚI ĐÂY THEO TÊN CỦA BẠN !!!
 env:
-  AZURE_APP_NAME: "nestjs-sep490-kkk"      # (Tên App Service của bạn)
-  AZURE_RESOURCE_GROUP: "nestjs-rg"         # (Tên Resource Group của bạn)
-  NODE_VERSION: "20.x"                   # (Phiên bản Node.js bạn dùng)
+  AZURE_APP_NAME: "nestjs-sep490-kkk"      
+  AZURE_RESOURCE_GROUP: "nestjs-rg"         
+  NODE_VERSION: "20.x"                    
 
 # Các công việc (jobs) cần chạy
 jobs:
@@ -29,14 +28,14 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: server/package-lock.json # Chỉ cache cho server
+        cache-dependency-path: server/package-lock.json 
 
     # Bước 3: Cài đặt dependencies cho server
-    # Thêm 'working-directory' để chạy lệnh bên trong thư mục 'server'
     - name: npm install (server)
       run: npm install
       working-directory: ./server
       
+    # Bước tạo Prisma Client (Quan trọng để không lỗi build)
     - name: Generate Prisma Client
       run: npx prisma generate
       working-directory: ./server
@@ -47,24 +46,23 @@ jobs:
       working-directory: ./server
 
     # Bước 5: Xóa devDependencies (server)
+      # Giúp file upload nhẹ hơn
     - name: Prune production dependencies (server)
       run: npm prune --production
       working-directory: ./server
 
-    # Bước 6: Đăng nhập vào Azure
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    # --- 👇 SỬA ĐỔI TỪ ĐÂY 👇 ---
+    
+    # Đã XÓA bước "Login to Azure" (không cần nữa)
 
-    # Bước 7: Deploy lên Azure App Service
+    # Bước 6: Deploy lên Azure App Service dùng Publish Profile
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_APP_NAME }}
         # Chỉ định deploy nội dung của thư mục 'server'
         package: ./server 
+        # 👇 QUAN TRỌNG: Dùng Secret chứa nội dung file XML bạn vừa tải về
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         
-    # Bước 8: Đăng xuất
-    - name: Logout from Azure
-      run: az logout
+    # Đã XÓA bước "Logout" (không cần nữa)
