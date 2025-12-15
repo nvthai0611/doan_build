@@ -1,5 +1,7 @@
 export interface ClassSessions {
   id: string;
+  classId: string;
+  teacherId: string;
   name: string;
   date: string;
   startTime: string;
