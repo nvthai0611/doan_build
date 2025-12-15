@@ -17,6 +17,7 @@ export class StudentSharedService {
           avatar: true,
           gender: true,
           birthDate: true,
+          isActive: true,
           username: true,
         }
       },

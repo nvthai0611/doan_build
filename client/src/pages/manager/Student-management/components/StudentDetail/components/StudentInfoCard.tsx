@@ -234,6 +234,8 @@ export function StudentInfoCard({ student, onUpdate }: StudentInfoCardProps) {
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('vi-VN')
   }
+  console.log(student);
+  
 
   return (
     <>
