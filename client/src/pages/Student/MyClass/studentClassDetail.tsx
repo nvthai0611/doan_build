@@ -50,16 +50,14 @@ export default function StudentClassDetailPage() {
   if (isLoading) return <Loading />
   if (isError || !detail) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
-          <div className="text-sm text-blue-700">Không thể tải chi tiết lớp học</div>
-        </div>
+      <div className="p-6 text-sm text-red-700">
+        Không thể tải chi tiết lớp học. Vui lòng thử lại sau.
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <ClassHeader className={detail.subject?.name || detail.name} />
 
       <ClassNavigation activeTab={activeTab} onTabChange={setActiveTab} />
