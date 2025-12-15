@@ -36,6 +36,10 @@ jobs:
     - name: npm install (server)
       run: npm install
       working-directory: ./server
+      
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      working-directory: ./server
 
     # Bước 4: Build project NestJS (server)
     - name: npm build (server)
