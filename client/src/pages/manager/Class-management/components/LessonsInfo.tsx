@@ -36,6 +36,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const [isAddLessonOpen, setIsAddLessonOpen] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSession, setEditingSession] = useState<{
     notes: string;
@@ -165,8 +166,19 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     { key: SessionStatus.HAPPENING, label: SESSION_STATUS_LABELS[SessionStatus.HAPPENING], count: allSessions.filter((s: any) => s.status === SessionStatus.HAPPENING).length }, 
     { key: SessionStatus.END, label: SESSION_STATUS_LABELS[SessionStatus.END], count: allSessions.filter((s: any) => s.status === SessionStatus.END).length },
     { key: SessionStatus.HAS_NOT_HAPPENED, label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED], count: allSessions.filter((s: any) => s.status === SessionStatus.HAS_NOT_HAPPENED).length },
-    { key: SessionStatus.DAY_OFF, label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF], count: allSessions.filter((s: any) => s.status === SessionStatus.DAY_OFF).length }
+    { key: SessionStatus.DAY_OFF, label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF], count: allSessions.filter((s: any) => s.status === SessionStatus.DAY_OFF).length },
+    { key: SessionStatus.CANCELLED, label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED], count: allSessions.filter((s: any) => s.status === SessionStatus.CANCELLED).length }
   ];
+
+  const selectedSessionObjects = filteredSessions.filter((s: any) =>
+    selectedSessions.includes(s.id)
+  );
+  const hasCancelledSelected = selectedSessionObjects.some(
+    (s: any) => s.status === SessionStatus.CANCELLED
+  );
+  const allSelectedAreCancelled =
+    selectedSessionObjects.length > 0 &&
+    selectedSessionObjects.every((s: any) => s.status === SessionStatus.CANCELLED);
 
   // Handle delete selected sessions
   const handleDeleteSessions = async () => {
@@ -192,6 +204,32 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       toast.error(error?.message || 'Có lỗi xảy ra khi xóa buổi học');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handle restore selected sessions
+  const handleRestoreSessions = async () => {
+    if (selectedSessions.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 buổi học để khôi phục');
+      return;
+    }
+
+    const confirmRestore = window.confirm(
+      `Khôi phục ${selectedSessions.length} buổi học đã xóa mềm?`
+    );
+    if (!confirmRestore) return;
+
+    try {
+      setIsRestoring(true);
+      await classService.restoreSessions(classId, selectedSessions);
+      toast.success(`Đã khôi phục ${selectedSessions.length} buổi học`);
+      setSelectedSessions([]);
+      refetch();
+    } catch (error: any) {
+      console.error('Error restoring sessions:', error);
+      toast.error(error?.message || 'Có lỗi xảy ra khi khôi phục buổi học');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -1203,16 +1241,31 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   Đã chọn {selectedSessions.length}
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                onClick={handleDeleteSessions}
-                disabled={isDeleting}
-                title="Xóa buổi học đã chọn"
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {hasCancelledSelected && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-blue-700 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    onClick={handleRestoreSessions}
+                    disabled={isRestoring}
+                    title="Khôi phục buổi học đã xóa"
+                  >
+                    <Undo className="h-4 w-4 mr-1" />
+                    Khôi phục
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                  onClick={handleDeleteSessions}
+                  disabled={isDeleting || allSelectedAreCancelled}
+                  title="Xóa mềm buổi học đã chọn"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -1245,6 +1298,9 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           onSelectionChange={setSelectedSessions}
           getItemId={(item: any) => item.id}
           allData={filteredSessions}
+          getRowClassName={(item: any) =>
+            item.status === SessionStatus.CANCELLED ? 'line-through text-gray-500' : ''
+          }
         />
       </div>
 

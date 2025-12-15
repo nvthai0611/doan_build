@@ -187,45 +187,45 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
 
       {/* Thống kê điểm danh */}
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-emerald-800">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-emerald-600" />
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
             </div>
             Thống kê điểm danh
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-green-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-green-700">{attendanceStats.presentCount}</div>
-              <div className="text-sm text-green-600 font-medium">Có mặt</div>
+              <div className="text-2xl font-bold text-blue-700">{attendanceStats.presentCount}</div>
+              <div className="text-sm text-blue-600 font-medium">Có mặt</div>
             </div>
-            <div className="text-center p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-red-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-red-700">{attendanceStats.absentCount}</div>
-              <div className="text-sm text-red-600 font-medium">Vắng mặt</div>
+              <div className="text-2xl font-bold text-blue-700">{attendanceStats.absentCount}</div>
+              <div className="text-sm text-blue-600 font-medium">Vắng mặt</div>
             </div>
-            <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-yellow-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-yellow-600" />
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-yellow-700">{attendanceStats.lateCount}</div>
-              <div className="text-sm text-yellow-600 font-medium">Đi muộn</div>
+              <div className="text-2xl font-bold text-blue-700">{attendanceStats.lateCount}</div>
+              <div className="text-sm text-blue-600 font-medium">Đi muộn</div>
             </div>
-            <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
               <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                 <UserCheck className="w-6 h-6 text-blue-600" />
               </div>
               <div className="text-2xl font-bold text-blue-700">{attendanceStats.excusedCount}</div>
               <div className="text-sm text-blue-600 font-medium">Có phép</div>
             </div>
-            <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
               <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                 <Target className="w-6 h-6 text-blue-600" />
               </div>
@@ -244,7 +244,7 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
 
       {/* Danh sách buổi học */}
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+        <CardHeader className="bg-blue-50 border-b">
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <div className="p-2 bg-blue-100 rounded-lg">
               <BookOpen className="h-5 w-5 text-blue-600" />

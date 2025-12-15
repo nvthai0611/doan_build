@@ -1,94 +1,55 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Calendar, Clock, Eye, Download } from "lucide-react"
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Search, DollarSign, Eye, Download, FileText } from 'lucide-react';
+import { centerOwnerTeacherService } from '../../../../../services/center-owner/teacher-management/teacher.service';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { DataTable, Column } from '@/components/common/Table/DataTable';
+import { useNavigate } from 'react-router-dom';
 
 interface TimesheetTabProps {
-  teacherId: string
-  activeTab: string
-  fromDate: string
-  toDate: string
-  search: string
-  setActiveTab: (tab: string) => void
-  setFromDate: (date: string) => void
-  setToDate: (date: string) => void
-  setSearch: (search: string) => void
+  teacherId: string;
+  activeTab: string;
+  fromDate: string;
+  toDate: string;
+  search: string;
+  setActiveTab: (tab: string) => void;
+  setFromDate: (date: string) => void;
+  setToDate: (date: string) => void;
+  setSearch: (search: string) => void;
 }
 
-// Mock timesheet data
-const getTimesheetData = (employeeId: string, status: string, fromDate: string, toDate: string, search: string) => {
-  const allTimesheets = [
-    {
-      id: 1,
-      date: "2024-09-01",
-      checkIn: "08:00",
-      checkOut: "17:00",
-      totalHours: 8,
-      status: "approved",
-      notes: "Làm việc bình thường",
-      classes: ["Lớp Toán 12A1", "Lớp Lý 11B2"]
-    },
-    {
-      id: 2,
-      date: "2024-09-02",
-      checkIn: "08:30",
-      checkOut: "17:30",
-      totalHours: 8.5,
-      status: "approved",
-      notes: "Làm thêm giờ",
-      classes: ["Lớp Hóa 10C1"]
-    },
-    {
-      id: 3,
-      date: "2024-09-03",
-      checkIn: "08:00",
-      checkOut: "16:00",
-      totalHours: 7,
-      status: "pending",
-      notes: "Nghỉ sớm vì lý do cá nhân",
-      classes: ["Lớp Toán 9D1"]
-    },
-    {
-      id: 4,
-      date: "2024-09-04",
-      checkIn: "09:00",
-      checkOut: "18:00",
-      totalHours: 8,
-      status: "rejected",
-      notes: "Đi muộn không có lý do",
-      classes: []
-    }
-  ]
-
-  let filteredTimesheets = allTimesheets
-
-  // Filter by status
-  if (status !== "all") {
-    filteredTimesheets = filteredTimesheets.filter(ts => ts.status === status)
-  }
-
-  // Filter by date range
-  if (fromDate) {
-    filteredTimesheets = filteredTimesheets.filter(ts => ts.date >= fromDate)
-  }
-  if (toDate) {
-    filteredTimesheets = filteredTimesheets.filter(ts => ts.date <= toDate)
-  }
-
-  // Filter by search
-  if (search) {
-    filteredTimesheets = filteredTimesheets.filter(ts =>
-      ts.notes.toLowerCase().includes(search.toLowerCase()) ||
-      ts.classes.some(cls => cls.toLowerCase().includes(search.toLowerCase()))
-    )
-  }
-
-  return filteredTimesheets
+interface Payroll {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  totalAmount: number;
+  backPayAmount: number | null;
+  bonuses: number | null;
+  deductions: number | null;
+  teachingHours: number | null;
+  hourlyRate: number | null;
+  status: string;
+  sessionCount: number;
+  teacher: {
+    id: string;
+    code: string;
+    name: string;
+    email: string;
+    phone: string;
+  };
 }
 
 export default function TimesheetTab({
@@ -100,40 +61,216 @@ export default function TimesheetTab({
   setActiveTab,
   setFromDate,
   setToDate,
-  setSearch
+  setSearch,
 }: TimesheetTabProps) {
-  const timesheets = getTimesheetData(teacherId, activeTab, fromDate, toDate, search)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('');
+  const navigate = useNavigate();
+  // Fetch payrolls data
+  const {
+    data: payrollsResponse,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      'teacher-payrolls',
+      teacherId,
+      page,
+      limit,
+      statusFilter,
+      monthFilter,
+      yearFilter,
+      search,
+    ],
+    queryFn: async () => {
+      const params: any = {
+        teacherId,
+        page,
+        limit,
+      };
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+
+      if (monthFilter) {
+        params.month = monthFilter;
+      }
+
+      if (yearFilter) {
+        params.year = yearFilter;
+      }
+
+      if (search) {
+        params.teacherName = search;
+      }
+
+      const response = await centerOwnerTeacherService.getAllPayrolls(params);
+      return response;
+    },
+    enabled: !!teacherId,
+  });
+
+  const payrolls = payrollsResponse?.data || [];
+  const meta = payrollsResponse?.meta;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "approved":
-        return <Badge className="bg-green-100 text-green-800">Đã duyệt</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Chờ duyệt</Badge>
-      case "rejected":
-        return <Badge className="bg-red-100 text-red-800">Từ chối</Badge>
+      case 'pending':
+        return <Badge className="bg-gray-100 text-gray-800">Chờ duyệt</Badge>;
+      case 'waiting_teacher_approval':
+        return (
+          <Badge className="bg-blue-100 text-blue-800">Chờ GV duyệt</Badge>
+        );
+      case 'rejected_by_teacher':
+        return <Badge className="bg-red-100 text-red-800">GV từ chối</Badge>;
+      case 'approved_by_teacher':
+        return <Badge className="bg-green-100 text-green-800">GV đồng ý</Badge>;
+      case 'paid':
+        return (
+          <Badge className="bg-purple-100 text-purple-800">Đã thanh toán</Badge>
+        );
+      case 'cancelled':
+        return <Badge className="bg-gray-100 text-gray-800">Đã hủy</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }
+  };
 
-  const totalHours = timesheets.reduce((sum, ts) => sum + ts.totalHours, 0)
-  const approvedHours = timesheets
-    .filter(ts => ts.status === "approved")
-    .reduce((sum, ts) => sum + ts.totalHours, 0)
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return '0 ₫';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return format(new Date(dateString), 'dd/MM/yyyy', { locale: vi });
+  };
+
+  const totalAmount = payrolls.reduce(
+    (sum: number, p: Payroll) => sum + Number(p.totalAmount || 0),
+    0,
+  );
+  const approvedAmount = payrolls
+    .filter((p: Payroll) => p.status === 'paid')
+    .reduce((sum: number, p: Payroll) => sum + Number(p.totalAmount || 0), 0);
+
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    console.log('Export payrolls');
+  };
+
+  // Define columns for DataTable
+  const columns: Column<Payroll>[] = [
+    {
+      key: 'period',
+      header: 'Kỳ lương',
+      width: '200px',
+      render: (payroll) => (
+        <div className="font-medium">
+          {formatDate(payroll.periodStart)} - {formatDate(payroll.periodEnd)}
+        </div>
+      ),
+    },
+    {
+      key: 'teacher',
+      header: 'Giáo viên',
+      width: '180px',
+      render: (payroll) => (
+        <div>
+          <p className="font-medium">{payroll.teacher.name}</p>
+          <p className="text-sm text-gray-500">{payroll.teacher.code}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'sessionCount',
+      header: 'Số buổi dạy',
+      width: '120px',
+      align: 'center',
+      render: (payroll) => `${payroll.sessionCount} buổi`,
+    },
+    {
+      key: 'teachingHours',
+      header: 'Tổng giờ',
+      width: '100px',
+      align: 'center',
+      render: (payroll) => `${payroll.teachingHours || 0}h`,
+    },
+    {
+      key: 'totalAmount',
+      header: 'Tổng tiền',
+      width: '150px',
+      align: 'right',
+      render: (payroll) => (
+        <span className="font-semibold">
+          {formatCurrency(Number(payroll.totalAmount))}
+        </span>
+      ),
+    },
+    {
+      key: 'bonuses',
+      header: 'Thưởng/Phạt',
+      width: '150px',
+      render: (payroll) => {
+        const bonuses = Number(payroll.bonuses || 0);
+        const deductions = Number(payroll.deductions || 0);
+        const hasData = bonuses !== 0 || deductions !== 0;
+
+        if (!hasData) {
+          return <span className="text-gray-400">-</span>;
+        }
+
+        return (
+          <div className="space-y-1">
+            {bonuses > 0 && (
+              <Badge variant="outline" className="bg-green-50 text-green-700">
+                +{formatCurrency(bonuses)}
+              </Badge>
+            )}
+            {deductions > 0 && (
+              <Badge variant="outline" className="bg-red-50 text-red-700 center">
+                -{formatCurrency(deductions)}
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      width: '150px',
+      render: (payroll) => getStatusBadge(payroll.status),
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      width: '120px',
+      align: 'center',
+      render: (payroll) => (
+        <Button variant="outline" size="sm" onClick={() => navigate(`/center-qn/payroll-teacher/payroll/${payroll.id}`)}>
+          <Eye className="w-4 h-4 mr-2" />
+          Chi tiết
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng công</h2>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Xuất báo cáo
-            </Button>
-          </div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Bảng lương
+          </h2>
         </div>
 
         {/* Filters */}
@@ -147,123 +284,91 @@ export default function TimesheetTab({
               className="pl-10"
             />
           </div>
-          <Select value={activeTab} onValueChange={setActiveTab}>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="approved">Đã duyệt</SelectItem>
               <SelectItem value="pending">Chờ duyệt</SelectItem>
-              <SelectItem value="rejected">Từ chối</SelectItem>
+              <SelectItem value="waiting_teacher_approval">
+                Chờ GV duyệt
+              </SelectItem>
+              <SelectItem value="rejected_by_teacher">GV từ chối</SelectItem>
+              <SelectItem value="approved_by_teacher">GV đồng ý</SelectItem>
+              <SelectItem value="paid">Đã thanh toán</SelectItem>
+              <SelectItem value="cancelled">Đã hủy</SelectItem>
             </SelectContent>
           </Select>
           <Input
-            type="date"
-            placeholder="Từ ngày"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            type="month"
+            placeholder="Chọn tháng"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
           />
-          <Input
-            type="date"
-            placeholder="Đến ngày"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
+          <Button
+            variant="outline"
+            onClick={() => {
+              setStatusFilter('all');
+              setMonthFilter('');
+              setYearFilter('');
+              setSearch('');
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <Calendar className="w-8 h-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-blue-600">Tổng số ngày</p>
-                <p className="text-2xl font-bold text-blue-900">{timesheets.length}</p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-green-50 rounded-lg p-4">
             <div className="flex items-center">
-              <Clock className="w-8 h-8 text-green-600" />
+              <DollarSign className="w-8 h-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-green-600">Tổng giờ làm</p>
-                <p className="text-2xl font-bold text-green-900">{totalHours.toFixed(1)}h</p>
+                <p className="text-sm font-medium text-green-600">Tổng tiền</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {formatCurrency(totalAmount)}
+                </p>
               </div>
             </div>
           </div>
           <div className="bg-orange-50 rounded-lg p-4">
             <div className="flex items-center">
-              <Clock className="w-8 h-8 text-orange-600" />
+              <DollarSign className="w-8 h-8 text-orange-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-orange-600">Giờ đã duyệt</p>
-                <p className="text-2xl font-bold text-orange-900">{approvedHours.toFixed(1)}h</p>
+                <p className="text-sm font-medium text-orange-600">
+                  Đã thanh toán
+                </p>
+                <p className="text-2xl font-bold text-orange-900">
+                  {formatCurrency(approvedAmount)}
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Timesheet Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Chi tiết bảng công</h3>
-          {timesheets.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">Không có dữ liệu bảng công</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ngày</TableHead>
-                  <TableHead>Giờ vào</TableHead>
-                  <TableHead>Giờ ra</TableHead>
-                  <TableHead>Tổng giờ</TableHead>
-                  <TableHead>Lớp dạy</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ghi chú</TableHead>
-                  <TableHead>Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {timesheets.map((timesheet) => (
-                  <TableRow key={timesheet.id}>
-                    <TableCell className="font-medium">
-                      {new Date(timesheet.date).toLocaleDateString('vi-VN')}
-                    </TableCell>
-                    <TableCell>{timesheet.checkIn}</TableCell>
-                    <TableCell>{timesheet.checkOut}</TableCell>
-                    <TableCell>{timesheet.totalHours}h</TableCell>
-                    <TableCell>
-                      {timesheet.classes.length > 0 ? (
-                        <div className="space-y-1">
-                          {timesheet.classes.map((cls, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {cls}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">Không có</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(timesheet.status)}</TableCell>
-                    <TableCell className="max-w-xs truncate">{timesheet.notes}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Xem
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </div>
+      {/* Payroll DataTable */}
+      <DataTable
+        data={payrolls}
+        columns={columns}
+        loading={isLoading}
+        emptyMessage="Không có dữ liệu bảng lương"
+        rowKey="id"
+        pagination={{
+          currentPage: page,
+          totalPages: meta?.totalPages || 1,
+          totalItems: meta?.total || 0,
+          itemsPerPage: limit,
+          onPageChange: setPage,
+          onItemsPerPageChange: setLimit,
+          showItemsPerPage: true,
+          showPageInfo: true,
+        }}
+        enableSearch={false}
+        enableSort={false}
+        hoverable={true}
+      />
     </div>
-  )
+  );
 }

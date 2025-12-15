@@ -96,3 +96,13 @@ export type {
   AuditLogDetailResponse,
 } from './audit-log/audit-log.service'
 
+// Scholarship Management
+export { scholarshipService } from './scholarship-management/scholarship.service'
+export type {
+  Scholarship,
+  CreateScholarshipDto,
+  UpdateScholarshipDto,
+  ScholarshipsResponse,
+  ScholarshipResponse,
+} from './scholarship-management/scholarship.types'
+

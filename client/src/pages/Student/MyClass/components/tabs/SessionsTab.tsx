@@ -86,22 +86,22 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
   const getAttendanceBadge = (status?: string | null) => {
     switch (status) {
       case 'present':
-        return <Badge className="bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
+        return <Badge className="bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
           <CheckCircle className="w-3 h-3" />
           Có mặt
         </Badge>
       case 'absent':
-        return <Badge className="bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
+        return <Badge className="bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
           <XCircle className="w-3 h-3" />
           Vắng mặt
         </Badge>
       case 'late':
-        return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 flex items-center gap-1">
+        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" />
           Đi muộn
         </Badge>
       case 'excused':
-        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
+        return <Badge className="bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
           <UserCheck className="w-3 h-3" />
           Có phép
         </Badge>
@@ -138,50 +138,50 @@ export function SessionsTab({ classId, classInfo }: SessionsTabProps) {
     <div className="space-y-6">
       {/* Thống kê điểm danh */}
       <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-emerald-800">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-emerald-600" />
+        <CardHeader className="bg-blue-50 border-b">
+          <CardTitle className="flex items-center gap-2 text-blue-900">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BarChart3 className="h-5 w-5 text-blue-700" />
             </div>
             Thống kê điểm danh
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-green-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="text-2xl font-bold text-green-700">{attendanceStats.presentCount}</div>
-              <div className="text-sm text-green-600 font-medium">Có mặt</div>
-            </div>
-            <div className="text-center p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-red-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="text-2xl font-bold text-red-700">{attendanceStats.absentCount}</div>
-              <div className="text-sm text-red-600 font-medium">Vắng mặt</div>
-            </div>
-            <div className="text-center p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-yellow-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="text-2xl font-bold text-yellow-700">{attendanceStats.lateCount}</div>
-              <div className="text-sm text-yellow-600 font-medium">Đi muộn</div>
-            </div>
-            <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
               <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-blue-600" />
+                <CheckCircle className="w-6 h-6 text-blue-700" />
               </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.excusedCount}</div>
-              <div className="text-sm text-blue-600 font-medium">Có phép</div>
+              <div className="text-2xl font-bold text-blue-800">{attendanceStats.presentCount}</div>
+              <div className="text-sm text-blue-700 font-medium">Có mặt</div>
             </div>
-            <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
               <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <Target className="w-6 h-6 text-blue-600" />
+                <XCircle className="w-6 h-6 text-blue-700" />
               </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.attendanceRate}%</div>
-              <div className="text-sm text-blue-600 font-medium">Tỷ lệ tham dự</div>
+              <div className="text-2xl font-bold text-blue-800">{attendanceStats.absentCount}</div>
+              <div className="text-sm text-blue-700 font-medium">Vắng mặt</div>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-blue-700" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800">{attendanceStats.lateCount}</div>
+              <div className="text-sm text-blue-700 font-medium">Đi muộn</div>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-blue-700" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800">{attendanceStats.excusedCount}</div>
+              <div className="text-sm text-blue-700 font-medium">Có phép</div>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <Target className="w-6 h-6 text-blue-700" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800">{attendanceStats.attendanceRate}%</div>
+              <div className="text-sm text-blue-700 font-medium">Tỷ lệ tham dự</div>
             </div>
           </div>
           <div className="mt-4 p-3 bg-gray-50 rounded-lg">

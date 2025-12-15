@@ -45,6 +45,29 @@ export class TeacherManagementController {
     return this.teacherManagementService.findAllTeachers(queryDto);
   }
 
+  @Get('payrolls')
+@HttpCode(HttpStatus.OK)
+getAllPayrolls(
+  @Query('page') page?: string,
+  @Query('limit') limit?: string,
+  @Query('status') status?: string,
+  @Query('month') month?: string,
+  @Query('year') year?: string,
+  @Query('teacherId') teacherId?: string,
+  @Query('teacherName') teacherName?: string,
+) {
+  
+  return this.teacherManagementService.getAllPayRolls({
+    page: page ? parseInt(page) : undefined,
+    limit: limit ? parseInt(limit) : undefined,
+    status,
+    month,
+    year,
+    teacherId,
+    teacherName,
+  });
+}
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.teacherManagementService.findOneTeacher(id);
@@ -143,4 +166,8 @@ export class TeacherManagementController {
   ) {
     return this.teacherManagementService.deleteTeacherContract(teacherId, contractId);
   }
+
+  
+
+
 }

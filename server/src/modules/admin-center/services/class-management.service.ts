@@ -161,20 +161,6 @@ export class ClassManagementService {
       const skip = (page - 1) * limit;
       const take = limit;
 
-      // Determine current academic year
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1; // 1-12
-
-      // Academic year logic:
-      // - If current month is 9-12: current academic year is currentYear-currentYear+1
-      // - If current month is 1-8: current academic year is currentYear-1-currentYear
-      let currentAcademicYear: string;
-      if (currentMonth >= 9) {
-        currentAcademicYear = `${currentYear}-${currentYear + 1}`;
-      } else {
-        currentAcademicYear = `${currentYear - 1}-${currentYear}`;
-      }
-
       const where: any = {
         status: { not: 'deleted' }, // Exclude deleted classes
       };
@@ -393,7 +379,7 @@ export class ClassManagementService {
           enrollments: {
             where: {
               status: {
-                not: 'withdrawn', // Loại bỏ enrollments đã chuyển lớp
+                notIn: ['withdrawn', 'stopped'], // Loại bỏ enrollments đã chuyển lớp
               },
             },
             select: {
@@ -934,9 +920,13 @@ export class ClassManagementService {
       // Check room exists if provided và lấy capacity để làm maxStudents
       let roomCapacity: number | null = null;
       if (createClassDto.roomId) {
+        console.log('createClassDto.roomId', createClassDto.roomId);
+        
         const room = await this.prisma.room.findUnique({
           where: { id: createClassDto.roomId },
         });
+
+        console.log('room', room);
 
         if (!room) {
           throw new HttpException(
@@ -952,6 +942,7 @@ export class ClassManagementService {
         roomCapacity = room.capacity;
       }
 
+      console.log('roomCapacity', roomCapacity);
       // Check grade exists if provided
       if (createClassDto.gradeId) {
         const grade = await this.prisma.grade.findUnique({
@@ -1705,6 +1696,8 @@ export class ClassManagementService {
 
             let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.`;
 
+            void this.notifyStatusChange(id, existingClass.status, status);
+
             return {
               success: true,
               message,
@@ -1729,6 +1722,8 @@ export class ClassManagementService {
             }[status] || status;
 
           let message = `Đã chuyển trạng thái lớp sang "${statusLabel}" nhưng có lỗi khi tạo lịch học tự động`;
+
+          void this.notifyStatusChange(id, existingClass.status, status);
 
           return {
             success: true,
@@ -2509,7 +2504,7 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa nhiều buổi học
+  // Xóa mềm nhiều buổi học (set status = cancelled)
   async deleteSessions(classId: string, sessionIds: string[]) {
     try {
       // Validate input
@@ -2594,11 +2589,16 @@ export class ClassManagementService {
         );
       }
 
-      // Delete sessions
-      const deletedResult = await this.prisma.classSession.deleteMany({
+      //
+      // Soft delete: set status = cancelled
+      const deletedResult = await this.prisma.classSession.updateMany({
         where: {
           id: { in: sessionIds },
           classId: classId,
+        },
+        data: {
+          status: 'cancelled',
+          cancellationReason: null,
         },
       });
 
@@ -2626,9 +2626,92 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa lớp học (soft delete bằng cách đổi status)
+  // Khôi phục các buổi học đã xóa mềm
+  async restoreSessions(classId: string, sessionIds: string[]) {
+    try {
+      if (
+        !sessionIds ||
+        !Array.isArray(sessionIds) ||
+        sessionIds.length === 0
+      ) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Vui lòng chọn ít nhất 1 buổi học để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { id: true, name: true },
+      });
+
+      if (!classData) {
+        throw new HttpException(
+          { success: false, message: 'Không tìm thấy lớp học' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const sessions = await this.prisma.classSession.findMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        select: { id: true },
+      });
+
+      if (sessions.length === 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không có buổi học nào ở trạng thái đã xóa để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const restored = await this.prisma.classSession.updateMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        data: {
+          status: 'has_not_happened',
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          restoredCount: restored.count,
+          requestedCount: sessionIds.length,
+          classId,
+          className: classData.name,
+        },
+        message: `Đã khôi phục ${restored.count} buổi học`,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi khôi phục buổi học',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+ 
   async updateClassSchedules(id: string, body: any) {
     try {
+      console.log("check: ", id, body);
+      
       // Validate UUID
       if (!this.isValidUUID(id)) {
         throw new HttpException(
@@ -2732,6 +2815,7 @@ export class ClassManagementService {
 
           if (room) {
             updateData.roomId = firstSchedule.roomId;
+            updateData.maxStudents = room.capacity;
           } else {
             // Nếu roomId không hợp lệ, log warning nhưng vẫn tiếp tục
             console.warn(
@@ -3317,22 +3401,7 @@ export class ClassManagementService {
         );
       }
 
-      // Gửi email hủy lớp cho giáo viên trước khi xóa
-      try {
-        await this.emailNotificationService.sendClassRemoveTeacherEmail(
-          classId,
-          teacherId,
-          'Lớp học đã được hủy phân công',
-        );
-        console.log(
-          `Email hủy phân công lớp đã được queue cho giáo viên ${teacherId}`,
-        );
-      } catch (emailError) {
-        console.error(
-          'Failed to queue cancellation email to teacher:',
-          emailError,
-        );
-      }
+      
 
       // Remove teacher assignment and chuyển status về draft
       const updatedClass = await this.prisma.class.update({
@@ -3342,6 +3411,17 @@ export class ClassManagementService {
           status: ClassStatus.DRAFT,
         },
       });
+
+      // Gửi email thông báo cho giáo viên qua queue
+      try {
+        await this.emailNotificationService.sendClassRemoveTeacherEmail(
+          classId,
+          teacherId,
+        );
+      } catch (emailError) {
+        // Log lỗi email nhưng không làm fail toàn bộ operation
+        console.error('Failed to queue email notification:', emailError);
+      }
 
       return {
         success: true,

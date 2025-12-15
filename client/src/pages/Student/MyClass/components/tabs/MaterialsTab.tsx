@@ -61,10 +61,10 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
 
   return (
     <Card className="border-0 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-        <CardTitle className="flex items-center gap-2 text-purple-800">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <BookOpen className="h-5 w-5 text-purple-600" />
+      <CardHeader className="bg-blue-50 border-b">
+        <CardTitle className="flex items-center gap-2 text-blue-900">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <BookOpen className="h-5 w-5 text-blue-700" />
           </div>
           Tài liệu học tập
         </CardTitle>
@@ -78,19 +78,19 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
               <div className="space-y-4">
                 {/* Stats */}
                 {data?.stats && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border">
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border">
                     <div className="text-center">
                       <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <BarChart3 className="w-6 h-6 text-blue-600" />
+                        <BarChart3 className="w-6 h-6 text-blue-700" />
                       </div>
-                      <div className="text-xl font-bold text-blue-600">{data.stats.totalSize ? formatSize(data.stats.totalSize) : '0'}</div>
+                      <div className="text-xl font-bold text-blue-800">{data.stats.totalSize ? formatSize(data.stats.totalSize) : '0'}</div>
                       <div className="text-sm text-gray-600">Tổng dung lượng</div>
                     </div>
                     <div className="text-center">
-                      <div className="p-2 bg-purple-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <FileDown className="w-6 h-6 text-purple-600" />
+                      <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+                        <FileDown className="w-6 h-6 text-blue-700" />
                       </div>
-                      <div className="text-xl font-bold text-purple-600">{data.stats.recentUploads || 0}</div>
+                      <div className="text-xl font-bold text-blue-800">{data.stats.recentUploads || 0}</div>
                       <div className="text-sm text-gray-600">Tài liệu mới</div>
                     </div>
                   </div>
@@ -99,16 +99,16 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                 {/* Materials List */}
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-purple-500">
+                    <div key={item.id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-600">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-3">
-                            <div className="p-1 bg-purple-100 rounded">
-                              <FileType className="w-4 h-4 text-purple-600" />
+                            <div className="p-1 bg-blue-100 rounded">
+                              <FileType className="w-4 h-4 text-blue-700" />
                             </div>
                             <h3 className="font-semibold text-lg text-gray-800">{item.title}</h3>
                             {item.category && (
-                              <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-200">
                                 {getCategoryLabel(item.category)}
                               </Badge>
                             )}
@@ -121,19 +121,19 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <div className="p-1 bg-blue-100 rounded">
-                                <FileText className="w-3 h-3 text-blue-600" />
+                                <FileText className="w-3 h-3 text-blue-700" />
                               </div>
                               <span>{item.fileName}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-green-100 rounded">
-                                <Download className="w-3 h-3 text-green-600" />
+                              <div className="p-1 bg-blue-100 rounded">
+                                <Download className="w-3 h-3 text-blue-700" />
                               </div>
                               <span>{formatSize(item.fileSize)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-orange-100 rounded">
-                                <Calendar className="w-3 h-3 text-orange-600" />
+                              <div className="p-1 bg-blue-100 rounded">
+                                <Calendar className="w-3 h-3 text-blue-700" />
                               </div>
                               <span>{new Date(item.uploadedAt).toLocaleDateString('vi-VN')}</span>
                             </div>
@@ -141,8 +141,8 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                           
                           {item.teacherName && (
                             <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-                              <div className="p-1 bg-cyan-100 rounded">
-                                <User className="w-3 h-3 text-cyan-600" />
+                              <div className="p-1 bg-blue-100 rounded">
+                                <User className="w-3 h-3 text-blue-700" />
                               </div>
                               <span>Giáo viên: {item.teacherName}</span>
                             </div>
@@ -154,7 +154,7 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                           size="sm" 
                           onClick={() => handleDownload(item)} 
                           disabled={!item.fileUrl}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white border-0"
                         >
                             <Download className="w-4 h-4" />
                           Tải xuống

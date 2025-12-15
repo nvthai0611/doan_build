@@ -35,7 +35,7 @@ export function LoginForm() {
         
         // CHẶN NGAY - Logout ngay lập tức không cho vào hệ thống
         await logout()
-        setError(`🚫 Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Lý. Vui lòng sử dụng cổng phù hợp.`)
+        setError(`Tài khoản ${roleNames[result?.user?.role] || result?.user?.role} không có quyền truy cập Cổng Quản Lý. Vui lòng sử dụng cổng phù hợp.`)
         return
       }
       
@@ -114,6 +114,7 @@ export function LoginForm() {
                 </Label>
                 <button
                   type="button"
+                  onClick={() => navigate("/auth/forgot-password")}
                   className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                 >
                   Quên mật khẩu?

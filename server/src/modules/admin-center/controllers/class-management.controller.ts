@@ -334,6 +334,16 @@ export class ClassManagementController {
     return this.classManagementService.deleteSessions(classId, body.sessionIds);
   }
 
+  @Patch(':id/sessions/restore')
+  @ApiOperation({ summary: 'Khôi phục các buổi học đã xóa mềm' })
+  @ApiResponse({ status: 200, description: 'Khôi phục buổi học thành công' })
+  async restoreSessions(
+    @Param('id') classId: string,
+    @Body() body: { sessionIds: string[] },
+  ) {
+    return this.classManagementService.restoreSessions(classId, body.sessionIds);
+  }
+
   // ============ LEGACY ENDPOINTS (Backward Compatibility) ============
 
   @Get('/:teacherId/teacher')

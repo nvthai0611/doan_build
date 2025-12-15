@@ -290,14 +290,8 @@ export default function PayrollDetail() {
       render: (row) => sessionStatusBadge(row.status)
     },
     {
-      key: "studentCount",
-      header: "Số học sinh",
-      render: (row) => `${row.studentCount} HS`
-    },
-    {
       key: "totalRevenue",
       header: "Doanh thu",
-      sortable: true,
       render: (row) => `${fmt(row.totalRevenue)} đ`
     },
     {

@@ -179,11 +179,11 @@ export function ListChildren() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-balance">Danh sách con em</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-balance">Danh sách con em</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
             <span>Dashboard</span>
             <ChevronRight className="w-4 h-4" />
@@ -192,7 +192,7 @@ export function ListChildren() {
         </div>
         <Button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="bg-primary hover:bg-primary/90"
+          className="w-full sm:w-auto bg-primary hover:bg-primary/90"
         >
           <Plus className="w-4 h-4 mr-2" />
           Thêm con
@@ -202,15 +202,15 @@ export function ListChildren() {
       {/* Search and Filter Bar */}
       <Card>
         <CardContent className="pt-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm kiếm theo tên, email, mã học sinh"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm kiếm theo tên, email, mã học sinh"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -222,10 +222,64 @@ export function ListChildren() {
         </button>
       </div>
 
-      {/* Children Table */}
+      {/* Children Table & Mobile Cards */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <div className="block md:hidden space-y-3 p-4">
+            {filteredChildren.map((child, index) => (
+              <button
+                key={child.id}
+                className="w-full text-left rounded-xl border border-border bg-white shadow-sm p-4 hover:shadow-md transition-shadow"
+                onClick={() => setSelectedChild(child.id)}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={child.avatar || "/placeholder.svg"} />
+                      <AvatarFallback>{child.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-primary">{child.name}</p>
+                      <p className="text-xs text-muted-foreground">#{index + 1}{child.studentCode ? ` • ${child.studentCode}` : ""}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs whitespace-nowrap">{child.classNames}</Badge>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    <span>{child.phone || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4" />
+                    <span>{child.dateOfBirth} {child.gender ? `• ${child.gender}` : ""}</span>
+                  </div>
+                  <div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+                    <span>📧</span>
+                    <span className="truncate">{child.email || "—"}</span>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${getStatusDisplay(child.status).color}`}></div>
+                    <span className={`text-sm font-medium ${getStatusDisplay(child.status).textColor}`}>
+                      {getStatusDisplay(child.status).text}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Điểm TB</div>
+                    <AverageScoreCell childId={child.id} />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50 border-b">
                 <tr>
@@ -286,14 +340,14 @@ export function ListChildren() {
                         <AverageScoreCell childId={child.id} />
                       </div>
                     </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${getStatusDisplay(child.status).color}`}></div>
-                      <span className={`text-sm font-medium ${getStatusDisplay(child.status).textColor}`}>
-                        {getStatusDisplay(child.status).text}
-                      </span>
-                    </div>
-                  </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${getStatusDisplay(child.status).color}`}></div>
+                        <span className={`text-sm font-medium ${getStatusDisplay(child.status).textColor}`}>
+                          {getStatusDisplay(child.status).text}
+                        </span>
+                      </div>
+                    </td>
                     <td className="p-4">
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="w-4 h-4" />
@@ -306,7 +360,7 @@ export function ListChildren() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between p-4 border-t">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 border-t">
             <div className="text-sm text-muted-foreground">
               1-{filteredChildren.length} trong {rows.length}
             </div>

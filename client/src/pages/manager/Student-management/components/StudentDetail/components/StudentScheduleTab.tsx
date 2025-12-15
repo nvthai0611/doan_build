@@ -797,28 +797,28 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
       header: 'Ngày đăng ký',
       render: (item) => formatDate(item.enrolledAt),
     },
-    {
-      key: 'actions',
-      header: 'Thao tác',
-      render: (item) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => handleViewAttendance(item.classId, item.id)}
-            disabled={loadingAttendance}
-          >
-            {loadingAttendance && selectedEnrollmentId === item.id ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                Đang tải...
-              </>
-            ) : (
-              'Xem điểm danh'
-            )}
-          </Button>
-        </div>
-      ),
-    },
+    // {
+    //   key: 'actions',
+    //   header: 'Thao tác',
+    //   render: (item) => (
+    //     <div className="flex gap-2">
+    //       <Button
+    //         size="sm"
+    //         onClick={() => handleViewAttendance(item.classId, item.id)}
+    //         disabled={loadingAttendance}
+    //       >
+    //         {loadingAttendance && selectedEnrollmentId === item.id ? (
+    //           <>
+    //             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+    //             Đang tải...
+    //           </>
+    //         ) : (
+    //           'Xem điểm danh'
+    //         )}
+    //       </Button>
+    //     </div>
+    //   ),
+    // },
   ], [
     displayedActiveEnrollments,
     isAllActiveSelected,

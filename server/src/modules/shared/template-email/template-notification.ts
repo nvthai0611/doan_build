@@ -1206,3 +1206,67 @@ export const generateBillEmailTemplate = (data: any) => {
     </html>
   `;
 };
+
+export const generateRecalculationEmailTemplate = (data: any) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4CAF50; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
+        .summary { background: white; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #4CAF50; }
+        .comparison { background: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .fee-record { background: white; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; }
+        .footer { background: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 5px 5px; }
+        .highlight { color: #4CAF50; font-weight: bold; }
+        .amount { font-size: 18px; font-weight: bold; color: #2196F3; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>🔄 Thông Báo Tính Toán Lại Hóa Đơn</h2>
+        </div>
+        
+        <div class="content">
+          <p>Kính gửi <strong>${data.parentName}</strong>,</p>
+          
+          <p>Chúng tôi xin thông báo về việc tính toán lại hóa đơn học phí cho học viên <strong class="highlight">${data.studentName}</strong> trong kỳ <strong>${data.period}</strong>.</p>
+          
+          <div class="comparison">
+            <h3>📊 So sánh số tiền:</h3>
+            <p>Tổng tiền cũ: <span class="amount">${data.comparison.oldTotalAmount.toLocaleString('vi-VN')} VND</span></p>
+            <p>Tổng tiền mới: <span class="amount">${data.comparison.newTotalAmount.toLocaleString('vi-VN')} VND</span></p>
+            <p>Chênh lệch: <strong>${data.comparison.differenceNote}</strong></p>
+          </div>
+
+          <div class="summary">
+            <h3>📝 Chi tiết hóa đơn mới:</h3>
+            ${data.newFeeRecords.map((record: any) => `
+              <div class="fee-record">
+                <strong>${record.className}</strong><br/>
+                Số tiền: <span class="amount">${record.newAmount.toLocaleString('vi-VN')} VND</span><br/>
+                Hạn thanh toán: ${new Date(record.dueDate).toLocaleDateString('vi-VN')}
+              </div>
+            `).join('')}
+          </div>
+
+          <p><em>Thời gian tính toán: ${new Date(data.recalculatedAt).toLocaleString('vi-VN')}</em></p>
+          
+          <p>Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi để được hỗ trợ.</p>
+          
+          <p>Trân trọng,<br/><strong>Trung tâm</strong></p>
+        </div>
+        
+        <div class="footer">
+          <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}

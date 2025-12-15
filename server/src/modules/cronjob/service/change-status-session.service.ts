@@ -41,7 +41,7 @@ export class ChangeStatusSessionService {
                 await this.prisma.cronJobExecution.update({
                     where: { id: cronJob.id },
                     data: {
-                        status: 'completed',
+                        status: 'success',
                         completedAt: new Date(),
                         durationMs: Date.now() - startTime,
                         totalItems: 0,
@@ -68,7 +68,7 @@ export class ChangeStatusSessionService {
             await this.prisma.cronJobExecution.update({
                 where: { id: cronJob.id },
                 data: {
-                    status: 'completed',
+                    status: 'success',
                     completedAt: new Date(),
                     durationMs: Date.now() - startTime,
                     totalItems: sessionsToUpdate,

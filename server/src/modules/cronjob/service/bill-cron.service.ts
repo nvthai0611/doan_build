@@ -13,7 +13,7 @@ interface ErrorDetail {
 export class BillCronService {
   private readonly logger = new Logger(BillCronService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Cron chạy vào lúc 00:00 ngày 1 hàng tháng (ví dụ: 00:00 ngày 1/12)
@@ -35,20 +35,24 @@ export class BillCronService {
 
     try {
       const now = new Date();
-      const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), 7);
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const firstDayOfLastMonth = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+      const lastDayOfLastMonth = new Date(Date.UTC(currentYear, currentMonth, 0));
+      // const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      // const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const dueDate = new Date(Date.UTC(currentYear, currentMonth, 7)); // Hạn thanh toán: ngày 7 của tháng hiện tại
       const billingPeriodStr = `T${firstDayOfLastMonth.getMonth() + 1}/${firstDayOfLastMonth.getFullYear()}`;
       const formatLocalDate = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
       this.logger.log(
         `Kỳ hóa đơn: ${formatLocalDate(firstDayOfLastMonth)} - ${formatLocalDate(lastDayOfLastMonth)}`,
       );
-this.logger.log(
+      this.logger.log(
         `Kỳ hóa đơn: ${firstDayOfLastMonth} - ${lastDayOfLastMonth}`,
       );
       // Lấy danh sách session trong tháng
@@ -62,7 +66,9 @@ this.logger.log(
         },
         select: { id: true },
       });
+      console.log(firstDayOfLastMonth, lastDayOfLastMonth);
 
+      this.logger.log(`Số buổi trên tháng của lớp: ${sessionsInMonth.length}`);
       if (sessionsInMonth.length === 0) {
         this.logger.log('Không có buổi học nào trong tháng trước. Dừng lại.');
         await this.updateCronExecution(cronExecutionId, {
@@ -94,12 +100,12 @@ this.logger.log(
       });
       //Group với map để tránh quá nhiều truy vấn 
       const attendanceMap = new Map<string, { studentId: string; classId: string; count: number }>();
-      
+
       attendances.forEach((attendance) => {
         const classId = attendance.session.classId;
         const key = `${attendance.studentId}_${classId}`;
         const existing = attendanceMap.get(key);
-        
+
         if (existing) {
           existing.count++;
         } else {
@@ -126,7 +132,7 @@ this.logger.log(
         where: { isActive: true },
         select: { id: true, percent: true },
       });
-      
+
       const scholarshipMap = new Map<string, Prisma.Decimal>();
       scholarships.forEach((scholarship) => {
         scholarshipMap.set(scholarship.id, scholarship.percent);
@@ -155,8 +161,8 @@ this.logger.log(
             failedCount++;
             errorDetails.push({
               itemId: studentId,
-              itemName: `Student ${studentId}`,
-              error: 'Missing fee structure configuration',
+              itemName: `Học Sinh ${studentId}`,
+              error: 'Thiếu cấu hình học phí',
             });
             continue;
           }
@@ -172,8 +178,8 @@ this.logger.log(
             failedCount++;
             errorDetails.push({
               itemId: studentId,
-              itemName: `Student ${studentId}`,
-              error: 'Session fee is zero or null',
+              itemName: `Học Sinh ${studentId}`,
+              error: 'Không có mức học phí cho buổi học',
             });
             continue;
           }
@@ -212,10 +218,10 @@ this.logger.log(
               feeStructureId: classInfo.feeStructureId,
               amount: totalBeforeDiscount,
               totalAmount: totalAmount,
-              scholarship: scholarshipAmount,
+              scholarship: scholarshipPercent.isZero() ? null : scholarshipPercent,
               dueDate,
               status: 'calculated', // ✅ NEW: Admin-only status
-              notes: scholarshipAmount.isZero() 
+              notes: scholarshipAmount.isZero()
                 ? `Hóa đơn ${billingPeriodStr} (${sessionCount} buổi).`
                 : `Hóa đơn ${billingPeriodStr} (${sessionCount} buổi). Học bổng: ${scholarshipPercent.toFixed(1)}% = ${scholarshipAmount.toFixed(0)} VND.`,
             },
@@ -227,11 +233,11 @@ this.logger.log(
           );
         } catch (itemError) {
           failedCount++;
-          const studentId = group?.studentId || 'unknown';
+          const studentId = group?.studentId || 'Không xác định';
           errorDetails.push({
             itemId: studentId,
-            itemName: `Student ${studentId}`,
-            error: itemError instanceof Error ? itemError.message : 'Unknown error',
+            itemName: `Học Sinh ${studentId}`,
+            error: itemError instanceof Error ? itemError.message : 'Lỗi không xác định',
           });
           this.logger.error(`Lỗi xử lý học sinh ${studentId}:`, itemError);
         }
@@ -239,9 +245,9 @@ this.logger.log(
 
       // Cập nhật Cron Execution thành công
       const durationMs = Date.now() - startTime;
-      const status = failedCount > 0 ? 'completed_with_errors' : 'success';
+      const status = failedCount > 0 ? 'success_with_errors' : 'success';
       const errorMessage =
-        failedCount > 0 ? `Failed to generate ${failedCount}/${totalItemsProcessed} bills` : null;
+        failedCount > 0 ? `Không tạo được ${failedCount}/${totalItemsProcessed} hóa đơn` : null;
 
       await this.updateCronExecution(cronExecutionId, {
         status,
@@ -262,7 +268,7 @@ this.logger.log(
 
       await this.updateCronExecution(cronExecutionId, {
         status: 'failed',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorMessage: error instanceof Error ? error.message : 'Lỗi không xác định',
         failedCount: totalItemsProcessed,
         durationMs,
         errorDetails: errorDetails.length > 0 ? errorDetails : null,
@@ -324,7 +330,7 @@ this.logger.log(
 
       // Cập nhật trạng thái hàng loạt
       const billIds = calculatedBills.map((bill) => bill.id);
-      
+
       const updateResult = await this.prisma.feeRecord.updateMany({
         where: {
           id: { in: billIds },
@@ -336,7 +342,7 @@ this.logger.log(
       });
 
       successCount = updateResult.count;
-      
+
       // Log chi tiết
       const totalBillAmount = calculatedBills.reduce(
         (sum, bill) => sum.plus(bill.amount || new Prisma.Decimal(0)),
@@ -349,7 +355,7 @@ this.logger.log(
       );
 
       const durationMs = Date.now() - startTime;
-      
+
       await this.updateCronExecution(cronExecutionId, {
         status: 'success',
         totalItems: calculatedBills.length,
@@ -380,7 +386,89 @@ this.logger.log(
     }
   }
 
-  // ...existing helper methods...
+  /**
+   * Cron chạy vào 00:00 ngày 8 hàng tháng
+   * Xóa các FeeRecord có totalAmount = 0
+   */
+  @Cron('0 0 8 * *')
+  async handleCleanupZeroAmountBills() {
+    this.logger.log('Bắt đầu chạy Cron Job: Xóa Hóa Đơn 0đ...');
+
+    const startTime = Date.now();
+    const errorDetails: ErrorDetail[] = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    const cronExecutionId = await this.createCronExecution('cleanup_zero_bills');
+
+    try {
+      // Tìm các hóa đơn có totalAmount = 0
+      const zeroAmountBills = await this.prisma.feeRecord.findMany({
+        where: {
+          totalAmount: 0,
+        },
+        select: { id: true, studentId: true },
+      });
+
+      if (zeroAmountBills.length === 0) {
+        this.logger.log('Không có hóa đơn 0đ nào cần xóa.');
+        await this.updateCronExecution(cronExecutionId, {
+          status: 'success',
+          totalItems: 0,
+          successCount: 0,
+          failedCount: 0,
+          durationMs: Date.now() - startTime,
+        });
+        return;
+      }
+
+      this.logger.log(`Tìm thấy ${zeroAmountBills.length} hóa đơn 0đ để xóa.`);
+
+      try {
+        const deleteResult = await this.prisma.feeRecord.deleteMany({
+          where: {
+            id: { in: zeroAmountBills.map(b => b.id) },
+          },
+        });
+
+        successCount = deleteResult.count;
+
+      } catch (dbError) {
+        failedCount = zeroAmountBills.length;
+        errorDetails.push({
+          itemId: 'BATCH_DELETE',
+          itemName: 'Multiple Bills',
+          error: dbError instanceof Error ? dbError.message : 'Database error during batch delete',
+        });
+        throw dbError;
+      }
+
+      await this.updateCronExecution(cronExecutionId, {
+        status: 'success',
+        totalItems: zeroAmountBills.length,
+        successCount,
+        failedCount,
+        durationMs: Date.now() - startTime,
+      });
+
+      this.logger.log(`Hoàn thành Xóa Hóa Đơn 0đ: Đã xóa ${successCount} hóa đơn.`);
+
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      this.logger.error('Cron Job Xóa Hóa Đơn 0đ thất bại:', error);
+
+      await this.updateCronExecution(cronExecutionId, {
+        status: 'failed',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        failedCount,
+        errorDetails: errorDetails.length > 0 ? errorDetails : null,
+        durationMs,
+      });
+    }
+  }
+
+
+
 
   private async createCronExecution(jobType: string): Promise<string> {
     const execution = await this.prisma.cronJobExecution.create({

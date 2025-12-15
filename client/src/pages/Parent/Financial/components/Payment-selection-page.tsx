@@ -85,6 +85,7 @@ export function PaymentSelectionPage() {
 
   const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ['feeRecords', 'pending'],
+
     queryFn: async () => {
       return await financialParentService.getAllFeeRecordsOfParent('pending')
     },
@@ -351,24 +352,13 @@ const handleCloseModal = () => {
   queryClient.invalidateQueries({ queryKey: ['payment-history'] }) // Nên thêm cả history
 }
 
-  if (isLoading || isLoadingChildren || isError || isErrorChildren) {
+  if (isLoading || isLoadingChildren) {
     return <Loading />
   }
 
-  // if (isError  || isErrorChildren) {
-  //   return (
-  //     <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
-  //       <Card className="max-w-md">
-  //         <CardContent className="pt-6">
-  //           <p className="text-center text-destructive">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
-  //         </CardContent>
-  //       </Card>
-  //     </div>
-  //   )
-  // }
-
   const feeRecords = (isError) ? [] : (response as any[] || [])
   const childrenList = (isErrorChildren) ? [] : (children as any[])
+
 
   const transformedFeeRecords = feeRecords?.map((fee) => {
     const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
@@ -416,7 +406,8 @@ const handleCloseModal = () => {
   // const totalAmount = selectedRecords.reduce((sum, fee) => 
   //   sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
   // )
-  return (
+  
+  return (  
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}

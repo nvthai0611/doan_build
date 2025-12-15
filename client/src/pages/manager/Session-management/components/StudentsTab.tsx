@@ -33,7 +33,7 @@ export const StudentsTab = ({ students, sessionId }: any) => {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<string>('');
   const queryClient = useQueryClient();
-
+  
   const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
     present: { 
       label: 'Có mặt',
@@ -45,15 +45,15 @@ export const StudentsTab = ({ students, sessionId }: any) => {
       icon: XCircle,
       color: 'text-red-600'
     },
-    late: { 
-      label: 'Đi muộn',
-      icon: Clock,
-      color: 'text-orange-600'
-    },
     excused: { 
       label: 'Có phép',
       icon: CheckCircle,
       color: 'text-blue-600'
+    },
+    null: {
+      label: 'Chưa điểm danh',
+      icon: XCircle,
+      color: 'text-gray-600'
     },
   };
 
@@ -66,6 +66,8 @@ export const StudentsTab = ({ students, sessionId }: any) => {
     ? students 
     : students.filter((s: any) => s.status === statusFilter);
 
+    console.log(filteredStudents);
+    
   // Mutation để cập nhật điểm danh đơn lẻ
   const updateAttendanceMutation = useMutation({
     mutationFn: async ({ studentId, status, note }: { studentId: string; status: string; note?: string }) => {
@@ -230,7 +232,7 @@ export const StudentsTab = ({ students, sessionId }: any) => {
       width: '200px',
       render: (student: Student) => {
         const isEditing = editingStudentId === student.id;
-        
+                
         if (isEditing) {
           return (
             <Select value={editStatus} onValueChange={setEditStatus}>
@@ -240,11 +242,12 @@ export const StudentsTab = ({ students, sessionId }: any) => {
               <SelectContent>
                 {Object.entries(statusConfig).map(([key, config]) => {
                   const Icon = config.icon;
+                  
                   return (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center gap-2">
                         <Icon className={`w-4 h-4 ${config.color}`} />
-                        <span>{config.label}</span>
+                        <span>{!key ? 'Chưa điểm danh' : config.label}</span>
                       </div>
                     </SelectItem>
                   );
