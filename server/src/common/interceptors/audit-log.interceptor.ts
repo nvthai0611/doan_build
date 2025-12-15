@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 import { tap, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { Request } from 'express';
-import { AuditLogService } from 'src/modules/admin-center/services/audit-log.service';
+import { AuditLogService } from 'src/modules/adminit/services/audit-log.service';
 import { PrismaService } from 'src/db/prisma.service';
 import JWT from 'src/utils/jwt.util';
 import { AUDIT_LOG_ROUTES, TABLE_NAME_TO_MODEL_NAME } from '../constants';

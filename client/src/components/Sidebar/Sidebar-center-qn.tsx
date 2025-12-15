@@ -212,11 +212,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         //     { title: 'Thông báo tự động', href: '/center-qn/communication/auto-notifications' },
         //   ],
         // },
-        {
-          title: 'Quản lý người dùng',
-          icon: UserCog,
-          href: '/center-qn/user-management',
-        },
+        // {
+        //   title: 'Quản lý người dùng',
+        //   icon: UserCog,
+        //   href: '/center-qn/user-management',
+        // },
         {
           title: 'Feedback Phụ Huynh',
           icon: MessageSquare,
@@ -232,11 +232,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
           icon: Cog,
           href: '/center-qn/trigger-cronjobs',
         },
-        {
-          title: 'Lịch sử hệ thống',
-          icon: History,
-          href: '/center-qn/audit-log',
-        },
+        // {
+        //   title: 'Lịch sử hệ thống',
+        //   icon: History,
+        //   href: '/center-qn/audit-log',
+        // },
       ],
     },
     {
