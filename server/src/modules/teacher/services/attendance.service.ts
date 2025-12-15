@@ -33,6 +33,16 @@ export class AttendanceService {
         );
       }
 
+      const sessionUTC = new Date(Date.UTC(
+      session.sessionDate.getUTCFullYear(),
+      session.sessionDate.getUTCMonth(),
+      session.sessionDate.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ));
+
       // Lấy danh sách học sinh đã enrolled trước hoặc cùng ngày với buổi học
       const result = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
@@ -43,7 +53,7 @@ export class AttendanceService {
                 where: {
                   status: 'studying',
                   enrolledAt: {
-                    lte: session.sessionDate,
+                    lte: sessionUTC,
                   },
                 },
                 include: {
