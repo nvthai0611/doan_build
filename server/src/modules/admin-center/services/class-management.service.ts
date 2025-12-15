@@ -795,8 +795,18 @@ export class ClassManagementService {
                     select: {
                       id: true,
                       fullName: true,
-                      email: true,
-                      phone: true,
+                      avatar: true,
+                    },
+                  },
+                  parent: {
+                    select: {
+                      user: {
+                        select: {
+                          id: true,
+                          fullName: true,
+                          phone: true,
+                        },
+                      },
                     },
                   },
                 },
