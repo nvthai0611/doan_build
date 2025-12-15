@@ -238,7 +238,7 @@ export default function LeaveRequestManagement() {
     },
     {
       key: 'affectedSessions',
-      header: 'Sessions bị ảnh hưởng',
+      header: 'Buổi học bị ảnh hưởng',
       render: (item: LeaveRequest) => (
         <div className="text-center">
           <span className="text-sm font-medium">
@@ -255,7 +255,7 @@ export default function LeaveRequestManagement() {
           variant="secondary"
           className={statusColors[item.status] || statusColors.pending}
         >
-          {getStatusIcon(item.status)}
+          {/* {getStatusIcon(item.status)} */}
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
@@ -276,11 +276,11 @@ export default function LeaveRequestManagement() {
         <div>
           <div className="flex items-center gap-2">
             <div
-              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              className="flex items-center gap-2 cursor-pointer bg-transparent px-2 py-1 rounded-md hover:bg-gray-100"
               title="Xem chi tiết"
               onClick={() => handleViewDetails(item.id)}
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 text-blue-500" />
             </div>
             <div
               title="Duyệt"
@@ -292,11 +292,11 @@ export default function LeaveRequestManagement() {
               }}
               className={`flex items-center px-2 py-1 rounded-md ${
                 item.status !== 'pending'
-                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                  : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                  : 'bg-transparent cursor-pointer hover:bg-gray-100'
               }`}
             >
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-green-500' : 'text-gray-500'}`} />
             </div>
             <div
               title="Từ chối"
@@ -308,11 +308,11 @@ export default function LeaveRequestManagement() {
               }}
               className={`flex items-center px-2 py-1 rounded-md ${
                 item.status !== 'pending'
-                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                  : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                  : 'bg-transparent cursor-pointer hover:bg-gray-100'
               }`}
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-red-500' : 'text-gray-500'}`} />
             </div>
           </div>
         </div>
@@ -326,21 +326,13 @@ export default function LeaveRequestManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Quản lý đơn xin nghỉ phép</h1>
-          <p className="text-muted-foreground">
-            Duyệt và quản lý các đơn xin nghỉ phép của giáo viên
-          </p>
+          
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Bộ lọc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <div className="">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Trạng thái:</label>
@@ -357,8 +349,8 @@ export default function LeaveRequestManagement() {
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Data Table */}
       <Card>

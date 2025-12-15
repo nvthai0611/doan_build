@@ -155,7 +155,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                 variant="secondary"
                 className={statusColors[request?.status as keyof typeof statusColors] || statusColors.pending}
               >
-                {getStatusIcon(request.status)}
+                {/* {getStatusIcon(request.status)} */}
                 {statusLabels[request?.status as keyof typeof statusLabels] || request?.status}
               </Badge>
             </div>
@@ -243,7 +243,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
-                  Sessions bị ảnh hưởng ({request?.affectedSessions.length})
+                  Buổi học bị ảnh hưởng ({request?.affectedSessions.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>

@@ -136,7 +136,7 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                 variant="secondary"
                 className={statusColors[request.status] || statusColors.pending}
               >
-                {getStatusIcon(request.status)}
+                {/* {getStatusIcon(request.status)} */}
                 {statusLabels[request.status] || request.status}
               </Badge>
             </div>
