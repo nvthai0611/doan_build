@@ -9,15 +9,14 @@ export class SessionRequestsService {
     const {
       teacherId,
       classId,
-      status = 'all',
+      status,
       requestType,
       search = '',
       fromDate,
       toDate,
       page = 1,
       limit = 10
-    } = params;
-    
+    } = params.params;
     // Convert string to number for pagination
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;

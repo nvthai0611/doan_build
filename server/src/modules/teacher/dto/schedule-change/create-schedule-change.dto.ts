@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsEnum, IsInt, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+  IsEnum,
+  IsUUID,
+} from 'class-validator';
 
 export enum ScheduleChangeType {
   RESCHEDULE = 'reschedule',
@@ -7,31 +14,30 @@ export enum ScheduleChangeType {
 }
 
 export class CreateScheduleChangeDto {
-  @IsInt()
-  @Min(1)
-  classId: number;
+  @IsUUID()
+  classId: string;
 
-  @IsInt()
-  @Min(1)
-  sessionId: number;
+  @IsUUID()
+  sessionId: string;
 
   @IsEnum(ScheduleChangeType)
   changeType: ScheduleChangeType;
 
   @IsDateString()
-  newDate?: string;
+  @IsNotEmpty()
+  newDate: string;
 
   @IsString()
-  @IsOptional()
-  newStartTime?: string;
+  @IsNotEmpty()
+  newStartTime: string;
 
   @IsString()
-  @IsOptional()
-  newEndTime?: string;
+  @IsNotEmpty()
+  newEndTime: string;
 
-  @IsInt()
+  @IsUUID()
   @IsOptional()
-  newRoomId?: number;
+  newRoomId?: string;
 
   @IsString()
   @IsNotEmpty()

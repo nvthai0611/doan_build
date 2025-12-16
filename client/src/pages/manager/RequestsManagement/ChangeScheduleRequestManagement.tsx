@@ -158,15 +158,22 @@ export default function ChangeScheduleRequestManagement() {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {(item.class?.teacher?.user?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+              {(item.class?.teacher?.user?.fullName || 'U')
+                .split(' ')
+                .map((n) => n[0])
+                .join('')}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{item.class?.teacher?.user?.fullName || 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">{item.class?.teacher?.user?.email || 'No email'}</p>
+            <p className="font-medium text-sm">
+              {item.class?.teacher?.user?.fullName || 'Unknown'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {item.class?.teacher?.user?.email || 'No email'}
+            </p>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'class',
@@ -174,9 +181,11 @@ export default function ChangeScheduleRequestManagement() {
       render: (item: ScheduleChange) => (
         <div className="text-sm">
           <p className="font-medium">{item.class?.name || 'Unknown'}</p>
-          <p className="text-muted-foreground">{item.class?.subject?.name || 'Unknown'}</p>
+          <p className="text-muted-foreground">
+            {item.class?.subject?.name || 'Unknown'}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'scheduleChange',
@@ -184,18 +193,18 @@ export default function ChangeScheduleRequestManagement() {
       render: (item: ScheduleChange) => (
         <div className="text-sm">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-muted rounded text-xs">
+            <div className="p-2 text-xs">
               <p className="font-medium">{formatDate(item.originalDate)}</p>
               <p className="text-muted-foreground">{item.originalTime}</p>
             </div>
             <span className="text-muted-foreground">→</span>
-            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs border border-green-200 dark:border-green-800">
+            <div className="p-2  text-xs">
               <p className="font-medium">{formatDate(item.newDate)}</p>
               <p className="text-muted-foreground">{item.newTime}</p>
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'reason',
@@ -206,7 +215,7 @@ export default function ChangeScheduleRequestManagement() {
             {item.reason}
           </p>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -216,10 +225,10 @@ export default function ChangeScheduleRequestManagement() {
           variant="secondary"
           className={statusColors[item.status] || statusColors.pending}
         >
-          {getStatusIcon(item.status)}
+          {/* {getStatusIcon(item.status)} */}
           {statusLabels[item.status] || item.status}
         </Badge>
-      )
+      ),
     },
     {
       key: 'requestedAt',
@@ -228,59 +237,66 @@ export default function ChangeScheduleRequestManagement() {
         <span className="text-sm text-muted-foreground">
           {formatDateTime(item.requestedAt)}
         </span>
-      )
+      ),
     },
     {
       key: 'actions',
       header: 'Thao tác',
       render: (item: ScheduleChange) => (
-        <div>
-          <div className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600">
-            <div title="Xem chi tiết" onClick={() => {
+        <div className="flex items-center gap-2 justify-center">
+          <div
+            className="cursor-pointer bg-transparent px-2 py-1 rounded-md hover:bg-gray-100"
+            title="Xem chi tiết"
+            onClick={() => {
               handleViewDetails(item.id);
-            }}>
-              <Eye className="h-4 w-4" />
-            </div>
+            }}
+          >
+            <Eye className="h-4 w-4 text-blue-500" />
           </div>
-            <>
-                <div className="h-1 w-full bg-gray-200" />
-                <div 
-                  title="Duyệt"
-                  onClick={() => {
-                    if (item.status !== 'pending') {
-                      return
-                    }
-                    handleApprove(item.id);
-                  }}
-                  className={`flex items-center px-2 py-1 rounded-md ${
-                    item.status !== 'pending'
-                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                      : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
-                  }`}
-                >
-                  <CheckCircle className="h-4 w-4" />
-                </div>
-                <div 
-                  title="Từ chối"
-                  onClick={() => {
-                    if (item.status !== 'pending') {
-                      return
-                    }
-                    handleReject(item.id);
-                  }}
-                  className={`flex items-center px-2 py-1 rounded-md ${
-                    item.status !== 'pending'
-                      ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                      : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
-                  }`}
-                >
-                  <XCircle className="h-4 w-4" />
-                </div>
-            </>
+          <div
+            title="Duyệt"
+            onClick={() => {
+              if (item.status !== 'pending') {
+                return;
+              }
+              handleApprove(item.id);
+            }}
+            className={`px-2 py-1 rounded-md ${
+              item.status !== 'pending'
+                ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                : 'bg-transparent cursor-pointer hover:bg-gray-100'
+            }`}
+          >
+            <CheckCircle
+              className={`h-4 w-4 ${
+                item.status === 'pending' ? 'text-green-500' : 'text-gray-500'
+              }`}
+            />
+          </div>
+          <div
+            title="Từ chối"
+            onClick={() => {
+              if (item.status !== 'pending') {
+                return;
+              }
+              handleReject(item.id);
+            }}
+            className={`px-2 py-1 rounded-md ${
+              item.status !== 'pending'
+                ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                : 'bg-transparent cursor-pointer hover:bg-gray-100'
+            }`}
+          >
+            <XCircle
+              className={`h-4 w-4 ${
+                item.status === 'pending' ? 'text-red-500' : 'text-gray-500'
+              }`}
+            />
+          </div>
         </div>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -288,21 +304,14 @@ export default function ChangeScheduleRequestManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Quản lý yêu cầu đổi lịch</h1>
-          <p className="text-muted-foreground">
-            Duyệt và quản lý các yêu cầu đổi lịch của giáo viên
-          </p>
+          
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Bộ lọc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        
+        <div className="">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Trạng thái:</label>
@@ -319,8 +328,8 @@ export default function ChangeScheduleRequestManagement() {
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Data Table */}
       <Card>

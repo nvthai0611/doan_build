@@ -34,12 +34,14 @@ const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
   approved: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+  cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
 }
 
 const statusLabels = {
   pending: 'Chờ duyệt',
   approved: 'Đã duyệt',
   rejected: 'Từ chối',
+  cancelled: 'Đã hủy',
 }
 
 export default function SessionRequestManagement() {
@@ -262,7 +264,7 @@ export default function SessionRequestManagement() {
           variant="secondary"
           className={statusColors[item.status] || statusColors.pending}
         >
-          {getStatusIcon(item.status)}
+          {/* {getStatusIcon(item.status)} */}
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
@@ -283,11 +285,11 @@ export default function SessionRequestManagement() {
         <div>
           <div className="flex items-center gap-2">
             <div
-              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              className="flex items-center gap-2 cursor-pointer bg-transparent px-2 py-1 rounded-md hover:bg-gray-100"
               title="Xem chi tiết"
               onClick={() => handleViewDetails(item.id)}
             >
-              <Eye className="h-4 w-4"/>
+              <Eye className="h-4 w-4 text-blue-500"/>
             </div>
             <>
               <div
@@ -300,11 +302,11 @@ export default function SessionRequestManagement() {
                 }}
                 className={` flex items-center px-2 py-1 rounded-md ${
                   item.status !== 'pending'
-                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                    : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                    : 'bg-transparent cursor-pointer hover:bg-gray-100'
                 }`}
               >
-                <CheckCircle className="h-4 w-4" />
+                <CheckCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-green-500' : 'text-gray-500'}`} />
               </div>
               <div
                 title="Từ chối"
@@ -316,11 +318,11 @@ export default function SessionRequestManagement() {
                 }}
                 className={` flex items-center px-2 py-1 rounded-md ${
                   item.status !== 'pending'
-                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                    : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                    ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                    : 'bg-transparent cursor-pointer hover:bg-gray-100'
                 }`}
               >
-                <XCircle className="h-4 w-4" />
+                <XCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-red-500' : 'text-gray-500'}`} />
               </div>
             </>
           </div>
@@ -335,21 +337,12 @@ export default function SessionRequestManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Quản lý yêu cầu tạo buổi học</h1>
-          <p className="text-muted-foreground">
-            Duyệt và quản lý các yêu cầu tạo buổi học của giáo viên
-          </p>
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Bộ lọc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <div className="">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Trạng thái:</label>
@@ -362,12 +355,13 @@ export default function SessionRequestManagement() {
                   <SelectItem value="pending">Chờ duyệt</SelectItem>
                   <SelectItem value="approved">Đã duyệt</SelectItem>
                   <SelectItem value="rejected">Từ chối</SelectItem>
+                  <SelectItem value="cancelled">Đã hủy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Card>
         <CardContent className="p-0">

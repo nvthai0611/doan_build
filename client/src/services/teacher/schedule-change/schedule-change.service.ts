@@ -9,7 +9,7 @@ export class ScheduleChangeService {
   async getMyScheduleChanges(filters?: ScheduleChangeFilters): Promise<ScheduleChangeListResponse> {
     try {
       const response = await apiClient.get('/teacher/schedule-changes/my-requests', filters || {});
-      return response.data as any;
+      return response as any;
     } catch (error) {
       console.error('Error fetching schedule changes:', error);
       throw error;

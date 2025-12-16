@@ -170,14 +170,11 @@ export default function RequestDetailModal({
       <DialogHeader className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/20">
-              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
                 Chi tiết đơn xin nghỉ
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">ID: {data.id}</p>
+              {/* <p className="text-sm text-muted-foreground">ID: {data.id}</p> */}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -200,7 +197,7 @@ export default function RequestDetailModal({
                 statusColors.pending
               }
             >
-              <StatusIcon className="h-3 w-3 mr-1" />
+              {/* <StatusIcon className="h-3 w-3 mr-1" /> */}
               {statusLabels[data.status as keyof typeof statusLabels] ||
                 data.status}
             </Badge>
@@ -213,13 +210,11 @@ export default function RequestDetailModal({
           {/* Leave Information */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 p-6 rounded-lg border">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-600" />
               Thông tin nghỉ phép
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày bắt đầu</p>
                     <p className="text-sm text-muted-foreground">
@@ -228,7 +223,6 @@ export default function RequestDetailModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày kết thúc</p>
                     <p className="text-sm text-muted-foreground">
@@ -239,7 +233,6 @@ export default function RequestDetailModal({
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Số ngày nghỉ</p>
                     <p className="text-sm text-muted-foreground">
@@ -309,7 +302,6 @@ export default function RequestDetailModal({
           {/* Reason */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-orange-600" />
               Lý do xin nghỉ
             </h3>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-800">
@@ -323,7 +315,6 @@ export default function RequestDetailModal({
               <Separator />
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-purple-600" />
                   Ghi chú bổ sung
                 </h3>
                 <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -339,7 +330,6 @@ export default function RequestDetailModal({
               <Separator />
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-red-600" />
                   Tiết học bị ảnh hưởng
                 </h3>
                 <div className="space-y-3 overflow-y-auto max-h-[200px]">
@@ -385,7 +375,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
               Thông tin giáo viên
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -408,7 +397,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-gray-600" />
               Lịch sử đơn xin nghỉ
             </h3>
             <div className="space-y-3">
@@ -446,16 +434,13 @@ export default function RequestDetailModal({
       <DialogHeader className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg dark:bg-green-900/20">
-              <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
                 Chi tiết yêu cầu tạo buổi học
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
+              {/* <p className="text-sm text-muted-foreground">
                 ID: {data.id}
-              </p>
+              </p> */}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -469,7 +454,7 @@ export default function RequestDetailModal({
               variant="secondary"
               className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
             >
-              <StatusIcon className="h-3 w-3 mr-1" />
+              {/* <StatusIcon className="h-3 w-3 mr-1" /> */}
               {statusLabels[data.status as keyof typeof statusLabels] || data.status}
             </Badge>
           </div>
@@ -481,13 +466,11 @@ export default function RequestDetailModal({
           {/* Session Information */}
           <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/10 dark:to-blue-900/10 p-6 rounded-lg border">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-green-600" />
               Thông tin buổi học
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Lớp học</p>
                     <p className="text-sm text-muted-foreground">{data.class.name}</p>
@@ -495,7 +478,6 @@ export default function RequestDetailModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày học</p>
                     <p className="text-sm text-muted-foreground">{formatDate(data.sessionDate)}</p>
@@ -504,7 +486,6 @@ export default function RequestDetailModal({
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Thời gian</p>
                     <p className="text-sm text-muted-foreground">{data.startTime} - {data.endTime}</p>
@@ -512,7 +493,6 @@ export default function RequestDetailModal({
                 </div>
                 {data.room && (
                   <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Phòng học</p>
                       <p className="text-sm text-muted-foreground">{data.room.name}</p>
@@ -526,7 +506,6 @@ export default function RequestDetailModal({
           {/* Request Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
               Chi tiết yêu cầu
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -545,7 +524,7 @@ export default function RequestDetailModal({
                   variant="secondary"
                   className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
                 >
-                  <StatusIcon className="h-3 w-3 mr-1" />
+                  {/* <StatusIcon className="h-3 w-3 mr-1" /> */}
                   {statusLabels[data.status as keyof typeof statusLabels] || data.status}
                 </Badge>
               </div>
@@ -557,7 +536,6 @@ export default function RequestDetailModal({
           {/* Reason */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-orange-600" />
               Lý do yêu cầu
             </h3>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-800">
@@ -571,7 +549,6 @@ export default function RequestDetailModal({
               <Separator />
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-purple-600" />
                   Ghi chú bổ sung
                 </h3>
                 <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -585,7 +562,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
               Thông tin giáo viên
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -604,7 +580,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-gray-600" />
               Lịch sử yêu cầu
             </h3>
             <div className="space-y-3">
@@ -637,16 +612,13 @@ export default function RequestDetailModal({
       <DialogHeader className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 rounded-lg dark:bg-indigo-900/20">
-              <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
                 Chi tiết đơn dời lịch
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
+              {/* <p className="text-sm text-muted-foreground">
                 ID: {data.id}
-              </p>
+              </p> */}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -660,7 +632,7 @@ export default function RequestDetailModal({
               variant="secondary"
               className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
             >
-              <StatusIcon className="h-3 w-3 mr-1" />
+              {/* <StatusIcon className="h-3 w-3 mr-1" /> */}
               {statusLabels[data.status as keyof typeof statusLabels] || data.status}
             </Badge>
           </div>
@@ -672,13 +644,11 @@ export default function RequestDetailModal({
           {/* Schedule Change Information */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 p-6 rounded-lg border">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-indigo-600" />
               Thông tin dời lịch
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Lớp học</p>
                     <p className="text-sm text-muted-foreground">{data.class.name}</p>
@@ -686,7 +656,6 @@ export default function RequestDetailModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày cũ</p>
                     <p className="text-sm text-muted-foreground">{formatDate(data.originalDate)}</p>
@@ -695,14 +664,12 @@ export default function RequestDetailModal({
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Ngày mới</p>
                     <p className="text-sm text-muted-foreground">{formatDate(data.newDate)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Thời gian</p>
                     <p className="text-sm text-muted-foreground">{data.originalTime} → {data.newTime}</p>
@@ -715,7 +682,6 @@ export default function RequestDetailModal({
           {/* Request Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-indigo-600" />
               Chi tiết yêu cầu dời lịch
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -734,7 +700,7 @@ export default function RequestDetailModal({
                   variant="secondary"
                   className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
                 >
-                  <StatusIcon className="h-3 w-3 mr-1" />
+                  {/* <StatusIcon className="h-3 w-3 mr-1" /> */}
                   {statusLabels[data.status as keyof typeof statusLabels] || data.status}
                 </Badge>
               </div>
@@ -746,7 +712,6 @@ export default function RequestDetailModal({
           {/* Reason */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-orange-600" />
               Lý do dời lịch
             </h3>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-800">
@@ -760,7 +725,6 @@ export default function RequestDetailModal({
               <Separator />
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <User className="h-5 w-5 text-cyan-600" />
                   Phòng học mới
                 </h3>
                 <div className="p-4 bg-cyan-50 dark:bg-cyan-900/10 rounded-lg border border-cyan-200 dark:border-cyan-800">
@@ -774,7 +738,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-indigo-600" />
               Thông tin yêu cầu
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -789,7 +752,6 @@ export default function RequestDetailModal({
           <Separator />
           <div className="space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-gray-600" />
               Lịch sử yêu cầu dời lịch
             </h3>
             <div className="space-y-3">

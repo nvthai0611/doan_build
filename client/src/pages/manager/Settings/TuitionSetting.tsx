@@ -267,27 +267,26 @@ export function TuitionSetting() {
       key: 'period',
       header: 'Kỳ hạn',
       width: '15%',
-      sortable: true,
       render: (fee: FeeStructure) => (
         <div className="text-sm text-gray-600">
           {fee.period === 'per_session' ? 'Mỗi buổi' : fee.period}
         </div>
       )
     },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      width: '10%',
-      sortable: true,
-      render: (fee: FeeStructure) => (
-        <Badge 
-          variant={fee.isActive ? 'default' : 'secondary'}
-          className={fee.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
-        >
-          {fee.isActive ? 'Hoạt động' : 'Không hoạt động'}
-        </Badge>
-      )
-    },
+    // {
+    //   key: 'status',
+    //   header: 'Trạng thái',
+    //   width: '10%',
+    //   sortable: true,
+    //   render: (fee: FeeStructure) => (
+    //     <Badge 
+    //       variant={fee.isActive ? 'default' : 'secondary'}
+    //       className={fee.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+    //     >
+    //       {fee.isActive ? 'Hoạt động' : 'Không hoạt động'}
+    //     </Badge>
+    //   )
+    // },
     {
       key: 'actions',
       header: 'Hành động',
@@ -342,11 +341,11 @@ export function TuitionSetting() {
           <h1 className="text-3xl font-bold text-black mb-2">
             Cài đặt học phí
           </h1>
-          <p className="text-gray-600 text-lg">
-            Quản lý học phí theo môn học và khối lớp
-          </p>
         </div>
-        <Button onClick={handleAdd} className="bg-black text-white hover:bg-gray-800">
+        <Button
+          onClick={handleAdd}
+          className="bg-black text-white hover:bg-gray-800"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Thêm mới
         </Button>
@@ -355,20 +354,25 @@ export function TuitionSetting() {
       {/* Search and Filters */}
       <div className="mb-6 space-y-4">
         {/* Search */}
-        <div>
-          <Input
-            placeholder="Tìm kiếm môn học..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        
+
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Tên
+            </label>
+            <Input
+              placeholder="Tìm kiếm môn học..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
           {/* Grade Filter */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Lọc theo khối</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Khối
+            </label>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Chọn khối lớp" />
@@ -383,10 +387,12 @@ export function TuitionSetting() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Subject Filter */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Lọc theo môn học</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Môn học
+            </label>
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Chọn môn học" />
@@ -401,9 +407,9 @@ export function TuitionSetting() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Status Filter */}
-          <div>
+          {/* <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Lọc theo trạng thái</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
@@ -415,49 +421,48 @@ export function TuitionSetting() {
                 <SelectItem value="inactive">Không hoạt động</SelectItem>
               </SelectContent>
             </Select>
+          </div> */}
+          <div className="flex justify-end items-end">
+            {/* <div className="text-sm text-gray-500">
+              {searchTerm && `Tìm kiếm: "${searchTerm}"`}
+              {gradeFilter !== 'all' &&
+                ` • Khối: ${
+                  ((gradesData as any) ?? []).find(
+                    (g: Grade) => g.id === gradeFilter,
+                  )?.name || 'N/A'
+                }`}
+              {subjectFilter !== 'all' &&
+                ` • Môn: ${
+                  ((subjectsData as any) ?? []).find(
+                    (s: Subject) => s.id === subjectFilter,
+                  )?.name || 'N/A'
+                }`}
+              {statusFilter !== 'all' &&
+                ` • Trạng thái: ${
+                  statusFilter === 'active' ? 'Hoạt động' : 'Không hoạt động'
+                }`}
+            </div> */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setGradeFilter('all');
+                setSubjectFilter('all');
+                setStatusFilter('all');
+              }}
+              className="text-gray-600"
+            >
+              Xóa lọc
+            </Button>
           </div>
         </div>
-        
+
         {/* Clear Filters */}
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500">
-            {searchTerm && `Tìm kiếm: "${searchTerm}"`}
-            {gradeFilter !== 'all' && ` • Khối: ${((gradesData as any) ?? []).find((g: Grade) => g.id === gradeFilter)?.name || 'N/A'}`}
-            {subjectFilter !== 'all' && ` • Môn: ${((subjectsData as any) ?? []).find((s: Subject) => s.id === subjectFilter)?.name || 'N/A'}`}
-            {statusFilter !== 'all' && ` • Trạng thái: ${statusFilter === 'active' ? 'Hoạt động' : 'Không hoạt động'}`}
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              setSearchTerm('');
-              setGradeFilter('all');
-              setSubjectFilter('all');
-              setStatusFilter('all');
-            }}
-            className="text-gray-600"
-          >
-            Reset
-          </Button>
-        </div>
       </div>
 
       {/* Fees Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Danh sách học phí</CardTitle>
-              <p className="text-sm text-gray-600">
-                Xem và quản lý tất cả cấu trúc học phí
-              </p>
-            </div>
-            <div className="text-sm text-gray-500">
-              Hiển thị {Math.min((page - 1) * pageSize + 1, filteredFees.length)}-{Math.min(page * pageSize, filteredFees.length)} / {filteredFees.length} kết quả
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <div className="">
           <DataTable
             data={filteredFees.slice((page - 1) * pageSize, page * pageSize)}
             columns={columns}
@@ -472,7 +477,7 @@ export function TuitionSetting() {
               onPageChange: setPage,
               onItemsPerPageChange: setPageSize,
               showItemsPerPage: true,
-              showPageInfo: true
+              showPageInfo: true,
             }}
             onSortChange={(sortBy, sortOrder) => {
               setSortBy(sortBy);
@@ -488,28 +493,38 @@ export function TuitionSetting() {
               console.log('Row clicked:', fee);
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Add/Edit Modal */}
-      <Dialog open={isAddModalOpen || isEditModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsAddModalOpen(false);
-          setIsEditModalOpen(false);
-          resetForm();
-        }
-      }}>
+      <Dialog
+        open={isAddModalOpen || isEditModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddModalOpen(false);
+            setIsEditModalOpen(false);
+            resetForm();
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {isAddModalOpen ? 'Thêm học phí mới' : 'Chỉnh sửa học phí'}
             </DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Khối lớp *</label>
-              <Select value={formData.gradeId} onValueChange={(value) => setFormData({...formData, gradeId: value})}>
+              <label className="text-sm font-medium text-gray-700">
+                Khối lớp <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={formData.gradeId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, gradeId: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn khối lớp" />
                 </SelectTrigger>
@@ -524,8 +539,15 @@ export function TuitionSetting() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700">Môn học *</label>
-              <Select value={formData.subjectId} onValueChange={(value) => setFormData({...formData, subjectId: value})}>
+              <label className="text-sm font-medium text-gray-700">
+                Môn học <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={formData.subjectId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, subjectId: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn môn học" />
                 </SelectTrigger>
@@ -540,11 +562,15 @@ export function TuitionSetting() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700">Số tiền (VND) *</label>
+              <label className="text-sm font-medium text-gray-700">
+                Số tiền (VND) <span className="text-red-500">*</span>
+              </label>
               <Input
                 type="number"
                 value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: Number(e.target.value)})}
+                onChange={(e) =>
+                  setFormData({ ...formData, amount: Number(e.target.value) })
+                }
                 placeholder="Nhập số tiền"
                 min="0"
               />
@@ -554,20 +580,31 @@ export function TuitionSetting() {
               <label className="text-sm font-medium text-gray-700">Mô tả</label>
               <Input
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Nhập mô tả (tùy chọn)"
               />
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => {
-                setIsAddModalOpen(false);
-                setIsEditModalOpen(false);
-                resetForm();
-              }} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setIsEditModalOpen(false);
+                  resetForm();
+                }}
+                className="flex-1"
+              >
                 Hủy
               </Button>
-              <Button type="submit" disabled={upsertFeeMutation.isPending} className="flex-1">
+              <Button
+                type="submit"
+                disabled={upsertFeeMutation.isPending}
+                className="flex-1"
+              >
                 {upsertFeeMutation.isPending ? 'Đang lưu...' : 'Lưu'}
               </Button>
             </div>
@@ -581,24 +618,25 @@ export function TuitionSetting() {
           <DialogHeader>
             <DialogTitle>Xác nhận xóa</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <p className="text-gray-600">
-              Bạn có chắc chắn muốn xóa học phí <strong>{selectedFee?.name}</strong>?
+              Bạn có chắc chắn muốn xóa học phí{' '}
+              <strong>{selectedFee?.name}</strong>?
             </p>
             <p className="text-sm text-red-600">
               Hành động này không thể hoàn tác.
             </p>
-            
+
             <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsDeleteModalOpen(false)}
                 className="flex-1"
               >
                 Hủy
               </Button>
-              <Button 
+              <Button
                 onClick={handleConfirmDelete}
                 disabled={deleteFeeMutation.isPending}
                 className="flex-1 bg-red-600 hover:bg-red-700"
