@@ -12,7 +12,7 @@ export function DashboardOverview({ jobs }: any) {
     failedJobs: jobs.filter((j: any ) => j.status === "failed").length,
     runningJobs: jobs.filter((j: any ) => j.status === "running").length,
   }
-
+  
   const statCards = [
     {
       title: "Tổng số công việc",
