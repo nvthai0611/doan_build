@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Eye, CheckCircle, XCircle, Clock, Filter, MoreHorizontal, User, Calendar, FileText } from 'lucide-react'
-import { requestsService, LeaveRequest } from '../../../services/manager/requests.service'
+import { requestsService, LeaveRequest, LeaveSessionReplacementPayload } from '../../../services/manager/requests.service'
 import LeaveRequestDetailModal from './components/LeaveRequestDetailModal'
 import ConfirmationModal from './components/ConfirmationModal'
 import { usePagination } from '../../../hooks/usePagination'
@@ -67,6 +67,9 @@ export default function LeaveRequestManagement() {
     setItemsPerPage,
   } = usePagination();
 
+  // Lưu mapping sessionId -> replacementTeacherId cho request đang chọn
+  const [sessionReplacements, setSessionReplacements] = useState<Record<string, string>>({})
+
   useEffect(() => {
     fetchRequests()
     // Get current user info
@@ -107,12 +110,14 @@ export default function LeaveRequestManagement() {
 
   const handleApprove = (id: string) => {
     setSelectedRequest(requests.find(r => r.id === id) || null)
+    setSessionReplacements({})
     setConfirmationAction('approve')
     setIsConfirmationModalOpen(true)
   }
 
   const handleReject = (id: string) => {
     setSelectedRequest(requests.find(r => r.id === id) || null)
+    setSessionReplacements({})
     setConfirmationAction('reject')
     setIsConfirmationModalOpen(true)
   }
@@ -123,10 +128,40 @@ export default function LeaveRequestManagement() {
     setIsProcessing(true)
     try {
       if (confirmationAction === 'approve') {
-        await requestsService.approveLeaveRequest(selectedRequest.id, 'approve', currentUser?.id || '')
+        let replacements: LeaveSessionReplacementPayload[] | undefined = undefined
+
+        if (selectedRequest.affectedSessions && selectedRequest.affectedSessions.length > 0) {
+          const mapped: LeaveSessionReplacementPayload[] = []
+          selectedRequest.affectedSessions.forEach((s: any) => {
+            const key = s.sessionId || s.id
+            const teacherId = sessionReplacements[key]
+            if (key && teacherId) {
+              mapped.push({
+                sessionId: key,
+                replacementTeacherId: teacherId,
+              })
+            }
+          })
+          if (mapped.length > 0) {
+            replacements = mapped
+          }
+        }
+
+        await requestsService.approveLeaveRequest(
+          selectedRequest.id,
+          'approve',
+          currentUser?.id || '',
+          {
+            replacements,
+          },
+        )
         toast.success('Đã duyệt đơn xin nghỉ phép')
       } else if (confirmationAction === 'reject') {
-        await requestsService.approveLeaveRequest(selectedRequest.id, 'reject', currentUser?.id || '')
+        await requestsService.approveLeaveRequest(
+          selectedRequest.id,
+          'reject',
+          currentUser?.id || '',
+        )
         toast.success('Đã từ chối đơn xin nghỉ phép')
       }
       
@@ -144,7 +179,7 @@ export default function LeaveRequestManagement() {
   const handleViewDetails = async (id: string) => {
     try {
       const request = await requestsService.getLeaveRequestById(id)
-      setSelectedRequest(request.data as any)
+      setSelectedRequest(request.data as any) //do not modify this line
       setIsDetailModalOpen(true)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -380,6 +415,8 @@ export default function LeaveRequestManagement() {
         request={selectedRequest as any}
         onApprove={handleApprove}
         onReject={handleReject}
+        sessionReplacements={sessionReplacements}
+        setSessionReplacements={setSessionReplacements}
       />
 
       {/* Confirmation Modal */}
@@ -390,7 +427,8 @@ export default function LeaveRequestManagement() {
         title={confirmationAction === 'approve' ? 'Xác nhận duyệt đơn' : 'Xác nhận từ chối đơn'}
         message={
           confirmationAction === 'approve' 
-            ? 'Bạn có chắc chắn muốn duyệt đơn xin nghỉ phép này không?' 
+            ? `Khi duyệt, các buổi học không có giáo viên thay thế (${selectedRequest?.affectedSessions?.length || 0} buổi) sẽ bị hủy.\n` +
+              'Các buổi đã gán giáo viên thay thế sẽ vẫn diễn ra với giáo viên được phân công.'
             : 'Bạn có chắc chắn muốn từ chối đơn xin nghỉ phép này không?'
         }
         confirmText={confirmationAction === 'approve' ? 'Duyệt đơn' : 'Từ chối đơn'}

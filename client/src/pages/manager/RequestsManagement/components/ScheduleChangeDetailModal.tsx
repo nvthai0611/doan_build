@@ -112,7 +112,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
             Chi tiết yêu cầu đổi lịch
           </DialogTitle>
         </DialogHeader>
@@ -148,7 +147,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
                 Thông tin đổi lịch
               </CardTitle>
             </CardHeader>
@@ -185,7 +183,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
                 Thông tin lớp học
               </CardTitle>
             </CardHeader>
@@ -217,7 +214,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
                 Lý do đổi lịch
               </CardTitle>
             </CardHeader>
@@ -230,7 +226,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
                 Thông tin xử lý
               </CardTitle>
             </CardHeader>
@@ -260,7 +255,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   onClick={() => onReject(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <XCircle className="w-4 h-4" />
                   Từ chối
                 </Button>
               )}
@@ -269,7 +263,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   onClick={() => onApprove(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" />
                   Duyệt yêu cầu
                 </Button>
               )}

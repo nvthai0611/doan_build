@@ -267,27 +267,26 @@ export function TuitionSetting() {
       key: 'period',
       header: 'Kỳ hạn',
       width: '15%',
-      sortable: true,
       render: (fee: FeeStructure) => (
         <div className="text-sm text-gray-600">
           {fee.period === 'per_session' ? 'Mỗi buổi' : fee.period}
         </div>
       )
     },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      width: '10%',
-      sortable: true,
-      render: (fee: FeeStructure) => (
-        <Badge 
-          variant={fee.isActive ? 'default' : 'secondary'}
-          className={fee.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
-        >
-          {fee.isActive ? 'Hoạt động' : 'Không hoạt động'}
-        </Badge>
-      )
-    },
+    // {
+    //   key: 'status',
+    //   header: 'Trạng thái',
+    //   width: '10%',
+    //   sortable: true,
+    //   render: (fee: FeeStructure) => (
+    //     <Badge 
+    //       variant={fee.isActive ? 'default' : 'secondary'}
+    //       className={fee.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+    //     >
+    //       {fee.isActive ? 'Hoạt động' : 'Không hoạt động'}
+    //     </Badge>
+    //   )
+    // },
     {
       key: 'actions',
       header: 'Hành động',
