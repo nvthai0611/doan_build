@@ -104,7 +104,7 @@ const PayrollDetailTeacher: React.FC = () => {
     queryKey: ['payroll-all-sessions', payrollId],
     queryFn: () => getPayrollDetail(payrollId!, {
       page: 1,
-      limit: 999999
+      limit: 10
     }),
     enabled: !!payrollId,
     staleTime: 60000
@@ -366,9 +366,9 @@ const PayrollDetailTeacher: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg border p-4">
-          <p className="text-sm text-gray-600 mb-1">Lương cơ bản</p>
+          <p className="text-sm text-gray-600 mb-1">Lương thực thu của lớp</p>
           <p className="text-2xl font-bold text-blue-600">
-            {fmt(Number(payroll?.totalAmount || 0) - Number(payroll?.bonuses || 0) + Number(payroll?.deductions || 0))} đ
+            {fmt(Number(payroll?.totalAmount || 0) - Number(payroll?.bonuses || 0) + Number(payroll?.deductions || 0) - Number(payroll?.backPayAmount || 0))} đ
           </p>
         </div>
         <div className="bg-white rounded-lg border p-4">
@@ -498,6 +498,43 @@ const PayrollDetailTeacher: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      { payroll?.backPayAmount > 0 && (
+        <div className='cursor-pointer' onClick={() => window.location.href = `/teacher/payroll-management/${payroll?.id}/back-pay`}>
+        {/* PayBack Details */}
+        <div className="bg-white rounded-lg border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-slate-600" />
+              Chi tiết lương từ buổi dạy cũ
+            </h2>
+          </div>
+
+          <div className="space-y-2"></div>
+            <div className="flex items-center justify-between p-4 rounded-lg transition-colors bg-orange-50 border border-orange-200 hover:bg-orange-100">
+              <div className="flex items-center gap-3">
+                <Badge
+                  variant='destructive'
+                  className="gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  
+                </Badge>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Lương từ các buổi dạy cũ
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <p className="text-lg font-bold text-red-700">
+                  +{fmt(Number(payroll.backPayAmount || 0))} đ
+                </p>
+              </div>
+            </div>
+        </div>
+      </div>
       )}
 
       {/* Filters */}
