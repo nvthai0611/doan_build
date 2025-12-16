@@ -84,9 +84,7 @@ export function SessionRequestModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Yêu cầu thêm buổi học</DialogTitle>
-          <DialogDescription>
-            Gửi yêu cầu tạo buổi học mới. Yêu cầu sẽ được gửi đến chủ trung tâm để duyệt.
-          </DialogDescription>
+          
         </DialogHeader>
         
         <div className="space-y-4">
@@ -162,7 +160,7 @@ export function SessionRequestModal({
           <Button 
             onClick={handleSubmit} 
             disabled={isPending}
-            className="bg-orange-600 hover:bg-orange-700"
+            className="bg-blue-600 hover:bg-blue-700"
           >
             {isPending ? "Đang gửi..." : "Gửi yêu cầu"}
           </Button>

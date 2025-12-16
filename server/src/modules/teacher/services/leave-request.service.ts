@@ -236,6 +236,40 @@ export class LeaveRequestService {
 
 
   async createLeaveRequest(teacherId: string, body: LeaveRequestDto, affectedSessions?: AffectedSessionCreateDto[], createdBy?: string) {
+    // Validate date range
+    const start = new Date(body.startDate);
+    const end = new Date(body.endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new HttpException('Định dạng ngày không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+    if (end < start) {
+      throw new HttpException('Ngày kết thúc phải sau ngày bắt đầu', HttpStatus.BAD_REQUEST);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startFloor = new Date(start);
+    startFloor.setHours(0, 0, 0, 0);
+    if (startFloor < today) {
+      throw new HttpException('Ngày nghỉ không được ở quá khứ', HttpStatus.BAD_REQUEST);
+    }
+
+    // Check against class end dates (if any)
+    const teacherClasses = await this.prisma.class.findMany({
+      where: { teacherId },
+      select: { actualEndDate: true },
+    });
+    const maxEnd = teacherClasses
+      .map((c) => c.actualEndDate)
+      .filter((d): d is Date => !!d)
+      .reduce<Date | null>((acc, cur) => {
+        if (!acc) return cur;
+        return cur > acc ? cur : acc;
+      }, null);
+
+    if (maxEnd && end > maxEnd) {
+      throw new HttpException('Khoảng thời gian nghỉ vượt quá thời gian kết thúc lớp học', HttpStatus.BAD_REQUEST);
+    }
 
     // 2. Tạo leave request với affected sessions
     const leaveRequest = await this.prisma.leaveRequest.create({
