@@ -2,7 +2,13 @@ export interface FinancialSummary {
   revenue: {
     totalPaid: number
     monthCollected: number
+    prevMonthRevenue: number
+    revenueChangePercent: number
+    yearlyRevenueChangePercent?: number
     monthlyTrend: Array<{ label: string; revenue: number; salary: number }>
+    yearlyTrend?: Array<{ label: string; revenue: number; salary: number }>
+    classRevenue: number
+    prevMonthClassRevenue: number
   }
   tuition: {
     paidAmount: number
@@ -26,6 +32,8 @@ export interface FinancialSummary {
     pendingAmount: number
     teacherCountPaid: number
     teacherCountPending: number
+    profitChangePercent: number
+    yearlyProfitChangePercent?: number
     teacherSalaries: Array<{
       id: string
       teacherId: string
@@ -37,5 +45,22 @@ export interface FinancialSummary {
       periodEnd: string
     }>
   }
+  students?: {
+    totalCount: number
+  }
   generatedAt: string
+}
+
+export interface OutstandingStudent {
+  studentId: string
+  studentName: string
+  className: string
+  totalAmount: number
+  records: Array<{
+    feeRecordId: string
+    amount: number
+    dueDate: string
+    status: 'pending' | 'processing' | 'overdue'
+    createdAt: string
+  }>
 }

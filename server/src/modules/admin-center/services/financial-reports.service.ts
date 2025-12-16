@@ -49,6 +49,30 @@ function getTimeBoundary(monthParam?: string, yearParam?: string): { start?: Dat
   return { start, end }
 }
 
+// For monthly reporting based on policy:
+// Recognize tuition in the previous month relative to feeRecord.dueDate
+// Example: dueDate in December -> recognized in November report.
+// Therefore, when a report requests month M, we filter feeRecords by dueDate in month M+1.
+function getShiftedDueBoundary(monthParam?: string, yearParam?: string): { start?: Date; end?: Date } {
+  // Only shift when a concrete month is provided. For year-only or all-time, use normal boundary.
+  if (!monthParam) {
+    return getTimeBoundary(monthParam, yearParam)
+  }
+
+  const now = new Date()
+  let year = yearParam ? Number(yearParam) : now.getFullYear()
+  const m = Number(monthParam)
+  if (isNaN(m) || m < 1 || m > 12) {
+    return getTimeBoundary(monthParam, yearParam)
+  }
+
+  // Next month relative to requested report month
+  const nextMonthIndex = m // JS Date month is 0-based; m here is 1-12, so this is next month index
+  const start = new Date(year, nextMonthIndex, 1, 0, 0, 0)
+  const end = new Date(year, nextMonthIndex + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
 function toNumber(d?: Decimal | null): number {
   if (!d) return 0
   try {
@@ -72,79 +96,275 @@ export class FinancialReportsService {
 
   private async buildMonthlyTrend(months: number) {
     const now = new Date()
+    const startDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
+    // Shifted recognition window: month M shows feeRecords with dueDate in M+1
+    const shiftedStartDate = new Date(startDate)
+    shiftedStartDate.setMonth(shiftedStartDate.getMonth() + 1)
+    
+    // Fetch all fee records and payrolls in one query
+    const [feeRecords, payrolls] = await Promise.all([
+      this.prisma.feeRecord.findMany({
+        where: { 
+          status: 'paid', 
+          dueDate: { gte: shiftedStartDate }
+        },
+        select: {
+          dueDate: true,
+          amount: true,
+          scholarship: true,
+          totalAmount: true
+        }
+      }),
+      this.prisma.payroll.findMany({
+        where: {
+          status: 'paid',
+          // Payroll uses normal boundary: month M shows payroll with periodStart in M
+          periodStart: { gte: startDate }
+        },
+        select: {
+          periodStart: true,
+          periodEnd: true,
+          totalAmount: true
+        }
+      })
+    ])
+
+    // Group by month in memory
     const items: Array<{ label: string; revenue: number; salary: number }> = []
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const start = new Date(d.getFullYear(), d.getMonth(), 1)
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
-      const paidAgg = await this.prisma.feeRecord.aggregate({
-        _sum: { amount: true, scholarship: true, totalAmount: true },
-        where: { status: 'paid', dueDate: { gte: start, lte: end } }
-      })
-      const payrollAgg = await this.prisma.payroll.aggregate({
-        _sum: { totalAmount: true },
-        where: { status: 'paid', periodStart: { gte: start }, periodEnd: { lte: end } }
-      })
+      // Reporting month label (M)
+      const monthStart = new Date(d.getFullYear(), d.getMonth(), 1)
+      // Shifted due window (M+1)
+      const shiftedStart = new Date(d.getFullYear(), d.getMonth() + 1, 1)
+      const shiftedEnd = new Date(d.getFullYear(), d.getMonth() + 2, 0, 23, 59, 59)
+      
+      // Calculate revenue for this month
+      const monthFees = feeRecords.filter(f => 
+        f.dueDate >= shiftedStart && f.dueDate <= shiftedEnd
+      )
+      const revenue = monthFees.reduce((sum, f) => {
+        const total = toNumber(f.totalAmount)
+        if (total) return sum + total
+        return sum + toNumber(f.amount) - toNumber(f.scholarship)
+      }, 0)
+      
+      // Calculate salary for this month (use periodStart within the reporting month)
+      const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59)
+      const monthPayrolls = payrolls.filter(p =>
+        p.periodStart >= monthStart && p.periodStart <= monthEnd
+      )
+      const salary = monthPayrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+      
       items.push({
-        label: `T${start.getMonth() + 1}`,
-        revenue: this.resolveAmount(paidAgg),
-        salary: toNumber(payrollAgg._sum.totalAmount)
+        label: `T${monthStart.getMonth() + 1}`,
+        revenue,
+        salary
       })
     }
     return items
   }
 
+  private async buildYearlyTrend(years: number) {
+    const now = new Date()
+    const startYear = now.getFullYear() - (years - 1)
+    const startDate = new Date(startYear, 0, 1)
+
+    const [feeRecords, payrolls] = await Promise.all([
+      this.prisma.feeRecord.findMany({
+        where: {
+          status: 'paid',
+          dueDate: { gte: startDate }
+        },
+        select: { dueDate: true, amount: true, scholarship: true, totalAmount: true }
+      }),
+      this.prisma.payroll.findMany({
+        where: {
+          status: 'paid',
+          periodStart: { gte: startDate }
+        },
+        select: { periodStart: true, periodEnd: true, totalAmount: true }
+      })
+    ])
+
+    const items: Array<{ label: string; revenue: number; salary: number }> = []
+    for (let y = startYear; y <= now.getFullYear(); y++) {
+      const yearStart = new Date(y, 0, 1)
+      const yearEnd = new Date(y, 11, 31, 23, 59, 59)
+
+      const yearFees = feeRecords.filter(f => f.dueDate >= yearStart && f.dueDate <= yearEnd)
+      const revenue = yearFees.reduce((sum, f) => {
+        const total = toNumber(f.totalAmount)
+        if (total) return sum + total
+        return sum + toNumber(f.amount) - toNumber(f.scholarship)
+      }, 0)
+
+      const yearPayrolls = payrolls.filter(p => p.periodStart >= yearStart && p.periodStart <= yearEnd)
+      const salary = yearPayrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+
+      items.push({ label: String(y), revenue, salary })
+    }
+    return items
+  }
+
   async getSummary(month?: string, year?: string) {
+    // Report window (for payrolls, UI labels, etc.)
     const { start, end } = getTimeBoundary(month, year)
+    // Due date window (shifted +1 month for fee records recognition)
+    const { start: dueStart, end: dueEnd } = getShiftedDueBoundary(month, year)
 
-    // Total paid (all time)
-    const paidAgg = await this.prisma.feeRecord.aggregate({
-      _sum: { amount: true, scholarship: true, totalAmount: true },
-      where: { status: 'paid' }
-    })
+    // Calculate previous month boundaries
+    // Previous reporting month for payroll (use normal boundary, not shifted)
+    let prevPayrollStart: Date | undefined
+    let prevPayrollEnd: Date | undefined
+    if (month && year) {
+      let pm = Number(month) - 1
+      let py = Number(year)
+      if (pm <= 0) { pm = 12; py = py - 1 }
+      const prevBoundary = getTimeBoundary(String(pm), String(py))
+      prevPayrollStart = prevBoundary.start
+      prevPayrollEnd = prevBoundary.end
+    }
 
-    // Month collected
-    const monthPaidAgg = await this.prisma.feeRecord.aggregate({
-      _sum: { amount: true, scholarship: true, totalAmount: true },
-      where: { status: 'paid', dueDate: { gte: start, lte: end } }
-    })
+    // Previous month boundaries for fee records (shifted)
+    let prevStart: Date | undefined
+    let prevEnd: Date | undefined
+    if (month && year) {
+      let pm = Number(month) - 1
+      let py = Number(year)
+      if (pm <= 0) { pm = 12; py = py - 1 }
+      const prevDue = getShiftedDueBoundary(String(pm), String(py))
+      prevStart = prevDue.start
+      prevEnd = prevDue.end
+    }
 
-    // Pending & Overdue
-    const pendingAgg = await this.prisma.feeRecord.aggregate({
-      _sum: { amount: true, scholarship: true, totalAmount: true },
-      where: { status: { in: ['pending', 'processing'] } }
-    })
-    const overdueAgg = await this.prisma.feeRecord.aggregate({
-      _sum: { amount: true, scholarship: true, totalAmount: true },
-      where: { status: 'overdue' }
-    })
-    const outstandingStudentsCount = await this.prisma.feeRecord.count({
-      where: { status: { in: ['pending', 'overdue'] }, dueDate: { gte: start, lte: end } }
-    })
+    // Run all independent queries in parallel
+    const [
+      paidAgg,
+      monthPaidAgg,
+      prevMonthPaidAgg,
+      prevMonthPayrollAgg,
+      pendingAgg,
+      overdueAgg,
+      outstandingStudentsCount,
+      classRevenueRaw,
+      prevMonthClassRevenueRaw,
+      payrolls,
+      monthlyTrend,
+      yearlyTrend,
+      studentsTotalCount
+    ] = await Promise.all([
+      // Total paid (all time)
+      this.prisma.feeRecord.aggregate({
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        where: { status: 'paid' }
+      }),
+      // Month collected
+      this.prisma.feeRecord.aggregate({
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        where: { status: 'paid', dueDate: { gte: dueStart, lte: dueEnd } }
+      }),
+      // Previous month revenue
+      prevStart && prevEnd ? this.prisma.feeRecord.aggregate({
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        where: { status: 'paid', dueDate: { gte: prevStart, lte: prevEnd } }
+      }) : Promise.resolve({ _sum: { totalAmount: null } }),
+      // Previous month payroll (filter by periodStart to match the report month)
+      prevPayrollStart && prevPayrollEnd ? this.prisma.payroll.aggregate({
+        _sum: { totalAmount: true },
+        where: { status: 'paid', periodStart: { gte: prevPayrollStart, lte: prevPayrollEnd } }
+      }) : Promise.resolve({ _sum: { totalAmount: null } }),
+      // Pending
+      this.prisma.feeRecord.aggregate({
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        where: { status: { in: ['pending', 'processing'] }, dueDate: { gte: dueStart, lte: dueEnd } }
+      }),
+      // Overdue
+      this.prisma.feeRecord.aggregate({
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        where: { status: 'overdue', dueDate: { gte: dueStart, lte: dueEnd } }
+      }),
+      // Outstanding students count
+      this.prisma.feeRecord.count({
+        where: { status: 'overdue', dueDate: { gte: dueStart, lte: dueEnd } }
+      }),
+      // Class revenue
+      this.prisma.feeRecord.groupBy({
+        by: ['classId'],
+        where: {
+          status: 'paid',
+          dueDate: { gte: dueStart, lte: dueEnd },
+          classId: { not: null }
+        },
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        _count: { id: true }
+      }),
+      // Previous month class revenue
+      prevStart && prevEnd ? this.prisma.feeRecord.groupBy({
+        by: ['classId'],
+        where: {
+          status: 'paid',
+          dueDate: { gte: prevStart, lte: prevEnd },
+          classId: { not: null }
+        },
+        _sum: { amount: true, scholarship: true, totalAmount: true },
+        _count: { id: true }
+      }) : Promise.resolve([]),
+      // Payrolls (filter by periodStart - month M shows payroll with periodStart in M)
+      this.prisma.payroll.findMany({
+        where: start && end ? {
+          periodStart: { gte: start, lte: end }
+        } : {},
+        select: {
+          id: true,
+          totalAmount: true,
+          status: true,
+          periodStart: true,
+          periodEnd: true,
+          teacherId: true,
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { periodStart: 'desc' }
+      }),
+      // Monthly trend
+      this.buildMonthlyTrend(12),
+      // Yearly trend (last 5 years)
+      this.buildYearlyTrend(5),
+      // Total students (all time)
+      this.prisma.student.count()
+    ])
 
     const totalPaid = this.resolveAmount(paidAgg)
     const monthCollected = this.resolveAmount(monthPaidAgg)
+    const prevMonthRevenue = this.resolveAmount(prevMonthPaidAgg)
+    const prevMonthSalary = toNumber(prevMonthPayrollAgg._sum?.totalAmount)
     const pendingAmount = this.resolveAmount(pendingAgg)
     const overdueAmount = this.resolveAmount(overdueAgg)
 
-    const tuitionTotal = totalPaid + pendingAmount + overdueAmount
-    const tuitionBreakdownPercent = tuitionTotal > 0 ? {
-      paid: Math.round((totalPaid / tuitionTotal) * 100),
-      pending: Math.round((pendingAmount / tuitionTotal) * 100),
-      overdue: Math.round((overdueAmount / tuitionTotal) * 100)
-    } : { paid: 0, pending: 0, overdue: 0 }
+    // Calculate month-over-month revenue percentage
+    const revenueChangePercent = prevMonthRevenue > 0 ? Math.round(((monthCollected - prevMonthRevenue) / prevMonthRevenue) * 100) : 0
 
-    // Class revenue (top 5)
-    const classRevenueRaw = await this.prisma.feeRecord.groupBy({
-      by: ['classId'],
-      where: {
-        status: 'paid',
-        dueDate: { gte: start, lte: end },
-        classId: { not: null }
-      },
-      _sum: { amount: true, scholarship: true, totalAmount: true },
-      _count: { id: true }
-    })
+    // Breakdown uses period-limited paid + pending + overdue
+    const periodPaid = monthCollected
+    const tuitionTotal = periodPaid + pendingAmount + overdueAmount
+    const tuitionBreakdownPercent = (() => {
+      if (tuitionTotal <= 0) return { paid: 0, pending: 0, overdue: 0 }
+      const paid = Math.round((periodPaid / tuitionTotal) * 100)
+      const pending = Math.round((pendingAmount / tuitionTotal) * 100)
+      // Keep total at 100, absorb rounding into overdue
+      const overdue = Math.max(0, 100 - paid - pending)
+      return { paid, pending, overdue }
+    })()
 
     const sortedClassRevenue = classRevenueRaw
       .map(r => ({
@@ -155,66 +375,48 @@ export class FinancialReportsService {
       .sort((a, b) => b.revenueAmount - a.revenueAmount)
 
     const classIds = sortedClassRevenue.map(c => c.classId)
-    const classes = classIds.length ? await this.prisma.class.findMany({
-      where: { id: { in: classIds } },
-      select: {
-        id: true,
-        name: true,
-        subject: { select: { name: true } }
-      }
-    }) : []
+    
+    // Fetch class details and count unique students per class
+    const [classes, studentCounts] = await Promise.all([
+      classIds.length ? this.prisma.class.findMany({
+        where: { id: { in: classIds } },
+        select: {
+          id: true,
+          name: true,
+          subject: { select: { name: true } }
+        }
+      }) : Promise.resolve([]),
+      classIds.length ? Promise.all(
+        classIds.map(classId =>
+          this.prisma.feeRecord.findMany({
+            where: {
+              classId,
+              status: 'paid',
+              dueDate: { gte: start, lte: end }
+            },
+            select: { studentId: true },
+            distinct: ['studentId']
+          }).then(records => ({ classId, count: records.length }))
+        )
+      ) : Promise.resolve([])
+    ])
 
     const classMap = new Map(classes.map(c => [c.id, c]))
+    const studentCountMap = new Map(studentCounts.map(sc => [sc.classId, sc.count]))
+    
     const classTopRevenue = sortedClassRevenue.map(c => ({
       classId: c.classId,
       className: classMap.get(c.classId)?.name || 'Lớp chưa xác định',
       subjectName: classMap.get(c.classId)?.subject?.name,
       revenueAmount: c.revenueAmount,
-      studentCount: c.feeRecordCount
+      studentCount: studentCountMap.get(c.classId) || 0
     }))
 
     const totalClassRevenue = classTopRevenue.reduce((acc, c) => acc + c.revenueAmount, 0)
 
-    // Get detailed teacher payroll list
-    // Build where condition based on time range
-    const payrollWhere: any = {}
-    if (start && end) {
-      // Filter payroll that overlaps with selected period
-      payrollWhere.OR = [
-        // Period starts within range
-        { periodStart: { gte: start, lte: end } },
-        // Period ends within range
-        { periodEnd: { gte: start, lte: end } },
-        // Period encompasses the range
-        { AND: [{ periodStart: { lte: start } }, { periodEnd: { gte: end } }] }
-      ]
-    }
-
-    const payrolls = await this.prisma.payroll.findMany({
-      where: payrollWhere,
-      select: {
-        id: true,
-        totalAmount: true,
-        status: true,
-        periodStart: true,
-        periodEnd: true,
-        teacherId: true,
-        teacher: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                fullName: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        periodStart: 'desc'
-      }
-    })
+    // Calculate previous month class revenue total
+    const prevMonthClassRevenueTotal = (prevMonthClassRevenueRaw || [])
+      .reduce((acc, r) => acc + this.resolveAmount(r), 0)
 
     const teacherSalaries = payrolls.map(p => ({
       id: p.id,
@@ -226,13 +428,6 @@ export class FinancialReportsService {
       periodStart: p.periodStart.toISOString(),
       periodEnd: p.periodEnd.toISOString()
     }))
-
-    console.log('📊 Financial Reports - Payroll Data:', {
-      totalPayrolls: payrolls.length,
-      teacherSalaries: teacherSalaries.length,
-      filterRange: start && end ? `${start.toISOString()} - ${end.toISOString()}` : 'All time',
-      sampleData: teacherSalaries.slice(0, 2)
-    })
 
     const payrollPaidAmount = teacherSalaries
       .filter(t => t.status === 'paid')
@@ -247,13 +442,42 @@ export class FinancialReportsService {
       ['pending', 'waiting_teacher_approval', 'approved_by_teacher'].includes(t.status)
     ).length
 
-    const monthlyTrend = await this.buildMonthlyTrend(12)
+    // Calculate profit change percentage
+    const currentProfit = payrollPaidAmount > 0 ? monthCollected - payrollPaidAmount : monthCollected
+    const prevMonthProfit = prevMonthRevenue - prevMonthSalary
+    const profitChangePercent = prevMonthProfit > 0 ? Math.round(((currentProfit - prevMonthProfit) / prevMonthProfit) * 100) : 0
+
+    // Calculate year-over-year change percentages
+    let yearlyRevenueChangePercent = 0
+    let yearlyProfitChangePercent = 0
+    
+    if (yearlyTrend && yearlyTrend.length >= 2) {
+      const currentYearData = yearlyTrend[yearlyTrend.length - 1]
+      const previousYearData = yearlyTrend[yearlyTrend.length - 2]
+      
+      if (previousYearData.revenue > 0) {
+        yearlyRevenueChangePercent = Math.round(((currentYearData.revenue - previousYearData.revenue) / previousYearData.revenue) * 100)
+      }
+      
+      const currentYearProfit = currentYearData.revenue - currentYearData.salary
+      const previousYearProfit = previousYearData.revenue - previousYearData.salary
+      
+      if (previousYearProfit > 0) {
+        yearlyProfitChangePercent = Math.round(((currentYearProfit - previousYearProfit) / previousYearProfit) * 100)
+      }
+    }
 
     return {
       revenue: {
         totalPaid,
         monthCollected,
-        monthlyTrend
+        prevMonthRevenue,
+        monthlyTrend,
+        yearlyTrend,
+        revenueChangePercent,
+        yearlyRevenueChangePercent,
+        classRevenue: totalClassRevenue,
+        prevMonthClassRevenue: prevMonthClassRevenueTotal
       },
       tuition: {
         paidAmount: totalPaid,
@@ -271,9 +495,308 @@ export class FinancialReportsService {
         pendingAmount: payrollPendingAmount,
         teacherCountPaid,
         teacherCountPending,
-        teacherSalaries
+        teacherSalaries,
+        profitChangePercent,
+        yearlyProfitChangePercent
+      },
+      students: {
+        totalCount: studentsTotalCount
       },
       generatedAt: new Date().toISOString()
     }
+  }
+
+  async getOutstandingStudents(month?: string, year?: string): Promise<any[]> {
+    const { start, end } = getShiftedDueBoundary(month, year)
+
+    // Get all pending/processing and overdue tuition records for the period
+    const outstandingRecords = await this.prisma.feeRecord.findMany({
+      where: {
+        status: { in: ['pending', 'processing', 'overdue'] },
+        dueDate: { gte: start, lte: end }
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              include: {
+                class: true
+              },
+              where: {
+                status: 'studying'
+              },
+              orderBy: {
+                enrolledAt: 'desc'
+              }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { status: 'desc' }, // overdue first
+        { dueDate: 'asc' }  // older due dates first
+      ]
+    })
+
+    // Group by student and sum amounts
+    const groupedByStudent = new Map<string, {
+      studentId: string
+      studentName: string
+      classes: string[]
+      totalAmount: number
+      records: any[]
+    }>()
+
+    outstandingRecords.forEach(record => {
+      const key = record.studentId
+      const amount = this.resolveAmount({ _sum: { totalAmount: record.totalAmount } })
+      
+      if (!groupedByStudent.has(key)) {
+        const classes = (record.student?.enrollments || [])
+          .map(e => e.class?.name)
+          .filter(Boolean) as string[]
+
+        groupedByStudent.set(key, {
+          studentId: record.studentId,
+          studentName: record.student?.user?.fullName || 'N/A',
+          classes,
+          totalAmount: 0,
+          records: []
+        })
+      }
+
+      const group = groupedByStudent.get(key)!
+      group.totalAmount += amount
+      // Try to infer the class name from enrollments (if feeRecord links to class via context)
+      const classNameFromEnrollments = (record.student?.enrollments || [])
+        .map(e => e.class?.name)
+        .filter(Boolean)[0] || null
+
+      group.records.push({
+        feeRecordId: record.id,
+        amount,
+        dueDate: record.dueDate,
+        status: record.status,
+        createdAt: record.createdAt,
+        className: classNameFromEnrollments
+      })
+    })
+
+    // Convert to array and sort by total amount (highest first)
+    return Array.from(groupedByStudent.values())
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+  }
+
+  private async getStudentsByStatus(statuses: string[], month?: string, year?: string): Promise<any[]> {
+    const { start, end } = getShiftedDueBoundary(month, year)
+
+    const records = await this.prisma.feeRecord.findMany({
+      where: {
+        status: { in: statuses },
+        dueDate: { gte: start, lte: end }
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              include: {
+                class: true
+              },
+              where: {
+                status: 'studying'
+              },
+              orderBy: {
+                enrolledAt: 'desc'
+              }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { dueDate: 'asc' }  // older due dates first
+      ]
+    })
+
+    const groupedByStudent = new Map<string, {
+      studentId: string
+      studentName: string
+      classes: string[]
+      totalAmount: number
+      records: any[]
+    }>()
+
+    records.forEach(record => {
+      const key = record.studentId
+      const amount = this.resolveAmount({ _sum: { totalAmount: record.totalAmount } })
+      
+      if (!groupedByStudent.has(key)) {
+        const classes = (record.student?.enrollments || [])
+          .map(e => e.class?.name)
+          .filter(Boolean) as string[]
+
+        groupedByStudent.set(key, {
+          studentId: record.studentId,
+          studentName: record.student?.user?.fullName || 'N/A',
+          classes,
+          totalAmount: 0,
+          records: []
+        })
+      }
+
+      const group = groupedByStudent.get(key)!
+      group.totalAmount += amount
+      
+      const classNameFromEnrollments = (record.student?.enrollments || [])
+        .map(e => e.class?.name)
+        .filter(Boolean)[0] || null
+
+      group.records.push({
+        feeRecordId: record.id,
+        amount,
+        dueDate: record.dueDate,
+        status: record.status,
+        createdAt: record.createdAt,
+        className: classNameFromEnrollments
+      })
+    })
+
+    return Array.from(groupedByStudent.values())
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+  }
+
+  async getOverdueStudents(month?: string, year?: string): Promise<any[]> {
+    return this.getStudentsByStatus(['overdue'], month, year)
+  }
+
+  async getPendingStudents(month?: string, year?: string): Promise<any[]> {
+    return this.getStudentsByStatus(['pending', 'processing'], month, year)
+  }
+
+  async getClassStudentsStatus(month?: string, year?: string): Promise<any[]> {
+    const { start, end } = getShiftedDueBoundary(month, year)
+
+    // Get all enrollments and their fee records for the period (capture paid + unpaid states)
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        status: 'studying'
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            feeRecords: {
+              where: {
+                status: { in: ['paid', 'pending', 'processing', 'overdue'] },
+                dueDate: { gte: start, lte: end }
+              }
+            }
+          }
+        },
+        class: {
+          include: {
+            subject: true
+          }
+        }
+      }
+    })
+
+    // Group by class and calculate stats
+    const classMap = new Map<string, {
+      classId: string
+      className: string
+      subjectName?: string
+      totalStudents: number
+      paidStudents: number
+      unpaidStudents: number
+      pendingStudents: number
+      overdueStudents: number
+      unpaidStudentsList: any[]
+      totalRevenueAmount: number
+    }>()
+
+    enrollments.forEach(enrollment => {
+      const key = enrollment.classId
+      // Filter fee records by classId to only count fees for this specific class
+      const feeRecords = (enrollment.student.feeRecords || [])
+        .filter(fr => fr.classId === enrollment.classId)
+
+      const paidAmount = feeRecords
+        .filter(fr => fr.status === 'paid')
+        .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
+
+      const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
+      const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
+
+      const hasPaid = paidAmount > 0
+      const hasPending = pendingRecords.length > 0
+      const hasOverdue = overdueRecords.length > 0
+
+      // Derive a single status per student per class to avoid double-counting
+      const enrollmentStatus = hasOverdue
+        ? 'overdue'
+        : hasPending
+        ? 'pending'
+        : hasPaid
+        ? 'paid'
+        : 'unrecorded'
+
+      if (!classMap.has(key)) {
+        classMap.set(key, {
+          classId: enrollment.classId,
+          className: enrollment.class.name,
+          subjectName: enrollment.class.subject?.name,
+          totalStudents: 0,
+          paidStudents: 0,
+          unpaidStudents: 0,
+          pendingStudents: 0,
+          overdueStudents: 0,
+          unpaidStudentsList: [],
+          totalRevenueAmount: 0
+        })
+      }
+
+      const classData = classMap.get(key)!
+      classData.totalStudents += 1
+      
+      if (enrollmentStatus === 'paid') {
+        classData.paidStudents += 1
+        classData.totalRevenueAmount += paidAmount
+      }
+
+      if (enrollmentStatus === 'pending') {
+        classData.unpaidStudents += 1
+        classData.pendingStudents += 1
+        classData.unpaidStudentsList.push({
+          studentId: enrollment.student.id,
+          studentName: enrollment.student.user.fullName || 'Chưa cập nhật',
+          email: enrollment.student.user.email
+        })
+      }
+
+      if (enrollmentStatus === 'overdue') {
+        classData.unpaidStudents += 1
+        classData.overdueStudents += 1
+        classData.unpaidStudentsList.push({
+          studentId: enrollment.student.id,
+          studentName: enrollment.student.user.fullName || 'Chưa cập nhật',
+          email: enrollment.student.user.email
+        })
+      }
+    })
+
+    return Array.from(classMap.values())
+      .sort((a, b) => {
+        // Prioritize classes with unpaid students first
+        if ((b.unpaidStudents > 0) !== (a.unpaidStudents > 0)) {
+          return (b.unpaidStudents > 0 ? 1 : 0) - (a.unpaidStudents > 0 ? 1 : 0)
+        }
+        // Within same unpaid status, sort by number of unpaid students (desc), then by revenue (desc)
+        if (a.unpaidStudents !== b.unpaidStudents) {
+          return b.unpaidStudents - a.unpaidStudents
+        }
+        return b.totalRevenueAmount - a.totalRevenueAmount
+      })
   }
 }
