@@ -748,10 +748,10 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({
       key: 'className',
       header: 'Lớp',
     },
-    {
-      key: 'subjectCode',
-      header: 'Mã môn học',
-    },
+    // {
+    //   key: 'subjectCode',
+    //   header: 'Mã môn học',
+    // },
     {
       key: 'teacherName',
       header: 'Giáo viên',

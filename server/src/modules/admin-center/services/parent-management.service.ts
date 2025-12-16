@@ -748,7 +748,7 @@ export class ParentManagementService {
 
       // Get parents with pagination
       const parents = await this.prisma.parent.findMany({
-        where: whereCondition,
+        where: {...whereCondition, students: {some: {}}},// lấy những phụ huynh có học sinh
         skip,
         take: limit,
         orderBy: {
