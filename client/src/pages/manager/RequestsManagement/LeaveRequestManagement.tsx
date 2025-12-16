@@ -426,9 +426,22 @@ export default function LeaveRequestManagement() {
         onConfirm={handleConfirmAction}
         title={confirmationAction === 'approve' ? 'Xác nhận duyệt đơn' : 'Xác nhận từ chối đơn'}
         message={
-          confirmationAction === 'approve' 
-            ? `Khi duyệt, các buổi học không có giáo viên thay thế (${selectedRequest?.affectedSessions?.length || 0} buổi) sẽ bị hủy.\n` +
+          confirmationAction === 'approve'
+            ? (() => {
+                const total =
+                  selectedRequest?.affectedSessions?.length || 0
+                // Số buổi KHÔNG có giáo viên thay thế tại thời điểm xác nhận
+                const withoutReplacement =
+                  selectedRequest?.affectedSessions?.filter((s: any) => {
+                    const key = s.sessionId || s.id
+                    return !sessionReplacements[key]
+                  }).length ?? 0
+
+                return (
+                  `Khi duyệt, các buổi học không có giáo viên thay thế (${withoutReplacement}/${total} buổi) sẽ bị hủy.\n` +
               'Các buổi đã gán giáo viên thay thế sẽ vẫn diễn ra với giáo viên được phân công.'
+                )
+              })()
             : 'Bạn có chắc chắn muốn từ chối đơn xin nghỉ phép này không?'
         }
         confirmText={confirmationAction === 'approve' ? 'Duyệt đơn' : 'Từ chối đơn'}

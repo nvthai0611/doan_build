@@ -549,13 +549,14 @@ export class LeaveRequestsService {
         teacherId: leaveRequest.teacherId,
         createdAt: leaveRequest.createdAt,
         teacherInfo: leaveRequest.teacher?.user,
-        affectedSessions: leaveRequest.affectedSessions?.map(session => ({
+        affectedSessions: leaveRequest.affectedSessions?.map((session) => ({
           id: session.id,
+          sessionId: session.sessionId,
           sessionDate: session.session.sessionDate,
           startTime: session.session.startTime,
           endTime: session.session.endTime,
           class: session.session.class.name,
-          subject: session.session.class.subject.name
+          subject: session.session.class.subject.name,
         }))
       },
       message: 'Lấy chi tiết đơn xin nghỉ thành công'
