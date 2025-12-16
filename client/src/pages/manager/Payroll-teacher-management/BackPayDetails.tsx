@@ -334,10 +334,10 @@ export default function BackPayDetails() {
             Kỳ lương hiện tại: <span className="font-medium">{periodLabel}</span> • Giáo viên: {response?.data?.teacher?.fullName || "-"}
           </p>
         </div>
-        <Button onClick={handleExport} variant="outline">
+        {/* <Button onClick={handleExport} variant="outline">
           <Download className="w-4 h-4 mr-2" />
           Xuất file
-        </Button>
+        </Button> */}
       </div>
 
       {/* Breadcrumb */}

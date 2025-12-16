@@ -10,14 +10,15 @@ const PayrollSummaryCards: React.FC<PayrollSummaryCardsProps> = ({
   payrolls, 
   loading 
 }) => {
-  const totalAmount = payrolls.reduce((sum, p) => sum + Number(p.totalAmount), 0)
+  
+  const totalAmount = payrolls.filter(pr => pr.status == 'paid').reduce((sum, p) => sum + Number(p.totalAmount), 0)
   const totalBonuses = payrolls.reduce((sum, p) => sum + Number(p.bonuses), 0)
   const totalDeductions = payrolls.reduce((sum, p) => sum + Number(p.deductions), 0)
   const pendingCount = payrolls.filter(p => p.status === 'waiting_teacher_approval').length
 
   const cards = [
     {
-      title: 'Tổng lương',
+      title: 'Tổng lương đã nhận',
       value: totalAmount.toLocaleString('vi-VN'),
       icon: DollarSign,
       color: 'text-green-600',

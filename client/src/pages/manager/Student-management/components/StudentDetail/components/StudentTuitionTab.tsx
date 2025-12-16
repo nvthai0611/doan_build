@@ -120,58 +120,45 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
   }, [classMap])
   
   /**
-   * Tính trạng thái thanh toán của hóa đơn
+   * Normalize status từ server về FeeStatus enum
    */
   const getFeeStatus = (fee: FeeRecord): FeeStatus => {
-    // Ưu tiên trạng thái từ server
-    if (fee.status === 'cancelled') return FeeStatus.Cancelled
-    if (fee.status === 'paid' || fee.status === 'completed') return FeeStatus.Completed
-    if (fee.status === 'processing') return FeeStatus.Processing
-    if (fee.status === 'overdue') return FeeStatus.Overdue
-    if (fee.status === 'calculated') return FeeStatus.Calculated
+    const status = fee.status?.toLowerCase()
     
-    const paidAmount = fee.paidAmount || 0
-    const totalAmount = fee.amount
-    
-    // Kiểm tra theo số tiền đã thanh toán
-    if (paidAmount === 0) return FeeStatus.Pending
-    if (paidAmount >= totalAmount) return FeeStatus.Completed
-    if (paidAmount > 0 && paidAmount < totalAmount) return FeeStatus.PartiallyPaid
-    
-    return FeeStatus.Pending
-  }
-
-  /**
-   * Kiểm tra hóa đơn có quá hạn không
-   */
-  const isOverdue = (fee: FeeRecord): boolean => {
-    const status = getFeeStatus(fee)
-    
-    // Chỉ kiểm tra overdue cho pending, calculated và partially paid
-    if (status !== FeeStatus.Pending && 
-        status !== FeeStatus.Calculated && 
-        status !== FeeStatus.PartiallyPaid) {
-      return false
+    switch (status) {
+      case 'cancelled':
+        return FeeStatus.Cancelled
+      case 'paid':
+      case 'completed':
+        return FeeStatus.Completed
+      case 'processing':
+        return FeeStatus.Processing
+      case 'overdue':
+        return FeeStatus.Overdue
+      case 'calculated':
+        return FeeStatus.Calculated
+      case 'partially_paid':
+      case 'partiallypaid':
+        return FeeStatus.PartiallyPaid
+      case 'pending':
+      default:
+        return FeeStatus.Pending
     }
-    
-    const dueDate = new Date(fee.dueDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    dueDate.setHours(0, 0, 0, 0)
-    
-    return dueDate < today
   }
 
   /**
    * Kiểm tra hóa đơn có thể tính toán lại không
+   * Chỉ dựa vào status, không kiểm tra date
    */
   const canRecalculate = (fee: FeeRecord): boolean => {
     const status = getFeeStatus(fee)
-    // Chỉ cho phép tính lại: pending, calculated, cancelled, hoặc overdue
-    return status === FeeStatus.Pending || 
-           status === FeeStatus.Calculated ||
-           status === FeeStatus.Cancelled ||
-           isOverdue(fee)
+    // Chỉ cho phép tính lại: pending, calculated, cancelled, overdue
+    return [
+      FeeStatus.Pending,
+      FeeStatus.Calculated,
+      FeeStatus.Cancelled,
+      FeeStatus.Overdue
+    ].includes(status)
   }
 
   /**
@@ -184,13 +171,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
     if (statusFilter !== "all") {
       filtered = filtered.filter((fee) => {
         const feeStatus = getFeeStatus(fee)
-        
-        // Xử lý riêng cho Overdue
-        if (statusFilter === FeeStatus.Overdue) {
-          return isOverdue(fee)
-        }
-        
-        // Các trạng thái khác
         return feeStatus === statusFilter
       })
     }
@@ -232,7 +212,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
   )
 
   /**
-   * Thống kê học phí
+   * Thống kê học phí - chỉ dựa vào status
    */
   const tuitionStats = useMemo(() => {
     const stats = {
@@ -247,30 +227,43 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
       cancelledCount: 0
     }
 
-    // Tính toán dựa trên TOÀN BỘ feeRecords
     feeRecords.forEach((fee) => {
       const status = getFeeStatus(fee)
-      const overdue = isOverdue(fee)
       
       // Chỉ tính tổng tiền cho các hóa đơn không bị hủy
       if (status !== FeeStatus.Cancelled) {
         stats.totalAmount += fee.totalAmount       
       }
 
-      if(status === FeeStatus.Completed) {
+      // Tính số tiền đã thanh toán
+      if (status === FeeStatus.Completed) {
         stats.paidAmount += fee.totalAmount
       }
       
       // Đếm số lượng theo từng trạng thái
-      if (status === FeeStatus.Pending && !overdue) stats.pendingCount++
-      if (status === FeeStatus.Calculated && !overdue) stats.calculatedCount++
-      if (status === FeeStatus.Processing) stats.processingCount++
-      if (status === FeeStatus.PartiallyPaid && !overdue) stats.partiallyPaidCount++
-      if (status === FeeStatus.Completed) stats.completedCount++
-      if (status === FeeStatus.Cancelled) stats.cancelledCount++
-      
-      // Đếm overdue (có thể là pending, calculated hoặc partially_paid)
-      if (overdue) stats.overdueCount++
+      switch (status) {
+        case FeeStatus.Pending:
+          stats.pendingCount++
+          break
+        case FeeStatus.Calculated:
+          stats.calculatedCount++
+          break
+        case FeeStatus.Processing:
+          stats.processingCount++
+          break
+        case FeeStatus.PartiallyPaid:
+          stats.partiallyPaidCount++
+          break
+        case FeeStatus.Completed:
+          stats.completedCount++
+          break
+        case FeeStatus.Cancelled:
+          stats.cancelledCount++
+          break
+        case FeeStatus.Overdue:
+          stats.overdueCount++
+          break
+      }
     })
 
     return stats
@@ -377,6 +370,44 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
     }
   }, [selectedFeeIds, feeRecords])
 
+  /**
+   * Get status display info
+   */
+  const getStatusDisplay = (status: FeeStatus) => {
+    const displays: Record<FeeStatus, { label: string; className?: string; variant?: "default" | "secondary" | "destructive" }> = {
+      [FeeStatus.Cancelled]: {
+        label: "Đã hủy",
+        className: "bg-gray-300 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
+      },
+      [FeeStatus.Completed]: {
+        label: "Đã thanh toán",
+        className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-100"
+      },
+      [FeeStatus.Processing]: {
+        label: "Đang xử lý",
+        className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-100"
+      },
+      [FeeStatus.Calculated]: {
+        label: "Đã tính toán",
+        className: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-100"
+      },
+      [FeeStatus.PartiallyPaid]: {
+        label: "Trả 1 phần",
+        className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-100"
+      },
+      [FeeStatus.Overdue]: {
+        label: "Quá hạn",
+        variant: "destructive"
+      },
+      [FeeStatus.Pending]: {
+        label: "Chưa thanh toán",
+        className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100"
+      }
+    }
+    
+    return displays[status]
+  }
+
   // Table columns
   const columns: Column<FeeRecord>[] = [
     {
@@ -423,47 +454,7 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
       header: "Trạng thái",
       render: (fee) => {
         const status = getFeeStatus(fee)
-        const overdue = isOverdue(fee)
-        
-        let label = ""
-        let variant: "default" | "secondary" | "destructive" = "default"
-        let className = ""
-        
-        if (status === FeeStatus.Cancelled) {
-          label = "Đã hủy"
-          className = "bg-red-300 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
-        } else if (status === FeeStatus.Completed) {
-          label = "Đã thanh toán"
-          className = "bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-100"
-        } else if (status === FeeStatus.Processing) {
-          label = "Đang xử lý"
-          className = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-100"
-        } else if (status === FeeStatus.Calculated) {
-          if (overdue) {
-            label = "Đã tính toán (Quá hạn)"
-            variant = "destructive"
-          } else {
-            label = "Đã tính toán"
-            className = "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-100"
-          }
-        } else if (status === FeeStatus.PartiallyPaid) {
-          if (overdue) {
-            label = "Trả 1 phần (Quá hạn)"
-            variant = "destructive"
-          } else {
-            label = "Trả 1 phần"
-            className = "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-100"
-          }
-        } else {
-          // Pending
-          if (overdue) {
-            label = "Quá hạn"
-            variant = "destructive"
-          } else {
-            label = "Chưa thanh toán"
-            className = "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100"
-          }
-        }
+        const { label, className, variant } = getStatusDisplay(status)
         
         return <Badge className={className} variant={variant}>{label}</Badge>
       },
@@ -506,68 +497,6 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
             <p className="text-sm text-muted-foreground">Đã thanh toán</p>
           </CardContent>
         </Card>
-        
-        {/* <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-600">
-              {tuitionStats.pendingCount}
-            </p>
-            <p className="text-sm text-muted-foreground">Chưa thanh toán</p>
-          </CardContent>
-        </Card>
-
-        {tuitionStats.calculatedCount > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-cyan-600">
-                {tuitionStats.calculatedCount}
-              </p>
-              <p className="text-sm text-muted-foreground">Đã tính toán</p>
-            </CardContent>
-          </Card>
-        )}
-        
-        {tuitionStats.processingCount > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">
-                {tuitionStats.processingCount}
-              </p>
-              <p className="text-sm text-muted-foreground">Đang xử lý</p>
-            </CardContent>
-          </Card>
-        )}
-        
-        {tuitionStats.partiallyPaidCount > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-purple-600">
-                {tuitionStats.partiallyPaidCount}
-              </p>
-              <p className="text-sm text-muted-foreground">Trả 1 phần</p>
-            </CardContent>
-          </Card>
-        )}
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">
-              {tuitionStats.overdueCount}
-            </p>
-            <p className="text-sm text-muted-foreground">Quá hạn</p>
-          </CardContent>
-        </Card>
-
-        {tuitionStats.cancelledCount > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-gray-600">
-                {tuitionStats.cancelledCount}
-              </p>
-              <p className="text-sm text-muted-foreground">Đã hủy</p>
-            </CardContent>
-          </Card>
-        )} */}
       </div>
 
       {/* Alert hiển thị số hóa đơn đã chọn */}

@@ -113,7 +113,6 @@ export default function TriggerDashboard() {
     }
     return executionsData?.pagination
   }, [executionsData])
-  
   const handleFilterChange = (newFilters: any) => {
     setFilters((prev) => ({
       ...prev,
@@ -187,7 +186,7 @@ export default function TriggerDashboard() {
             </div>
           ) : (
             <>
-              <DashboardOverview jobs={jobs} />
+              {/* <DashboardOverview jobs={jobs} /> */}
               <JobExecutionsTable
                 jobs={jobs}
                 filters={filters}

@@ -2,7 +2,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { payrollService } from '../../../services/center-owner/payroll-teacher/payroll.service'
 import React, { useState, useMemo, useEffect } from 'react'
 import { DataTable, Column } from '../../../components/common/Table/DataTable'
-import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar, Mail, Send, RefreshCw, DollarSign, RefreshCcw } from 'lucide-react'
+import { Eye, CheckCircle, XCircle, Clock, Search, X, Calendar, Mail, Send, RefreshCw, DollarSign, RefreshCcw, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/assets/shadcn-ui/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,8 +71,27 @@ const PayrollManagement: React.FC = () => {
   // State cho modal điều chỉnh
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
   
+  // MỚI: State cho loading với countdown
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processingMessage, setProcessingMessage] = useState('')
+  const [countdown, setCountdown] = useState(0)
+  
   const debouncedTeacherName = useDebounce(teacherName, 500)
   const debouncedEmail = useDebounce(email, 500)
+
+  // MỚI: Effect để countdown
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (countdown === 0 && isProcessing) {
+      setIsProcessing(false)
+      setProcessingMessage('')
+      refetch()
+    }
+  }, [countdown, isProcessing])
 
   const { data: listTeacher, isLoading, error, refetch } = useQuery<Teacher[]>({
     queryKey: ['payrollTeachers', debouncedTeacherName, debouncedEmail, status, month],
@@ -90,11 +109,11 @@ const PayrollManagement: React.FC = () => {
         variant: 'default'
       })
       setSelectedPayrollIds([])
-      setTimeout(() => {
-        refetch()
-      }, 10000)
+      refetch()
     },
     onError: (error: any) => {
+      setIsProcessing(false)
+      setCountdown(0)
       toast({
         title: 'Lỗi',
         description: error?.response?.data?.message || 'Không thể gửi email',
@@ -112,11 +131,11 @@ const PayrollManagement: React.FC = () => {
         variant: 'default'
       })
       setSelectedPayrollIds([])
-      setTimeout(() => {
-        refetch()
-      }, 10000)
+      refetch()
     },
     onError: (error: any) => {
+      setIsProcessing(false)
+      setCountdown(0)
       toast({
         title: 'Lỗi',
         description: error?.response?.data?.message || 'Tính toán lại lương thất bại!',
@@ -190,7 +209,6 @@ const PayrollManagement: React.FC = () => {
   }
   const fmt = (n?: number) => Number(n || 0).toLocaleString("vi-VN")
 
-  // ✅ MỚI: Check nếu có thể điều chỉnh (chỉ cho pending)
   const canSelectForAdjustment = (teacher: Teacher): boolean => {
     return teacher.payroll?.status === 'pending' || false
   }
@@ -246,6 +264,13 @@ const PayrollManagement: React.FC = () => {
       return
     }
 
+    // ✅ Tính toán delay dựa trên số lượng
+    const delaySeconds = pendingPayrollIds.length < 5 ? 10 : 15
+    
+    setIsProcessing(true)
+    setCountdown(delaySeconds)
+    setProcessingMessage(`Đang gửi email cho ${pendingPayrollIds.length} bảng lương...`)
+    
     sendEmailMutation.mutate(pendingPayrollIds)
   }
 
@@ -273,10 +298,16 @@ const PayrollManagement: React.FC = () => {
       return
     }
 
+    // ✅ Tính toán delay dựa trên số lượng
+    const delaySeconds = validPayrollIds.length < 5 ? 10 : 15
+    
+    setIsProcessing(true)
+    setCountdown(delaySeconds)
+    setProcessingMessage(`Đang tính toán lại ${validPayrollIds.length} bảng lương...`)
+    
     recalculateMutation.mutate(validPayrollIds)
   }
 
-  // ✅ MỚI: Xử lý mở modal điều chỉnh
   const handleOpenAdjustmentModal = () => {
     if (selectedPayrollIds.length === 0) {
       toast({
@@ -315,7 +346,7 @@ const PayrollManagement: React.FC = () => {
             selectedPayrollIds.length === listTeacher.filter(t => canSelect(t)).length
           }
           onCheckedChange={handleSelectAll}
-          disabled={!listTeacher || listTeacher.filter(t => canSelect(t)).length === 0}
+          disabled={!listTeacher || listTeacher.filter(t => canSelect(t)).length === 0 || isProcessing}
           aria-label="Select all"
         />
       ),
@@ -324,10 +355,12 @@ const PayrollManagement: React.FC = () => {
         <Checkbox
           checked={selectedPayrollIds.includes(teacher?.payroll?.id || '')}
           onCheckedChange={() => handleSelectPayroll(teacher?.payroll?.id || '')}
-          disabled={!canSelect(teacher)}
+          disabled={!canSelect(teacher) || isProcessing}
           aria-label={`Select ${teacher.user.fullName}`}
           title={
-            !canSelect(teacher) 
+            isProcessing 
+              ? 'Đang xử lý, vui lòng đợi...'
+              : !canSelect(teacher) 
               ? 'Chỉ có thể chọn payroll ở trạng thái "Chờ xử lý" hoặc "GV từ chối"' 
               : ''
           }
@@ -443,31 +476,16 @@ const PayrollManagement: React.FC = () => {
       header: 'Thao tác',
       width: '100px',
       render: (teacher) => (
-        <>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => handleViewDetail(teacher)}
           className="gap-1"
+          disabled={isProcessing}
         >
           <Eye className="w-4 h-4" />
           Xem chi tiết
         </Button>
-
-        {/* <div>
-          <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleViewDetail(teacher)}
-          className="gap-1"
-        >
-          <Eye className="w-4 h-4" />
-          Xem Tổng Quan
-        </Button>
-        </div> */}
-        </>
-
-        
       )
     }
   ]
@@ -500,7 +518,6 @@ const PayrollManagement: React.FC = () => {
     }).length
   }, [selectedPayrollIds, listTeacher])
 
-  // ✅ MỚI: Đếm số payroll có thể điều chỉnh
   const selectedForAdjustmentCount = useMemo(() => {
     return selectedPayrollIds.filter(id => {
       const teacher = listTeacher?.find(t => t.payroll?.id === id)
@@ -508,7 +525,6 @@ const PayrollManagement: React.FC = () => {
     }).length
   }, [selectedPayrollIds, listTeacher])
 
-  // ✅ MỚI: Lấy data các payroll đã chọn
   const selectedPayrollsData = useMemo(() => {
     return selectedPayrollIds
       .map(id => {
@@ -520,6 +536,45 @@ const PayrollManagement: React.FC = () => {
 
   return (
     <div className="container mx-auto py-6">
+      {/*  MỚI: Loading Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl border-2 border-blue-500">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center justify-center">
+                </div>
+              </div>
+              
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Đang xử lý...
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {processingMessage}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  Vui lòng đợi trong <span className="font-bold text-blue-600">{countdown} giây</span>
+                </p>
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-full transition-all duration-1000 ease-linear"
+                  style={{ 
+                    width: `${((countdown / (selectedPayrollIds.length < 5 ? 10 : 15)) * 100)}%` 
+                  }}
+                />
+              </div>
+
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                Không tắt trang trong quá trình xử lý
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quản lý lương giáo viên</h1>
@@ -559,7 +614,7 @@ const PayrollManagement: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleSendEmail}
-                disabled={sendEmailMutation.isPending || selectedForEmailCount === 0}
+                disabled={sendEmailMutation.isPending || selectedForEmailCount === 0 || isProcessing}
                 className="bg-white gap-2"
               >
                 <Mail className="w-4 h-4" />
@@ -570,19 +625,18 @@ const PayrollManagement: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleRecalculate}
-                disabled={recalculateMutation.isPending || selectedForRecalculationCount === 0}
+                disabled={recalculateMutation.isPending || selectedForRecalculationCount === 0 || isProcessing}
                 className="bg-white gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 {recalculateMutation.isPending ? 'Đang tính...' : `Tính toán lại (${selectedForRecalculationCount})`}
               </Button>
 
-              {/* ✅ MỚI: Nút điều chỉnh lương */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleOpenAdjustmentModal}
-                disabled={selectedForAdjustmentCount === 0}
+                disabled={selectedForAdjustmentCount === 0 || isProcessing}
                 className="bg-white gap-2"
               >
                 <DollarSign className="w-4 h-4" />
@@ -597,7 +651,7 @@ const PayrollManagement: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
           <p className="flex items-start gap-2">
-            <span className="text-lg">💡</span>
+            <span className="text-lg"></span>
             <span>
               <strong>Gửi Email:</strong> Chỉ cho bảng lương <Badge variant="outline" className="bg-yellow-100 text-yellow-800 mx-1">Chờ xử lý</Badge>
               <br />
@@ -605,6 +659,8 @@ const PayrollManagement: React.FC = () => {
               hoặc <Badge variant="outline" className="bg-red-100 text-red-800 mx-1">GV từ chối</Badge>
               <br />
               <strong>Điều chỉnh lương:</strong> Chỉ cho bảng lương <Badge variant="outline" className="bg-yellow-100 text-yellow-800 mx-1">Chờ xử lý</Badge>
+              <br />
+              <strong>Thời gian xử lý:</strong> Dưới 5 bảng lương: <span className="font-semibold">10 giây</span> | Từ 5 bảng lương trở lên: <span className="font-semibold">15 giây</span>
             </span>
           </p>
         </div>
@@ -625,6 +681,7 @@ const PayrollManagement: React.FC = () => {
                   setCurrentPage(1)
                 }}
                 className="pl-10 pr-10"
+                disabled={isProcessing}
               />
               {teacherName && (
                 <Button
@@ -635,6 +692,7 @@ const PayrollManagement: React.FC = () => {
                     setCurrentPage(1)
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  disabled={isProcessing}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -657,6 +715,7 @@ const PayrollManagement: React.FC = () => {
                   setCurrentPage(1)
                 }}
                 className="pl-10 pr-10"
+                disabled={isProcessing}
               />
               {email && (
                 <Button
@@ -667,6 +726,7 @@ const PayrollManagement: React.FC = () => {
                     setCurrentPage(1)
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  disabled={isProcessing}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -689,6 +749,7 @@ const PayrollManagement: React.FC = () => {
                 }}
                 className="pl-10 pr-10"
                 max={new Date().toISOString().slice(0, 7)}
+                disabled={isProcessing}
               />
               {month && (
                 <Button
@@ -699,6 +760,7 @@ const PayrollManagement: React.FC = () => {
                     setCurrentPage(1)
                   }}
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 z-10"
+                  disabled={isProcessing}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -716,6 +778,7 @@ const PayrollManagement: React.FC = () => {
                 setStatus(value === 'all' ? '' : value)
                 setCurrentPage(1)
               }}
+              disabled={isProcessing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Tất cả trạng thái" />
@@ -735,7 +798,10 @@ const PayrollManagement: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tải lại trang
             </label>
-            <RefreshCcw className="cursor-pointer" onClick={() => window.location.reload()} />
+            <RefreshCcw 
+              className={`cursor-pointer ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`} 
+              onClick={() => !isProcessing && window.location.reload()} 
+            />
           </div>
 
           <div className="flex items-end">
@@ -744,6 +810,7 @@ const PayrollManagement: React.FC = () => {
                 variant="outline"
                 onClick={handleClearFilters}
                 className="w-full"
+                disabled={isProcessing}
               >
                 <X className="w-4 h-4 mr-2" />
                 Xóa bộ lọc
@@ -779,7 +846,6 @@ const PayrollManagement: React.FC = () => {
         enableSort={false}
       />
 
-      {/* ✅ MỚI: Modal điều chỉnh lương */}
       <PayrollAdjustmentModal
         open={showAdjustmentModal}
         onOpenChange={setShowAdjustmentModal}
