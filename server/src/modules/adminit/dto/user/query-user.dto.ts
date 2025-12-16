@@ -16,12 +16,10 @@ import { Gender } from 'src/common/constants';
 
 export const USER_ROLES_FILTER = [
   'admin',
-  'manager',
   'center_owner',
   'teacher',
   'parent',
   'student',
-  'staff',
 ] as const;
 
 export const USER_STATUS_FILTER = ['all', 'active', 'inactive'] as const;

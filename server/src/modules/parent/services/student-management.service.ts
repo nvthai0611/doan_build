@@ -468,13 +468,13 @@ export class StudentManagementService {
       const substituteEndDate = activeTransfer?.substituteEndDate || null;
 
       return {
-        id: s.id,
-        classId: s.classId,
-        sessionDate: s.sessionDate.toISOString(),
-        startTime: s.startTime,
-        endTime: s.endTime,
-        room: s.room ? { id: s.room.id, name: s.room.name, capacity: s.room.capacity ?? 0 } : undefined,
-        status: s.status,
+      id: s.id,
+      classId: s.classId,
+      sessionDate: s.sessionDate.toISOString(),
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room ? { id: s.room.id, name: s.room.name, capacity: s.room.capacity ?? 0 } : undefined,
+      status: s.status,
         teacher: teacher
           ? {
               id: teacher.id,
@@ -488,17 +488,17 @@ export class StudentManagementService {
             }
           : undefined,
         substituteEndDate: substituteEndDate ? formatYMD(substituteEndDate) : undefined,
-        class: {
-          id: s.class.id,
-          name: s.class.name,
-          subject: { id: s.class.subject.id, name: s.class.subject.name },
-          teacher: s.class.teacher ? {
-            id: s.class.teacher.id,
-            fullName: s.class.teacher.user?.fullName || null,
-          } : undefined,
-          maxStudents: s.class.maxStudents ?? 0,
-          currentStudents: 0,
-        },
+      class: {
+        id: s.class.id,
+        name: s.class.name,
+        subject: { id: s.class.subject.id, name: s.class.subject.name },
+        teacher: s.class.teacher ? {
+          id: s.class.teacher.id,
+          fullName: s.class.teacher.user?.fullName || null,
+        } : undefined,
+        maxStudents: s.class.maxStudents ?? 0,
+        currentStudents: 0,
+      },
       };
     });
 

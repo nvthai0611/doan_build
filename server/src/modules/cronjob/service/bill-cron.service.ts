@@ -391,37 +391,27 @@ export class BillCronService {
    * Xóa các FeeRecord có totalAmount = 0
    */
   @Cron('0 0 8 * *')
-  async handleCleanupZeroAmountBills() {
-    this.logger.log('Bắt đầu chạy Cron Job: Xóa Hóa Đơn 0đ...');
+async handleCleanupZeroAmountBills() {
+  this.logger.log('Bắt đầu chạy Cron Job: Xóa Hóa Đơn 0đ & Cập Nhật Hóa Đơn Quá Hạn...');
 
-    const startTime = Date.now();
-    const errorDetails: ErrorDetail[] = [];
-    let successCount = 0;
-    let failedCount = 0;
+  const startTime = Date.now();
+  const errorDetails: ErrorDetail[] = [];
+  let successCount = 0;
+  let failedCount = 0;
+  let overdueCount = 0;
 
-    const cronExecutionId = await this.createCronExecution('cleanup_zero_bills');
+  const cronExecutionId = await this.createCronExecution('cleanup_zero_bills');
 
-    try {
-      // Tìm các hóa đơn có totalAmount = 0
-      const zeroAmountBills = await this.prisma.feeRecord.findMany({
-        where: {
-          totalAmount: 0,
-        },
-        select: { id: true, studentId: true },
-      });
+  try {
+    // ========== PHẦN 1: Xóa hóa đơn 0đ ==========
+    const zeroAmountBills = await this.prisma.feeRecord.findMany({
+      where: {
+        totalAmount: 0,
+      },
+      select: { id: true, studentId: true },
+    });
 
-      if (zeroAmountBills.length === 0) {
-        this.logger.log('Không có hóa đơn 0đ nào cần xóa.');
-        await this.updateCronExecution(cronExecutionId, {
-          status: 'success',
-          totalItems: 0,
-          successCount: 0,
-          failedCount: 0,
-          durationMs: Date.now() - startTime,
-        });
-        return;
-      }
-
+    if (zeroAmountBills.length > 0) {
       this.logger.log(`Tìm thấy ${zeroAmountBills.length} hóa đơn 0đ để xóa.`);
 
       try {
@@ -432,6 +422,7 @@ export class BillCronService {
         });
 
         successCount = deleteResult.count;
+        this.logger.log(`Đã xóa ${successCount} hóa đơn 0đ.`);
 
       } catch (dbError) {
         failedCount = zeroAmountBills.length;
@@ -440,34 +431,93 @@ export class BillCronService {
           itemName: 'Multiple Bills',
           error: dbError instanceof Error ? dbError.message : 'Database error during batch delete',
         });
-        throw dbError;
+        this.logger.error('Lỗi khi xóa hóa đơn 0đ:', dbError);
       }
-
-      await this.updateCronExecution(cronExecutionId, {
-        status: 'success',
-        totalItems: zeroAmountBills.length,
-        successCount,
-        failedCount,
-        durationMs: Date.now() - startTime,
-      });
-
-      this.logger.log(`Hoàn thành Xóa Hóa Đơn 0đ: Đã xóa ${successCount} hóa đơn.`);
-
-    } catch (error) {
-      const durationMs = Date.now() - startTime;
-      this.logger.error('Cron Job Xóa Hóa Đơn 0đ thất bại:', error);
-
-      await this.updateCronExecution(cronExecutionId, {
-        status: 'failed',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        failedCount,
-        errorDetails: errorDetails.length > 0 ? errorDetails : null,
-        durationMs,
-      });
+    } else {
+      this.logger.log('Không có hóa đơn 0đ nào cần xóa.');
     }
+
+    // ========== PHẦN 2: Chuyển hóa đơn pending sang overdue ==========
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth();
+    const currentDay = now.getUTCDate();
+    
+    // Ngày hôm qua UTC (23:59:59.999)
+    const yesterday = new Date(Date.UTC(currentYear, currentMonth, currentDay - 1, 23, 59, 59, 999));
+
+    this.logger.log(`Đang tìm hóa đơn pending với dueDate < ${yesterday.toISOString()}`);
+
+    const overdueBills = await this.prisma.feeRecord.findMany({
+      where: {
+        status: 'pending',
+        dueDate: {
+          lt: yesterday,
+        },
+      },
+      select: { id: true, studentId: true, dueDate: true, totalAmount: true },
+    });
+
+    if (overdueBills.length > 0) {
+      this.logger.log(`Tìm thấy ${overdueBills.length} hóa đơn pending quá hạn.`);
+
+      try {
+        const overdueResult = await this.prisma.feeRecord.updateMany({
+          where: {
+            id: { in: overdueBills.map(b => b.id) },
+            status: 'pending',
+          },
+          data: {
+            status: 'overdue',
+          },
+        });
+
+        overdueCount = overdueResult.count;
+        this.logger.log(`Đã chuyển ${overdueCount} hóa đơn sang trạng thái overdue.`);
+
+      } catch (dbError) {
+        errorDetails.push({
+          itemId: 'BATCH_OVERDUE_UPDATE',
+          itemName: 'Multiple Overdue Bills',
+          error: dbError instanceof Error ? dbError.message : 'Lỗi cơ sở dữ liệu khi cập nhật overdue',
+        });
+        this.logger.error('Lỗi khi cập nhật hóa đơn overdue:', dbError);
+      }
+    } else {
+      this.logger.log('Không có hóa đơn pending quá hạn nào.');
+    }
+
+    // ========== Cập nhật kết quả ==========
+    await this.updateCronExecution(cronExecutionId, {
+      status: errorDetails.length > 0 ? 'success_with_errors' : 'success',
+      totalItems: zeroAmountBills.length + overdueBills.length,
+      successCount: successCount + overdueCount,
+      failedCount,
+      durationMs: Date.now() - startTime,
+      errorDetails: errorDetails.length > 0 ? errorDetails : null,
+      metadata: {
+        deletedZeroBills: successCount,
+        updatedOverdueBills: overdueCount,
+      },
+    });
+
+    this.logger.log(
+      `Hoàn thành Cron Job: Đã xóa ${successCount} hóa đơn 0đ, chuyển ${overdueCount} hóa đơn sang overdue.`,
+    );
+
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    this.logger.error('Cron Job Xóa Hóa Đơn 0đ & Cập Nhật Quá Hạn thất bại:', error);
+
+    await this.updateCronExecution(cronExecutionId, {
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      failedCount,
+      errorDetails: errorDetails.length > 0 ? errorDetails : null,
+      durationMs,
+    });
   }
-
-
+}
 
 
   private async createCronExecution(jobType: string): Promise<string> {

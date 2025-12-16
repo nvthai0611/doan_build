@@ -101,7 +101,10 @@ export const privateRoutes = (
         <Route path="classes" element={<ClassManagement />} />
         <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="classes/create" element={<CreateClass />} />
-        <Route path="classes/session-details/:sessionId" element={<SessionDetail />} />
+        <Route
+          path="classes/session-details/:sessionId"
+          element={<SessionDetail />}
+        />
         <Route path="teachers" element={<TeacherQnmsManagement />} />
         <Route path="teachers/add" element={<AddEmployee />} />
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
@@ -114,16 +117,37 @@ export const privateRoutes = (
         <Route path="customers" element={<CustomerManagementPage />} />
         <Route path="parents" element={<ParentManagement />} />
         <Route path="parents/:id" element={<ParentDetailPage />} />
-        <Route path="settings/center-info-setting" element={<CenterInfoSetting />} />
+        <Route
+          path="settings/center-info-setting"
+          element={<CenterInfoSetting />}
+        />
         <Route path="settings/holidays-setting" element={<HolidaySetting />} />
         <Route path="settings/score-setting" element={<ScoreSetting />} />
-        <Route path="settings/notifications-setting" element={<NotificationSetting />} />
+        <Route
+          path="settings/notifications-setting"
+          element={<NotificationSetting />}
+        />
         <Route path="settings/tuition-setting" element={<TuitionSetting />} />
-        <Route path="requests/leave-requests" element={<LeaveRequestManagement />} />
-        <Route path="requests/session-requests" element={<SessionRequestManagement />} />
-        <Route path="requests/change-schedule-requests" element={<ChangeScheduleRequestManagement />} />
-        <Route path="requests/student-class-requests" element={<StudentClassRequestsPage />} />
-        <Route path="student-class-requests" element={<StudentClassRequestsPage />} />
+        <Route
+          path="requests/leave-requests"
+          element={<LeaveRequestManagement />}
+        />
+        <Route
+          path="requests/session-requests"
+          element={<SessionRequestManagement />}
+        />
+        <Route
+          path="requests/change-schedule-requests"
+          element={<ChangeScheduleRequestManagement />}
+        />
+        <Route
+          path="requests/student-class-requests"
+          element={<StudentClassRequestsPage />}
+        />
+        <Route
+          path="student-class-requests"
+          element={<StudentClassRequestsPage />}
+        />
         <Route path="feedback" element={<FeedbackTeacher />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="communication/showcases" element={<ShowcasesPage />} />
@@ -132,13 +156,23 @@ export const privateRoutes = (
         <Route path="schools" element={<SchoolsPage />} />
         <Route path="payroll-teacher" element={<PayrollManagement />} />
         <Route path="payroll-teacher/:id" element={<PayrollOfTeacher />} />
-        <Route path="payroll-teacher/payroll/:payrollId" element={<PayrollDetail />} />
+        <Route
+          path="payroll-teacher/payroll/:payrollId"
+          element={<PayrollDetail />}
+        />
         <Route path="trigger-cronjobs" element={<TriggerDashboard />} />
-        <Route path="trigger-cronjobs/manual-trigger" element={<ManualTriggerPanel />} />
-        <Route path="payroll-teacher/payroll/:payrollId/back-pay-details" element={<BackPayDetails/>}/>
-        <Route path="user-management" element={<UserManagement />} />
-        <Route path="audit-log" element={<AuditLog />} />
-        <Route path="finance/scholarships" element={<ScholarshipManagement />} />
+        <Route
+          path="trigger-cronjobs/manual-trigger"
+          element={<ManualTriggerPanel />}
+        />
+        <Route
+          path="payroll-teacher/payroll/:payrollId/back-pay-details"
+          element={<BackPayDetails />}
+        />
+        <Route
+          path="finance/scholarships"
+          element={<ScholarshipManagement />}
+        />
       </Route>
 
       {/* Giáo viên */}
@@ -171,11 +205,23 @@ export const privateRoutes = (
         <Route path="session-details/:sessionId" element={<SessionDetails />} />
         <Route path="requests/leave" element={<LeaveRequestPage />} />
         <Route path="requests/my-requests" element={<MyRequests />} />
-        <Route path="requests/student-leave-requests" element={<TeacherStudentLeaveRequestList />} />
+        <Route
+          path="requests/student-leave-requests"
+          element={<TeacherStudentLeaveRequestList />}
+        />
         <Route path="contracts" element={<ContractsManageme />} />
-        <Route path="payroll-management" element={<PayrollManagementTeacher />} />
-        <Route path="payroll-management/:payrollId" element={<PayrollDetailTeacher />} />
-        <Route path="payroll-management/:payrollId/back-pay" element={<BackPayDetail />} />
+        <Route
+          path="payroll-management"
+          element={<PayrollManagementTeacher />}
+        />
+        <Route
+          path="payroll-management/:payrollId"
+          element={<PayrollDetailTeacher />}
+        />
+        <Route
+          path="payroll-management/:payrollId/back-pay"
+          element={<BackPayDetail />}
+        />
       </Route>
 
       {/* Học sinh */}
@@ -205,9 +251,18 @@ export const privateRoutes = (
         <Route path="recruiting-classes" element={<RecruitingClasses />} />
         <Route path="schedule" element={<ChildSchedulePage />} />
         <Route path="reports" element={<div>Reports - Coming Soon</div>} />
-        <Route path="student-leave-requests" element={<StudentLeaveRequestList />} />
-        <Route path="student-leave-requests/create" element={<StudentLeaveRequestForm />} />
-        <Route path="student-leave-requests/edit/:id" element={<StudentLeaveRequestForm />} />
+        <Route
+          path="student-leave-requests"
+          element={<StudentLeaveRequestList />}
+        />
+        <Route
+          path="student-leave-requests/create"
+          element={<StudentLeaveRequestForm />}
+        />
+        <Route
+          path="student-leave-requests/edit/:id"
+          element={<StudentLeaveRequestForm />}
+        />
         <Route path="commitments" element={<CommitmentsManagement />} />
         <Route path="financial" element={<FinancialPage />} />
       </Route>
@@ -218,14 +273,8 @@ export const privateRoutes = (
         element={<AuthMiddleware allowedRoles={['admin']} />}
       >
         <Route index element={<div>Admin Dashboard - Coming Soon</div>} />
-        <Route
-          path="user_validate"
-          element={<div>User Management - Coming Soon</div>}
-        />
-        <Route
-          path="data_system_validate"
-          element={<div>System Settings - Coming Soon</div>}
-        />
+        <Route path="user_validate" element={<UserManagement />} />
+        <Route path="data_system_validate" element={<AuditLog />} />
       </Route>
 
       {/* 404 - Not Found for authenticated users (Catch all routes) */}

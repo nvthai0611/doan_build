@@ -795,8 +795,19 @@ export class ClassManagementService {
                     select: {
                       id: true,
                       fullName: true,
+                      avatar: true,
                       email: true,
-                      phone: true,
+                    },
+                  },
+                  parent: {
+                    select: {
+                      user: {
+                        select: {
+                          id: true,
+                          fullName: true,
+                          phone: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -920,16 +931,12 @@ export class ClassManagementService {
       // Check room exists if provided và lấy capacity để làm maxStudents
       let roomCapacity: number | null = null;
       if (createClassDto.roomId) {
-        console.log('createClassDto.roomId', createClassDto.roomId);
-        
         const room = await this.prisma.room.findUnique({
           where: { id: createClassDto.roomId },
         });
 
-        console.log('room', room);
-
         if (!room) {
-          throw new HttpException(
+          throw new HttpException(  
             {
               success: false,
               message: 'Phòng học không tồn tại',
@@ -942,7 +949,6 @@ export class ClassManagementService {
         roomCapacity = room.capacity;
       }
 
-      console.log('roomCapacity', roomCapacity);
       // Check grade exists if provided
       if (createClassDto.gradeId) {
         const grade = await this.prisma.grade.findUnique({

@@ -115,10 +115,10 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
     const sanitizedFullName = sanitizeString(formData.fullName)
     if (!sanitizedFullName) {
       newErrors.fullName = "Họ và tên không được để trống"
-    } else if (sanitizedFullName.length < 2) {
-      newErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
-    } else if (sanitizedFullName.length > 30) {
-      newErrors.fullName = "Họ và tên không được vượt quá 30 ký tự"
+    } else if (sanitizedFullName.length < 5) {
+      newErrors.fullName = "Họ và tên phải có ít nhất 5 ký tự"
+    } else if (sanitizedFullName.length > 50) {
+      newErrors.fullName = "Họ và tên không được vượt quá 50 ký tự"
     }
 
     // Phone validation

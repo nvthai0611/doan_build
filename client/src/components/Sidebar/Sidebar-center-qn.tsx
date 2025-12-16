@@ -71,9 +71,9 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
   topLevel: [
     {
       title: 'Trang chủ',
-      icon: Home,
-      href: '/center-qn',
-    },
+    icon: Home,
+    href: '/center-qn',
+  },
     {
       title: 'Báo cáo doanh thu',
       icon: ChartArea,
@@ -101,13 +101,13 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
     {
       title: 'GIẢNG DẠY',
       items: [
-        {
-          title: 'Quản lý học sinh',
+  {
+    title: 'Quản lý học sinh',
           icon: GraduationCap,
-          href: '/center-qn/students',
-          children: [
-            { title: 'Danh sách học sinh', href: '/center-qn/students' },
-            { title: 'Thông tin phụ huynh', href: '/center-qn/parents' },
+    href: '/center-qn/students',
+    children: [
+      { title: 'Danh sách học sinh', href: '/center-qn/students' },
+      { title: 'Thông tin phụ huynh', href: '/center-qn/parents' },
           ],
         },
         
@@ -119,8 +119,8 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         {
           title: 'Giáo viên',
           icon: Users,
-          href: '/center-qn/teachers',
-          children: [
+    href: '/center-qn/teachers',
+    children: [
             { title: 'Danh sách giáo viên',
                 icon: GraduationCap,
                 href: '/center-qn/teachers' },
@@ -148,9 +148,9 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
                 },
               ],
             },
-          ],
-        },
-        { 
+    ],
+  },
+  {
             title: 'Buổi học hôm nay',
             icon: Clock,
             href: '/center-qn/lich-day-hom-nay',
@@ -160,11 +160,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
     {
       title: 'QUẢN LÝ',
       items: [
-        {
-          title: 'Tài chính',
-          icon: DollarSign,
-          href: '/finance',
-          children: [
+  {
+    title: 'Tài chính',
+    icon: DollarSign,
+    href: '/finance',
+    children: [
             { title: 'Hóa đơn giáo viên', href: '/center-qn/payroll-teacher' },
             // { title: 'Định nghĩa học phí', href: '/finance/tuition' },
             // { title: 'Phiếu thu - chi', href: '/finance/receipts' },
@@ -172,13 +172,13 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
             // { title: 'Báo cáo thu chi', href: '/finance/reports' },
             // { title: 'Nợ học phí', href: '/finance/debts' },
             { title: 'Học bổng & Giảm phí', href: '/center-qn/finance/scholarships' },
-          ],
-        },
-        {
+    ],
+  },
+  {
           title: 'Quản lý đào tạo',
           icon: School,
           // Không có href vì đây là parent item chỉ có children
-          children: [
+    children: [
             { title: 'Quản lý môn học', href: '/center-qn/courses' },
             { title: 'Quản lý phòng học', href: '/center-qn/rooms' },
             { title: 'Quản lý trường học', href: '/center-qn/schools' },
@@ -212,121 +212,121 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
         //     { title: 'Thông báo tự động', href: '/center-qn/communication/auto-notifications' },
         //   ],
         // },
-        {
-          title: 'Quản lý người dùng',
-          icon: UserCog,
-          href: '/center-qn/user-management',
-        },
+        // {
+        //   title: 'Quản lý người dùng',
+        //   icon: UserCog,
+        //   href: '/center-qn/user-management',
+        // },
         {
           title: 'Feedback Phụ Huynh',
-          icon: MessageSquare,
+    icon: MessageSquare,
           href: '/center-qn/feedback',
-        },
-        {
-          title: 'Báo cáo sự cố',
-          icon: AlertTriangle,
-          href: '/center-qn/incidents',
-        },
+  },
+  {
+    title: 'Báo cáo sự cố',
+    icon: AlertTriangle,
+    href: '/center-qn/incidents',
+  },
         {
           title: 'Tác Vụ Định Kỳ',
           icon: Cog,
           href: '/center-qn/trigger-cronjobs',
         },
-        {
-          title: 'Lịch sử hệ thống',
-          icon: History,
-          href: '/center-qn/audit-log',
-        },
+        // {
+        //   title: 'Lịch sử hệ thống',
+        //   icon: History,
+        //   href: '/center-qn/audit-log',
+        // },
       ],
     },
     {
       title: 'HỆ THỐNG',
       items: [
-        {
-          title: 'Cài đặt',
-          icon: Settings,
-          href: '/center-qn/settings',
-          children: [
+  {
+    title: 'Cài đặt',
+    icon: Settings,
+    href: '/center-qn/settings',
+    children: [
             {
               title: 'Thông tin trung tâm',
               href: '/center-qn/settings/center-info-setting',
             },
-            { title: 'Ngày nghỉ', href: '/center-qn/settings/holidays-setting' },
-            { title: 'Học phí', href: '/center-qn/settings/tuition-setting' },
+      { title: 'Ngày nghỉ', href: '/center-qn/settings/holidays-setting' },
+      { title: 'Học phí', href: '/center-qn/settings/tuition-setting' },
             { title: 'Bài kiểm tra', href: '/center-qn/settings/score-setting' },
-            { title: 'Thông báo', href: '/center-qn/settings/notifications-setting' },
-          ],
-        },
+      { title: 'Thông báo', href: '/center-qn/settings/notifications-setting' },
+    ],
+  },
       ],
     },
   ],
 };
 
 const teacherMenuItems = [
-  {
+    {
     title: 'Tổng quan',
-    icon: Home,
+        icon: Home,
     href: '/teacher/overview',
-  },
-  {
+    },
+    {
     title: 'Quản lý lớp học',
-    icon: Users,
+        icon: Users,
     href: '/teacher/classes',
     // children: [
     //   { title: 'Lớp được phân công', href: '/teacher/classes' },
     //   { title: 'Thống kê tiến độ', href: '/teacher/classes/progress' },
     // ],
-  },
-  // {
-  //     title: "Điểm danh",
-  //     icon: UserCheck,
-  //     href: "/teacher/attendance",
-  // },
-  {
+    },
+    // {
+    //     title: "Điểm danh",
+    //     icon: UserCheck,
+    //     href: "/teacher/attendance",
+    // },
+    {
     title: 'Quản lý điểm',
-    icon: Target,
+        icon: Target,
     href: '/teacher/grades',
-    children: [
+        children: [
       { title: 'Nhập điểm kiểm tra', href: '/teacher/grades/input' },
       { title: 'Xem điểm học sinh', href: '/teacher/grades/view' },
       { title: 'Đánh giá học sinh', href: '/teacher/grades/evaluation' },
     //   { title: 'Nhận xét định kỳ', href: '/teacher/grades/comments' },
-    ],
-  },
-  {
+        ],
+    },
+    {
     title: 'Tài liệu',
-    icon: Upload,
+        icon: Upload,
     href: '/teacher/documents',
-    children: [
+        children: [
       { title: 'Upload tài liệu', href: '/teacher/documents/upload' },
       { title: 'Quản lý files', href: '/teacher/documents/manage' },
-    ],
-  },
-  {
+        ],
+    },
+    {
     title: 'Lịch dạy cá nhân',
-    icon: Calendar,
+        icon: Calendar,
     href: '/teacher/schedule',
   },
   {
     title: 'Quản lý yêu cầu',
     icon: FileText,
     href: '/teacher/requests',
-    children: [
+        children: [
       { title: 'Đơn xin nghỉ', href: '/teacher/requests/leave' },
       { title: 'Đơn của tôi', href: '/teacher/requests/my-requests' },
       { title: 'Đơn nghỉ học sinh', href: '/teacher/requests/student-leave-requests' },
-    ],
-  },
-  {
+        ],
+    },
+    {
     title: 'Báo cáo sự cố',
-    icon: AlertTriangle,
+        icon: AlertTriangle,
     href: '/teacher/incidents',
-    children: [
+        children: [
       { title: 'Báo cáo sự cố mới', href: '/teacher/incidents/report' },
       { title: 'Quản lý báo cáo', href: '/teacher/incidents/manage' },
-    ],
-  },
-  {
+        ],
+    },
+    {
     title: 'Quản lý lương',
     icon: CircleDollarSign,
     href: '/teacher/payroll-management',
@@ -355,7 +355,7 @@ const studentMenuItems = [
         href: "/student/my-classes",
         children: undefined,
     },
-
+    
     {
         title: "Lịch học",
         icon: Calendar,
@@ -371,7 +371,7 @@ const studentMenuItems = [
     },
 
 
-
+    
 ]
 
 const parentMenuItems = [
@@ -504,21 +504,21 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
             } else if (menuItems) {
                 // Handle old structure for other roles
                 menuItems.forEach((item: any) => {
-                    if ((item as any).children) {
+                if ((item as any).children) {
                         const isMatch = item.href && pathname.startsWith(item.href) && item.href !== '/'
-                        const hasChildMatch = (item as any).children.some((c: any) =>
+                    const hasChildMatch = (item as any).children.some((c: any) => 
                             c.href && (pathname === c.href || pathname.startsWith(c.href))
-                        )
-
-                        if ((isMatch || hasChildMatch) && !expandedItems.includes(item.title)) {
-                            setExpandedItems(prev => [...prev, item.title])
-                        }
+                    )
+                    
+                    if ((isMatch || hasChildMatch) && !expandedItems.includes(item.title)) {
+                        setExpandedItems(prev => [...prev, item.title])
                     }
-                })
-            }
+                }
+            })
+        }
         }
     }, [pathname, isCollapsed])
-
+    
     const toggleExpanded = (title: string) => {
         setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
     }
@@ -784,10 +784,10 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                     ) : (
                         /* Old structure for other roles */
                         menuItems?.map((item: any) => (
-                            <div key={item.title}>
-                                {(() => {
-                                    const isExactMatch = pathname === item.href
-                                    const hasChildMatch = (item as any).children?.some((c: any) => c.href === pathname)
+                        <div key={item.title}>
+                            {(() => {
+                                const isExactMatch = pathname === item.href
+                                const hasChildMatch = (item as any).children?.some((c: any) => c.href === pathname)
                                 
                                     const hasChildren = (item as any).children && (item as any).children.length > 0
                                     const isPartialMatch = hasChildren && 
@@ -795,69 +795,69 @@ export function SidebarCenterQn({ className, onToggleCollapse }: SidebarProps) {
                                         item.href !== '/' && 
                                         pathname.startsWith(item.href + '/') && 
                                         !isExactMatch
-                                    const isTopActive = isExactMatch || hasChildMatch || isPartialMatch
+                                const isTopActive = isExactMatch || hasChildMatch || isPartialMatch
+                                
+                                return (
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "w-full h-10 transition-all text-[15px]",
+                                            isCollapsed ? "justify-center px-0" : "justify-start gap-3 pr-2",
+                                            isTopActive && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+                                        )}
+                                        onClick={() => {
+                                            if ((item as any).children) {
+                                                if (!isCollapsed) toggleExpanded(item.title)
+                                            } else {
+                                                navigate(item.href)
+                                            }
+                                        }}
+                                    >
+                                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                                        {!isCollapsed && (
+                                            <>
+                                                <span className="flex-1 text-left">{item.title}</span>
+                                                {(item as any).children && (
+                                                    <ChevronDown
+                                                        className={cn(
+                                                            "w-4 h-4 transition-transform",
+                                                            expandedItems.includes(item.title) && "rotate-180",
+                                                        )}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
+                                    </Button>
+                                )
+                            })()}
 
-                                    return (
-                                        <Button
-                                            variant="ghost"
-                                            className={cn(
-                                                "w-full h-10 transition-all text-[15px]",
-                                                isCollapsed ? "justify-center px-0" : "justify-start gap-3 pr-2",
-                                                isTopActive && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
-                                            )}
-                                            onClick={() => {
-                                                if ((item as any).children) {
-                                                    if (!isCollapsed) toggleExpanded(item.title)
-                                                } else {
-                                                    navigate(item.href)
-                                                }
-                                            }}
-                                        >
-                                            <item.icon className="w-4 h-4 flex-shrink-0" />
-                                            {!isCollapsed && (
-                                                <>
-                                                    <span className="flex-1 text-left">{item.title}</span>
-                                                    {(item as any).children && (
-                                                        <ChevronDown
-                                                            className={cn(
-                                                                "w-4 h-4 transition-transform",
-                                                                expandedItems.includes(item.title) && "rotate-180",
-                                                            )}
-                                                        />
-                                                    )}
-                                                </>
-                                            )}
-                                        </Button>
-                                    )
-                                })()}
-
-                                {!isCollapsed && (item as any).children && expandedItems.includes(item.title) && (
-                                    <div className="ml-7 space-y-1 mt-1">
-                                        {(item as any).children.map((child: any) => {
-                                            const isExactActive = pathname === child.href
-                                            const isPartialActive = pathname.startsWith(child.href) && child.href !== '/' && !isExactActive
-                                            const isActive = isExactActive || isPartialActive
-
-                                            return (
-                                                <Button
-                                                    key={child.title}
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => navigate(child.href)}
-                                                    className={cn(
-                                                        "w-full justify-start text-[14px]",
-                                                        isActive
-                                                            ? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
-                                                            : "text-muted-foreground hover:text-foreground",
-                                                    )}
-                                                >
-                                                    {child.title}
-                                                </Button>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                            {!isCollapsed && (item as any).children && expandedItems.includes(item.title) && (
+                                <div className="ml-7 space-y-1 mt-1">
+                                    {(item as any).children.map((child: any) => {
+                                        const isExactActive = pathname === child.href
+                                        const isPartialActive = pathname.startsWith(child.href) && child.href !== '/' && !isExactActive
+                                        const isActive = isExactActive || isPartialActive
+                                        
+                                        return (
+                                            <Button
+                                                key={child.title}
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => navigate(child.href)}
+                                                className={cn(
+                                                    "w-full justify-start text-[14px]",
+                                                    isActive
+                                                        ? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+                                                        : "text-muted-foreground hover:text-foreground",
+                                                )}
+                                            >
+                                                {child.title}
+                                            </Button>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
                         ))
                     )}
                 </div>

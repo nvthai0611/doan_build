@@ -183,7 +183,6 @@ export const centerOwnerScheduleService = {
     const response = await ApiService.get<Attendance[]>(
       `/admin-center/schedule-management/sessions/${sessionId}/attendance`,
     );
-    console.log(response);
     
     return response.data as any;
   },

@@ -53,7 +53,7 @@ export interface AuditLogDetailResponse {
   message: string;
 }
 
-const BASE_URL = '/admin-center/audit-log';
+const BASE_URL = '/adminit/audit-log';
 
 export const auditLogService = {
   async getAuditLogs(params?: QueryAuditLogParams): Promise<AuditLogListResponse> {

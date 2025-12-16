@@ -6,7 +6,7 @@ import { CreateUserDto } from '../dto/user/create-user.dto';
 import { UpdateUserDto } from '../dto/user/update-user.dto';
 import { ResetPasswordDto } from '../dto/user/reset-password.dto';
 
-@ApiTags('Admin Center - User Management')
+@ApiTags('Admin It - User Management')
 @Controller('user-management')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

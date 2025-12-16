@@ -281,6 +281,8 @@ const saveMutation = useMutation({
       return;
     }
 
+    const totalStudents = studentListData?.class?.enrollments?.length || 0;
+    
     const recordsToSave = Object.entries(localAttendance)
       .filter(([_, status]) => status !== null)
       .map(([studentId, status]) => ({
@@ -288,7 +290,8 @@ const saveMutation = useMutation({
         status: status!,
         note: '',
       }));
-
+      console.log(recordsToSave);
+      
     if (recordsToSave.length === 0) {
       toast.error('Vui lòng điểm danh trước khi lưu', {
         duration: 3000,
@@ -296,10 +299,8 @@ const saveMutation = useMutation({
       return;
     }
 
-    if (
-      !attendanceData?.length &&
-      recordsToSave?.length < studentListData?.class?.enrollments?.length
-    ) {
+    // Kiểm tra xem tất cả học sinh đã được điểm danh chưa
+    if (recordsToSave.length < totalStudents) {
       toast.error('Vui lòng điểm danh tất cả học sinh trước khi lưu', {
         duration: 3000,
       });
@@ -549,15 +550,51 @@ const saveMutation = useMutation({
         </div>
       </div>
 
-      {hasChanges && checkDate && (
-        <Badge
-          variant="outline"
-          className="bg-amber-50 text-amber-700 border-amber-300 mb-4"
-        >
-          <AlertCircle className="h-4 w-4 mr-1" />
-          Có thay đổi chưa lưu
-        </Badge>
-      )}
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+        <div>
+          {hasChanges && checkDate && (
+            <Badge
+              variant="outline"
+              className="bg-amber-50 text-amber-700 border-amber-300"
+            >
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Có thay đổi chưa lưu
+            </Badge>
+          )}
+        </div>
+
+        {absentStudents.length > 0 && checkDate && (
+          <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all-absent"
+                checked={selectAll}
+                onCheckedChange={handleSelectAll}
+                className="h-4 w-4"
+              />
+              <label
+                htmlFor="select-all-absent"
+                className="text-sm font-medium text-amber-800 cursor-pointer whitespace-nowrap"
+              >
+                Chọn {absentStudents.length} học sinh vắng
+              </label>
+            </div>
+            <Button
+              onClick={sendAbsentEmails}
+              variant="outline"
+              size="sm"
+              className={cn(
+                'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300',
+                'flex items-center gap-2 whitespace-nowrap'
+              )}
+              disabled={selectedStudents.length === 0}
+            >
+              <Mail className="h-4 w-4" />
+              Gửi email ({selectedStudents.length})
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Dialog hiển thị danh sách đơn xin nghỉ */}
       <Dialog open={showLeaveRequests} onOpenChange={setShowLeaveRequests}>
@@ -674,7 +711,7 @@ const saveMutation = useMutation({
               </CardTitle>
             </div>
 
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-1 flex-wrap">
              {  (
                <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded border border-slate-200">
                  <Checkbox
@@ -712,38 +749,6 @@ const saveMutation = useMutation({
                   <FileText className="h-4 w-4" />
                   Đơn xin nghỉ ({leaveRequestsData.length})
                 </Button>
-              )}
-
-              {absentStudents.length > 0 && checkDate && (
-                <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="select-all-absent"
-                      checked={selectAll}
-                      onCheckedChange={handleSelectAll}
-                      className="h-4 w-4"
-                    />
-                    <label
-                      htmlFor="select-all-absent"
-                      className="text-xs font-medium text-amber-800 cursor-pointer"
-                    >
-                      Chọn {absentStudents.length} học sinh vắng
-                    </label>
-                  </div>
-                  <Button
-                    onClick={sendAbsentEmails}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300',
-                      'flex items-center gap-1 text-xs py-1 h-6'
-                    )}
-                    disabled={selectedStudents.length === 0}
-                  >
-                    <Mail className="h-3 w-3" />
-                    Gửi email ({selectedStudents.length})
-                  </Button>
-                </div>
               )}
             </div>
           </div>

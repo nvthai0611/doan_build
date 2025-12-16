@@ -9,7 +9,7 @@ export class GradesController {
   constructor(private readonly academicTrackingService: AcademicTrackingService) {}
   /**
    * GET /student/grades/classes
-   * Danh sách lớp mà học sinh đang/đã học
+   * Danh sách lớp mà học sinh đã/đang học (không giới hạn status lớp)
    */
   @Get('classes')
   async getClasses(@Req() req: any) {
@@ -21,7 +21,6 @@ export class GradesController {
       JOIN classes c ON c.id = e.class_id
       JOIN subjects s ON s.id = c.subject_id
       WHERE e.student_id = $1::uuid
-      AND c.status = 'active'
       ORDER BY c.name ASC
       `,
       studentId || null,
