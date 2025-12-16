@@ -8,7 +8,6 @@ export class FinancialService {
 
 async getAllFeeRecordsForParent (parentId: string, status: string){
     try {
-       
         if(!checkId(parentId)){
             throw new HttpException({
                 message: 'ID phụ huynh không hợp lệ',
@@ -26,7 +25,6 @@ async getAllFeeRecordsForParent (parentId: string, status: string){
         }
         const studentIds = getStudents.map(student => student.id);
 
-        // ✅ Tính khoảng thời gian tháng trước nếu status = 'pending'
         let attendanceWhereClause: any = {
             status: {
                 not: 'excused'
@@ -53,7 +51,9 @@ async getAllFeeRecordsForParent (parentId: string, status: string){
         const feeRecords = await this.prisma.feeRecord.findMany({
             where: {
                 studentId: { in: studentIds },
-                 status: status ? status : undefined 
+                 status: status === 'pending' 
+            ? { in: ['pending', 'overdue'] } 
+            : (status ? status : undefined)
                 },
                 include:{
                     class: {

@@ -1473,6 +1473,7 @@ export class StudentManagementService {
   }
 
   try {
+    
     // 1. Lấy thông tin các FeeRecord cũ để xác định classIds và period
     const existingFeeRecords = await this.prisma.feeRecord.findMany({
       where: {
@@ -1521,10 +1522,11 @@ export class StudentManagementService {
 
     // 5. Tính toán lại dựa trên điểm danh thực tế
     const recalculatedData = await this.getStudentAttendanceForFeeCalculation(studentId, classIds);
+      const now = new Date();
+      const deadlinePublish = new Date(now.getFullYear(), now.getMonth(), 2, 23, 0, 0);
 
     // 6. Transaction: Hủy FeeRecord cũ và tạo mới
     const transactionResult = await this.prisma.$transaction(async (prisma) => {
-      const now = new Date();
       
       // 6.1. Đánh dấu các FeeRecord cũ là cancelled
       await prisma.feeRecord.updateMany({
@@ -1564,7 +1566,7 @@ export class StudentManagementService {
               totalAmount: classAttendance.finalAmount,
               scholarship: classAttendance.scholarshipPercent,
               dueDate,
-              status: 'calculated',
+              status: now <= dueDate ? 'pending' : 'overdue',
               notes: `[TÍNH LẠI] Phí học ${recalculatedData.periodDisplay} - ${classAttendance.className}\n` +
                 `Số buổi: ${classAttendance.attendedSessions}/${classAttendance.totalSessions}\n` +
                 `Học bổng: ${classAttendance.scholarshipPercent}%\n` +
@@ -1579,14 +1581,13 @@ export class StudentManagementService {
       const oldTotalAmount = existingFeeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
       const newTotalAmount = newFeeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
       const difference = newTotalAmount - oldTotalAmount;
-
       return {
         cancelledRecords: existingFeeRecords.map(record => ({
           id: record.id,
           classId: record.classId,
           className: record.class.name,
           oldAmount: Number(record.totalAmount),
-          status: 'cancelled'
+          status: now <= deadlinePublish ? 'calculated' : 'pending'
         })),
         newFeeRecords: newFeeRecords.map(record => ({
           id: record.id,
@@ -1612,7 +1613,8 @@ export class StudentManagementService {
     });
 
     // 7. Gửi email thông báo cho phụ huynh (nếu có)
-    try {
+    if(now >= new Date(Date.UTC(now.getFullYear(), now.getMonth(), 3))) {
+      try {
       if (student.parent?.user?.email) {
         const emailContent = generateRecalculationEmailTemplate({
           studentName: student.user.fullName,
@@ -1631,6 +1633,7 @@ export class StudentManagementService {
       }
     } catch (mailError) {
       console.error('Lỗi gửi mail thông báo (không ảnh hưởng transaction):', mailError);
+    }
     }
 
     return {

@@ -128,7 +128,7 @@ export function JobExecutionsTable({
     },
     {
       key: "jobType",
-      header: "Job Type",
+      header: "Loại công việc",
       render: (job) => <span className="font-medium text-sm">{formatJobType(job.jobType)}</span>,
       sortKey: "jobType",
       searchPlaceholder: "Search job type...",
@@ -141,7 +141,7 @@ export function JobExecutionsTable({
     },
     {
       key: "durationMs",
-      header: "Duration",
+      header: "Thời lượng",
       render: (job) => <span className="text-sm">{formatDuration(job.durationMs)}</span>,
       sortKey: "durationMs",
     },
