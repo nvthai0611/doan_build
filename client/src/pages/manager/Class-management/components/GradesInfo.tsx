@@ -52,8 +52,6 @@ export default function DashboardTab({ classId, classData }: DashboardTabProps) 
     }
   }
 
-  console.log(dashboardData);
-  
 
   const getStarRating = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (

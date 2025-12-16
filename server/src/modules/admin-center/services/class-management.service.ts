@@ -4514,21 +4514,16 @@ export class ClassManagementService {
       
 
       // 4. Doanh thu từ học phí đã thanh toán (chỉ tính cho lớp này)
-      const revenue = await this.prisma.payment.aggregate({
+      const revenue = await this.prisma.feeRecord.findMany({
         where: {
-          status: 'completed',
-          feeRecordPayments: {
-            some: {
-              feeRecord: {
-                classId: classId, // Chỉ tính fee records của lớp này
-              },
-            },
-          },
+          classId: classId,
+          status: 'paid',
         },
-        _sum: {
-          amount: true,
+        select: {
+          totalAmount: true,
         },
       });
+      const totalRevenue = revenue.reduce((sum, r) => sum + Number(r.totalAmount), 0);
 
       // 5. Thống kê điểm danh
       const attendanceStats =
@@ -4634,7 +4629,7 @@ export class ClassManagementService {
           teachers: teachersCount,
           students: studentsCount,
           lessons: completedSessions,
-          revenue: revenue._sum.amount || 0,
+          revenue: totalRevenue || 0,
           rating: Number(rating.toFixed(1)),
           reviews: reviewsCount,
           recentReviews: feedbacks.map((f) => ({
