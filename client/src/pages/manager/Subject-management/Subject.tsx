@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubjectDialog } from "./components/SubjectDialog"
 import { SubjectsList } from "./components/SubjectList"
 import { useSubjects } from "@/hooks/use-subjects"
+import { useToast } from "@/hooks/use-toast"
 import { Plus, BookOpen } from "lucide-react"
 
 export default function SubjectsPage() {
@@ -14,6 +15,16 @@ export default function SubjectsPage() {
   const [editingSubject, setEditingSubject] = useState<(typeof subjects)[0] | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const { toast } = useToast()
+  const [lockedIds, setLockedIds] = useState<string[]>([])
+
+  // Lock delete for subjects that are in use
+  useEffect(() => {
+    const ids = (Array.isArray(subjects) ? subjects : [])
+      .filter((s: any) => s?.isInUse)
+      .map((s) => s.id)
+    setLockedIds(ids)
+  }, [subjects])
 
   // Đảm bảo subjects luôn là mảng
   const subjectsArray = Array.isArray(subjects) ? subjects : []
@@ -25,7 +36,7 @@ export default function SubjectsPage() {
       setOpen(false)
       setEditingSubject(null)
     } catch (error) {
-      alert("Lỗi khi thêm môn học")
+      toast({ title: "Lỗi khi thêm môn học", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -39,7 +50,7 @@ export default function SubjectsPage() {
       setOpen(false)
       setEditingSubject(null)
     } catch (error) {
-      alert("Lỗi khi cập nhật môn học")
+      toast({ title: "Lỗi khi cập nhật môn học", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -50,8 +61,9 @@ export default function SubjectsPage() {
     setIsDeleting(id)
     try {
       await deleteSubject(id)
-    } catch (error) {
-      alert("Lỗi khi xóa môn học")
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || "Lỗi khi xóa môn học"
+      toast({ title: message, variant: "destructive" })
     } finally {
       setIsDeleting(null)
     }
@@ -103,6 +115,7 @@ export default function SubjectsPage() {
           onEdit={handleOpenDialog}
           onDelete={handleDeleteSubject}
           isDeleting={isDeleting}
+          lockedIds={lockedIds}
         />
       )}
 
