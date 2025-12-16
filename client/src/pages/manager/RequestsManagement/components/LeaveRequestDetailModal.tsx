@@ -125,7 +125,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
             Chi tiết đơn xin nghỉ phép
           </DialogTitle>
         </DialogHeader>

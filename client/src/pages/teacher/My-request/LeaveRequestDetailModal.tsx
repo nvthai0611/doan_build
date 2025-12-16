@@ -139,7 +139,6 @@ export default function LeaveRequestDetailModal({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/20">
-              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold">

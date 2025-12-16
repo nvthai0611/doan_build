@@ -118,7 +118,7 @@ export default function SessionDetails() {
         newDate: session.date,
         newStartTime: session.startTime,
         newEndTime: session.endTime,
-        newRoomId: '', // Có thể lấy từ session nếu cần
+        newRoomId: '',
         reason: '',
         notes: ''
       })
@@ -129,6 +129,20 @@ export default function SessionDetails() {
   const handleRescheduleSubmit = async () => {
     if (!session || !rescheduleData.newDate || !rescheduleData.newStartTime || !rescheduleData.newEndTime || !rescheduleData.reason) {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc')
+      return
+    }
+    if (rescheduleData.newEndTime <= rescheduleData.newStartTime) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu')
+      return
+    }
+    const isSameSchedule =
+      rescheduleData.newDate === session.date &&
+      rescheduleData.newStartTime === session.startTime &&
+      rescheduleData.newEndTime === session.endTime &&
+      (!rescheduleData.newRoomId || rescheduleData.newRoomId === session.room)
+
+    if (isSameSchedule) {
+      toast.error('Lịch mới phải khác lịch hiện tại')
       return
     }
 
@@ -587,6 +601,20 @@ export default function SessionDetails() {
                   required
                 />
               </div>
+              {/* <div>
+                <Label htmlFor="newRoomId">Phòng học mới (tùy chọn)</Label>
+                <Input
+                  id="newRoomId"
+                  placeholder="Nhập ID phòng học mới"
+                  value={rescheduleData.newRoomId}
+                  onChange={(e) =>
+                    setRescheduleData((prev) => ({
+                      ...prev,
+                      newRoomId: e.target.value,
+                    }))
+                  }
+                />
+              </div> */}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -659,7 +687,12 @@ export default function SessionDetails() {
                 id="notes"
                 placeholder="Nhập ghi chú thêm (tùy chọn)"
                 value={rescheduleData.notes}
-                onChange={(e) => setRescheduleData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) =>
+                  setRescheduleData((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))
+                }
                 rows={3}
               />
             </div> */}
@@ -668,17 +701,6 @@ export default function SessionDetails() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-blue-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-blue-700">
