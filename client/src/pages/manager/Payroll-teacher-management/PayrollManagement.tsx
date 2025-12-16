@@ -264,8 +264,7 @@ const PayrollManagement: React.FC = () => {
       return
     }
 
-    // ✅ Tính toán delay dựa trên số lượng
-    const delaySeconds = pendingPayrollIds.length < 5 ? 10 : 15
+    const delaySeconds = pendingPayrollIds.length < 5 ? 5 : 10
     
     setIsProcessing(true)
     setCountdown(delaySeconds)

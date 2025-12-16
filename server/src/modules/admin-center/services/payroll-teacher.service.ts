@@ -463,7 +463,7 @@ export class PayRollTeacherService {
       await Promise.all(jobs);
 
       this.logger.log(
-        `✅ Đã queue ${payrollsToNotify.length}/${payrolls.length} thông báo payroll`,
+        ` Đã queue ${payrollsToNotify.length}/${payrolls.length} thông báo payroll`,
       );
 
       return {
@@ -482,9 +482,9 @@ export class PayRollTeacherService {
         })),
       };
     } catch (error: any) {
-      this.logger.error('❌ Lỗi khi gửi thông báo payroll:', error);
+      this.logger.error(' Lỗi khi gửi thông báo payroll:', error);
 
-      // ✅ Cập nhật status execution thành failed
+      //  Cập nhật status execution thành failed
       if (executionId) {
         const durationMs = Date.now() - startTime;
         await this.prisma.cronJobExecution.update({

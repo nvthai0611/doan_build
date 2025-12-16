@@ -86,10 +86,10 @@ export class PayrollNotificationProcessor {
       }
 
       this.logger.log(
-        `✅ Payroll notification sent to ${payroll.teacher.user.email}`,
+        ` Payroll notification sent to ${payroll.teacher.user.email}`,
       );
     } catch (error: any) {
-      this.logger.error('❌ Failed to send payroll notification:', error);
+      this.logger.error(' Failed to send payroll notification:', error);
 
       // ✅ Ghi lại chi tiết lỗi
       errorDetails.push({
