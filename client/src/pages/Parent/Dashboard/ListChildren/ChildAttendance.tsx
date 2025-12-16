@@ -110,34 +110,20 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
   }
 
   const getAttendanceBadge = (status?: string | null) => {
+    const base = "px-2 py-1 text-xs border rounded"
     switch (status) {
       case 'present':
-        return <Badge className="bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
-          <CheckCircle className="w-3 h-3" />
-          Có mặt
-        </Badge>
+        return <span className={`${base} bg-gray-100 text-gray-800`}>Có mặt</span>
       case 'absent':
-        return <Badge className="bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
-          <XCircle className="w-3 h-3" />
-          Vắng mặt
-        </Badge>
+        return <span className={`${base} bg-gray-100 text-gray-800`}>Vắng mặt</span>
       case 'late':
-        return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          Đi muộn
-        </Badge>
+        return <span className={`${base} bg-gray-100 text-gray-800`}>Đi muộn</span>
       case 'excused':
-        return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1">
-          <UserCheck className="w-3 h-3" />
-          Có phép
-        </Badge>
+        return <span className={`${base} bg-gray-100 text-gray-800`}>Có phép</span>
       case null:
       case undefined:
       default:
-        return <Badge variant="secondary" className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          Chưa điểm danh
-        </Badge>
+        return <span className={`${base} bg-gray-50 text-gray-600`}>Chưa điểm danh</span>
     }
   }
 
@@ -186,89 +172,67 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
       </div>
 
       {/* Thống kê điểm danh */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-blue-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-blue-800">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </div>
+      <Card className="border">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
             Thống kê điểm danh
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.presentCount}</div>
-              <div className="text-sm text-blue-600 font-medium">Có mặt</div>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm text-gray-800">
+            <div className="p-3 border rounded">
+              <div className="text-2xl font-semibold">{attendanceStats.presentCount}</div>
+              <div>Có mặt</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.absentCount}</div>
-              <div className="text-sm text-blue-600 font-medium">Vắng mặt</div>
+            <div className="p-3 border rounded">
+              <div className="text-2xl font-semibold">{attendanceStats.absentCount}</div>
+              <div>Vắng mặt</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.lateCount}</div>
-              <div className="text-sm text-blue-600 font-medium">Đi muộn</div>
+            <div className="p-3 border rounded">
+              <div className="text-2xl font-semibold">{attendanceStats.lateCount}</div>
+              <div>Đi muộn</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.excusedCount}</div>
-              <div className="text-sm text-blue-600 font-medium">Có phép</div>
-            </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <Target className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{attendanceStats.attendanceRate}%</div>
-              <div className="text-sm text-blue-600 font-medium">Tỷ lệ tham dự</div>
+            <div className="p-3 border rounded">
+              <div className="text-2xl font-semibold">{attendanceStats.excusedCount}</div>
+              <div>Có phép</div>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Tổng số buổi học: <strong>{attendanceStats.totalSessions}</strong></span>
-              <span>Chưa điểm danh: <strong>{attendanceStats.notRecordedCount}</strong></span>
-            </div>
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+            <span>
+              Tổng số buổi học: <strong>{attendanceStats.totalSessions}</strong>
+            </span>
+            <span>
+              Chưa điểm danh: <strong>{attendanceStats.notRecordedCount}</strong>
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {/* Danh sách buổi học */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-blue-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-blue-800">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-blue-600" />
-            </div>
+      <Card className="border">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
             Lịch sử điểm danh
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           {attendanceRecords.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Calendar className="w-8 h-8 text-gray-400" />
-              </div>
-              <p className="text-lg font-medium text-gray-600">Chưa có dữ liệu điểm danh</p>
-              <p className="text-sm text-gray-500 mt-1">Dữ liệu sẽ được cập nhật khi có buổi học</p>
-            </div>
+            <p className="text-sm text-gray-600 text-center py-8">
+              Chưa có dữ liệu điểm danh. Dữ liệu sẽ được cập nhật khi có buổi học.
+            </p>
           ) : (
             <div className="space-y-4">
               {attendanceRecords.map((s, idx) => (
-                <div key={s.id || idx} className="flex items-center justify-between p-5 border rounded-xl hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-500">
+                <div
+                  key={s.id || idx}
+                  className="flex items-center justify-between p-4 border rounded bg-white"
+                >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <p className="font-medium">{`Buổi ${idx + 1}`}</p>
-                      <Badge className={statusBadge(getDisplaySessionStatus(s as any))}>{statusTextVi(getDisplaySessionStatus(s as any))}</Badge>
+                      <Badge className={statusBadge(getDisplaySessionStatus(s as any))}>
+                        {statusTextVi(getDisplaySessionStatus(s as any))}
+                      </Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -289,8 +253,16 @@ export function ChildAttendance({ child }: ChildAttendanceProps) {
                   </div>
                   <div className="flex items-center gap-4">
                     {getAttendanceBadge(s.attendanceStatus)}
-                    <Button variant="ghost" size="sm" onClick={() => { setSelectedSessionId(s.id); setSelectedSession(s); setDetailOpen(true) }}>
-                      <Eye className="h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSessionId(s.id)
+                        setSelectedSession(s)
+                        setDetailOpen(true)
+                      }}
+                    >
+                      Xem chi tiết
                     </Button>
                   </div>
                 </div>
