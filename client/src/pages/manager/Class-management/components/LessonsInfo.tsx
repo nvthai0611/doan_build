@@ -590,10 +590,11 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           
           // Hiển thị thông báo
           if (adjustedEndTime !== editingSession.endTime) {
-            toast.warning(
-              `Phát hiện trùng lịch! Đã tự động điều chỉnh giờ kết thúc: ${editingSession.endTime} → ${adjustedEndTime}\n` +
+            setConflictDialog({
+              open: true,
+              message: `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
               `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}`
-            );
+            });
           }
         }
       }
