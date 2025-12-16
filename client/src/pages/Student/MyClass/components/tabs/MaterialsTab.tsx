@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, FileDown } from "lucide-react"
 import Loading from "../../../../../components/Loading/LoadingPage"
 import { studentMaterialsService } from "../../../../../services/student/materials/materials.service"
 import { StudentMaterial } from "../../../../../services/student/materials/materials.types"
@@ -60,38 +59,30 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
   }
 
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="bg-blue-50 border-b">
-        <CardTitle className="flex items-center gap-2 text-blue-900">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <BookOpen className="h-5 w-5 text-blue-700" />
-          </div>
+    <Card className="border rounded">
+      <CardHeader>
+        <CardTitle className="text-base font-semibold text-gray-900">
           Tài liệu học tập
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         {isLoading ? (
           <Loading />
         ) : (
           <div className="space-y-6">
             {items.length > 0 ? (
               <div className="space-y-4">
-                {/* Stats */}
                 {data?.stats && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border">
-                    <div className="text-center">
-                      <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <BarChart3 className="w-6 h-6 text-blue-700" />
-                      </div>
-                      <div className="text-xl font-bold text-blue-800">{data.stats.totalSize ? formatSize(data.stats.totalSize) : '0'}</div>
-                      <div className="text-sm text-gray-600">Tổng dung lượng</div>
+                  <div className="text-sm text-gray-700">
+                    <div>Tổng dung lượng:{" "}
+                      <span className="font-medium">
+                        {data.stats.totalSize ? formatSize(data.stats.totalSize) : "0"}
+                      </span>
                     </div>
-                    <div className="text-center">
-                      <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <FileDown className="w-6 h-6 text-blue-700" />
-                      </div>
-                      <div className="text-xl font-bold text-blue-800">{data.stats.recentUploads || 0}</div>
-                      <div className="text-sm text-gray-600">Tài liệu mới</div>
+                    <div>Tài liệu mới:{" "}
+                      <span className="font-medium">
+                        {data.stats.recentUploads || 0}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -99,16 +90,21 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                 {/* Materials List */}
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-blue-600">
+                    <div
+                      key={item.id}
+                      className="border rounded p-4 bg-white hover:bg-gray-50 transition-colors"
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="p-1 bg-blue-100 rounded">
-                              <FileType className="w-4 h-4 text-blue-700" />
-                            </div>
-                            <h3 className="font-semibold text-lg text-gray-800">{item.title}</h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-base text-gray-800">
+                              {item.title}
+                            </h3>
                             {item.category && (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-200">
+                              <Badge
+                                variant="secondary"
+                                className="bg-gray-100 text-gray-800 border border-gray-300 text-xs"
+                              >
                                 {getCategoryLabel(item.category)}
                               </Badge>
                             )}
@@ -118,33 +114,15 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                             <p className="text-sm text-gray-600 mb-3">{item.description}</p>
                           )}
                           
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-blue-100 rounded">
-                                <FileText className="w-3 h-3 text-blue-700" />
-                              </div>
-                              <span>{item.fileName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-blue-100 rounded">
-                                <Download className="w-3 h-3 text-blue-700" />
-                              </div>
-                              <span>{formatSize(item.fileSize)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-blue-100 rounded">
-                                <Calendar className="w-3 h-3 text-blue-700" />
-                              </div>
-                              <span>{new Date(item.uploadedAt).toLocaleDateString('vi-VN')}</span>
-                            </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600 mt-2">
+                            <div>{item.fileName}</div>
+                            <div>{formatSize(item.fileSize)}</div>
+                            <div>{new Date(item.uploadedAt).toLocaleDateString("vi-VN")}</div>
                           </div>
                           
                           {item.teacherName && (
-                            <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-                              <div className="p-1 bg-blue-100 rounded">
-                                <User className="w-3 h-3 text-blue-700" />
-                              </div>
-                              <span>Giáo viên: {item.teacherName}</span>
+                            <div className="mt-2 text-sm text-gray-600">
+                              Giáo viên: {item.teacherName}
                             </div>
                           )}
                         </div>
@@ -154,9 +132,8 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                           size="sm" 
                           onClick={() => handleDownload(item)} 
                           disabled={!item.fileUrl}
-                            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white border-0"
+                          variant="outline"
                         >
-                            <Download className="w-4 h-4" />
                           Tải xuống
                         </Button>
                         </div>
@@ -166,12 +143,11 @@ export function MaterialsTab({ classId }: MaterialsTabProps) {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-12">
-                <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-lg font-medium text-gray-600">Chưa có tài liệu nào</p>
-                <p className="text-sm text-gray-500 mt-1">Giáo viên chưa tải lên tài liệu cho lớp học này</p>
+              <div className="text-center py-8 text-sm text-gray-600">
+                <p className="text-base font-medium">Chưa có tài liệu nào</p>
+                <p className="mt-1 text-gray-500">
+                  Giáo viên chưa tải lên tài liệu cho lớp học này.
+                </p>
               </div>
             )}
           </div>

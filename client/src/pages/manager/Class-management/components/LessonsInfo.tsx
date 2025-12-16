@@ -12,7 +12,8 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Plus, MoreHorizontal, Users, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar, Plus, MoreHorizontal, Users, Clock, XCircle, AlertCircle, Search, Filter, RefreshCw, Star, Info, Undo, Check, Trash2, CalendarOff, Edit, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, PaginationConfig } from '../../../../components/common/Table/DataTable';
 import { usePagination } from '../../../../hooks/usePagination';
@@ -62,6 +63,10 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const [postponeStartTime, setPostponeStartTime] = useState('');
   const [postponeEndTime, setPostponeEndTime] = useState('');
   const [isPostponing, setIsPostponing] = useState(false);
+  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
   
   // Pagination hook
   const pagination = usePagination({
@@ -369,11 +374,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         const conflictText = conflicts
           .map((c: any) => `${c.className} (${c.startTime} - ${c.endTime})`)
           .join(', ');
-        toast.error(
-          conflictText
+        setConflictDialog({
+          open: true,
+          message: conflictText
             ? `Không thể lùi lịch do trùng với: ${conflictText}`
-            : 'Không thể lùi lịch do trùng lịch với lớp khác.'
-        );
+            : 'Không thể lùi lịch do trùng lịch với lớp khác.',
+        });
         setIsPostponing(false);
         return;
       }
@@ -391,43 +397,36 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 
   const renderStatusBadge = (session: any) => {
     const status = session.status;
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string; icon: any }> = {
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
       [SessionStatus.END]: { 
         variant: 'default', 
         label: SESSION_STATUS_LABELS[SessionStatus.END], 
-        className: SESSION_STATUS_COLORS[SessionStatus.END],
-        icon: CheckCircle
+        className: SESSION_STATUS_COLORS[SessionStatus.END]
       },
       [SessionStatus.HAPPENING]: { 
         variant: 'secondary', 
         label: SESSION_STATUS_LABELS[SessionStatus.HAPPENING],
-        className: SESSION_STATUS_COLORS[SessionStatus.HAPPENING],
-        icon: Clock
+        className: SESSION_STATUS_COLORS[SessionStatus.HAPPENING]
       },
       [SessionStatus.HAS_NOT_HAPPENED]: {   
         variant: 'destructive', 
         label: SESSION_STATUS_LABELS[SessionStatus.HAS_NOT_HAPPENED],
-        className: SESSION_STATUS_COLORS[SessionStatus.HAS_NOT_HAPPENED],
-        icon: XCircle
+        className: SESSION_STATUS_COLORS[SessionStatus.HAS_NOT_HAPPENED]
       },
       [SessionStatus.DAY_OFF]: {   
         variant: 'outline', 
         label: SESSION_STATUS_LABELS[SessionStatus.DAY_OFF],
-        className: SESSION_STATUS_COLORS[SessionStatus.DAY_OFF],
-        icon: CalendarOff
+        className: SESSION_STATUS_COLORS[SessionStatus.DAY_OFF]
       },
       [SessionStatus.CANCELLED]: {
         variant: 'destructive', 
         label: SESSION_STATUS_LABELS[SessionStatus.CANCELLED],
-        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED],
-        icon: XCircle
+        className: SESSION_STATUS_COLORS[SessionStatus.CANCELLED]
       }
     };
     const config = variants[status] || variants[SessionStatus.HAPPENING];
-    const Icon = config.icon;
     const badge = (
       <Badge variant={config.variant} className={config.className}>
-        <Icon className="h-3 w-3 mr-1" />
         {config.label}
       </Badge>
     );
@@ -1044,6 +1043,21 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <Dialog
+        open={conflictDialog.open}
+        onOpenChange={(open) => setConflictDialog((prev) => ({ ...prev, open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Không thể lùi lịch</DialogTitle>
+            <DialogDescription>{conflictDialog.message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setConflictDialog({ open: false, message: '' })}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <Card>

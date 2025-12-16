@@ -514,12 +514,12 @@ export class ScheduleManagementService {
       session.sessionDate.getUTCFullYear(),
       session.sessionDate.getUTCMonth(),
       session.sessionDate.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
+      23,
+      59,
+      59,
+      999,
     ));
-
+    
     // Lấy tất cả học sinh đang học trong lớp và đã enroll trước hoặc vào ngày buổi học
     const enrollments = await this.prisma.enrollment.findMany({
       where: {

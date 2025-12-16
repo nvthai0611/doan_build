@@ -37,6 +37,8 @@ export function ParentRegister() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [childErrors, setChildErrors] = useState<Record<string, Partial<Record<'fullName' | 'dateOfBirth' | 'gender' | 'schoolId', string>>>>({})
 
   // Fetch schools using TanStack Query
   const { data: schoolsData, isLoading: loadingSchools, isError: schoolsError, error: schoolsErrorDetail } = useQuery({
@@ -84,12 +86,14 @@ export function ParentRegister() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: "" }))
     setFormData({
       [e.target.name]: e.target.value,
     })
   }
 
   const handleRelationshipTypeChange = (value: string) => {
+    setFieldErrors((prev) => ({ ...prev, relationshipType: "" }))
     setFormData({
       relationshipType: value,
     })
@@ -106,6 +110,13 @@ export function ParentRegister() {
   }
 
   const updateChild = (id: string, field: keyof Omit<import('../../stores/parentRegisterStore').Child, 'id'>, value: string) => {
+    setChildErrors((prev) => {
+      const existing = prev[id] || {}
+      return {
+        ...prev,
+        [id]: { ...existing, [field]: "" },
+      }
+    })
     updateChildInStore(id, field, value)
   }
 
@@ -114,74 +125,102 @@ export function ParentRegister() {
     e.preventDefault()
     setError("")
     setSuccess(false)
+    setFieldErrors({})
+    setChildErrors({})
+
+    const raiseFieldError = (key: string, message: string) => {
+      setFieldErrors((prev) => ({ ...prev, [key]: message }))
+      toast({
+        title: "Thiếu thông tin",
+        description: message,
+        variant: "destructive",
+      })
+    }
 
     // Validation
     // Username validation
     if (formData.username.length < 3) {
-      setError("Tên đăng nhập phải có ít nhất 3 ký tự")
+      raiseFieldError("username", "Tên đăng nhập phải có ít nhất 3 ký tự")
       return
     }
 
     if (formData.username.length > 20) {
-      setError("Tên đăng nhập không được quá 20 ký tự")
+      raiseFieldError("username", "Tên đăng nhập không được quá 20 ký tự")
       return
     }
 
     const usernameRegex = /^[a-zA-Z0-9_]+$/
     if (!usernameRegex.test(formData.username)) {
-      setError("Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới")
+      raiseFieldError("username", "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới")
       return
     }
 
     // Email validation
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     if (!emailRegex.test(formData.email)) {
-      setError("Định dạng email không hợp lệ")
+      raiseFieldError("email", "Định dạng email không hợp lệ")
       return
     }
 
     // Phone validation
     if (formData.phone.length < 10) {
-      setError("Số điện thoại phải có ít nhất 10 số")
+      raiseFieldError("phone", "Số điện thoại phải có ít nhất 10 số")
       return
     }
 
     const phoneRegex = /^[0-9]{10,11}$/
     if (!phoneRegex.test(formData.phone)) {
-      setError("Số điện thoại phải có 10-11 chữ số và chỉ chứa số")
+      raiseFieldError("phone", "Số điện thoại phải có 10-11 chữ số và chỉ chứa số")
       return
     }
 
     // Full name validation
-    if (formData.fullName.length < 2) {
-      setError("Họ và tên phải có ít nhất 2 ký tự")
-      return
+    if (formData.fullName.length < 5) {
+      raiseFieldError("fullName", "Họ và tên phải có ít nhất 5 ký tự")
+      return    
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp")
+      raiseFieldError("confirmPassword", "Mật khẩu xác nhận không khớp")
       return
     }
 
     if (formData.password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự")
+      raiseFieldError("password", "Mật khẩu phải có ít nhất 6 ký tự")
       return
     }
 
     if (!formData.relationshipType) {
-      setError("Vui lòng chọn Cha hoặc Mẹ")
+      raiseFieldError("relationshipType", "Vui lòng chọn Cha hoặc Mẹ")
       return
     }
 
     // Validate children
     if (children.length === 0) {
-      setError("Vui lòng thêm ít nhất 1 con")
+      raiseFieldError("children", "Vui lòng thêm ít nhất 1 con")
       return
     }
 
-    const invalidChild = children.find(child => !child.fullName || !child.dateOfBirth || !child.gender || !child.schoolId)
-    if (invalidChild) {
-      setError("Vui lòng điền đầy đủ thông tin cho tất cả các con (bao gồm trường học)")
+    const missingChildFields: Record<string, Partial<Record<'fullName' | 'dateOfBirth' | 'gender' | 'schoolId', string>>> = {}
+    let hasChildError = false
+    children.forEach((child) => {
+      const errs: Partial<Record<'fullName' | 'dateOfBirth' | 'gender' | 'schoolId', string>> = {}
+      if (!child.fullName) errs.fullName = "Nhập họ và tên"
+      if (!child.dateOfBirth) errs.dateOfBirth = "Chọn ngày sinh"
+      if (!child.gender) errs.gender = "Chọn giới tính"
+      if (!child.schoolId) errs.schoolId = "Chọn trường học"
+      if (Object.keys(errs).length > 0) {
+        missingChildFields[child.id] = errs
+        hasChildError = true
+      }
+    })
+    if (hasChildError) {
+      setChildErrors(missingChildFields)
+      toast({
+        title: "Thiếu thông tin con",
+        description: "Vui lòng điền đầy đủ họ tên, ngày sinh, giới tính và trường học",
+        variant: "destructive",
+      })
       return
     }
 
@@ -349,6 +388,9 @@ export function ParentRegister() {
                   required
                   className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                 />
+                {fieldErrors.fullName && (
+                  <p className="text-xs text-red-500">{fieldErrors.fullName}</p>
+                )}
               </div>
 
               {/* Phone Input */}
@@ -370,6 +412,9 @@ export function ParentRegister() {
                   title="Số điện thoại phải có 10-11 chữ số"
                   className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                 />
+                {fieldErrors.phone && (
+                  <p className="text-xs text-red-500">{fieldErrors.phone}</p>
+                )}
               </div>
             </div>
 
@@ -390,6 +435,9 @@ export function ParentRegister() {
                 title="Định dạng email không hợp lệ"
                 className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
               />
+              {fieldErrors.email && (
+                <p className="text-xs text-red-500">{fieldErrors.email}</p>
+              )}
             </div>
 
             {/* Username Input */}
@@ -411,6 +459,9 @@ export function ParentRegister() {
                 title="Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới (3-20 ký tự)"
                 className="h-11 bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
               />
+              {fieldErrors.username && (
+                <p className="text-xs text-red-500">{fieldErrors.username}</p>
+              )}
             </div>
 
             {/* Row 2: Password & Confirm Password */}
@@ -442,6 +493,9 @@ export function ParentRegister() {
                     {showPassword ? "Ẩn" : "Hiện"}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="text-xs text-red-500">{fieldErrors.password}</p>
+                )}
               </div>
 
               {/* Confirm Password Input */}
@@ -468,6 +522,9 @@ export function ParentRegister() {
                     {showConfirmPassword ? "Ẩn" : "Hiện"}
                   </button>
                 </div>
+                {fieldErrors.confirmPassword && (
+                  <p className="text-xs text-red-500">{fieldErrors.confirmPassword}</p>
+                )}
               </div>
             </div>
 
@@ -485,6 +542,9 @@ export function ParentRegister() {
                   <SelectItem value="MOTHER">Mẹ</SelectItem>
                 </SelectContent>
               </Select>
+              {fieldErrors.relationshipType && (
+                <p className="text-xs text-red-500">{fieldErrors.relationshipType}</p>
+              )}
             </div>
 
             {/* Divider */}
@@ -544,6 +604,9 @@ export function ParentRegister() {
                         required
                         className="h-10 bg-white dark:bg-slate-800"
                       />
+                      {childErrors[child.id]?.fullName && (
+                        <p className="text-xs text-red-500">{childErrors[child.id]?.fullName}</p>
+                      )}
                     </div>
 
                     {/* Child Birth Date & Gender */}
@@ -559,6 +622,9 @@ export function ParentRegister() {
                           required
                           className="h-10 bg-white dark:bg-slate-800"
                         />
+                        {childErrors[child.id]?.dateOfBirth && (
+                          <p className="text-xs text-red-500">{childErrors[child.id]?.dateOfBirth}</p>
+                        )}
                       </div>
 
                       <div className="space-y-1">
@@ -579,6 +645,9 @@ export function ParentRegister() {
                             <SelectItem value="OTHER">Khác</SelectItem>
                           </SelectContent>
                         </Select>
+                        {childErrors[child.id]?.gender && (
+                          <p className="text-xs text-red-500">{childErrors[child.id]?.gender}</p>
+                        )}
                       </div>
                     </div>
 
@@ -603,6 +672,9 @@ export function ParentRegister() {
                           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none">
                             Đang tải...
                           </span>
+                        )}
+                        {childErrors[child.id]?.schoolId && (
+                          <p className="text-xs text-red-500">{childErrors[child.id]?.schoolId}</p>
                         )}
                       </div>
                     </div>

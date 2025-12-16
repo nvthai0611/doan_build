@@ -57,17 +57,7 @@ export default function SessionDetail() {
 
   const sessionData = sessionDetailResponse as any;
   const attendanceData = attendanceResponse as any;
-
-  // Log để kiểm tra dữ liệu
-  console.log('=== SESSION DETAIL DATA ===');
-  console.log('sessionData:', sessionData);
-  console.log('sessionData.teacher:', sessionData?.teacher);
-  console.log('sessionData.substituteTeacher:', sessionData?.substituteTeacher);
-  console.log('sessionData.isSubstitute:', sessionData?.isSubstitute);
-  console.log('sessionData.substituteStartDate:', sessionData?.substituteStartDate);
-  console.log('sessionData.substituteEndDate:', sessionData?.substituteEndDate);
-  console.log('sessionData.substituteTeacherId:', sessionData?.substituteTeacherId);
-  console.log('==========================');
+  
 
   // Map attendance data to students (CHỈ CÓ 3 TRẠNG THÁI: present, absent, excused)
   const students = attendanceData?.map((attendance: any) => ({
