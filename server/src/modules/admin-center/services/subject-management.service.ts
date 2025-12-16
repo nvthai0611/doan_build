@@ -5,17 +5,19 @@ import { UpdateSubjectDto } from 'src/modules/admin-center/dto/subject/update-su
 
 @Injectable()
 export class SubjectManagementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findAll() {
     const subjects = await this.prisma.subject.findMany({
       orderBy: { name: 'asc' },
+      include: { _count: { select: { classes: true } } },
     });
     return subjects.map((s) => ({
       id: s.id,
       code: s.code,
       name: s.name,
       description: s.description ?? null,
+      isInUse: (s as any)._count?.classes > 0,
     }));
   }
 
@@ -44,12 +46,26 @@ export class SubjectManagementService {
   }
 
   async remove(id: string) {
-    const current = await this.prisma.subject.findUnique({ where: { id }, include: { classes: true } });
-    if (!current) throw new HttpException('Không tìm thấy môn học', HttpStatus.NOT_FOUND);
-    if (current.classes && current.classes.length > 0) {
-      throw new HttpException('Không thể xóa môn học đang được sử dụng trong lớp học', HttpStatus.BAD_REQUEST);
+    try {
+      const current = await this.prisma.subject.findUnique({ where: { id }, include: { classes: true } });
+      if (!current) throw new HttpException('Không tìm thấy môn học', HttpStatus.NOT_FOUND);
+      if (current.classes && current.classes.length > 0) {
+        throw new HttpException('Không thể xóa môn học đang được sử dụng trong lớp học', HttpStatus.BAD_REQUEST);
+      }
+      await this.prisma.subject.delete({ where: { id } });
+      return {
+        success: true,
+        message: 'Xóa trường học thành công',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Lỗi khi xóa môn học: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-    await this.prisma.subject.delete({ where: { id } });
   }
 }
 

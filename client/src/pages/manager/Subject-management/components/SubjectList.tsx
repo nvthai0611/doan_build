@@ -8,15 +8,17 @@ import { Badge } from "@/components/ui/badge"
 import { Edit, Trash2, BookOpen } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SubjectsListProps {
   subjects: Subject[]
   onEdit: (subject: Subject) => void
   onDelete: (id: string) => Promise<void>
   isDeleting?: string | null
+  lockedIds?: string[]
 }
 
-export function SubjectsList({ subjects, onEdit, onDelete, isDeleting }: SubjectsListProps) {
+export function SubjectsList({ subjects, onEdit, onDelete, isDeleting, lockedIds }: SubjectsListProps) {
   if (subjects.length === 0) {
     return (
       <Card>
@@ -58,16 +60,40 @@ export function SubjectsList({ subjects, onEdit, onDelete, isDeleting }: Subject
                 <Edit className="w-4 h-4 mr-2" />
                 Sửa
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-destructive hover:text-destructive bg-transparent"
-                onClick={() => onDelete(subject.id)}
-                disabled={isDeleting === subject.id}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Xóa
-              </Button>
+              {(() => {
+                const inUse = (subject as any)?.isInUse
+                const locked = lockedIds?.includes(subject.id)
+                const disabled = inUse || locked || isDeleting === subject.id
+                const buttonClass = `${disabled ? "w-full opacity-60 cursor-not-allowed" : "flex-1"}`
+
+                const deleteBtn = (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className={buttonClass}
+                    onClick={() => !disabled && onDelete(subject.id)}
+                    disabled={disabled}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {isDeleting === subject.id ? "Đang xóa..." : "Xóa"}
+                  </Button>
+                )
+
+                if (!inUse && !locked) return deleteBtn
+
+                return (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex-1">{deleteBtn}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Môn học này hiện đang được dùng bạn không thể xoá
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              })()}
             </div>
           </CardContent>
         </Card>
