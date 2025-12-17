@@ -358,6 +358,12 @@ async reCreateBillingForStudent(
   }
 }
 
+async changeStatusFeeRecords(feeRecordIds: string[], status: string, studentId: string): Promise<any> {
+  const response = await ApiService.put(`/admin-center/student-management/${studentId}/fee-records/status`, { feeRecordIds, status });
+  
+  return response as any;
+}
+
   
 }
 
