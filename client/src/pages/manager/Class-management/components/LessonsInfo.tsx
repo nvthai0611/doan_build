@@ -573,10 +573,11 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
             // Nếu conflict đang diễn ra (bắt đầu trước newStart, kết thúc sau newStart)
             if (conflictStartMinutes <= newStartMinutes && conflictEndMinutes > newStartMinutes) {
               // Không thể update vì conflict ngay từ startTime
-              toast.error(
-                `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
+              setConflictDialog({
+                open: true,
+                message:`Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
                 `Trùng với: ${conflict.className} (${conflict.startTime} - ${conflict.endTime})`
-              );
+              });
               setIsUpdating(false);
               return; // Không save
             }
@@ -590,8 +591,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           if (adjustedEndTime !== editingSession.endTime) {
             setConflictDialog({
               open: true,
-              message: `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
-              `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}`
+              message: `Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
+              `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}. Hệ thống sẽ tự điều chỉnh thời gian kết thúc`
             });
           }
         }
