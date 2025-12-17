@@ -20,7 +20,6 @@ export const isToday = (day: number, year: number, month: number): boolean => {
 // Session utility functions
 export const getSessionsForDay = (sessions: TeachingSession[], day: number, year: number, month: number): TeachingSession[] => {
   const dayDate = new Date(year, month, day)
-  console.log(dayDate);
   return sessions.filter(
     (session) =>
       session.date.getDate() === day &&

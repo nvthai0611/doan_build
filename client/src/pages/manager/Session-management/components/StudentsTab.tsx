@@ -241,12 +241,9 @@ export const StudentsTab = ({ students, sessionId }: any) => {
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(statusConfig).map(([key, config]) => {
-                  const Icon = config.icon;
-                  
                   return (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-4 h-4 ${config.color}`} />
                         <span>{!key ? 'Chưa điểm danh' : config.label}</span>
                       </div>
                     </SelectItem>
@@ -262,11 +259,8 @@ export const StudentsTab = ({ students, sessionId }: any) => {
           return <span className="text-sm text-gray-500">Chưa điểm danh</span>;
         }
 
-        const Icon = config.icon;
-        
         return (
           <div className="flex items-center gap-2">
-            <Icon className={`w-5 h-5 ${config.color}`} />
             <span className={`font-medium ${config.color}`}>
               {config.label}
             </span>
@@ -378,11 +372,9 @@ export const StudentsTab = ({ students, sessionId }: any) => {
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(statusConfig).map(([key, config]) => {
-                    const Icon = config.icon;
                     return (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
-                          <Icon className={`w-4 h-4 ${config.color}`} />
                           <span>{config.label}</span>
                         </div>
                       </SelectItem>

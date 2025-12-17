@@ -102,7 +102,7 @@ export default function SessionDetail() {
 
   const tabs = [
     { key: 'general', label: 'Thông tin chung' },
-    { key: 'teacher', label: 'Giáo viên' },
+    // { key: 'teacher', label: 'Giáo viên' },
     { key: 'students', label: 'Học viên' },
   ];
 
