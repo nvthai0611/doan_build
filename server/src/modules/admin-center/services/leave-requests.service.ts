@@ -371,9 +371,11 @@ export class LeaveRequestsService {
           sessionsWithReplacement.add(sid);
         }
 
+        const sessionsWithReplacementArray = Array.from(sessionsWithReplacement);
+
         // 1. Hủy buổi KHÔNG có giáo viên thay thế
         const sessionsToCancel = allSessionIds.filter(
-          (sid) => sid && !sessionsWithReplacement.has(sid),
+          (sid) => sid && !sessionsWithReplacementArray.includes(sid),
         );
 
         if (sessionsToCancel.length > 0) {
@@ -408,25 +410,70 @@ export class LeaveRequestsService {
           if (sessionInfo) {
             const { date, startTime, endTime } = sessionInfo;
 
-            // Kiểm tra xung đột lịch cho giáo viên thay thế trong cùng ngày & khung giờ
+            // Kiểm tra xung đột lịch cho giáo viên thay thế
+            // Check cả buổi học mà giáo viên này dạy chính (teacherId) và dạy thay (substituteTeacherId)
             const conflict = await tx.classSession.findFirst({
               where: {
                 sessionDate: date,
-                teacherId: replacementTeacherId,
                 id: {
                   not: sessionId,
                 },
+                status: { notIn: ['cancelled', 'end', 'day_off'] },
                 OR: [
                   {
+                    // Buổi học mà giáo viên này dạy chính VÀ overlap thời gian
                     AND: [
-                      { startTime: { lte: startTime } },
-                      { endTime: { gt: startTime } },
+                      { teacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   },
                   {
+                    // Buổi học mà giáo viên này dạy thay VÀ overlap thời gian
                     AND: [
-                      { startTime: { lt: endTime } },
-                      { endTime: { gte: endTime } },
+                      { substituteTeacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   },
                 ],
