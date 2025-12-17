@@ -139,6 +139,11 @@ export class LeaveRequestsService {
       throw new BadRequestException('Ngày kết thúc phải sau ngày bắt đầu');
     }
 
+    if(startDate < new Date()) {
+      throw new BadRequestException('Ngày nghỉ không được ở quá khứ');
+    }
+
+
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         teacherId: leaveRequestData.teacherId,
@@ -275,6 +280,11 @@ export class LeaveRequestsService {
     notes?: string,
     replacements?: { sessionId: string; replacementTeacherId?: string }[],
   ) {
+    // Validate approverId
+    if (!approverId || approverId.trim() === '') {
+      throw new BadRequestException('Thiếu thông tin người duyệt');
+    }
+
     const existingRequest = await this.prisma.leaveRequest.findUnique({
       where: { id: leaveRequestId },
       include: {
@@ -552,6 +562,7 @@ export class LeaveRequestsService {
         affectedSessions: leaveRequest.affectedSessions?.map((session) => ({
           id: session.id,
           sessionId: session.sessionId,
+          substituteTeacherId: session.session.substituteTeacherId,
           sessionDate: session.session.sessionDate,
           startTime: session.session.startTime,
           endTime: session.session.endTime,
