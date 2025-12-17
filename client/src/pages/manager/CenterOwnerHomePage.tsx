@@ -252,7 +252,6 @@ export const CenterOwnerHomePage = () => {
               <div className="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-4">
                 <div> 
                   <h3 className="font-semibold flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-blue-500" />
                     Bảng thông báo
                   </h3>
                   <p className="text-sm text-muted-foreground">
@@ -343,7 +342,6 @@ export const CenterOwnerHomePage = () => {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <h3 className="font-semibold flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-orange-500" />
                       Lớp có học sinh chưa có cam kết
                     </h3>
                     <p className="text-sm text-muted-foreground">
@@ -467,7 +465,7 @@ export const CenterOwnerHomePage = () => {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 px-1 py-1 rounded-xl hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 px-1 py-1 rounded-xl hover:bg-muted/50 transition-colors hover:pointer"
                       onClick={() => navigate('/center-qn/lich-day-hom-nay')}
                     >
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

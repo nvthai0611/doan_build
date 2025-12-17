@@ -97,7 +97,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   } = useQuery({
     queryKey: ['classSessions', classId, classData?.academicYear],
     queryFn: () => classService.getClassSessions(classId, {
-      academicYear: classData?.academicYear,
       page: 1,
       limit: 999, // Lấy hết tất cả sessions
       sortBy: "sessionDate",
@@ -147,7 +146,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
   const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
   const endIndex = startIndex + pagination.itemsPerPage;
   const sessions = filteredSessions.slice(startIndex, endIndex);
-  
+
   // Update pagination total items when data changes
   useEffect(() => {
     // Đảm bảo currentPage không vượt quá totalPages
@@ -532,7 +531,6 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       );
 
       let finalData = {
-        notes: editingSession.notes,
         startTime: editingSession.startTime,
         endTime: editingSession.endTime,
       };
@@ -575,10 +573,11 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
             // Nếu conflict đang diễn ra (bắt đầu trước newStart, kết thúc sau newStart)
             if (conflictStartMinutes <= newStartMinutes && conflictEndMinutes > newStartMinutes) {
               // Không thể update vì conflict ngay từ startTime
-              toast.error(
-                `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
+              setConflictDialog({
+                open: true,
+                message:`Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
                 `Trùng với: ${conflict.className} (${conflict.startTime} - ${conflict.endTime})`
-              );
+              });
               setIsUpdating(false);
               return; // Không save
             }
@@ -592,8 +591,8 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           if (adjustedEndTime !== editingSession.endTime) {
             setConflictDialog({
               open: true,
-              message: `Không thể cập nhật! Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
-              `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}`
+              message: `Thời gian bắt đầu ${editingSession.startTime} đã bị trùng với lớp khác.\n` +
+              `Trùng với: ${conflictResult.conflicts.map(c => `${c.className} (${c.startTime} - ${c.endTime})`).join(', ')}. Hệ thống sẽ tự điều chỉnh thời gian kết thúc`
             });
           }
         }
@@ -647,6 +646,11 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
       searchPlaceholder: 'Tìm kiếm buổi học...',
       render: (session: any, index: number) => {
         const isEditing = editingSessionId === session.id;
+        const isTimeLocked = [
+          SessionStatus.END,
+          SessionStatus.HAPPENING,
+          SessionStatus.DAY_OFF,
+        ].includes(session.status);
         const d = session.scheduledDate || session.sessionDate;
         const weekday = d ? getWeekdayName(d) : '';
         const dateText = d ? format(new Date(d), 'dd/MM/yyyy') : '-';
@@ -656,13 +660,10 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
             {isEditing ? (
               // Edit mode
               <div className="space-y-2">
-                <Input
-                  value={editingSession?.notes || ''}
-                  onChange={(e) => setEditingSession({ ...editingSession!, notes: e.target.value })}
-                  placeholder="Tên buổi học"
-                  className="text-sm"
-                  autoFocus
-                />
+                {/* Tên buổi học chỉ hiển thị, không cho chỉnh sửa */}
+                <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {session.name || session.notes || session.topic || ''}
+                </div>
                 <div className="flex items-center gap-2">
                   <Input
                     type="time"
@@ -716,16 +717,19 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   {session.startTime && session.endTime && ` ${session.startTime} → ${session.endTime}`}
                 </div>
                 {/* Edit icon - always visible */}
-                <button
-                  className="absolute top-0 right-0 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-0 right-0 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleStartEdit(session);
                   }}
                   title="Chỉnh sửa"
+                  disabled={isUpdating || isPostponing || isCancelling || isTimeLocked}
                 >
                   <Edit className="h-4 w-4 text-gray-600 hover:text-blue-600" />
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -786,22 +790,22 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         </div>
       )
     },
-    {
-      key: 'absent',
-      header: 'Nghỉ học',
-      width: '80px',
-      align: 'center',
-      render: (session: any) => (
-        <span className="text-sm">{session.absentCount || 0}</span>
-      )
-    },
+    // {
+    //   key: 'absent',
+    //   header: 'Nghỉ học',
+    //   width: '80px',
+    //   align: 'center',
+    //   render: (session: any) => (
+    //     <span className="text-sm">{session.notAttendedCount || 0}</span>
+    //   )
+    // },
     {
       key: 'present',
       header: 'Điểm danh',
       width: '80px',
       align: 'center',
       render: (session: any) => (
-        <span className="text-sm">{session.attendanceCount || 0}</span>
+        <span className="text-sm">{session.attendanceCount  || 0} / {session.studentCount}</span>
       )
     },
     // {
@@ -857,20 +861,12 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   size="icon"
                   className="h-8 w-8 text-orange-600 hover:text-orange-700"
                   disabled={session.status === SessionStatus.DAY_OFF || session.status === SessionStatus.CANCELLED || session.status === SessionStatus.END}
+                  title='Đổi lịch buổi học'
                 >
                   <Clock className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-96 space-y-4" align="end">
-                <div className="space-y-1">
-                  <div className="font-medium">Lùi lịch buổi học</div>
-                  {(session.scheduledDate || session.sessionDate) && (
-                    <div className="text-xs text-gray-500">
-                      Hiện tại: {format(new Date(session.scheduledDate || session.sessionDate), 'dd/MM/yyyy')}{' '}
-                      {session.startTime && session.endTime ? `${session.startTime} - ${session.endTime}` : ''}
-                    </div>
-                  )}
-                </div>
                 <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Ngày mới</label>
@@ -879,6 +875,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                       selected={postponeDate || undefined}
                       onSelect={(d) => d && setPostponeDate(d)}
                       className="rounded-md border shadow-sm"
+                      disabled={{before: new Date()}}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
