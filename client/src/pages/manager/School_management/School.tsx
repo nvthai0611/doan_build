@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+// import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, School as SchoolIcon, Building2, Users, GraduationCap } from "lucide-react"
@@ -8,6 +8,7 @@ import { useSchools, School } from "../../../hooks/use-schools"
 import { SchoolDialog } from "./components/SchoolDialog"
 import { SchoolsList } from "./components/SchoolList"
 import { toast } from "sonner"
+import { useEffect, useState } from "react"
 
 export default function SchoolsPage() {
   const { schools, stats, addSchool, updateSchool, deleteSchool, isLoading } = useSchools()
@@ -16,6 +17,15 @@ export default function SchoolsPage() {
   const [editingData, setEditingData] = useState<Partial<School> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [lockedIds, setLockedIds] = useState<string[]>([])
+
+  // Lock delete for schools with students or teachers
+  useEffect(() => {
+    const ids = (Array.isArray(schools) ? schools : [])
+      .filter((s: any) => (s?.studentCount ?? 0) > 0 || (s?.teacherCount ?? 0) > 0 || s?.isInUse)
+      .map((s) => s.id)
+    setLockedIds(ids)
+  }, [schools])
 
   const handleAddClick = () => {
     setEditingId(null)
@@ -159,6 +169,7 @@ export default function SchoolsPage() {
           onEdit={handleEditClick}
           onDelete={handleDelete}
           isDeleting={deletingId}
+          lockedIds={lockedIds}
         />
       )}
 

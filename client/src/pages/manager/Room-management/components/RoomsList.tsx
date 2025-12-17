@@ -7,15 +7,17 @@ import { Edit, Trash2, Users, Package } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { Room } from "../../../../hooks/use-rooms"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface RoomsListProps {
   rooms: Room[]
   onEdit: (room: Room) => void
   onDelete: (id: string) => Promise<void>
   isDeleting?: string | null
+  lockedIds?: string[]
 }
 
-export function RoomsList({ rooms, onEdit, onDelete, isDeleting }: RoomsListProps) {
+export function RoomsList({ rooms, onEdit, onDelete, isDeleting, lockedIds }: RoomsListProps) {
   if (rooms.length === 0) {
     return (
       <Card>
@@ -76,16 +78,40 @@ export function RoomsList({ rooms, onEdit, onDelete, isDeleting }: RoomsListProp
                 <Edit className="w-4 h-4 mr-2" />
                 Sửa
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-destructive hover:text-destructive bg-transparent"
-                onClick={() => onDelete(room.id)}
-                disabled={isDeleting === room.id}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Xóa
-              </Button>
+              {(() => {
+                const inUse = (room as any)?.isInUse
+                const locked = lockedIds?.includes(room.id)
+                const disabled = inUse || locked || isDeleting === room.id
+                const buttonClass = `${disabled ? "w-full opacity-60 cursor-not-allowed" : "flex-1"}`
+
+                const deleteBtn = (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className={`${buttonClass}`}
+                    onClick={() => !disabled && onDelete(room.id)}
+                    disabled={disabled}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Xóa
+                  </Button>
+                )
+
+                if (!inUse && !locked) return deleteBtn
+
+                return (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex-1">{deleteBtn}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Không thể xóa phòng học đang được sử dụng trong lớp học hoặc buổi học
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              })()}
             </div>
           </CardContent>
         </Card>

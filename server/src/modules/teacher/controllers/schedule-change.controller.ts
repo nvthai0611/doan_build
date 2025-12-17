@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -72,7 +73,7 @@ export class ScheduleChangeController {
   }
 
   // Cancel schedule change request
-  @Put(':id/cancel')
+  @Patch(':id/cancel')
   async cancelScheduleChange(
     @Param('id') id: string,
     @Req() req: any,

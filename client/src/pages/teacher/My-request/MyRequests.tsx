@@ -42,7 +42,10 @@ import { scheduleChangeService } from '../../../services/teacher/schedule-change
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../../../utils/format';
 import { useNavigate } from 'react-router-dom';
-import { DataTable, type Column } from '../../../components/common/Table/DataTable';
+import {
+  DataTable,
+  type Column,
+} from '../../../components/common/Table/DataTable';
 import type { LeaveRequest } from '../../../services/teacher/leave-request/leave.types';
 import type { SessionRequestResponse } from '../../../services/teacher/session-request/session-request.types';
 import type { ScheduleChangeResponse } from '../../../services/teacher/schedule-change/schedule-change.types';
@@ -60,12 +63,17 @@ import {
 import { toast } from 'sonner';
 
 // Union type for all request types
-type RequestUnion = LeaveRequest | SessionRequestResponse | ScheduleChangeResponse;
+type RequestUnion =
+  | LeaveRequest
+  | SessionRequestResponse
+  | ScheduleChangeResponse;
 
 // Status colors
 const statusColors = {
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
-  approved: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
+  pending:
+    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
+  approved:
+    'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
   cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
 };
@@ -73,15 +81,21 @@ const statusColors = {
 // Request type colors
 const requestTypeColors = {
   // Leave request types
-  sick_leave: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
-  personal_leave: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
-  emergency_leave: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400',
+  sick_leave:
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
+  personal_leave:
+    'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
+  emergency_leave:
+    'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400',
   other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400',
   // Session request types
-  makeup_session: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
-  extra_session: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400',
+  makeup_session:
+    'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
+  extra_session:
+    'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400',
   // Schedule change types
-  reschedule: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400',
+  reschedule:
+    'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400',
 };
 
 // Request type labels
@@ -123,12 +137,11 @@ const fetchSessionRequests = async (params: {
   requestType?: string;
 }) => {
   try {
-    console.log('fetchSessionRequests called with params:', params);
     const res = await sessionRequestService.getMySessionRequests(params);
-    console.log('fetchSessionRequests response:', res);
+    //console.log('fetchSessionRequests response:', res);
     return res;
   } catch (error) {
-    console.error('fetchSessionRequests error:', error);
+    //console.error('fetchSessionRequests error:', error);
     throw error;
   }
 };
@@ -149,12 +162,24 @@ export default function MyRequests() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [selectedLeaveRequest, setSelectedLeaveRequest] = useState<LeaveRequest | null>(null);
-  const [selectedSessionRequest, setSelectedSessionRequest] = useState<SessionRequestResponse | null>(null);
-  const [selectedScheduleChange, setSelectedScheduleChange] = useState<ScheduleChangeResponse | null>(null);
+  const [selectedLeaveRequest, setSelectedLeaveRequest] =
+    useState<LeaveRequest | null>(null);
+  const [selectedSessionRequest, setSelectedSessionRequest] =
+    useState<SessionRequestResponse | null>(null);
+  const [selectedScheduleChange, setSelectedScheduleChange] =
+    useState<ScheduleChangeResponse | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
-  const [leaveRequestToCancel, setLeaveRequestToCancel] = useState<LeaveRequest | null>(null);
+  const [cancelSessionConfirmOpen, setCancelSessionConfirmOpen] =
+    useState(false);
+  const [cancelScheduleConfirmOpen, setCancelScheduleConfirmOpen] =
+    useState(false);
+  const [leaveRequestToCancel, setLeaveRequestToCancel] =
+    useState<LeaveRequest | null>(null);
+  const [sessionRequestToCancel, setSessionRequestToCancel] =
+    useState<SessionRequestResponse | null>(null);
+  const [scheduleChangeToCancel, setScheduleChangeToCancel] =
+    useState<ScheduleChangeResponse | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -194,7 +219,13 @@ export default function MyRequests() {
     isError: leaveRequestsError,
     isFetching: leaveRequestsFetching,
   } = useQuery({
-    queryKey: ['my-leave-requests', activeTab, currentPage, pageSize, debouncedSearchQuery],
+    queryKey: [
+      'my-leave-requests',
+      activeTab,
+      currentPage,
+      pageSize,
+      debouncedSearchQuery,
+    ],
     queryFn: () =>
       fetchLeaveRequests({
         page: currentPage,
@@ -213,7 +244,13 @@ export default function MyRequests() {
     isError: sessionRequestsError,
     isFetching: sessionRequestsFetching,
   } = useQuery({
-    queryKey: ['my-session-requests', activeTab, currentPage, pageSize, debouncedSearchQuery],
+    queryKey: [
+      'my-session-requests',
+      activeTab,
+      currentPage,
+      pageSize,
+      debouncedSearchQuery,
+    ],
     queryFn: () =>
       fetchSessionRequests({
         page: currentPage,
@@ -232,7 +269,13 @@ export default function MyRequests() {
     isError: scheduleChangesError,
     isFetching: scheduleChangesFetching,
   } = useQuery({
-    queryKey: ['my-schedule-changes', activeTab, currentPage, pageSize, debouncedSearchQuery],
+    queryKey: [
+      'my-schedule-changes',
+      activeTab,
+      currentPage,
+      pageSize,
+      debouncedSearchQuery,
+    ],
     queryFn: () =>
       fetchScheduleChanges({
         page: currentPage,
@@ -246,6 +289,7 @@ export default function MyRequests() {
 
   // Get current data based on request type
   const getCurrentData = () => {
+    //console.log(requestType);
     switch (requestType) {
       case 'leave':
         return {
@@ -291,7 +335,7 @@ export default function MyRequests() {
 
   // Get columns based on request type
   const getColumns = (): Column<RequestUnion>[] => {
-    console.log('requests:', currentData);
+    //console.log('requests:', currentData);
 
     switch (requestType) {
       case 'leave':
@@ -370,13 +414,20 @@ export default function MyRequests() {
             align: 'center' as const,
             render: (item: LeaveRequest) => (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md" onClick={() => handleViewDetails(item)}>
-                  <Eye className="h-4 w-4" />
-                  Xem
+                <div
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md"
+                  title="Xem chi tiết"
+                  onClick={() => handleViewDetails(item)}
+                >
+                  <Eye className="h-4 w-4 text-blue-500" />
                 </div>
                 {item.status === 'pending' && (
-                  <div className="flex items-center gap-2 cursor-pointer bg-red-500 text-white px-2 py-1 rounded-md" onClick={() => handleCancel(item)}>
-                    <X className="h-4 w-4" />
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md"
+                    title="Hủy đơn"
+                    onClick={() => handleCancel(item)}
+                  >
+                    <X className="h-4 w-4 text-red-500" />
                     Hủy
                   </div>
                 )}
@@ -384,7 +435,7 @@ export default function MyRequests() {
             ),
           },
         ] as Column<RequestUnion>[];
-      
+
       case 'session':
         return [
           {
@@ -393,9 +444,15 @@ export default function MyRequests() {
             render: (item: SessionRequestResponse) => (
               <Badge
                 variant="secondary"
-                className={requestTypeColors[item.requestType as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={
+                  requestTypeColors[
+                    item.requestType as keyof typeof requestTypeColors
+                  ] || requestTypeColors.other
+                }
               >
-                {requestTypeLabels[item.requestType as keyof typeof requestTypeLabels] || item.requestType}
+                {requestTypeLabels[
+                  item?.requestType as keyof typeof requestTypeLabels
+                ] || item?.requestType}
               </Badge>
             ),
           },
@@ -404,27 +461,31 @@ export default function MyRequests() {
             header: 'Lớp học',
             render: (item: SessionRequestResponse) => (
               <div>
-                <div className="font-medium">{item.class.name}</div>
-                <div className="text-sm text-muted-foreground">{item.class.subject.name}</div>
+                <div className="font-medium">{item?.class?.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {item?.class?.subject?.name}
+                </div>
               </div>
             ),
           },
           {
             key: 'sessionDate',
             header: 'Ngày học',
-            render: (item: SessionRequestResponse) => formatDate(item.sessionDate),
+            render: (item: SessionRequestResponse) =>
+              formatDate(item?.sessionDate),
           },
           {
             key: 'time',
             header: 'Thời gian',
-            render: (item: SessionRequestResponse) => `${item.startTime} - ${item.endTime}`,
+            render: (item: SessionRequestResponse) =>
+              `${item?.startTime} - ${item?.endTime}`,
           },
           {
             key: 'reason',
             header: 'Lý do',
             render: (item: SessionRequestResponse) => (
-              <div className="max-w-[200px] truncate" title={item.reason}>
-                {item.reason}
+              <div className="max-w-[200px] truncate" title={item?.reason}>
+                {item?.reason}
               </div>
             ),
           },
@@ -434,39 +495,49 @@ export default function MyRequests() {
             render: (item: SessionRequestResponse) => (
               <Badge
                 variant="secondary"
-                className={statusColors[item.status as keyof typeof statusColors] || statusColors.pending}
+                className={
+                  statusColors[item.status as keyof typeof statusColors] ||
+                  statusColors.pending
+                }
               >
-                {statusLabels[item.status as keyof typeof statusLabels] || item.status}
+                {statusLabels[item.status as keyof typeof statusLabels] ||
+                  item?.status}
               </Badge>
             ),
           },
           {
             key: 'createdAt',
             header: 'Ngày tạo',
-            render: (item: SessionRequestResponse) => formatDate(item.createdAt.toString()),
+            render: (item: SessionRequestResponse) =>
+              formatDate(item?.createdAt?.toString() || ''),
           },
           {
             key: 'actions',
             header: 'Thao tác',
             align: 'center' as const,
             render: (item: SessionRequestResponse) => (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleViewSessionDetails(item)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Xem chi tiết
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md"
+                  title="Xem chi tiết"
+                  onClick={() => handleViewSessionDetails(item)}
+                >
+                  <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                </div>
+                {item.status === 'pending' && (
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md text-red-600"
+                    title="Hủy yêu cầu"
+                    onClick={() => handleCancelSessionRequest(item)}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </div>
+                )}
+              </div>
             ),
           },
         ] as Column<RequestUnion>[];
-      
+
       case 'schedule':
         return [
           {
@@ -474,28 +545,33 @@ export default function MyRequests() {
             header: 'Lớp học',
             render: (item: ScheduleChangeResponse) => (
               <div>
-                <div className="font-medium">{item.class.name}</div>
-                <div className="text-sm text-muted-foreground">{item.class.subject.name}</div>
+                <div className="font-medium">{item?.class?.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {item?.class?.subject?.name}
+                </div>
               </div>
             ),
           },
           {
             key: 'originalDate',
             header: 'Ngày cũ',
-            render: (item: ScheduleChangeResponse) => formatDate(item.originalDate),
+            render: (item: ScheduleChangeResponse) =>
+              formatDate(item?.originalDate),
           },
           {
             key: 'newDate',
             header: 'Ngày mới',
-            render: (item: ScheduleChangeResponse) => formatDate(item.newDate),
+            render: (item: ScheduleChangeResponse) => formatDate(item?.newDate),
           },
           {
             key: 'time',
             header: 'Thời gian',
             render: (item: ScheduleChangeResponse) => (
               <div>
-                <div className="text-sm">{item.originalTime}</div>
-                <div className="text-sm text-muted-foreground">→ {item.newTime}</div>
+                <div className="text-sm">{item?.originalTime}</div>
+                <div className="text-sm text-muted-foreground">
+                  → {item?.newTime}
+                </div>
               </div>
             ),
           },
@@ -504,7 +580,7 @@ export default function MyRequests() {
             header: 'Lý do',
             render: (item: ScheduleChangeResponse) => (
               <div className="max-w-[200px] truncate" title={item.reason}>
-                {item.reason}
+                {item?.reason}
               </div>
             ),
           },
@@ -514,46 +590,56 @@ export default function MyRequests() {
             render: (item: ScheduleChangeResponse) => (
               <Badge
                 variant="secondary"
-                className={statusColors[item.status as keyof typeof statusColors] || statusColors.pending}
+                className={
+                  statusColors[item.status as keyof typeof statusColors] ||
+                  statusColors.pending
+                }
               >
-                {statusLabels[item.status as keyof typeof statusLabels] || item.status}
+                {statusLabels[item.status as keyof typeof statusLabels] ||
+                  item?.status}
               </Badge>
             ),
           },
           {
             key: 'requestedAt',
             header: 'Ngày tạo',
-            render: (item: ScheduleChangeResponse) => formatDate(item.requestedAt.toString()),
+            render: (item: ScheduleChangeResponse) =>
+              formatDate(item?.requestedAt?.toString() || ''),
           },
           {
             key: 'actions',
             header: 'Thao tác',
             align: 'center' as const,
             render: (item: ScheduleChangeResponse) => (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleViewScheduleDetails(item)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Xem chi tiết
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md"
+                  title="Xem chi tiết"
+                  onClick={() => handleViewScheduleDetails(item)}
+                >
+                  <Eye className="h-4 w-4 text-blue-500" />
+                </div>
+                {item.status === 'pending' && (
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md text-red-600"
+                    title="Hủy yêu cầu"
+                    onClick={() => handleCancelScheduleChange(item)}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </div>
+                )}
+              </div>
             ),
           },
         ] as Column<RequestUnion>[];
-      
+
       default:
         return [];
     }
   };
 
   const columns = getColumns();
-  
+
   // Event handlers
   const handleViewDetails = (leaveRequest: LeaveRequest) => {
     setSelectedLeaveRequest(leaveRequest);
@@ -565,9 +651,21 @@ export default function MyRequests() {
     setIsDetailModalOpen(true);
   };
 
-  const handleViewScheduleDetails = (scheduleChange: ScheduleChangeResponse) => {
+  const handleCancelSessionRequest = (sessionRequest: SessionRequestResponse) => {
+    setSessionRequestToCancel(sessionRequest);
+    setCancelSessionConfirmOpen(true);
+  };
+
+  const handleViewScheduleDetails = (
+    scheduleChange: ScheduleChangeResponse,
+  ) => {
     setSelectedScheduleChange(scheduleChange);
     setIsDetailModalOpen(true);
+  };
+
+  const handleCancelScheduleChange = (scheduleChange: ScheduleChangeResponse) => {
+    setScheduleChangeToCancel(scheduleChange);
+    setCancelScheduleConfirmOpen(true);
   };
 
   const handleCloseDetailModal = () => {
@@ -579,12 +677,13 @@ export default function MyRequests() {
 
   const handleEdit = (leaveRequest: LeaveRequest) => {
     // Navigate to edit page
-    console.log('Edit:', leaveRequest);
+    //console.log('Edit:', leaveRequest);
   };
 
   // Mutation để cancel leave request
   const cancelLeaveRequestMutation = useMutation({
-    mutationFn: (id: string) => teacherLeaveRequestService.cancelLeaveRequest(id),
+    mutationFn: (id: string) =>
+      teacherLeaveRequestService.cancelLeaveRequest(id),
     onSuccess: () => {
       toast.success('Hủy đơn xin nghỉ thành công');
       queryClient.invalidateQueries({ queryKey: ['my-leave-requests'] });
@@ -593,9 +692,45 @@ export default function MyRequests() {
     },
     onError: (error: any) => {
       toast.error(
-        error?.response?.data?.message || 
-        error?.message || 
-        'Có lỗi xảy ra khi hủy đơn xin nghỉ'
+        error?.response?.data?.message ||
+          error?.message ||
+          'Có lỗi xảy ra khi hủy đơn xin nghỉ',
+      );
+    },
+  });
+
+  // Mutation cancel session request
+  const cancelSessionRequestMutation = useMutation({
+    mutationFn: (id: string) => sessionRequestService.cancelSessionRequest(id),
+    onSuccess: () => {
+      toast.success('Hủy yêu cầu tạo buổi học thành công');
+      queryClient.invalidateQueries({ queryKey: ['my-session-requests'] });
+      setCancelSessionConfirmOpen(false);
+      setSessionRequestToCancel(null);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Có lỗi xảy ra khi hủy yêu cầu tạo buổi học',
+      );
+    },
+  });
+
+  // Mutation cancel schedule change
+  const cancelScheduleChangeMutation = useMutation({
+    mutationFn: (id: string) => scheduleChangeService.cancelScheduleChange(id),
+    onSuccess: () => {
+      toast.success('Hủy yêu cầu dời lịch thành công');
+      queryClient.invalidateQueries({ queryKey: ['my-schedule-changes'] });
+      setCancelScheduleConfirmOpen(false);
+      setScheduleChangeToCancel(null);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Có lỗi xảy ra khi hủy yêu cầu dời lịch',
       );
     },
   });
@@ -605,9 +740,21 @@ export default function MyRequests() {
     setCancelConfirmOpen(true);
   };
 
+  const handleConfirmCancelSession = () => {
+    if (sessionRequestToCancel) {
+      cancelSessionRequestMutation.mutate(sessionRequestToCancel.id);
+    }
+  };
+
   const handleConfirmCancel = () => {
     if (leaveRequestToCancel) {
       cancelLeaveRequestMutation.mutate(leaveRequestToCancel.id);
+    }
+  };
+
+  const handleConfirmCancelSchedule = () => {
+    if (scheduleChangeToCancel) {
+      cancelScheduleChangeMutation.mutate(scheduleChangeToCancel.id);
     }
   };
 
@@ -618,11 +765,11 @@ export default function MyRequests() {
         break;
       case 'session':
         // Navigate to session request creation
-        console.log('Create session request');
+        //console.log('Create session request');
         break;
       case 'schedule':
         // Navigate to schedule change creation
-        console.log('Create schedule change');
+        //console.log('Create schedule change');
         break;
     }
   };
@@ -651,10 +798,6 @@ export default function MyRequests() {
           <h1 className="text-2xl font-bold tracking-tight">
             Quản lý đơn của tôi
           </h1>
-          <p className="text-muted-foreground">
-            Xem và quản lý các đơn xin nghỉ, yêu cầu tạo buổi học, đổi ca của
-            bạn
-          </p>
         </div>
       </div>
 
@@ -781,6 +924,96 @@ export default function MyRequests() {
               className="bg-red-600 hover:bg-red-700"
             >
               {cancelLeaveRequestMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </div>
+              ) : (
+                'Xác nhận hủy'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Session Request Confirmation Dialog */}
+      <AlertDialog
+        open={cancelSessionConfirmOpen}
+        onOpenChange={setCancelSessionConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận hủy yêu cầu tạo buổi học</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn hủy yêu cầu này không? Hành động này không thể hoàn tác.
+              <div className="mt-2 p-2 bg-muted rounded-md">
+                <div className="text-sm font-medium">Thông tin yêu cầu:</div>
+                <div className="text-sm text-muted-foreground">
+                  Lớp: {sessionRequestToCancel?.class?.name}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Thời gian: {sessionRequestToCancel?.startTime} - {sessionRequestToCancel?.endTime} ({formatDate(sessionRequestToCancel?.sessionDate || '')})
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={cancelSessionRequestMutation.isPending}
+            >
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancelSession}
+              disabled={cancelSessionRequestMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelSessionRequestMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </div>
+              ) : (
+                'Xác nhận hủy'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Schedule Change Confirmation Dialog */}
+      <AlertDialog
+        open={cancelScheduleConfirmOpen}
+        onOpenChange={setCancelScheduleConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận hủy yêu cầu dời lịch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn hủy yêu cầu dời lịch này không? Hành động này không thể hoàn tác.
+              <div className="mt-2 p-2 bg-muted rounded-md">
+                <div className="text-sm font-medium">Thông tin yêu cầu:</div>
+                <div className="text-sm text-muted-foreground">
+                  Lớp: {scheduleChangeToCancel?.class?.name}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Thời gian: {scheduleChangeToCancel?.originalTime} → {scheduleChangeToCancel?.newTime}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={cancelScheduleChangeMutation.isPending}
+            >
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancelSchedule}
+              disabled={cancelScheduleChangeMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelScheduleChangeMutation.isPending ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Đang xử lý...

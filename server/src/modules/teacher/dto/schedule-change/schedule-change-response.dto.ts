@@ -2,18 +2,23 @@ import { Expose, Type } from 'class-transformer';
 
 export class ClassResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
   name: string;
 
   @Expose()
   description?: string;
+
+  @Expose()
+  subject?: {
+    name: string;
+  };
 }
 
 export class SessionResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
   sessionDate: Date;
@@ -27,14 +32,14 @@ export class SessionResponseDto {
 
 export class TeacherResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
-  userId: number;
+  userId: string;
 
   @Expose()
   user: {
-    id: number;
+    id: string;
     fullName: string;
     email: string;
   };
@@ -42,7 +47,7 @@ export class TeacherResponseDto {
 
 export class RoomResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
   name: string;
@@ -53,17 +58,17 @@ export class RoomResponseDto {
 
 export class ScheduleChangeResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
-  classId: number;
+  classId: string;
 
   @Expose()
   @Type(() => ClassResponseDto)
   class: ClassResponseDto;
 
   @Expose()
-  sessionId: number;
+  sessionId?: string;
 
   @Expose()
   @Type(() => SessionResponseDto)
@@ -73,7 +78,16 @@ export class ScheduleChangeResponseDto {
   changeType: string;
 
   @Expose()
+  originalDate: Date;
+
+  @Expose()
+  originalTime: string;
+
+  @Expose()
   newDate?: Date;
+
+  @Expose()
+  newTime?: string;
 
   @Expose()
   newStartTime?: string;
@@ -82,7 +96,7 @@ export class ScheduleChangeResponseDto {
   newEndTime?: string;
 
   @Expose()
-  newRoomId?: number;
+  newRoomId?: string;
 
   @Expose()
   @Type(() => RoomResponseDto)
@@ -98,24 +112,33 @@ export class ScheduleChangeResponseDto {
   status: string;
 
   @Expose()
-  teacherId: number;
+  teacherId: string;
 
   @Expose()
   @Type(() => TeacherResponseDto)
   teacher: TeacherResponseDto;
 
   @Expose()
-  createdBy: number;
+  requestedBy: string;
 
   @Expose()
-  approvedBy?: number;
+  requestedAt: Date;
+
+  @Expose()
+  processedAt?: Date;
+
+  @Expose()
+  createdBy?: string;
+
+  @Expose()
+  approvedBy?: string;
 
   @Expose()
   approvedAt?: Date;
 
   @Expose()
-  createdAt: Date;
+  createdAt?: Date;
 
   @Expose()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

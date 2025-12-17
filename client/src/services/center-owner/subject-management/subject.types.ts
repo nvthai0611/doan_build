@@ -4,6 +4,7 @@ export interface SubjectItem {
   name: string
   description?: string | null
   createdAt?: string | Date
+  isInUse?: boolean
 }
 
 export interface CreateSubjectDto {

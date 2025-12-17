@@ -193,8 +193,8 @@ async getTeacherPayroll(
         classId,
         startDate,
         endDate,
-        page = 1,
-        limit = 10,
+        page,
+        limit,
       } = params;
 
       // ✅ Lấy thông tin payroll cơ bản

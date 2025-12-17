@@ -21,17 +21,25 @@ export interface LeaveRequest {
     email: string
   }
   affectedSessions?: Array<{
-    id: string
+    id: string // id của LeaveRequestAffectedSession
+    sessionId?: string
     sessionDate: string
     startTime: string
     endTime: string
-    class: {
+    class?: {
       name: string
       subject: {
         name: string
       }
-    }
+    } | string
+    subject?: string
+    replacementTeacherId?: string
   }>
+}
+
+export interface LeaveSessionReplacementPayload {
+  sessionId: string
+  replacementTeacherId: string
 }
 
 export interface SessionRequest {
@@ -130,10 +138,31 @@ class RequestsService {
     return response.data as any
   }
 
-  async approveLeaveRequest(id: string, action: 'approve' | 'reject', notes?: string): Promise<LeaveRequest> {
-    const response = await apiClient.patch(`/admin-center/leave-requests/${id}/${action}`, {
-      notes
-    })
+  async approveLeaveRequest(
+    id: string,
+    action: 'approve' | 'reject',
+    approverId: string,
+    options?: {
+      notes?: string
+      replacements?: LeaveSessionReplacementPayload[]
+    },
+  ): Promise<LeaveRequest> {
+    const payload: any = {
+      approverId,
+    }
+
+    if (options?.notes) {
+      payload.notes = options.notes
+    }
+
+    if (options?.replacements && options.replacements.length > 0) {
+      payload.replacements = options.replacements
+    }
+
+    const response = await apiClient.patch(
+      `/admin-center/leave-requests/${id}/${action}`,
+      payload,
+    )
     return response as any
   }
 
@@ -153,7 +182,7 @@ class RequestsService {
     return response as any
   }
 
-  async getSessionRequestById(id: string): Promise<SessionRequest> {
+  async getSessionRequestById(id: string): Promise<any> {
     const response = await apiClient.get(`/admin-center/session-requests/${id}`)
     return response.data as any
   }

@@ -52,8 +52,8 @@ export default function BackPayDetailModal({ data, open, onClose }: BackPayDetai
   )
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+    <Dialog  open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md overflow-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-600" />
@@ -87,7 +87,7 @@ export default function BackPayDetailModal({ data, open, onClose }: BackPayDetai
             />
             <InfoRow 
                 label="Tỷ lệ hưởng (%)" 
-                value={`${(data.payoutRate * 100).toFixed(0)}%`} 
+                value={`${(data.payoutRate )}`} 
                 className="py-1"
             />
           </div>
