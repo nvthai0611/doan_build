@@ -20,23 +20,24 @@ export function StudentsTab({ classId }: StudentsTabProps) {
   })
 
   const getStatusLabel = (status?: string) => {
-    const s = (status || 'active').toLowerCase()
-    if (s === 'active' || s === 'studying') return 'Đang học'
+    const s = (status || 'studying').toLowerCase()
+    if (s === 'studying') return 'Đang học'
     if (s === 'not_been_updated') return 'Chưa cập nhật'
-    if (s === 'completed') return 'Hoàn thành'
-    if (s === 'dropped') return 'Đã bỏ học'
+    if (s === 'graduated') return 'Đã hoàn thành'
+    if (s === 'stopped') return 'Dừng học'
+    if (s === 'withdrawn') return 'Chuyển lớp'
     return 'Không xác định'
   }
 
   const statusClasses = (status?: string) => {
-    const s = (status || "active").toLowerCase()
-    if (s === "active" || s === "studying")
+    const s = (status || "studying").toLowerCase()
+    if (s === "studying")
       return "bg-green-100 text-green-800 border border-green-300"
     if (s === "not_been_updated")
       return "bg-yellow-100 text-yellow-800 border border-yellow-300"
-    if (s === "completed")
+    if (s === "graduated")
       return "bg-gray-100 text-gray-800 border border-gray-300"
-    if (s === "dropped")
+    if (s === "stopped" || s === "withdrawn")
       return "bg-red-100 text-red-800 border border-red-300"
     return "bg-gray-100 text-gray-800 border border-gray-300"
   }

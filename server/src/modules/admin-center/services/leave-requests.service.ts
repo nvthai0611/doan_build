@@ -139,6 +139,11 @@ export class LeaveRequestsService {
       throw new BadRequestException('Ngày kết thúc phải sau ngày bắt đầu');
     }
 
+    if(startDate < new Date()) {
+      throw new BadRequestException('Ngày nghỉ không được ở quá khứ');
+    }
+
+
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         teacherId: leaveRequestData.teacherId,
@@ -275,6 +280,11 @@ export class LeaveRequestsService {
     notes?: string,
     replacements?: { sessionId: string; replacementTeacherId?: string }[],
   ) {
+    // Validate approverId
+    if (!approverId || approverId.trim() === '') {
+      throw new BadRequestException('Thiếu thông tin người duyệt');
+    }
+
     const existingRequest = await this.prisma.leaveRequest.findUnique({
       where: { id: leaveRequestId },
       include: {
@@ -361,9 +371,11 @@ export class LeaveRequestsService {
           sessionsWithReplacement.add(sid);
         }
 
+        const sessionsWithReplacementArray = Array.from(sessionsWithReplacement);
+
         // 1. Hủy buổi KHÔNG có giáo viên thay thế
         const sessionsToCancel = allSessionIds.filter(
-          (sid) => sid && !sessionsWithReplacement.has(sid),
+          (sid) => sid && !sessionsWithReplacementArray.includes(sid),
         );
 
         if (sessionsToCancel.length > 0) {
@@ -372,7 +384,7 @@ export class LeaveRequestsService {
               id: { in: sessionsToCancel },
             },
             data: {
-              status: 'cancelled',
+              status: 'day_off',
             },
           });
         }
@@ -398,25 +410,70 @@ export class LeaveRequestsService {
           if (sessionInfo) {
             const { date, startTime, endTime } = sessionInfo;
 
-            // Kiểm tra xung đột lịch cho giáo viên thay thế trong cùng ngày & khung giờ
+            // Kiểm tra xung đột lịch cho giáo viên thay thế
+            // Check cả buổi học mà giáo viên này dạy chính (teacherId) và dạy thay (substituteTeacherId)
             const conflict = await tx.classSession.findFirst({
               where: {
                 sessionDate: date,
-                teacherId: replacementTeacherId,
                 id: {
                   not: sessionId,
                 },
+                status: { notIn: ['cancelled', 'end', 'day_off'] },
                 OR: [
                   {
+                    // Buổi học mà giáo viên này dạy chính VÀ overlap thời gian
                     AND: [
-                      { startTime: { lte: startTime } },
-                      { endTime: { gt: startTime } },
+                      { teacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   },
                   {
+                    // Buổi học mà giáo viên này dạy thay VÀ overlap thời gian
                     AND: [
-                      { startTime: { lt: endTime } },
-                      { endTime: { gte: endTime } },
+                      { substituteTeacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   },
                 ],
@@ -424,8 +481,14 @@ export class LeaveRequestsService {
             });
 
             if (conflict) {
+              const classInfo = await tx.class.findUnique({
+                where: { id: conflict.classId },
+                include: {
+                  subject: true,
+                },
+              });
               throw new BadRequestException(
-                'Giáo viên thay thế đang có lịch dạy trùng thời gian với buổi học được gán.',
+                `Giáo viên thay thế đang có lịch dạy trùng thời gian với buổi học được gán: ${classInfo?.name} ${classInfo?.subject?.name} ${conflict.sessionDate.toLocaleDateString()} ${conflict.startTime} - ${conflict.endTime}`,
               );
             }
           }
@@ -435,7 +498,24 @@ export class LeaveRequestsService {
             data: {
               substituteTeacherId: replacementTeacherId,
               substituteEndDate: sessionInfo?.date ?? undefined,
+              status: 'has_not_happened',
             },
+          });
+        }
+
+        //3. Cập nhật lại các lịch mà giáo viên nghỉ được chỉ định dạy thay thế giáo viên khác trước đó thành nghỉ
+        const leaveRequestObj = await tx.leaveRequest.findUnique({
+          where: { id: leaveRequestId },
+        });
+        const classSessionReplacement = await tx.classSession.findMany({
+          where: {
+            substituteTeacherId: leaveRequestObj?.teacherId,
+          },
+        });
+        for (const session of classSessionReplacement) {
+          await tx.classSession.update({
+            where: { id: session.id },
+            data: { status: 'day_off' },
           });
         }
       }
@@ -552,6 +632,7 @@ export class LeaveRequestsService {
         affectedSessions: leaveRequest.affectedSessions?.map((session) => ({
           id: session.id,
           sessionId: session.sessionId,
+          substituteTeacherId: session.session.substituteTeacherId,
           sessionDate: session.session.sessionDate,
           startTime: session.session.startTime,
           endTime: session.session.endTime,

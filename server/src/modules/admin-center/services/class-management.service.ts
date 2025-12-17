@@ -1917,7 +1917,7 @@ export class ClassManagementService {
       const warnings = [];
       const activeEnrollments = classInfo._count.enrollments;
       if (activeEnrollments < 5) {
-        warnings.push(`⚠️ Lớp học chỉ có ${activeEnrollments} học sinh`);
+        warnings.push(`Lớp học chỉ có ${activeEnrollments} học sinh`);
       }
       if (warnings.length > 0) {
         console.log('Warnings:', warnings);
@@ -2076,7 +2076,7 @@ export class ClassManagementService {
             roomId: classInfo.roomId,
             teacherId: classInfo.teacherId,
             status: sessionStatus,
-            notes: `Buổi ${displayIndex++} - ${classInfo.name}`,
+            notes: `Buổi ${displayIndex++}`,
             createdAt: new Date(),
           });
         }
@@ -2318,7 +2318,6 @@ export class ClassManagementService {
         status,
         startDate,
         endDate,
-        academicYear,
         sortBy = 'sessionDate',
         sortOrder = 'desc',
       } = query;
@@ -2331,10 +2330,6 @@ export class ClassManagementService {
         classId: classId,
       };
 
-      // Add academicYear filter - chỉ lấy sessions có cùng academicYear với lớp
-      if (academicYear) {
-        where.academicYear = academicYear;
-      }
 
       // Add search filter
       if (search) {
@@ -2415,34 +2410,75 @@ export class ClassManagementService {
                 name: true,
               },
             },
-            _count: {
-              select: {
-                attendances: true,
-              },
-            },
+           
           },
         }),
         this.prisma.classSession.count({ where }),
       ]);
 
+
       // Đếm enrollment cho từng session dựa trên enrolledAt <= sessionDate
       const sessionStudentCounts = await Promise.all(
-        sessions.map((session) =>
-          this.prisma.enrollment.count({
+        sessions.map(async (session) => {
+        // Chuẩn hóa sessionDate về UTC midnight để so sánh với enrolledAt
+        const sessionDateMidnight = new Date(
+          Date.UTC(
+            session.sessionDate.getUTCFullYear(),
+            session.sessionDate.getUTCMonth(),
+            session.sessionDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
+        return await this.prisma.enrollment.count({
+          where: {
+            classId: session.classId,
+            status: { in: ['studying', 'not_been_updated'] },
+            enrolledAt: { lte: sessionDateMidnight },
+          },
+        });
+      }),
+    );
+
+    
+      // Đếm số lần điểm danh hợp lệ (chỉ tính học sinh vẫn đang theo học tại ngày buổi học)
+      const sessionAttendanceCounts = await Promise.all(
+        sessions.map(async (session) => {
+          const sessionDateMidnight = new Date(
+            Date.UTC(
+              session.sessionDate.getUTCFullYear(),
+              session.sessionDate.getUTCMonth(),
+              session.sessionDate.getUTCDate(),
+              23,
+              59,
+              59,
+              999,
+            ),
+          );
+
+          return await this.prisma.studentSessionAttendance.count({
             where: {
-              classId: classId,
-              status: { notIn: ['stopped', 'withdrawn'] },
-              enrolledAt: {
-                lte: session.sessionDate, // Chỉ đếm những người đã enroll trước hoặc vào ngày của buổi học
+              sessionId: session.id,
+              student: {
+                enrollments: {
+                  some: {
+                    classId: session.classId,
+                    status: { in: ['studying', 'not_been_updated'] },
+                    enrolledAt: { lte: sessionDateMidnight },
+                  },
+                },
               },
             },
-          }),
-        ),
+          });
+        }),
       );
 
       // Transform data to match frontend expectations
       const transformedSessions = sessions.map((session, index) => {
         const studentCount = sessionStudentCounts[index] || 0;
+        const attendanceCount = sessionAttendanceCounts[index] || 0;
 
         // Xác định giáo viên: nếu có giáo viên thay thế và ngày thay thế còn hiệu lực thì dùng giáo viên thay thế
         const isSubstitute =
@@ -2478,10 +2514,9 @@ export class ClassManagementService {
           isSubstitute: isSubstitute,
           totalStudents: session.class.maxStudents || 0,
           studentCount: studentCount,
-          attendanceCount: session._count.attendances || 0,
-          absentCount: 0, // Will be calculated based on attendance
-          notAttendedCount: studentCount - (session._count.attendances || 0),
-          rating: 0, // Default rating since not available in schema
+          cancellationReason: session.cancellationReason,
+          attendanceCount: attendanceCount,
+          notAttendedCount: Math.max(studentCount - attendanceCount, 0),
           roomName: session.room?.name || null,
         };
       });
@@ -2716,7 +2751,6 @@ export class ClassManagementService {
  
   async updateClassSchedules(id: string, body: any) {
     try {
-      console.log("check: ", id, body);
       
       // Validate UUID
       if (!this.isValidUUID(id)) {

@@ -1,3 +1,4 @@
+import { timeout } from 'rxjs';
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
@@ -54,11 +55,9 @@ export class RecalculatedPayrollTeacherProcessor {
 
       // Kỳ Học (studyMonth)
       const studyMonthStart = new Date(Date.UTC(year, month, 1));
-      const studyMonthEnd = new Date(Date.UTC(year, month + 1, 1));
+      const studyMonthEnd = new Date(Date.UTC(year, month + 1));
 
       // Kỳ Hóa Đơn (billingMonth)
-      const billingMonthStart = new Date(Date.UTC(year, month + 1, 1));
-      const billingMonthEnd = new Date(Date.UTC(year, month + 2, 1));
 
       // Chốt sổ tháng này (ngày 8)
       const closingDate = new Date(Date.UTC(year, month + 1, 8));
@@ -134,15 +133,14 @@ export class RecalculatedPayrollTeacherProcessor {
           const feeRecords = await tx.feeRecord.findMany({
             where: {
               classId: classId,
-              dueDate: { gt: previousClosingDate, lt: billingMonthEnd },
+              dueDate: { gt: previousClosingDate, lt: closingDate },
               status: 'paid',
               feeRecordPayments: {
                 some: { payment: { paidAt: { lt: closingDate } } },
               },
             },
-            select: { totalAmount: true, amount: true },
+            select: { id: true, totalAmount: true, amount: true },
           });
-
           const totalRevenue = feeRecords.reduce(
             (sum, r) => sum.plus(r.totalAmount || r.amount),
             new Prisma.Decimal(0),
@@ -214,6 +212,30 @@ export class RecalculatedPayrollTeacherProcessor {
           },
         });
 
+        const allHistoryPayouts = await tx.teacherSessionPayout.findMany({
+          where: {
+            teacherId: teacherId,
+          },
+          select: {
+            payoutRate: true,
+            session: {
+              select: {
+                classId: true,
+                sessionDate: true,
+              },
+            },
+          },
+        });
+
+        const payoutRateCache = new Map<string, Prisma.Decimal>();
+        for (const hp of allHistoryPayouts) {
+          const sessionDate = hp.session.sessionDate;
+          const key = `${hp.session.classId}_${sessionDate.getFullYear()}_${sessionDate.getMonth()}`;
+          if (!payoutRateCache.has(key)) {
+            payoutRateCache.set(key, hp.payoutRate);
+          }
+        }
+
         for (const p of latePayments) {
           const feeRecord = p.feeRecord;
           if (!feeRecord || !feeRecord.classId) continue;
@@ -231,19 +253,11 @@ export class RecalculatedPayrollTeacherProcessor {
 
           // Tìm lịch sử Payout của GV này tại thời điểm nợ
           let finalRate: Prisma.Decimal;
-          const historyPayout = await tx.teacherSessionPayout.findFirst({
-            where: {
-              teacherId: teacherId,
-              session: {
-                classId: feeRecord.classId,
-                sessionDate: { gte: debtMonthStart, lt: debtMonthEnd },
-              },
-            },
-            select: { payoutRate: true },
-          });
+          const cacheKey = `${feeRecord.classId}_${dY}_${dM}`;
+          const cachedRate = payoutRateCache.get(cacheKey);
 
-          if (historyPayout) {
-            finalRate = historyPayout.payoutRate;
+          if (cachedRate) {
+            finalRate = cachedRate;
           } else {
             finalRate = findRateInMemory(debtDate);
             this.logger.warn(
@@ -297,6 +311,9 @@ export class RecalculatedPayrollTeacherProcessor {
             data: { payrollId: newPayroll.id },
           });
         }
+      }, {
+        timeout: 60000, // 60 giây
+        maxWait: 20000, // 20 giây
       });
 
       this.logger.log(`Đã tính lại xong Payroll cho GV ${teacherId}`);

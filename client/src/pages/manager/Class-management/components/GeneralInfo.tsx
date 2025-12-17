@@ -327,11 +327,76 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     }
   };
 
+  // Chuẩn hóa chuỗi (lowercase + bỏ dấu) để so khớp linh hoạt
+  const normalizeText = (text?: string) =>
+    (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  // Tự động suy ra khối/môn từ tên lớp (khi đang chỉnh sửa và được phép chỉnh)
+  const autoSelectFromName = (name: string) => {
+    const canAutoSelect =
+      isEditing &&
+      (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY);
+    if (!canAutoSelect) return {};
+
+    const lowerName = normalizeText(name);
+    const nextUpdate: Record<string, string> = {};
+
+    // Match grade: theo tên hoặc level số (ví dụ: "lớp 6", "khối 6", "6A2", "9a2")
+    if (grades && grades.length > 0) {
+      const matchedGrade = grades.find((g: any) => {
+        const gradeName = normalizeText(g.name);
+        const level = g.level?.toString() || '';
+        if (!level) return false;
+
+        // Các pattern phổ biến
+        const patterns = [
+          `lop ${level}`,
+          `lớp ${level}`,
+          `khoi ${level}`,
+          `khối ${level}`,
+          `k${level}`,
+        ];
+
+        // Cho phép theo format 9a, 9a2, 9b1 ...
+        const levelRegex = new RegExp(`\\b${level}[a-z0-9]*\\b`);
+
+        return (
+          (gradeName && gradeName.length > 0 && lowerName.includes(gradeName)) ||
+          patterns.some((p) => lowerName.includes(p)) ||
+          levelRegex.test(lowerName)
+        );
+      });
+      if (matchedGrade) {
+        nextUpdate.gradeId = matchedGrade.id;
+      }
+    }
+
+    // Match subject: theo tên môn
+    if (subjects && subjects.length > 0) {
+      const matchedSubject = subjects.find((s: any) => {
+        const subjectName = normalizeText(s.name);
+        return subjectName && lowerName.includes(subjectName);
+      });
+      if (matchedSubject) {
+        nextUpdate.subjectId = matchedSubject.id;
+      }
+    }
+
+    return nextUpdate;
+  };
+
   const handleInputChange = (field: string, value: any) => {
-    setEditData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setEditData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'name') {
+        const auto = autoSelectFromName(value);
+        return { ...next, ...auto };
+      }
+      return next;
+    });
 
     // Clear error khi user nhập
     if (errors[field]) {
@@ -341,6 +406,26 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       }));
     }
   };
+
+  // Khi đã tải danh sách khối/môn và đang chỉnh sửa, tự chọn nếu tên lớp khớp
+  useEffect(() => {
+    const canAutoSelect =
+      isEditing &&
+      (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY);
+    if (!canAutoSelect || !editData.name) return;
+
+    const auto = autoSelectFromName(editData.name);
+    if (!auto.gradeId && !auto.subjectId) return;
+
+    setEditData(prev => {
+      const next = { ...prev, ...auto };
+      // Tránh setState không cần thiết
+      if (next.gradeId === prev.gradeId && next.subjectId === prev.subjectId) {
+        return prev;
+      }
+      return next;
+    });
+  }, [editData.name, grades, subjects, isEditing, classData.status]);
 
   const handleCancel = () => {
     setEditData({
@@ -584,7 +669,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Khối lớp <span className="text-red-500">*</span>
                 </label>
-                {isEditing && classData.status === ClassStatus.DRAFT ? (
+                {isEditing && (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY) ? (
                   <Select
                     value={editData.gradeId}
                     onValueChange={(value) => handleInputChange('gradeId', value)}
@@ -664,7 +749,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Môn học <span className="text-red-500">*</span>
                 </label>
-                {isEditing && classData.status === ClassStatus.DRAFT ? (
+                {isEditing && (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY) ? (
                   <Select
                     value={editData.subjectId}
                     onValueChange={(value) => handleInputChange('subjectId', value)}
@@ -854,7 +939,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
               Giáo viên phụ trách
             </CardTitle>
             <div className="flex items-center gap-2">
@@ -867,7 +951,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     disabled={isAssignTeacherLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED}
                     title={classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED ? 'Không thể chuyển giáo viên cho lớp đã hủy hoặc hoàn thành' : 'Chuyển giáo viên'}
                   >
-                    <Users className="h-4 w-4" />
                     Chuyển giáo viên
                   </Button>
                   <Button
@@ -880,7 +963,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     {isAssignTeacherLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <X className="h-4 w-4" />
+                      <></>
                     )}
                     Gỡ giáo viên
                   </Button>

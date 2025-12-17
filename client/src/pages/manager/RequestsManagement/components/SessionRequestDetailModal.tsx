@@ -189,7 +189,7 @@ const SessionRequestDetailModal: React.FC<SessionRequestDetailModalProps> = ({
                 {request.room && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Phòng học</label>
-                    <p className="text-sm">{request.room.name} (Sức chứa: {request.room.capacity})</p>
+                    <p className="text-sm">{request.room.name}</p>
                   </div>
                 )}
               </CardContent>
