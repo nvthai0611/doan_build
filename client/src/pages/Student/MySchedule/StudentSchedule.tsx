@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Loading from "../../../components/Loading/LoadingPage"
 import { studentScheduleService } from "../../../services/student/schedule/schedule.service"
@@ -32,24 +31,20 @@ interface StudentScheduleItem {
   }
 }
 
-type ViewType = "month" | "week" | "list"
-
-const MONTH_NAMES = [
-  "Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6",
-  "Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"
-] as const
-
-const DAY_NAMES = [
-  "Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"
-] as const
+interface CalendarDay {
+  date: number
+  isCurrentMonth: boolean
+  isToday: boolean
+  hasEvent: boolean
+  sessions?: StudentScheduleItem[]
+}
 
 export default function StudentSchedule() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewType, setViewType] = useState<ViewType>("month")
   const [schedules, setSchedules] = useState<StudentScheduleItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -59,23 +54,8 @@ export default function StudentSchedule() {
 
         const year = currentDate.getFullYear()
         const month = currentDate.getMonth() + 1
-        const weekStart = currentDate
-          .toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-          .split('/')
-          .reverse()
-          .join('-')
-
-        const type = viewType === "month" ? "monthly" : viewType === "week" ? "weekly" : "list"
         let rawData: unknown[] = []
-        
-        if (type === "monthly") {
-          rawData = await studentScheduleService.getMonthlySchedule(year, month)
-        } else if (type === "weekly") {
-          rawData = await studentScheduleService.getWeeklySchedule(weekStart)
-        } else {
-          // list: tái sử dụng monthly giống trang teacher
-          rawData = await studentScheduleService.getMonthlySchedule(year, month)
-        }
+        rawData = await studentScheduleService.getMonthlySchedule(year, month)
 
         // Map dữ liệu từ API mới về dạng dùng cho UI
         const items: StudentScheduleItem[] = (rawData || []).map((session: unknown) => {
@@ -119,7 +99,7 @@ export default function StudentSchedule() {
     }
 
     fetchSchedules()
-  }, [currentDate, viewType])
+  }, [currentDate])
 
   const getDateKey = (d: Date) => {
     const yyyy = d.getFullYear()
@@ -127,17 +107,6 @@ export default function StudentSchedule() {
     const dd = String(d.getDate()).padStart(2, '0')
     return `${yyyy}-${mm}-${dd}`
   }
-
-  const schedulesByDate = useMemo(() => {
-    const map = new Map<string, StudentScheduleItem[]>()
-    for (const s of schedules) {
-      const dateStr = s.date.toString().split('T')[0]
-      const list = map.get(dateStr) || []
-      list.push(s)
-      map.set(dateStr, list)
-    }
-    return map
-  }, [schedules])
 
   const getClassSessionStatusColor = (status?: string, attendanceStatus?: string | null) => {
     // 1) day_off & cancelled luôn nền vàng nhạt
@@ -191,350 +160,240 @@ export default function StudentSchedule() {
     }
   }
 
-  const handlePrev = () => {
-    if(viewType === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-    } else if(viewType === "week") {
-      const startOfWeek = new Date(currentDate)
-      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
-      setCurrentDate(new Date(startOfWeek.getTime() - 7 * 24 * 60 * 60 * 1000))
-    } else {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-    }
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
   }
-  const handleNext = () => {
-    if(viewType === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
-    } else if(viewType === "week") {
-      const startOfWeek = new Date(currentDate)
-      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
-      setCurrentDate(new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000))
-    } else {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
-    }
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
   }
+
   const handleToday = () => {
-    setCurrentDate(new Date())
+    const today = new Date()
+    setCurrentDate(today)
+    setSelectedDate(today)
   }
 
-  const daysInMonth = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(), [currentDate])
-  const firstDay = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(), [currentDate])
-  const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth])
-  const emptyDays = useMemo(() => Array.from({ length: firstDay }, (_, i) => i), [firstDay])
-
-  const renderMonthView = () => (
-    <Card className="border">
-      <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-xs md:text-sm">
-          {DAY_NAMES.map((d) => (
-            <div
-              key={d}
-              className="p-2 text-center font-medium text-gray-600 bg-gray-50"
-            >
-              {d}
-            </div>
-          ))}
-
-          {emptyDays.map((d) => (
-            <div
-              key={`e-${d}`}
-              className="p-2 min-h-[80px] border border-gray-200 bg-gray-50"
-            />
-          ))}
-
-          {days.map((day) => {
-            const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-            const dateKey = getDateKey(date)
-            const dayList = schedulesByDate.get(dateKey) ?? []
-            const isToday = new Date().toDateString() === date.toDateString()
-
-            return (
-              <div
-                key={day}
-                className={`p-2 min-h-[80px] border border-gray-200 ${
-                  isToday ? "bg-gray-100" : "bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-900">{day}</span>
-                  {dayList.length > 0 && (
-                    <span className="text-[10px] text-gray-500">
-                      {dayList.length} buổi
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1 max-h-24 overflow-y-auto">
-                  {dayList.slice(0, 2).map((s) => (
-                    <div
-                      key={s.id}
-                      className={`text-xs p-2 rounded ${getClassSessionStatusColor(
-                        s.status,
-                        s.attendanceStatus,
-                      )}`}
-                    >
-                      <div className="font-medium truncate">{s.className}</div>
-                      <div className="text-[11px] text-gray-600 truncate">
-                        {s.startTime}-{s.endTime}
-                      </div>
-                      <div className="text-[11px] text-gray-600 truncate">
-                        Phòng: {s.room || "Chưa phân phòng"}
-                      </div>
-                      <div className="mt-1">
-                        {getAttendanceBadge(s.status, s.attendanceStatus)}
-                      </div>
-                    </div>
-                  ))}
-                  {dayList.length > 2 && (
-                    <div className="text-[11px] text-gray-500 text-center py-1 bg-gray-100 rounded">
-                      +{dayList.length - 2} buổi khác
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  const getWeekRange = () => {
-    const startOfWeek = new Date(currentDate)
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    return { startOfWeek, endOfWeek }
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
   }
 
-  const renderWeekView = () => {
-    const { startOfWeek } = getWeekRange()
-    const weekDates: Date[] = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(startOfWeek)
-      d.setDate(startOfWeek.getDate() + i)
-      return d
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay()
+  }
+
+  const generateCalendarDays = (): CalendarDay[] => {
+    const daysInMonth = getDaysInMonth(currentDate)
+    const firstDay = getFirstDayOfMonth(currentDate)
+    const days: CalendarDay[] = []
+
+    // Các ô trống trước ngày 1
+    for (let i = 0; i < firstDay; i++) {
+      days.push({
+        date: 0,
+        isCurrentMonth: false,
+        isToday: false,
+        hasEvent: false,
+      })
+    }
+
+    // Group schedules theo ngày trong tháng hiện tại
+    const sessionsMap = new Map<number, StudentScheduleItem[]>()
+    schedules.forEach((s) => {
+      const dateStr = s.date.toString().split("T")[0] // YYYY-MM-DD
+      const [year, month, day] = dateStr.split("-").map(Number)
+
+      if (
+        month - 1 === currentDate.getMonth() &&
+        year === currentDate.getFullYear()
+      ) {
+        const arr = sessionsMap.get(day) || []
+        arr.push(s)
+        sessionsMap.set(day, arr)
+      }
     })
-    const timeSlots = Array.from({ length: 24 }, (_, i) => i)
 
-    return (
-      <div className="border rounded-lg overflow-x-auto">
-        <div className="grid grid-cols-8 gap-0">
-          <div className="bg-gray-50 p-2 border-r border-b">
-            <div className="text-xs font-medium text-gray-500 text-center">Giờ</div>
-          </div>
-          {weekDates.map((date, idx) => (
-            <div key={idx} className="bg-gray-50 p-2 border-b">
-              <div className="text-xs font-medium text-gray-600 text-center">
-                {DAY_NAMES[date.getDay()]}
-              </div>
-              <div className="text-sm font-semibold text-gray-900 text-center">
-                {date.getDate()}
-              </div>
-            </div>
-          ))}
+    const today = new Date()
+    for (let i = 1; i <= daysInMonth; i++) {
+      const isToday =
+        i === today.getDate() &&
+        currentDate.getMonth() === today.getMonth() &&
+        currentDate.getFullYear() === today.getFullYear()
 
-          {timeSlots.map((hour) => (
-            <>
-              <div
-                key={`h-${hour}`}
-                className="bg-gray-50 p-2 border-r border-b text-xs text-gray-500 text-center"
-              >
-                {String(hour).padStart(2, "0")} giờ
-              </div>
-              {weekDates.map((date, dayIdx) => {
-                const dateKey = getDateKey(date)
-                const list = (schedulesByDate.get(dateKey) ?? []).filter(s => parseInt(s.startTime.split(":")[0]) === hour)
-                return (
-                  <div
-                    key={`${hour}-${dayIdx}`}
-                    className="min-h-[60px] border-b border-r bg-white"
-                  >
-                    {list.map((s, si) => (
-                      <div
-                        key={s.id}
-                        className={`absolute inset-1 rounded text-xs p-1 ${getClassSessionStatusColor(
-                          s.status,
-                          s.attendanceStatus,
-                        )}`}
-                        style={{ top: `${si * 20}px`, height: '58px', fontSize: '10px' }}
-                      >
-                        <div className="truncate font-medium">
-                          {s.className} - {s.room || "Chưa phân phòng"}
-                        </div>
-                        <div className="truncate text-gray-700">
-                          {s.startTime}-{s.endTime}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })}
-            </>
-          ))}
-        </div>
-      </div>
-    )
-  }
+      const daySessions = sessionsMap.get(i) || []
+      days.push({
+        date: i,
+        isCurrentMonth: true,
+        isToday,
+        hasEvent: daySessions.length > 0,
+        sessions: daySessions,
+      })
+    }
 
-  const renderListView = () => {
-    const monthKeyPrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}`
-    const list = schedules.filter(s => s.date.toString().startsWith(monthKeyPrefix))
-    return (
-      <Card className="border">
-        <CardHeader>
-          <CardTitle className="text-base md:text-lg">
-            Danh sách buổi học - {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {list.length === 0 ? (
-            <div className="text-center py-6 text-sm text-gray-600">
-              Không có buổi học nào trong tháng này
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {list.map((s) => (
-                <div
-                  key={s.id}
-                  className="border rounded p-3 md:p-4 bg-white"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                    <div className="flex-1 space-y-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {new Date(s.date).toLocaleDateString("vi-VN")} • {s.className}
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        Môn học: {s.subject}
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        Thời gian: {s.startTime}-{s.endTime}
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        Phòng: {s.room || "Chưa phân phòng"}
-                      </div>
-                      {s.teacher && (
-                        <div className="text-sm text-gray-700">
-                          Giáo viên: {s.teacher.fullName}
-                        </div>
-                      )}
-                      {s.attendanceRecordedBy && (
-                        <div className="text-xs text-gray-600">
-                          Điểm danh bởi:{" "}
-                          <span className="font-medium">
-                            {s.attendanceRecordedBy.fullName}
-                          </span>
-                        </div>
-                      )}
-                      {s.attendanceNote && (
-                        <div className="text-xs text-gray-700">
-                          Ghi chú: {s.attendanceNote}
-                        </div>
-                      )}
-                    </div>
-                    <div className="md:ml-4">
-                      {getAttendanceBadge(s.status, s.attendanceStatus)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
+    return days
   }
 
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-4">
-      <Card className="border">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg md:text-2xl font-bold text-gray-900">
-                Lịch học
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                Xem lịch học và trạng thái điểm danh.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={viewType}
-                onValueChange={(v: ViewType) => setViewType(v)}
-              >
-                <SelectTrigger className="w-28 md:w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Tháng</SelectItem>
-                  <SelectItem value="week">Tuần</SelectItem>
-                  <SelectItem value="list">Danh sách</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrev}
-                className="text-xs md:text-sm"
-              >
-                Trước
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                className="text-xs md:text-sm"
-              >
-                Sau
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleToday}
-                className="text-xs md:text-sm"
-              >
-                Hôm nay
-              </Button>
-            </div>
-          </div>
-          {viewType === "month" && (
-            <div className="mt-2 text-sm text-gray-700">
-              Tháng {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </div>
-          )}
-          {viewType === "week" && (
-            <div className="mt-2 text-sm text-gray-700">
-              Tuần{" "}
-              {getWeekRange().startOfWeek.toLocaleDateString("vi-VN", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              })}
-              {" - "}
-              {getWeekRange().endOfWeek.toLocaleDateString("vi-VN", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              })}
-            </div>
-          )}
-          {viewType === "list" && (
-            <div className="mt-2 text-sm text-gray-700">
-              Tháng {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="mb-3 text-sm text-red-700">{error}</div>
-          ) : null}
-          {viewType === "month" && renderMonthView()}
-          {viewType === "week" && renderWeekView()}
-          {viewType === "list" && renderListView()}
-        </CardContent>
-      </Card>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Lịch học</h1>
+          <p className="text-sm text-gray-600">
+            Xem lịch học và trạng thái điểm danh của bạn.
+          </p>
+          {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+        </div>
+      </div>
+
+      {/* Main content: calendar + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Calendar (trái) */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  Tháng {currentDate.getMonth() + 1} {currentDate.getFullYear()}
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handlePrevMonth}>
+                    Trước
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleNextMonth}>
+                    Sau
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleToday}>
+                    Hôm nay
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Header thứ trong tuần */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((day) => (
+                  <div
+                    key={day}
+                    className="text-center font-semibold text-xs text-gray-600 py-1"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Lưới ngày */}
+              <div className="grid grid-cols-7 gap-2">
+                {generateCalendarDays().map((day, index) => {
+                  const isSelected =
+                    selectedDate &&
+                    day.date > 0 &&
+                    selectedDate.getDate() === day.date &&
+                    selectedDate.getMonth() === currentDate.getMonth() &&
+                    selectedDate.getFullYear() === currentDate.getFullYear()
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        if (day.date > 0) {
+                          setSelectedDate(
+                            new Date(
+                              currentDate.getFullYear(),
+                              currentDate.getMonth(),
+                              day.date,
+                            ),
+                          )
+                        }
+                      }}
+                      className={`
+                        h-10 flex items-center justify-center rounded-md text-xs font-medium relative
+                        ${
+                          day.isCurrentMonth
+                            ? "bg-white border border-gray-200 hover:bg-gray-50"
+                            : "bg-transparent"
+                        }
+                        ${day.isToday ? "border-gray-800" : ""}
+                        ${isSelected ? "ring-2 ring-offset-1 ring-gray-800" : ""}
+                      `}
+                    >
+                      {day.date > 0 && <span>{day.date}</span>}
+                      {day.hasEvent && day.isCurrentMonth && !day.isToday && (
+                        <span className="absolute bottom-1 w-1.5 h-1.5 bg-gray-600 rounded-full" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar phải: buổi học trong ngày */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Buổi học</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedDate ? (
+                (() => {
+                  const sel = selectedDate
+                  const dayKey = getDateKey(sel)
+                  const selectedSessions = schedules.filter((s) =>
+                    s.date.toString().startsWith(dayKey),
+                  )
+
+                  if (selectedSessions.length === 0) {
+                    return (
+                      <div className="text-center py-6 text-sm text-gray-600">
+                        Không có buổi học nào trong ngày này
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {selectedSessions.map((s) => (
+                        <div
+                          key={s.id}
+                          className={`border rounded-md p-3 ${getClassSessionStatusColor(
+                            s.status,
+                            s.attendanceStatus,
+                          )}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {s.className}
+                              </p>
+                              <p className="text-xs text-gray-700">
+                                {s.startTime} - {s.endTime}
+                              </p>
+                              <p className="text-xs text-gray-700">
+                                Phòng: {s.room || "Chưa phân phòng"}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              {getAttendanceBadge(s.status, s.attendanceStatus)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()
+              ) : (
+                <div className="text-center py-6 text-sm text-gray-600">
+                  Chọn một ngày để xem buổi học
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

@@ -8,6 +8,7 @@ export interface SchoolItem {
   updatedAt: string
   studentCount?: number
   teacherCount?: number
+  isInUse?: boolean
 }
 
 export interface SchoolStats {

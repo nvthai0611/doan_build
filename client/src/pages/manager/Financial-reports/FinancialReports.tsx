@@ -361,7 +361,7 @@ export default function FinancialReports() {
                       <Tooltip
                         contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
                         formatter={(value: number, name: string) => [
-                          new Intl.NumberFormat('vi-VN').format(value) + '₫',
+                          new Intl.NumberFormat('vi-VN').format(Math.round(value * 1_000_000)) + '₫',
                           name === "revenue" ? "Doanh thu" : "Lương GV",
                         ]}
                       />
@@ -598,7 +598,6 @@ export default function FinancialReports() {
                 </div>
               </CardContent>
             </Card>
-
           </div>
 
           {/* Class Revenue Table */}
