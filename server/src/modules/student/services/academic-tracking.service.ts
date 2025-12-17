@@ -23,6 +23,11 @@ export class AcademicTrackingService {
       JOIN student_assessment_grades sag ON sag.assessment_id = a.id AND sag.student_id = $1::uuid
       JOIN enrollments e ON e.class_id = c.id AND e.student_id = sag.student_id
       WHERE ($2::uuid IS NULL OR a.class_id = $2::uuid)
+        -- Chỉ lấy các lớp mà học sinh thực sự đã/đang học:
+        -- - enrollment.status: đang học, đã tốt nghiệp, đã dừng giữa chừng
+        -- - class.status: lớp đang hoạt động hoặc đã hoàn thành
+        AND e.status IN ('studying', 'graduated', 'stopped')
+        AND c.status IN ('active', 'completed')
         AND ($3::text IS NULL OR a.type = $3::text)
         AND ($4::date IS NULL OR a.date >= $4::date)
         AND ($5::date IS NULL OR a.date <= $5::date)

@@ -54,6 +54,7 @@ export class ClassInformationService {
       description: cls.description,
       subject: cls.subject,
       room: cls.room,
+      status: cls.status,
       startDate: cls.actualStartDate ?? cls.expectedStartDate ?? null,
       endDate: cls.actualEndDate ?? null,
       maxStudents: cls.maxStudents ?? null,
