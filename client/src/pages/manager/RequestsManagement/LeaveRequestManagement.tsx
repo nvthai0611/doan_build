@@ -210,7 +210,7 @@ export default function LeaveRequestManagement() {
       setIsConfirmationModalOpen(false)
     } catch (error) {
       console.error(`Error ${confirmationAction}ing leave request:`, error)
-      toast.error(`Có lỗi xảy ra khi ${confirmationAction === 'approve' ? 'duyệt' : 'từ chối'} đơn`)
+      toast.error(`${(error as any).message || 'Có lỗi xảy ra khi duyệt đơn'}`)
     } finally {
       setIsProcessing(false)
     }

@@ -382,7 +382,7 @@ export class LeaveRequestsService {
               id: { in: sessionsToCancel },
             },
             data: {
-              status: 'cancelled',
+              status: 'day_off',
             },
           });
         }
@@ -434,8 +434,14 @@ export class LeaveRequestsService {
             });
 
             if (conflict) {
+              const classInfo = await tx.class.findUnique({
+                where: { id: conflict.classId },
+                include: {
+                  subject: true,
+                },
+              });
               throw new BadRequestException(
-                'Giáo viên thay thế đang có lịch dạy trùng thời gian với buổi học được gán.',
+                `Giáo viên thay thế đang có lịch dạy trùng thời gian với buổi học được gán: ${classInfo?.name} ${classInfo?.subject?.name} ${conflict.sessionDate.toLocaleDateString()} ${conflict.startTime} - ${conflict.endTime}`,
               );
             }
           }
@@ -445,6 +451,7 @@ export class LeaveRequestsService {
             data: {
               substituteTeacherId: replacementTeacherId,
               substituteEndDate: sessionInfo?.date ?? undefined,
+              status: 'has_not_happened',
             },
           });
         }
