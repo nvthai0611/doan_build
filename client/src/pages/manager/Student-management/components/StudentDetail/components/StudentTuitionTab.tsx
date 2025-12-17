@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface Class {
   id: string
@@ -88,7 +89,12 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
   const [isRecalculating, setIsRecalculating] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [recalculationPreview, setRecalculationPreview] = useState<any>(null)
-
+  
+  // Status change states
+  const [showStatusDialog, setShowStatusDialog] = useState(false)
+  const [selectedNewStatus, setSelectedNewStatus] = useState<FeeStatus | ''>("")
+  const [isChangingStatus, setIsChangingStatus] = useState(false)
+  const queryClient = useQueryClient()
   /**
    * Tạo Map classId -> Class từ enrollments để lookup nhanh
    */
@@ -156,8 +162,8 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
     return [
       FeeStatus.Pending,
       FeeStatus.Calculated,
-      FeeStatus.Cancelled,
-      FeeStatus.Overdue
+      // FeeStatus.Cancelled,
+      // FeeStatus.Overdue
     ].includes(status)
   }
 
@@ -302,6 +308,48 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
       return fee && canRecalculate(fee)
     })
     setSelectedFeeIds(validIds)
+  }
+
+  /**
+   * Xử lý thay đổi status
+   */
+  const handleChangeStatus = () => {
+    if (selectedFeeIds.length === 0) {
+      toast.error("Chưa chọn hóa đơn. Vui lòng chọn ít nhất một hóa đơn.")
+      return
+    }
+    setShowStatusDialog(true)
+  }
+
+  /**
+   * Confirm và thực hiện thay đổi status
+   */
+  const confirmChangeStatus = async () => {
+    if (!selectedNewStatus) {
+      toast.error("Vui lòng chọn trạng thái mới")
+      return
+    }
+
+    setIsChangingStatus(true)
+    try {
+      const response = await centerOwnerStudentService.changeStatusFeeRecords(
+        selectedFeeIds,
+        selectedNewStatus,
+        student.id
+      )
+      toast.success(response.message || `Đã cập nhật trạng thái cho ${selectedFeeIds.length} hóa đơn`)
+
+      setSelectedFeeIds([])
+      setShowStatusDialog(false)
+      setSelectedNewStatus("")
+      
+      queryClient.invalidateQueries({queryKey:['studentDetail']})
+    } catch (error: any) {
+      console.error('Error changing status:', error)
+      toast.error(error.message || "Không thể thay đổi trạng thái. Vui lòng thử lại sau.")
+    } finally {
+      setIsChangingStatus(false)
+    }
   }
 
   /**
@@ -506,15 +554,24 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
           <AlertTitle>Đã chọn {selectedFeesInfo.count} hóa đơn</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>Tổng số tiền: <strong>{formatCurrency(selectedFeesInfo.totalAmount)}</strong></span>
-            <Button
-              size="sm"
-              onClick={handleRecalculate}
-              disabled={isRecalculating}
-              className="ml-4"
-            >
-              <RefreshCcw className="w-4 h-4 mr-2" />
-              {isRecalculating ? "Đang tính..." : "Tính toán lại"}
-            </Button>
+            <div className="flex gap-2 ml-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleChangeStatus}
+                disabled={isChangingStatus || isRecalculating}
+              >
+                Thay đổi trạng thái
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRecalculate}
+                disabled={isRecalculating || isChangingStatus}
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                {isRecalculating ? "Đang tính..." : "Tính toán lại"}
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -689,6 +746,76 @@ export const StudentTuitionTab: React.FC<StudentTuitionTabProps> = ({ student, o
           />
         </CardContent>
       </Card>
+
+      {/* Status Change Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thay đổi trạng thái hóa đơn</DialogTitle>
+            <DialogDescription>
+              Bạn đang thay đổi trạng thái cho <strong>{selectedFeesInfo.count}</strong> hóa đơn.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Chọn trạng thái mới</label>
+              <Select value={selectedNewStatus} onValueChange={(value) => setSelectedNewStatus(value as FeeStatus)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={FeeStatus.Calculated}>Đã tính toán</SelectItem>
+                  <SelectItem value={FeeStatus.Pending}>Chưa thanh toán</SelectItem>
+                  <SelectItem value={FeeStatus.Processing}>Đang xử lý</SelectItem>
+                  <SelectItem value={FeeStatus.PartiallyPaid}>Trả 1 phần</SelectItem>
+                  <SelectItem value={FeeStatus.Completed}>Đã thanh toán</SelectItem>
+                  <SelectItem value={FeeStatus.Overdue}>Quá hạn</SelectItem>
+                  <SelectItem value={FeeStatus.Cancelled}>Đã hủy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Danh sách hóa đơn sẽ được cập nhật:</p>
+              <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-2">
+                {selectedFeesInfo.fees.map((fee) => {
+                  const classInfo = classMap.get(fee.classId)
+                  const currentStatus = getFeeStatus(fee)
+                  const currentDisplay = getStatusDisplay(currentStatus)
+                  return (
+                    <div key={fee.id} className="text-sm flex justify-between items-center py-1">
+                      <span>{classInfo?.name || 'N/A'} - {formatCurrency(fee.amount)}</span>
+                      <Badge className={currentDisplay.className} variant={currentDisplay.variant}>
+                        {currentDisplay.label}
+                      </Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowStatusDialog(false)
+                setSelectedNewStatus("")
+              }}
+              disabled={isChangingStatus}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={confirmChangeStatus}
+              disabled={isChangingStatus || !selectedNewStatus}
+            >
+              {isChangingStatus ? "Đang cập nhật..." : "Xác nhận thay đổi"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

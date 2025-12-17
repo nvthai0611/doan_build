@@ -12,8 +12,8 @@ const PayrollSummaryCards: React.FC<PayrollSummaryCardsProps> = ({
 }) => {
   
   const totalAmount = payrolls.filter(pr => pr.status == 'paid').reduce((sum, p) => sum + Number(p.totalAmount), 0)
-  const totalBonuses = payrolls.reduce((sum, p) => sum + Number(p.bonuses), 0)
-  const totalDeductions = payrolls.reduce((sum, p) => sum + Number(p.deductions), 0)
+  const totalBonuses = payrolls.filter(pr => pr.status == 'paid').reduce((sum, p) => sum + Number(p.bonuses), 0)
+  const totalDeductions = payrolls.filter(pr => pr.status == 'paid').reduce((sum, p) => sum + Number(p.deductions), 0)
   const pendingCount = payrolls.filter(p => p.status === 'waiting_teacher_approval').length
 
   const cards = [

@@ -78,6 +78,27 @@ export const PayrollAdjustmentModal = ({
     reason: '',
   })
 
+  // Helper functions cho format số
+  const formatNumber = (value: string) => {
+    const num = value.replace(/[^\d]/g, '')
+    if (!num) return ''
+    return Number(num).toLocaleString('vi-VN')
+  }
+
+  const unformatNumber = (value: string) => {
+    return value.replace(/[^\d]/g, '')
+  }
+
+  const handleAmountChange = (value: string) => {
+    const unformatted = unformatNumber(value)
+    setAdjustmentAmount(unformatted)
+  }
+
+  const handleEditAmountChange = (value: string) => {
+    const unformatted = unformatNumber(value)
+    setEditForm((prev) => ({ ...prev, amount: unformatted }))
+  }
+
   // Initialize danh sách payroll khi modal mở
   useMemo(() => {
     if (open && selectedPayrolls.length > 0) {
@@ -341,12 +362,10 @@ export const PayrollAdjustmentModal = ({
                 <Label htmlFor="adj-amount">Số tiền (VNĐ)</Label>
                 <Input
                   id="adj-amount"
-                  type="number"
+                  type="text"
                   placeholder="0"
-                  value={adjustmentAmount}
-                  onChange={(e) => setAdjustmentAmount(e.target.value)}
-                  min="0"
-                  step="1000"
+                  value={formatNumber(adjustmentAmount)}
+                  onChange={(e) => handleAmountChange(e.target.value)}
                 />
               </div>
 
@@ -435,14 +454,9 @@ export const PayrollAdjustmentModal = ({
                             </Select>
 
                             <Input
-                              type="number"
-                              value={editForm.amount}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  amount: e.target.value,
-                                }))
-                              }
+                              type="text"
+                              value={formatNumber(editForm.amount)}
+                              onChange={(e) => handleEditAmountChange(e.target.value)}
                               className="w-32"
                               placeholder="Số tiền"
                             />

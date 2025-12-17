@@ -683,4 +683,18 @@ export class StudentManagementController {
     );
   }
 }
+  @ApiOperation({ summary: 'Thay đổi trạng thái của các hóa đơn học phí' })
+  @Put(':studentId/fee-records/status')
+  async changeStatusFeeRecord( @Param('studentId') studentId,@Body() body:{feeRecordIds: string[], status: string}){
+    try {
+        const result = await this.studentManagementService.changeStatusFeeRecords(
+            body.feeRecordIds,
+            body.status,
+            studentId,
+        );
+        return result;
+    } catch (error) {
+        
+    }
+  }
 }

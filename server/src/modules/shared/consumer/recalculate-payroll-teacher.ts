@@ -55,11 +55,9 @@ export class RecalculatedPayrollTeacherProcessor {
 
       // Kỳ Học (studyMonth)
       const studyMonthStart = new Date(Date.UTC(year, month, 1));
-      const studyMonthEnd = new Date(Date.UTC(year, month + 1, 1));
+      const studyMonthEnd = new Date(Date.UTC(year, month + 1));
 
       // Kỳ Hóa Đơn (billingMonth)
-      const billingMonthStart = new Date(Date.UTC(year, month + 1, 1));
-      const billingMonthEnd = new Date(Date.UTC(year, month + 2, 1));
 
       // Chốt sổ tháng này (ngày 8)
       const closingDate = new Date(Date.UTC(year, month + 1, 8));
@@ -135,7 +133,7 @@ export class RecalculatedPayrollTeacherProcessor {
           const feeRecords = await tx.feeRecord.findMany({
             where: {
               classId: classId,
-              dueDate: { gt: previousClosingDate, lt: billingMonthEnd },
+              dueDate: { gt: previousClosingDate, lt: closingDate },
               status: 'paid',
               feeRecordPayments: {
                 some: { payment: { paidAt: { lt: closingDate } } },
