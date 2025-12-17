@@ -99,21 +99,21 @@ export default function     StudentHomepage() {
         <a href="/student/my-classes" className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
           <div className="flex flex-col gap-1">
             <h3 className="text-base font-semibold text-gray-800">Lớp học của tôi</h3>
-            <p className="text-sm text-gray-500">Xem danh sách lớp và chi tiết</p>
+                <p className="text-sm text-gray-500">Xem danh sách lớp và chi tiết</p>
           </div>
         </a>
         
         <a href="/student/my-schedule" className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
           <div className="flex flex-col gap-1">
             <h3 className="text-base font-semibold text-gray-800">Lịch học</h3>
-            <p className="text-sm text-gray-500">Xem theo tuần/tháng</p>
+                <p className="text-sm text-gray-500">Xem theo tuần/tháng</p>
           </div>
         </a>
         
         <a href="/student/my-grades" className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
           <div className="flex flex-col gap-1">
             <h3 className="text-base font-semibold text-gray-800">Bảng điểm</h3>
-            <p className="text-sm text-gray-500">Xem điểm và kết quả</p>
+                <p className="text-sm text-gray-500">Xem điểm và kết quả</p>
           </div>
         </a>
       </div>

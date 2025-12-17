@@ -75,6 +75,8 @@ import { FinancialReportsController } from './controllers/financial-reports.cont
 import { FinancialReportsService } from './services/financial-reports.service';
 import { ScholarshipManagementController } from './controllers/scholarship-management.controller';
 import { ScholarshipManagementService } from './services/scholarship-management.service';
+import { ScheduleChangeAdminController } from './controllers/schedule-change.controller';
+import { ScheduleChangeAdminService } from './services/schedule-change.service';
 
 @Module({
   imports: [
@@ -107,6 +109,7 @@ import { ScholarshipManagementService } from './services/scholarship-management.
     LeaveRequestsController,
     SessionRequestsController,
     ScheduleManagementController,
+    ScheduleChangeAdminController,
     TeacherManagementController,
     StudentManagementController,
     IncidentHandleController,
@@ -138,6 +141,7 @@ import { ScholarshipManagementService } from './services/scholarship-management.
     LeaveRequestsService,
     SessionRequestsService,
     ScheduleManagementService,
+    ScheduleChangeAdminService,
     TeacherManagementService,
     StudentManagementService,
     IncidentHandleService,

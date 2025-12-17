@@ -77,10 +77,26 @@ export class LeaveRequestsController {
   async approveLeaveRequest(
     @Param('id') id: string,
     @Param('action') action: 'approve' | 'reject',
-    @Body() body: { approverId: string; notes?: string }
+    @Body()
+    body: {
+      approverId: string;
+      notes?: string;
+      // Danh sách giáo viên thay thế theo từng buổi (tùy chọn)
+      // Nếu không truyền hoặc không có phần tử nào => tất cả buổi sẽ bị hủy khi duyệt
+      replacements?: {
+        sessionId: string;
+        replacementTeacherId?: string;
+      }[];
+    },
   ) {
     try {
-      return await this.leaveRequestsService.approveLeaveRequest(id, action, body.approverId, body.notes);
+      return await this.leaveRequestsService.approveLeaveRequest(
+        id,
+        action,
+        body.approverId,
+        body.notes,
+        body.replacements,
+      );
     } catch (error) {
       throw new HttpException(
         error.message || 'Lỗi khi xử lý đơn xin nghỉ',

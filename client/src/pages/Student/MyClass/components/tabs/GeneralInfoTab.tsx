@@ -8,6 +8,7 @@ import { studentClassInformationService } from "../../../../../services/student/
 
 interface GeneralInfoTabProps {
   classData: {
+    status?: string
     subject?: { name?: string }
     name?: string
     teacher?: { user?: { fullName?: string } }
@@ -38,25 +39,6 @@ export function GeneralInfoTab({ classData, classId }: GeneralInfoTabProps) {
 
   // Calculate actual student count from members data
   const actualStudentCount = membersQuery.data ? (membersQuery.data as unknown[]).length : 0
-  const getStatusLabel = (status?: string) => {
-    const s = (status || 'studying').toLowerCase()
-    if (s === 'studying') return 'Đang học'
-    if (s === 'not_been_updated') return 'Chưa cập nhật'
-    if (s === 'graduated') return 'Đã hoàn thành'
-    if (s === 'stopped') return 'Dừng học'
-    if (s === 'withdrawn') return 'Chuyển lớp'
-    return 'Không xác định'
-  }
-
-  const statusClasses = (status?: string) => {
-    const s = (status || "studying").toLowerCase()
-    if (s === "studying") return "bg-green-100 text-green-800 border border-green-300"
-    if (s === "not_been_updated") return "bg-yellow-100 text-yellow-800 border border-yellow-300"
-    if (s === "graduated") return "bg-gray-100 text-gray-800 border border-gray-300"
-    if (s === "stopped") return "bg-red-100 text-red-800 border border-red-300"
-    if (s === "withdrawn") return "bg-orange-100 text-orange-800 border border-orange-300"
-    return "bg-gray-100 text-gray-800 border border-gray-300"
-  }
 
   return (
     <div className="space-y-6">
@@ -102,17 +84,9 @@ export function GeneralInfoTab({ classData, classId }: GeneralInfoTabProps) {
               </div>
             </div>
             <div>
-              <div className="text-gray-600">Sĩ số (ước tính)</div>
+              <div className="text-gray-600">Sĩ số</div>
               <div className="mt-1 font-medium text-gray-900">
                 {actualStudentCount}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-600">Trạng thái</div>
-              <div className="mt-2">
-                <Badge className={`${statusClasses("active")} text-xs`}>
-                  {getStatusLabel("active")}
-                </Badge>
               </div>
             </div>
           </div>

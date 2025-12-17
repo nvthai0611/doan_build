@@ -60,19 +60,19 @@ export default function StudentClassesPage() {
   if (isError) {
     return (
       <div className="border border-red-200 bg-red-50 rounded p-3 text-sm text-red-700 flex items-center justify-between gap-3">
-        <div>
+              <div>
           <p className="font-medium">Không thể tải danh sách lớp học</p>
           <p className="text-xs">Vui lòng thử lại sau.</p>
-        </div>
+              </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => refetch()}
           className="border-red-300 text-red-700 hover:bg-red-100"
         >
-          Thử lại
-        </Button>
-      </div>
+              Thử lại
+            </Button>
+          </div>
     )
   }
 
@@ -101,7 +101,7 @@ export default function StudentClassesPage() {
             </div>
           )}
         </div>
-      </div>
+            </div>
 
       <Card className="border rounded">
         <CardHeader>
