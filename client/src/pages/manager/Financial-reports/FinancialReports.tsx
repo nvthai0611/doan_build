@@ -884,7 +884,7 @@ export default function FinancialReports() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-100 text-sm font-medium">Doanh thu năm {selectedYear}</p>
-                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary?.revenue.monthCollected ? new Intl.NumberFormat('vi-VN').format(summary.revenue.monthCollected) + '₫' : '0₫'}</p>
+                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary?.revenue.yearlyRevenue ? new Intl.NumberFormat('vi-VN').format(summary.revenue.yearlyRevenue) + '₫' : '0₫'}</p>
                     <div className="flex items-center gap-1 mt-2 text-blue-100">
                       {(summary?.revenue.yearlyRevenueChangePercent ?? 0) >= 0 ? (
                         <ArrowUpRight className="w-4 h-4" />
@@ -909,7 +909,7 @@ export default function FinancialReports() {
                   <div>
                     <p className="text-emerald-100 text-sm font-medium">Lợi nhuận ròng năm {selectedYear}</p>
                     <p className="text-sm text-emerald-100 mt-1">(Doanh thu - Lương GV)</p>
-                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary ? new Intl.NumberFormat('vi-VN').format(summary.revenue.monthCollected - summary.payroll.paidAmount) + '₫' : '0₫'}</p>
+                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary ? new Intl.NumberFormat('vi-VN').format((summary.revenue.yearlyRevenue || 0) - (summary.payroll.yearlySalary || 0)) + '₫' : '0₫'}</p>
                     <div className="flex items-center gap-1 mt-2 text-emerald-100">
                       {(summary?.payroll.yearlyProfitChangePercent ?? 0) >= 0 ? (
                         <ArrowUpRight className="w-4 h-4" />
@@ -931,7 +931,7 @@ export default function FinancialReports() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-rose-100 text-sm font-medium">Lương GV năm {selectedYear}</p>
-                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary?.payroll.paidAmount ? new Intl.NumberFormat('vi-VN').format(summary.payroll.paidAmount) + '₫' : '0₫'}</p>
+                    <p className="text-3xl font-bold mt-2">{isLoading ? "..." : summary?.payroll.yearlySalary ? new Intl.NumberFormat('vi-VN').format(summary.payroll.yearlySalary) + '₫' : '0₫'}</p>
                     <div className="flex items-center gap-1 mt-2 text-rose-100">
                       <UserCheck className="w-4 h-4" />
                       <span className="text-sm">{summary?.payroll.teacherCountPaid || 0} giáo viên</span>
@@ -991,7 +991,7 @@ export default function FinancialReports() {
                     <div className="flex items-center justify-between">
                       <span className="text-blue-700 font-medium">Doanh thu TB/tháng</span>
                       <span className="text-2xl font-bold text-blue-600">
-                        {summary?.revenue.monthCollected ? new Intl.NumberFormat('vi-VN').format(Math.round(summary.revenue.monthCollected / 12)) + '₫' : '0₫'}
+                        {summary?.revenue.yearlyRevenue ? new Intl.NumberFormat('vi-VN').format(Math.round(summary.revenue.yearlyRevenue / 12)) + '₫' : '0₫'}
                       </span>
                     </div>
                     <p className="text-sm text-blue-600 mt-1">Tổng doanh thu / 12 tháng</p>
