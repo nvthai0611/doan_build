@@ -502,6 +502,22 @@ export class LeaveRequestsService {
             },
           });
         }
+
+        //3. Cập nhật lại các lịch mà giáo viên nghỉ được chỉ định dạy thay thế giáo viên khác trước đó thành nghỉ
+        const leaveRequestObj = await tx.leaveRequest.findUnique({
+          where: { id: leaveRequestId },
+        });
+        const classSessionReplacement = await tx.classSession.findMany({
+          where: {
+            substituteTeacherId: leaveRequestObj?.teacherId,
+          },
+        });
+        for (const session of classSessionReplacement) {
+          await tx.classSession.update({
+            where: { id: session.id },
+            data: { status: 'day_off' },
+          });
+        }
       }
 
       return updatedRequest;
