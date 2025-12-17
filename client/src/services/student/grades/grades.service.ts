@@ -26,7 +26,7 @@ export const studentGradesService = {
     return result;
   },
   
-  async getAvailableClasses(): Promise<Array<{ id: string; name: string; academicYear?: string; subjectName?: string }>> {
+  async getAvailableClasses(): Promise<Array<{ id: string; name: string; academicYear?: string; subjectName?: string; enrollmentStatus?: string }>> {
     const response = await ApiService.get<any>("/student/grades/classes");
     const raw = response as any;
     const classes = raw?.data ?? raw;

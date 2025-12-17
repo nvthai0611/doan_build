@@ -10,23 +10,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export default function StudentTranscriptPage() {
-  // Lọc theo Lớp (bắt buộc) + Loại kiểm tra (tuỳ chọn)
+  // Lọc theo Lớp (bắt buộc)
   const [classId, setClassId] = useState<string | undefined>(undefined)
-  const [testType, setTestType] = useState<string | undefined>(undefined)
   
-  const filters: TranscriptFilters = useMemo(() => ({ classId, testType }), [classId, testType])
+  const filters: TranscriptFilters = useMemo(() => ({ classId }), [classId])
 
   const { data: classes } = useQuery({
     queryKey: ['studentTranscriptClasses'],
     queryFn: () => studentGradesService.getAvailableClasses(),
-    staleTime: 300000,
-    refetchOnWindowFocus: false
-  })
-
-  const { data: testTypes } = useQuery({
-    queryKey: ['studentTranscriptTestTypes', classId],
-    queryFn: () => studentGradesService.getTestTypes(classId),
-    enabled: !!classId,
     staleTime: 300000,
     refetchOnWindowFocus: false
   })
@@ -51,7 +42,6 @@ export default function StudentTranscriptPage() {
 
   const clearFilters = () => {
     setClassId(undefined)
-    setTestType(undefined)
   }
 
   return (
@@ -102,44 +92,23 @@ export default function StudentTranscriptPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
                 Lớp học
               </label>
               <Select 
                 value={classId} 
-                onValueChange={(v) => { 
-                  setClassId(v); 
-                  setTestType(undefined);
-                }}
+                onValueChange={(v) => setClassId(v)}
               >
                 <SelectTrigger className="border-gray-300 hover:border-gray-400">
                   <SelectValue placeholder="Chọn lớp học" />
                 </SelectTrigger>
                 <SelectContent>
                   {(classes || []).map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}{c.academicYear ? ` • ${c.academicYear}` : ''}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Loại kiểm tra
-              </label>
-              <Select 
-                value={testType} 
-                onValueChange={setTestType}
-                disabled={!classId}
-              >
-                <SelectTrigger className="border-gray-300 hover:border-gray-400">
-                  <SelectValue placeholder="Chọn loại kiểm tra" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(testTypes || []).map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
