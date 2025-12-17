@@ -195,13 +195,14 @@ export class FinancialReportsService {
     return items
   }
 
-  private async buildYearlyTrend(years: number) {
+  private async buildYearlyTrend(years: number, selectedYear?: number) {
     const now = new Date()
     const items: Array<{ label: string; revenue: number; salary: number }> = []
-    const startYear = now.getFullYear() - (years - 1)
+    const endYear = selectedYear || now.getFullYear()
+    const startYear = endYear - (years - 1)
 
     // Process each year
-    for (let y = startYear; y <= now.getFullYear(); y++) {
+    for (let y = startYear; y <= endYear; y++) {
       let yearRevenue = 0
       let yearSalary = 0
 
@@ -425,8 +426,8 @@ export class FinancialReportsService {
       }),
       // Monthly trend
       this.buildMonthlyTrend(12),
-      // Yearly trend (last 5 years)
-      this.buildYearlyTrend(5),
+      // Yearly trend (last 5 years from selected year or current year)
+      this.buildYearlyTrend(5, year ? Number(year) : undefined),
       // Total students (all time)
       this.prisma.student.count()
     ])
@@ -537,10 +538,17 @@ export class FinancialReportsService {
     // Calculate year-over-year change percentages
     let yearlyRevenueChangePercent = 0
     let yearlyProfitChangePercent = 0
+    let selectedYearRevenue = 0
+    let selectedYearSalary = 0
     
     if (yearlyTrend && yearlyTrend.length >= 2) {
+      // When year is specified, compare the selected year with its previous year
+      // Otherwise, compare current year with previous year
       const currentYearData = yearlyTrend[yearlyTrend.length - 1]
       const previousYearData = yearlyTrend[yearlyTrend.length - 2]
+      
+      selectedYearRevenue = currentYearData.revenue
+      selectedYearSalary = currentYearData.salary
       
       if (previousYearData.revenue > 0) {
         yearlyRevenueChangePercent = Math.round(((currentYearData.revenue - previousYearData.revenue) / previousYearData.revenue) * 100)
@@ -552,6 +560,9 @@ export class FinancialReportsService {
       if (previousYearProfit > 0) {
         yearlyProfitChangePercent = Math.round(((currentYearProfit - previousYearProfit) / previousYearProfit) * 100)
       }
+    } else if (yearlyTrend && yearlyTrend.length === 1) {
+      selectedYearRevenue = yearlyTrend[0].revenue
+      selectedYearSalary = yearlyTrend[0].salary
     }
 
     return {
@@ -563,6 +574,7 @@ export class FinancialReportsService {
         yearlyTrend,
         revenueChangePercent,
         yearlyRevenueChangePercent,
+        yearlyRevenue: selectedYearRevenue,
         classRevenue: totalClassRevenue,
         prevMonthClassRevenue: prevMonthClassRevenueTotal
       },
@@ -584,7 +596,8 @@ export class FinancialReportsService {
         teacherCountPending,
         teacherSalaries,
         profitChangePercent,
-        yearlyProfitChangePercent
+        yearlyProfitChangePercent,
+        yearlySalary: selectedYearSalary
       },
       students: {
         totalCount: studentsTotalCount
