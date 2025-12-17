@@ -16,6 +16,7 @@ import { vi } from 'date-fns/locale';
 import { CodeDisplay } from '../../../components/common/CodeDisplay';
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS, SessionStatus } from '@/lib/constants';
 import { useNavigate } from 'react-router-dom';
+import { usePagination } from '../../../hooks/usePagination';
 
 interface TeacherInSession {
   id: string;
@@ -61,6 +62,11 @@ export default function TodaySessionsPage() {
     end.setHours(23, 59, 59, 999);
     return { start: today, end };
   });
+  const pagination = usePagination({
+    initialPage: 1,
+    initialItemsPerPage: 10,
+    totalItems: 0
+});
   const [search, setSearch] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -114,6 +120,8 @@ export default function TodaySessionsPage() {
     staleTime: 0,
   });
 
+
+
   // Query để lấy tất cả data (không filter) để tính count cho tabs
   const { data: allData } = useQuery({
     queryKey: ['teachers-in-sessions-today-all', dateRange, debouncedSearchTerm],
@@ -128,6 +136,9 @@ export default function TodaySessionsPage() {
     staleTime: 0,
   });
 
+  const totalPages = (allData as any)?.meta.totalPages || 1;
+  const totalCount = (allData as any)?.meta.total || 0;
+  
   // Query để lấy danh sách lớp học cho filter
   const { data: classesData } = useQuery({
     queryKey: ['classes-for-filter'],
@@ -321,12 +332,12 @@ export default function TodaySessionsPage() {
         </div>
       ),
     },
-    {
-      key: 'enrollmentCount',
-      header: 'Sĩ số',
-      align: 'center',
-      render: (item) => item.enrollmentCount,
-    },
+    // {
+    //   key: 'enrollmentCount',
+    //   header: 'Sĩ số',
+    //   align: 'center',
+    //   render: (item) => item.enrollmentCount,
+    // },
   ];
 
   return (
@@ -560,21 +571,16 @@ export default function TodaySessionsPage() {
           columns={columns}
           loading={isLoading}
           emptyMessage="Không có dữ liệu"
-          pagination={
-            data?.meta
-              ? {
-                  currentPage: page,
-                  totalPages: data.meta.totalPages,
-                  totalItems: data.meta.total,
-                  itemsPerPage: limit,
-                  onPageChange: setPage,
-                  onItemsPerPageChange: setLimit,
-                  showItemsPerPage: true,
-                  showPageInfo: true,
-                }
-              : undefined
-          }
-          rowKey={(item) => item.id}
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: totalPages,
+            totalItems: totalCount,
+            itemsPerPage: pagination.itemsPerPage,
+            onPageChange: pagination.setCurrentPage,
+            onItemsPerPageChange: pagination.setItemsPerPage,
+            showItemsPerPage: true,
+            showPageInfo: true
+        }}
         />
       </div>
     </div>
