@@ -522,49 +522,49 @@ const saveMutation = useMutation({
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+    <div className="px-2 sm:px-0">
+      <div className="mb-4 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
           Điểm danh học sinh
         </h1>
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-4 flex-wrap">
           <span
             onClick={() => navigate('/teacher/schedule')}
-            className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
+            className="text-gray-600 text-xs sm:text-sm lg:text-base cursor-pointer hover:text-blue-600"
           >
             Lịch dạy
           </span>
-          <span className="text-gray-400"> &gt; </span>
+          <span className="text-gray-400 text-xs sm:text-sm"> &gt; </span>
           <span
             onClick={() =>
               navigate(
                 `/teacher/session-details/${classSessionId}`,
               )
             }
-            className="text-gray-600 text-base cursor-pointer hover:text-blue-600"
+            className="text-gray-600 text-xs sm:text-sm lg:text-base cursor-pointer hover:text-blue-600"
           >
             Chi tiết buổi học
           </span>
-          <span className="text-gray-400"> &gt; </span>
-          <span className="text-gray-900 font-medium">Quản lý điểm danh</span>
+          <span className="text-gray-400 text-xs sm:text-sm"> &gt; </span>
+          <span className="text-gray-900 font-medium text-xs sm:text-sm lg:text-base">Quản lý điểm danh</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap mb-3 sm:mb-4">
         <div>
           {hasChanges && checkDate && (
             <Badge
               variant="outline"
-              className="bg-amber-50 text-amber-700 border-amber-300"
+              className="bg-amber-50 text-amber-700 border-amber-300 text-xs sm:text-sm"
             >
-              <AlertCircle className="h-4 w-4 mr-1" />
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Có thay đổi chưa lưu
             </Badge>
           )}
         </div>
 
         {absentStudents.length > 0 && checkDate && (
-          <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex items-center gap-3">
+          <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="select-all-absent"
@@ -574,7 +574,7 @@ const saveMutation = useMutation({
               />
               <label
                 htmlFor="select-all-absent"
-                className="text-sm font-medium text-amber-800 cursor-pointer whitespace-nowrap"
+                className="text-xs sm:text-sm font-medium text-amber-800 cursor-pointer"
               >
                 Chọn {absentStudents.length} học sinh vắng
               </label>
@@ -585,11 +585,11 @@ const saveMutation = useMutation({
               size="sm"
               className={cn(
                 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300',
-                'flex items-center gap-2 whitespace-nowrap'
+                'flex items-center gap-1 sm:gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center'
               )}
               disabled={selectedStudents.length === 0}
             >
-              <Mail className="h-4 w-4" />
+              <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
               Gửi email ({selectedStudents.length})
             </Button>
           </div>
@@ -598,7 +598,7 @@ const saveMutation = useMutation({
 
       {/* Dialog hiển thị danh sách đơn xin nghỉ */}
       <Dialog open={showLeaveRequests} onOpenChange={setShowLeaveRequests}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -610,14 +610,14 @@ const saveMutation = useMutation({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
             {leaveRequestsData && leaveRequestsData.length > 0 ? (
               leaveRequestsData.map((item: LeaveRequest) => {
                 const lr = item.leaveRequest;
                 return (
                   <div
                     key={item.id}
-                    className="p-4 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                    className="p-3 sm:p-4 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -691,51 +691,51 @@ const saveMutation = useMutation({
       </Dialog>
 
       <Card className="shadow-xl border-slate-200">
-        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <CardTitle className="text-2xl text-slate-900">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 p-3 sm:p-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
+              <CardTitle className="text-base sm:text-xl lg:text-2xl text-slate-900">
                 Danh sách điểm danh
                 <br />
-                <span className="text-sm font-normal text-slate-500">
-                  Buổi học: {studentListData?.class?.name || 'N/A'} | Ngày:{' '}
+                <span className="text-xs sm:text-sm font-normal text-slate-500 block mt-1">
+                  Buổi học: {studentListData?.class?.name || '-'} | Ngày:{' '}
                   {studentListData?.sessionDate
                     ? new Date(
                         studentListData?.sessionDate
                       ).toLocaleDateString('vi-VN')
-                    : 'N/A'}{' '}
-                  | Thời gian: {studentListData?.startTime || 'N/A'} -{' '}
-                  {studentListData?.endTime || 'N/A'} | Tổng số học sinh:{' '}
+                    : '-'}{' '}
+                  | Thời gian: {studentListData?.startTime || '-'} -{' '}
+                  {studentListData?.endTime || '-'} | Tổng số học sinh:{' '}
                   {studentListData?.class?.enrollments?.length || 0}
                 </span>
               </CardTitle>
             </div>
 
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1 sm:gap-2 flex-wrap w-full lg:w-auto">
              {  (
-               <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded border border-slate-200">
+               <div className="flex items-center gap-1 sm:gap-2 px-2 py-1 bg-slate-50 rounded border border-slate-200 w-full sm:w-auto">
                  <Checkbox
                   id="mark-all-present"
                    checked={markAll}
                    onCheckedChange={(v) => handleMarkAll(Boolean(v))}
                    className="h-4 w-4"
                  />
-                <label htmlFor="mark-all-present" className="text-sm text-slate-700 cursor-pointer">
+                <label htmlFor="mark-all-present" className="text-xs sm:text-sm text-slate-700 cursor-pointer">
                    Điểm danh tất cả (Có mặt)
                  </label>
                </div>
              )}
 
-              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-4 py-2">
-                <Check className="h-4 w-4 mr-1" />
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 px-2 sm:px-3 lg:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                {/* <Check className="h-4 w-4 mr-1" /> */}
                 Có mặt: {getStatusCount('present')}
               </Badge>
-              <Badge className="bg-rose-100 text-rose-700 border-rose-300 px-4 py-2">
-                <X className="h-4 w-4 mr-1" />
+              <Badge className="bg-rose-100 text-rose-700 border-rose-300 px-2 sm:px-3 lg:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                {/* <X className="h-4 w-4 mr-1" /> */}
                 Vắng: {getStatusCount('absent')}
               </Badge>
-              <Badge className="bg-sky-100 text-sky-700 border-sky-300 px-4 py-2">
-                <Check className="h-4 w-4 mr-1" />
+              <Badge className="bg-sky-100 text-sky-700 border-sky-300 px-2 sm:px-3 lg:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                {/* <Check className="h-4 w-4 mr-1" /> */}
                 Có phép: {getStatusCount('excused')}
               </Badge>
 
@@ -744,19 +744,20 @@ const saveMutation = useMutation({
                   onClick={() => setShowLeaveRequests(true)}
                   variant="outline"
                   size="sm"
-                  className="border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center gap-2"
+                  className="border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  <FileText className="h-4 w-4" />
-                  Đơn xin nghỉ ({leaveRequestsData.length})
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Đơn xin nghỉ ({leaveRequestsData.length})</span>
+                  <span className="sm:hidden">Đơn ({leaveRequestsData.length})</span>
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            <div className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
+        <CardContent className="p-2 sm:p-4 lg:p-6">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 pb-4 border-b-2 border-slate-200 font-semibold text-sm text-slate-600 uppercase tracking-wide">
               <div>Học sinh</div>
               <div className="text-center">Có mặt</div>
               <div className="text-center">Vắng</div>
@@ -774,9 +775,9 @@ const saveMutation = useMutation({
                 return (
                   <div
                     key={studentId}
-                    className="grid grid-cols-[3fr_1fr_1fr_1fr] gap-4 items-center py-4 px-3 rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                    className="flex flex-col md:grid md:grid-cols-[3fr_1fr_1fr_1fr] gap-3 md:gap-4 items-stretch md:items-center py-3 sm:py-4 px-2 sm:px-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-200 md:border-b md:border-x-0 md:border-t-0 md:border-slate-100 last:border-0"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-2 sm:gap-3">
                       {isAbsent && !emailSent && checkDate && (
                         <Checkbox
                           id={`select-${studentId}`}
@@ -784,11 +785,11 @@ const saveMutation = useMutation({
                           onCheckedChange={() =>
                             handleSelectStudent(studentId)
                           }
-                          className="flex-shrink-0 h-5 w-5"
+                          className="flex-shrink-0 h-4 w-4 sm:h-5 sm:w-5"
                         />
                       )}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Avatar className="h-12 w-12 border-2 border-slate-200 shadow-sm flex-shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-slate-200 shadow-sm flex-shrink-0">
                           <AvatarImage
                             src={
                               record.student?.user?.avatar ||
@@ -802,15 +803,15 @@ const saveMutation = useMutation({
                         </Avatar>
 
                         <div className="flex flex-col min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-semibold text-slate-900 text-base truncate">
+                          <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
+                            <span className="font-semibold text-slate-900 text-sm sm:text-base truncate">
                               {record.student?.user?.fullName ||
                                 'Chưa có tên'}
                             </span>
 
                             {emailSent && (
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-2 py-0.5 flex-shrink-0 shadow-sm">
-                                <Mail className="h-3 w-3 mr-1" />
+                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 flex-shrink-0 shadow-sm">
+                                <Mail className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
                                 Đã gửi
                               </Badge>
                             )}
@@ -819,10 +820,10 @@ const saveMutation = useMutation({
                               <div className="relative group">
                                 <Badge
                                   variant="outline"
-                                  className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-0.5 flex-shrink-0 shadow-sm cursor-pointer hover:bg-blue-100"
+                                  className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 flex-shrink-0 shadow-sm cursor-pointer hover:bg-blue-100"
                                   onClick={() => setShowLeaveRequests(true)}
                                 >
-                                  <FileText className="h-3 w-3 mr-1" />
+                                  <FileText className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
                                   Có đơn xin nghỉ
                                 </Badge>
 
@@ -854,9 +855,9 @@ const saveMutation = useMutation({
                             )}
                           </div>
 
-                          <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <span className="font-mono">
-                              {record.student?.studentCode || 'N/A'}
+                          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-slate-500">
+                            <span className="font-mono text-[11px] sm:text-sm">
+                              {record.student?.studentCode || 'Chưa có mã học sinh'}
                             </span>
 
                             {emailSent &&
@@ -900,6 +901,7 @@ const saveMutation = useMutation({
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-3 gap-2 md:contents">
                     {(
                       ['present', 'absent', 'excused'] as AttendanceStatus[]
                     ).map((status) => {
@@ -914,7 +916,7 @@ const saveMutation = useMutation({
                         localAttendance[studentId] !== dbStatus;
 
                       return (
-                        <div key={status} className="flex justify-center">
+                        <div key={status} className="flex justify-center md:justify-center">
                           <Button
                             variant={
                               currentStatus === status ? 'default' : 'outline'
@@ -924,7 +926,7 @@ const saveMutation = useMutation({
                               handleStatusChange(studentId, status);
                             }}
                             className={cn(
-                              'w-24 h-10 font-medium transition-all relative',
+                              'w-full md:w-20 lg:w-24 h-9 sm:h-10 font-medium transition-all relative text-xs sm:text-sm',
                               currentStatus === status &&
                                 {
                                   present:
@@ -943,19 +945,19 @@ const saveMutation = useMutation({
                                   excused:
                                     'hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300',
                                 }[status],
-                              isChanged &&
-                                currentStatus === status &&
-                                'ring-2 ring-amber-400 ring-offset-1'
+                              // isChanged &&
+                              //   currentStatus === status &&
+                              //   'ring-2 ring-amber-400 ring-offset-1'
                             )}
                           >
-                            {status === 'present' && (
-                              <Check className="h-4 w-4 mr-1" />
+                            {status === 'present'  && (
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                             )}
                             {status === 'absent' && (
-                              <X className="h-4 w-4 mr-1" />
+                              <X className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                             )}
                             {status === 'excused' && (
-                              <Check className="h-4 w-4 mr-1" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                             )}
 
                             {currentStatus === status &&
@@ -965,37 +967,38 @@ const saveMutation = useMutation({
                                 excused: 'Có phép',
                               }[status]}
 
-                            {isChanged && currentStatus === status && (
+                            {/* {isChanged && currentStatus === status && (
                               <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full"></div>
-                            )}
+                            )} */}
                           </Button>
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 );
               })
             ) : (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-slate-500">Không có dữ liệu học sinh</p>
+              <div className="flex items-center justify-center py-8 sm:py-12">
+                <p className="text-slate-500 text-sm sm:text-base">Không có dữ liệu học sinh</p>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end mt-8 pt-6 border-t-2 border-slate-200">
+          <div className="flex justify-end mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 border-t-2 border-slate-200">
             <Button
               onClick={handleSave}
               size="lg"
               disabled={!hasChanges || saveMutation.isPending}
               className={cn(
-                'min-w-40 h-12 text-base font-semibold shadow-lg transition-all',
+                'w-full sm:w-auto sm:min-w-40 h-10 sm:h-12 text-sm sm:text-base font-semibold shadow-lg transition-all',
                 hasChanges
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
                   : 'bg-gray-400 cursor-not-allowed',
               )}
               style={isAttendanceDisabled() ? { display: 'none' } : {}}
             >
-              <Save className="h-5 w-5 mr-2" />
+              <Save className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
               {saveMutation.isPending
                 ? 'Đang lưu...'
                 : hasChanges

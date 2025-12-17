@@ -62,9 +62,10 @@ async getTeacherPayroll(
       status: { not: 'pending' },
     };
 
-    if (status && status !== 'all') {
+    if (status && status !== 'all') {  
       where.status = status;
     }
+    
 
     // ✅ Nếu có month → lấy 1 bảng lương của tháng đó
     if (month && month.match(/^\d{4}-\d{2}$/)) {
@@ -126,8 +127,8 @@ async getTeacherPayroll(
     // ✅ Không có month → lấy danh sách tất cả bảng lương (có phân trang)
     const skip = (page - 1) * limit;
     const take = limit;
-
-    const [payrolls, totalItems] = await Promise.all([
+        
+    const [payrolls, totalItems] = await this.prisma.$transaction([
       this.prisma.payroll.findMany({
         where,
         include: {
@@ -167,7 +168,9 @@ async getTeacherPayroll(
     ]);
 
     const totalPages = Math.ceil(totalItems / limit);
-
+    if(payrolls.length ===0){
+      throw new HttpException('Không có dữ liệu bảng lương', 404);
+    }
     return {
       data: payrolls,
       pagination: {

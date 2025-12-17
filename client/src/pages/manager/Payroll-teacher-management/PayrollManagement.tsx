@@ -826,7 +826,7 @@ const PayrollManagement: React.FC = () => {
         loading={isLoading}
         error={error?.message}
         onRetry={refetch}
-        emptyMessage="Không có dữ liệu giáo viên"
+        emptyMessage="Không có dữ liệu về bảng lương giáo viên"
         hoverable
         pagination={{
           currentPage,
