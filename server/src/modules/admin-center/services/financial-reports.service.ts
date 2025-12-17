@@ -202,74 +202,87 @@ export class FinancialReportsService {
 
     // Process each year
     for (let y = startYear; y <= now.getFullYear(); y++) {
-      const yearStart = new Date(y, 0, 1, 0, 0, 0)
-      const yearEnd = new Date(y, 11, 31, 23, 59, 59, 999)
+      let yearRevenue = 0
+      let yearSalary = 0
 
-      // Get enrollments and their fee records for this year
-      const enrollments = await this.prisma.enrollment.findMany({
-        where: {
-          status: 'studying'
-        },
-        include: {
-          student: {
-            include: {
-              feeRecords: {
-                where: {
-                  status: { in: ['paid', 'pending', 'processing', 'overdue'] },
-                  dueDate: { gte: yearStart, lte: yearEnd }
+      // Sum up revenue and salary for all 12 months in this year
+      for (let month = 1; month <= 12; month++) {
+        // Calculate shifted boundary for this month
+        let nextMonth = month + 1
+        let nextYear = y
+        if (nextMonth > 12) {
+          nextMonth = 1
+          nextYear = y + 1
+        }
+
+        const shiftedStart = new Date(nextYear, nextMonth - 1, 1, 0, 0, 0)
+        const shiftedEnd = new Date(nextYear, nextMonth, 0, 23, 59, 59, 999)
+
+        // Get enrollments and their fee records for this month
+        const enrollments = await this.prisma.enrollment.findMany({
+          where: {
+            status: 'studying'
+          },
+          include: {
+            student: {
+              include: {
+                feeRecords: {
+                  where: {
+                    status: { in: ['paid', 'pending', 'processing', 'overdue'] },
+                    dueDate: { gte: shiftedStart, lte: shiftedEnd }
+                  }
                 }
               }
-            }
+            },
+            class: true
+          }
+        })
+
+        // Calculate revenue for this month using same logic as getClassStudentsStatus
+        enrollments.forEach(enrollment => {
+          const feeRecords = (enrollment.student.feeRecords || [])
+            .filter(fr => fr.classId === enrollment.classId)
+
+          const paidAmount = feeRecords
+            .filter(fr => fr.status === 'paid')
+            .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
+
+          const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
+          const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
+
+          const hasPaid = paidAmount > 0
+          const hasPending = pendingRecords.length > 0
+          const hasOverdue = overdueRecords.length > 0
+
+          const enrollmentStatus = hasOverdue
+            ? 'overdue'
+            : hasPending
+            ? 'pending'
+            : hasPaid
+            ? 'paid'
+            : 'unrecorded'
+
+          if (enrollmentStatus === 'paid') {
+            yearRevenue += paidAmount
+          }
+        })
+
+        // Get payroll for this month (normal boundary)
+        const monthStart = new Date(y, month - 1, 1, 0, 0, 0)
+        const monthEnd = new Date(y, month, 0, 23, 59, 59, 999)
+
+        const payrolls = await this.prisma.payroll.findMany({
+          where: {
+            status: 'paid',
+            periodStart: { gte: monthStart, lte: monthEnd }
           },
-          class: true
-        }
-      })
+          select: {
+            totalAmount: true
+          }
+        })
 
-      // Calculate revenue using same logic as getClassStudentsStatus
-      let yearRevenue = 0
-      enrollments.forEach(enrollment => {
-        // Filter fee records by classId
-        const feeRecords = (enrollment.student.feeRecords || [])
-          .filter(fr => fr.classId === enrollment.classId)
-
-        const paidAmount = feeRecords
-          .filter(fr => fr.status === 'paid')
-          .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
-
-        const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
-        const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
-
-        const hasPaid = paidAmount > 0
-        const hasPending = pendingRecords.length > 0
-        const hasOverdue = overdueRecords.length > 0
-
-        // Same status derivation as getClassStudentsStatus
-        const enrollmentStatus = hasOverdue
-          ? 'overdue'
-          : hasPending
-          ? 'pending'
-          : hasPaid
-          ? 'paid'
-          : 'unrecorded'
-
-        // Only add revenue if student status is 'paid'
-        if (enrollmentStatus === 'paid') {
-          yearRevenue += paidAmount
-        }
-      })
-
-      // Get payroll for this year
-      const payrolls = await this.prisma.payroll.findMany({
-        where: {
-          status: 'paid',
-          periodStart: { gte: yearStart, lte: yearEnd }
-        },
-        select: {
-          totalAmount: true
-        }
-      })
-
-      const yearSalary = payrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+        yearSalary += payrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+      }
 
       items.push({
         label: String(y),
