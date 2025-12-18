@@ -1111,28 +1111,33 @@ export class ScheduleManagementService {
         .split('-')
         .map(Number);
       const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-      console.log(startYear, startMonth, startDay);
-      // Tạo date ở UTC midnight
-      dateStart = new Date(startDate);
-      dateEnd = new Date(endDate);
-      console.log(dateStart, dateEnd);
+
+      // Chuẩn hóa về UTC date: start = 00:00 UTC, end = ngày tiếp theo 00:00 UTC
+      dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+      const endInclusive = new Date(Date.UTC(endYear, endMonth - 1, endDay + 1));
+      dateEnd = endInclusive;
     } else {
-      // Mặc định là hôm nay
+      // Mặc định là hôm nay (bao trọn ngày hiện tại)
       const today = new Date();
-      dateStart = new Date(today.toISOString().split('T')[0]);
-      dateEnd = new Date(today.toISOString().split('T')[0]);
+      const y = today.getUTCFullYear();
+      const m = today.getUTCMonth();
+      const d = today.getUTCDate();
+      dateStart = new Date(Date.UTC(y, m, d));
+      const tomorrow = new Date(Date.UTC(y, m, d + 1));
+      dateEnd = tomorrow;
     }
 
     // Build where condition
     const where: any = {
       sessionDate: {
-        in: [dateStart, dateEnd],
+        gte: dateStart,
+        lt: dateEnd,
       },
       // Chỉ lấy buổi học có giáo viên
       teacherId: { not: null },
       class: {
         status: { in: ['active'] },
-      },
+      },  
     };
 
     // Filter theo sessionStatus nếu có, nếu không thì loại trừ 'end' và 'cancelled'
