@@ -165,53 +165,12 @@ export function PaymentSelectionPage() {
         onSuccess: async (data) => {
           console.log(data);
           
-          // ✅ Thanh toán thành công
-           toast.success('Thanh toán thành công! 🎉', {
+           toast.success('Thanh toán thành công!', {
             description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
             duration: 2000,
           })
 
           handleCloseModal()
-
-          // ⏳ Đợi backend cập nhật (quan trọng!)
-          // await new Promise(resolve => setTimeout(resolve, 1500))
-
-          // // 🔄 Force refetch thay vì chỉ invalidate
-          // await Promise.all([
-          //   queryClient.refetchQueries({ 
-          //     queryKey: ['feeRecords'],
-          //     type: 'active'
-          //   }),
-          //   queryClient.refetchQueries({ 
-          //     queryKey: ['payment-history'],
-          //     type: 'active'
-          //   })
-          // ])
-
-          // // 📊 Lấy data mới từ cache SAU KHI refetch xong
-          // const freshList = queryClient.getQueryData<any[]>(['feeRecords', 'pending']) || []
-
-          // console.log('📋 Fresh data after refetch:', freshList) // Debug log
-
-          // const remainingIds = new Set(
-          //   freshList
-          //     .filter((fr: any) => {
-          //       const total = fr.totalAmount ?? (Number(fr.amount) - Number(fr.discount))
-          //       const remaining = total - Number(fr.paidAmount)
-          //       return remaining > 0
-          //     })
-          //     .map((fr: any) => fr.id)
-          // )
-
-          // // Chỉ bỏ chọn những hóa đơn đã trả xong
-          // setSelectedFees((prev) => prev.filter((id) => remainingIds.has(id)))
-
-            // Dismiss toast cũ
-  // ⏳ Đợi 2 giây để user đọc thông báo
-  // await new Promise(resolve => setTimeout(resolve, 2000))
-
-  // // 🔄 Reload trang
-  // window.location.reload()
         },
         
         onFailure: (data) => {
@@ -261,39 +220,7 @@ export function PaymentSelectionPage() {
     }
   }
 
-  // const handleSelectPayment = async () => {
-  //   try {
-  //     if (selectedFees.length === 0) {
-  //       toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
-  //       return
-  //     }
-  //     setLoading(true)
-  //     // 1. Tạo payment
-  //     const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
-  //     if (!paymentRes?.data?.id) {
-  //       toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
-  //       setLoading(false)
-  //       return
-  //     }
-  //     setCurrentPayment(paymentRes.data)
-
-  //     // 2. Tạo QR code cho payment vừa tạo
-  //     const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
-  //     if (!qrRes?.data?.qrCodeUrl) {
-  //       toast.error(qrRes?.message || "Không thể tạo mã QR")
-  //       setLoading(false)
-  //       return
-  //     }
-  //     setPaymentData(qrRes.data)
-  //     setShowQrModal(true)
-  //     toast.success("Mã QR thanh toán đã được tạo thành công")
-  //   } catch (error) {
-  //     console.error("Error creating payment/QR code:", error)
-  //     toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+  
 
   const handleCopyContent = async () => {
     if (paymentData?.content) {

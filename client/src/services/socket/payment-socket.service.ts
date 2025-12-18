@@ -37,10 +37,18 @@ class PaymentSocketService {
    */
   connect() {
     if (this.socket?.connected) return;
-
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      console.error('⚠️ No authentication token found');
+      return;
+    }
     const apiURL = import.meta.env.VITE_SERVER_API_V1 || 'http://localhost:9999/api/v1';
     const baseURL = new URL(apiURL).origin;
     this.socket = io(`${baseURL}/payment`, {
+      auth:{
+        token: token
+      },
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
@@ -49,15 +57,15 @@ class PaymentSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Payment socket connected:', this.socket?.id);
+      console.log(' Payment socket connected:', this.socket?.id);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Payment socket disconnected');
+    this.socket.on('dsconnect', () => {
+      console.log(' Payment socket disconnected');
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
+      console.error(' Socket connection error:', error);
     });
   }
 
@@ -85,7 +93,7 @@ class PaymentSocketService {
 
     // Listen for payment success
     this.socket?.on('payment_success', (data: PaymentSuccessData) => {
-      console.log('💰 Payment success:', data);
+      console.log(' Payment success:', data);
       if (data.orderCode === orderCode) {
         callbacks.onSuccess?.(data);
       }
@@ -94,7 +102,7 @@ class PaymentSocketService {
     // Listen for payment failure
     if (callbacks.onFailure) {
       this.socket?.on('payment_failed', (data: PaymentFailedData) => {
-        console.log('❌ Payment failed:', data);
+        console.log(' Payment failed:', data);
         if (data.orderCode === orderCode) {
           callbacks.onFailure?.(data);
         }
@@ -104,7 +112,7 @@ class PaymentSocketService {
     // Listen for payment expired
     if (callbacks.onExpired) {
       this.socket?.on('payment_expired', (data: PaymentExpiredData) => {
-        console.log('⏰ Payment expired:', data);
+        console.log('Payment expired:', data);
         if (data.orderCode === orderCode) {
           callbacks.onExpired?.(data);
         }
