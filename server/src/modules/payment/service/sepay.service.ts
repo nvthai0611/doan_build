@@ -568,12 +568,12 @@ async handleWebhook(webhookData: SepayWebhookDto) {
     try {
       const emailTemplate = paymentSuccessEmailTemplate(emailData);
       await emailUtil(to, subject, emailTemplate);
-      console.log(`✅ Đã gửi email xác nhận thanh toán thành công đến ${to}`);
+      console.log(` Đã gửi email xác nhận thanh toán thành công đến ${to}`);
 
       return true;
     } catch (error) {
       console.error(
-        `❌ Lỗi khi gửi email xác nhận thanh toán: ${error.message}`,
+        ` Lỗi khi gửi email xác nhận thanh toán: ${error.message}`,
       );
       return false;
     }
