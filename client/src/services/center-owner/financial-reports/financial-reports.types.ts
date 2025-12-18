@@ -5,6 +5,7 @@ export interface FinancialSummary {
     prevMonthRevenue: number
     revenueChangePercent: number
     yearlyRevenueChangePercent?: number
+    yearlyRevenue?: number
     monthlyTrend: Array<{ label: string; revenue: number; salary: number }>
     yearlyTrend?: Array<{ label: string; revenue: number; salary: number }>
     classRevenue: number
@@ -34,6 +35,7 @@ export interface FinancialSummary {
     teacherCountPending: number
     profitChangePercent: number
     yearlyProfitChangePercent?: number
+    yearlySalary?: number
     teacherSalaries: Array<{
       id: string
       teacherId: string
