@@ -98,92 +98,112 @@ export class FinancialReportsService {
     const now = new Date()
     const items: Array<{ label: string; revenue: number; salary: number }> = []
 
+    // Calculate date range for all months at once
+    const oldestDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
+    const newestDate = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999) // +2 for shift
+
+    // Fetch ALL relevant data in one query
+    const [allFeeRecords, allPayrolls, enrollments] = await Promise.all([
+      this.prisma.feeRecord.findMany({
+        where: {
+          status: { in: ['paid', 'pending', 'processing', 'overdue'] },
+          dueDate: { gte: oldestDate, lte: newestDate }
+        },
+        select: {
+          status: true,
+          totalAmount: true,
+          dueDate: true,
+          classId: true,
+          studentId: true
+        }
+      }),
+      this.prisma.payroll.findMany({
+        where: {
+          status: 'paid',
+          periodStart: { gte: oldestDate, lte: newestDate }
+        },
+        select: {
+          totalAmount: true,
+          periodStart: true
+        }
+      }),
+      this.prisma.enrollment.findMany({
+        where: { status: 'studying' },
+        select: {
+          classId: true,
+          studentId: true
+        }
+      })
+    ])
+
+    // Create enrollment lookup set for O(1) access
+    const enrollmentSet = new Set(
+      enrollments.map(e => `${e.studentId}-${e.classId}`)
+    )
+
+    // Pre-group fee records by yearMonth-studentId-classId for O(1) lookup
+    const feeRecordsByKey = new Map<string, typeof allFeeRecords>()
+    allFeeRecords.forEach(fr => {
+      if (!fr.classId || !fr.studentId) return
+      const yearMonth = `${fr.dueDate.getFullYear()}-${fr.dueDate.getMonth()}`
+      const key = `${yearMonth}-${fr.studentId}-${fr.classId}`
+      if (!feeRecordsByKey.has(key)) {
+        feeRecordsByKey.set(key, [])
+      }
+      feeRecordsByKey.get(key)!.push(fr)
+    })
+
+    // Pre-group payrolls by yearMonth for O(1) lookup
+    const payrollsByMonth = new Map<string, number>()
+    allPayrolls.forEach(p => {
+      const yearMonth = `${p.periodStart.getFullYear()}-${p.periodStart.getMonth()}`
+      payrollsByMonth.set(yearMonth, (payrollsByMonth.get(yearMonth) || 0) + toNumber(p.totalAmount))
+    })
+
     // Process each month
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const monthLabel = `T${d.getMonth() + 1}`
-
-      // Calculate shifted boundary for this specific month
-      const monthNumber = d.getMonth() + 1 // 1-12
+      const monthNumber = d.getMonth() + 1
       const yearNumber = d.getFullYear()
-      let pm = monthNumber
-      let py = yearNumber
-      
+
       // Month M shows feeRecords with dueDate in M+1
-      const nextMonth = monthNumber + 1
-      const nextYear = yearNumber
-      
-      const shiftedStart = new Date(nextYear, nextMonth - 1, 1, 0, 0, 0) // nextMonth is 1-12, Date expects 0-11
-      const shiftedEnd = new Date(nextYear, nextMonth, 0, 23, 59, 59, 999)
+      const nextMonth = (monthNumber % 12) + 1
+      const nextYear = nextMonth === 1 ? yearNumber + 1 : yearNumber
+      const shiftedYearMonth = `${nextYear}-${nextMonth - 1}` // JS month is 0-based
 
-      // Get enrollments and their fee records for this month
-      const enrollments = await this.prisma.enrollment.findMany({
-        where: {
-          status: 'studying'
-        },
-        include: {
-          student: {
-            include: {
-              feeRecords: {
-                where: {
-                  status: { in: ['paid', 'pending', 'processing', 'overdue'] },
-                  dueDate: { gte: shiftedStart, lte: shiftedEnd }
-                }
-              }
-            }
-          },
-          class: true
-        }
-      })
-
-      // Calculate revenue using same logic as getClassStudentsStatus
+      // Calculate revenue by iterating enrolled students
       let monthRevenue = 0
+      const processedStudents = new Set<string>()
+      
       enrollments.forEach(enrollment => {
-        // Filter fee records by classId
-        const feeRecords = (enrollment.student.feeRecords || [])
-          .filter(fr => fr.classId === enrollment.classId)
+        const studentClassKey = `${enrollment.studentId}-${enrollment.classId}`
+        if (!enrollmentSet.has(studentClassKey)) return
+        
+        const uniqueKey = `${shiftedYearMonth}-${studentClassKey}`
+        if (processedStudents.has(uniqueKey)) return
+        processedStudents.add(uniqueKey)
+
+        const feeRecords = feeRecordsByKey.get(`${shiftedYearMonth}-${studentClassKey}`) || []
+        if (feeRecords.length === 0) return
 
         const paidAmount = feeRecords
           .filter(fr => fr.status === 'paid')
-          .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
+          .reduce((sum, fr) => sum + toNumber(fr.totalAmount), 0)
 
-        const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
-        const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
+        const hasPending = feeRecords.some(fr => ['pending', 'processing'].includes(fr.status))
+        const hasOverdue = feeRecords.some(fr => fr.status === 'overdue')
 
-        const hasPaid = paidAmount > 0
-        const hasPending = pendingRecords.length > 0
-        const hasOverdue = overdueRecords.length > 0
+        const enrollmentStatus = hasOverdue ? 'overdue' : hasPending ? 'pending' : paidAmount > 0 ? 'paid' : 'unrecorded'
 
-        // Same status derivation as getClassStudentsStatus
-        const enrollmentStatus = hasOverdue
-          ? 'overdue'
-          : hasPending
-          ? 'pending'
-          : hasPaid
-          ? 'paid'
-          : 'unrecorded'
-
-        // Only add revenue if student status is 'paid'
         if (enrollmentStatus === 'paid') {
           monthRevenue += paidAmount
         }
       })
 
-      // Get payroll for this month (using normal boundary, not shifted)
-      const monthStart = new Date(yearNumber, monthNumber - 1, 1, 0, 0, 0)
-      const monthEnd = new Date(yearNumber, monthNumber, 0, 23, 59, 59, 999)
-
-      const payrolls = await this.prisma.payroll.findMany({
-        where: {
-          status: 'paid',
-          periodStart: { gte: monthStart, lte: monthEnd }
-        },
-        select: {
-          totalAmount: true
-        }
-      })
-
-      const monthSalary = payrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+      // Get salary from pre-calculated map
+      const salaryYearMonth = `${yearNumber}-${monthNumber - 1}`
+      const monthSalary = payrollsByMonth.get(salaryYearMonth) || 0
 
       items.push({
         label: monthLabel,
@@ -195,93 +215,117 @@ export class FinancialReportsService {
     return items
   }
 
-  private async buildYearlyTrend(years: number) {
+  private async buildYearlyTrend(years: number, selectedYear?: number) {
     const now = new Date()
+    const endYear = selectedYear || now.getFullYear()
+    const startYear = endYear - (years - 1)
     const items: Array<{ label: string; revenue: number; salary: number }> = []
-    const startYear = now.getFullYear() - (years - 1)
 
-    // Process each year
-    for (let y = startYear; y <= now.getFullYear(); y++) {
+    // Calculate date range for all years at once (need extra month for shift)
+    const oldestDate = new Date(startYear, 1, 1, 0, 0, 0) // Feb of start year
+    const newestDate = new Date(endYear + 1, 1, 0, 23, 59, 59, 999) // End of Jan next year
+
+    // Fetch ALL data in 3 parallel queries
+    const [allFeeRecords, allPayrolls, enrollments] = await Promise.all([
+      this.prisma.feeRecord.findMany({
+        where: {
+          status: { in: ['paid', 'pending', 'processing', 'overdue'] },
+          dueDate: { gte: oldestDate, lte: newestDate }
+        },
+        select: {
+          status: true,
+          totalAmount: true,
+          dueDate: true,
+          classId: true,
+          studentId: true
+        }
+      }),
+      this.prisma.payroll.findMany({
+        where: {
+          status: 'paid',
+          periodStart: { gte: new Date(startYear, 0, 1), lte: new Date(endYear, 11, 31, 23, 59, 59, 999) }
+        },
+        select: {
+          totalAmount: true,
+          periodStart: true
+        }
+      }),
+      this.prisma.enrollment.findMany({
+        where: { status: 'studying' },
+        select: {
+          classId: true,
+          studentId: true
+        }
+      })
+    ])
+
+    // Create enrollment lookup set for O(1) access
+    const enrollmentSet = new Set(
+      enrollments.map(e => `${e.studentId}-${e.classId}`)
+    )
+
+    // Pre-group fee records by yearMonth-studentId-classId for O(1) lookup
+    const feeRecordsByKey = new Map<string, typeof allFeeRecords>()
+    allFeeRecords.forEach(fr => {
+      if (!fr.classId || !fr.studentId) return
+      const yearMonth = `${fr.dueDate.getFullYear()}-${fr.dueDate.getMonth()}`
+      const key = `${yearMonth}-${fr.studentId}-${fr.classId}`
+      if (!feeRecordsByKey.has(key)) {
+        feeRecordsByKey.set(key, [])
+      }
+      feeRecordsByKey.get(key)!.push(fr)
+    })
+
+    // Pre-group payrolls by yearMonth for O(1) lookup
+    const payrollsByMonth = new Map<string, number>()
+    allPayrolls.forEach(p => {
+      const yearMonth = `${p.periodStart.getFullYear()}-${p.periodStart.getMonth()}`
+      payrollsByMonth.set(yearMonth, (payrollsByMonth.get(yearMonth) || 0) + toNumber(p.totalAmount))
+    })
+
+    // Process each year by summing up 12 months
+    for (let y = startYear; y <= endYear; y++) {
       let yearRevenue = 0
       let yearSalary = 0
 
-      // Sum up revenue and salary for all 12 months in this year
+      // Process all 12 months for this year
       for (let month = 1; month <= 12; month++) {
-        // Calculate shifted boundary for this month
-        let nextMonth = month + 1
-        let nextYear = y
-        if (nextMonth > 12) {
-          nextMonth = 1
-          nextYear = y + 1
-        }
+        // Month M shows feeRecords with dueDate in M+1
+        const nextMonth = (month % 12) + 1
+        const nextYear = nextMonth === 1 ? y + 1 : y
+        const shiftedYearMonth = `${nextYear}-${nextMonth - 1}` // JS month is 0-based
 
-        const shiftedStart = new Date(nextYear, nextMonth - 1, 1, 0, 0, 0)
-        const shiftedEnd = new Date(nextYear, nextMonth, 0, 23, 59, 59, 999)
-
-        // Get enrollments and their fee records for this month
-        const enrollments = await this.prisma.enrollment.findMany({
-          where: {
-            status: 'studying'
-          },
-          include: {
-            student: {
-              include: {
-                feeRecords: {
-                  where: {
-                    status: { in: ['paid', 'pending', 'processing', 'overdue'] },
-                    dueDate: { gte: shiftedStart, lte: shiftedEnd }
-                  }
-                }
-              }
-            },
-            class: true
-          }
-        })
-
-        // Calculate revenue for this month using same logic as getClassStudentsStatus
+        // Calculate revenue by iterating enrolled students (O(enrollments) instead of O(feeRecords))
+        const processedStudents = new Set<string>()
+        
         enrollments.forEach(enrollment => {
-          const feeRecords = (enrollment.student.feeRecords || [])
-            .filter(fr => fr.classId === enrollment.classId)
+          const studentClassKey = `${enrollment.studentId}-${enrollment.classId}`
+          if (!enrollmentSet.has(studentClassKey)) return
+          
+          const uniqueKey = `${shiftedYearMonth}-${studentClassKey}`
+          if (processedStudents.has(uniqueKey)) return
+          processedStudents.add(uniqueKey)
+
+          const feeRecords = feeRecordsByKey.get(`${shiftedYearMonth}-${studentClassKey}`) || []
+          if (feeRecords.length === 0) return
 
           const paidAmount = feeRecords
             .filter(fr => fr.status === 'paid')
-            .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
+            .reduce((sum, fr) => sum + toNumber(fr.totalAmount), 0)
 
-          const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
-          const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
+          const hasPending = feeRecords.some(fr => ['pending', 'processing'].includes(fr.status))
+          const hasOverdue = feeRecords.some(fr => fr.status === 'overdue')
 
-          const hasPaid = paidAmount > 0
-          const hasPending = pendingRecords.length > 0
-          const hasOverdue = overdueRecords.length > 0
-
-          const enrollmentStatus = hasOverdue
-            ? 'overdue'
-            : hasPending
-            ? 'pending'
-            : hasPaid
-            ? 'paid'
-            : 'unrecorded'
+          const enrollmentStatus = hasOverdue ? 'overdue' : hasPending ? 'pending' : paidAmount > 0 ? 'paid' : 'unrecorded'
 
           if (enrollmentStatus === 'paid') {
             yearRevenue += paidAmount
           }
         })
 
-        // Get payroll for this month (normal boundary)
-        const monthStart = new Date(y, month - 1, 1, 0, 0, 0)
-        const monthEnd = new Date(y, month, 0, 23, 59, 59, 999)
-
-        const payrolls = await this.prisma.payroll.findMany({
-          where: {
-            status: 'paid',
-            periodStart: { gte: monthStart, lte: monthEnd }
-          },
-          select: {
-            totalAmount: true
-          }
-        })
-
-        yearSalary += payrolls.reduce((sum, p) => sum + toNumber(p.totalAmount), 0)
+        // Get salary from pre-calculated map
+        const salaryYearMonth = `${y}-${month - 1}`
+        yearSalary += payrollsByMonth.get(salaryYearMonth) || 0
       }
 
       items.push({
@@ -425,8 +469,8 @@ export class FinancialReportsService {
       }),
       // Monthly trend
       this.buildMonthlyTrend(12),
-      // Yearly trend (last 5 years)
-      this.buildYearlyTrend(5),
+      // Yearly trend (last 5 years from selected year or current year)
+      this.buildYearlyTrend(5, year ? Number(year) : undefined),
       // Total students (all time)
       this.prisma.student.count()
     ])
@@ -537,10 +581,17 @@ export class FinancialReportsService {
     // Calculate year-over-year change percentages
     let yearlyRevenueChangePercent = 0
     let yearlyProfitChangePercent = 0
+    let selectedYearRevenue = 0
+    let selectedYearSalary = 0
     
     if (yearlyTrend && yearlyTrend.length >= 2) {
+      // When year is specified, compare the selected year with its previous year
+      // Otherwise, compare current year with previous year
       const currentYearData = yearlyTrend[yearlyTrend.length - 1]
       const previousYearData = yearlyTrend[yearlyTrend.length - 2]
+      
+      selectedYearRevenue = currentYearData.revenue
+      selectedYearSalary = currentYearData.salary
       
       if (previousYearData.revenue > 0) {
         yearlyRevenueChangePercent = Math.round(((currentYearData.revenue - previousYearData.revenue) / previousYearData.revenue) * 100)
@@ -552,6 +603,9 @@ export class FinancialReportsService {
       if (previousYearProfit > 0) {
         yearlyProfitChangePercent = Math.round(((currentYearProfit - previousYearProfit) / previousYearProfit) * 100)
       }
+    } else if (yearlyTrend && yearlyTrend.length === 1) {
+      selectedYearRevenue = yearlyTrend[0].revenue
+      selectedYearSalary = yearlyTrend[0].salary
     }
 
     return {
@@ -563,6 +617,7 @@ export class FinancialReportsService {
         yearlyTrend,
         revenueChangePercent,
         yearlyRevenueChangePercent,
+        yearlyRevenue: selectedYearRevenue,
         classRevenue: totalClassRevenue,
         prevMonthClassRevenue: prevMonthClassRevenueTotal
       },
@@ -584,7 +639,8 @@ export class FinancialReportsService {
         teacherCountPending,
         teacherSalaries,
         profitChangePercent,
-        yearlyProfitChangePercent
+        yearlyProfitChangePercent,
+        yearlySalary: selectedYearSalary
       },
       students: {
         totalCount: studentsTotalCount
@@ -764,33 +820,67 @@ export class FinancialReportsService {
   async getClassStudentsStatus(month?: string, year?: string): Promise<any[]> {
     const { start, end } = getShiftedDueBoundary(month, year)
 
-    // Get all enrollments and their fee records for the period (capture paid + unpaid states)
-    const enrollments = await this.prisma.enrollment.findMany({
-      where: {
-        status: 'studying'
-      },
-      include: {
-        student: {
-          include: {
-            user: true,
-            feeRecords: {
-              where: {
-                status: { in: ['paid', 'pending', 'processing', 'overdue'] },
-                dueDate: { gte: start, lte: end }
+    // Fetch data in parallel
+    const [enrollments, feeRecords, classes] = await Promise.all([
+      this.prisma.enrollment.findMany({
+        where: { status: 'studying' },
+        select: {
+          classId: true,
+          studentId: true,
+          student: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  fullName: true,
+                  email: true
+                }
               }
             }
           }
+        }
+      }),
+      this.prisma.feeRecord.findMany({
+        where: {
+          status: { in: ['paid', 'pending', 'processing', 'overdue'] },
+          dueDate: { gte: start, lte: end }
         },
-        class: {
-          include: {
-            subject: true
+        select: {
+          id: true,
+          status: true,
+          totalAmount: true,
+          classId: true,
+          studentId: true
+        }
+      }),
+      this.prisma.class.findMany({
+        select: {
+          id: true,
+          name: true,
+          subject: {
+            select: {
+              name: true
+            }
           }
         }
+      })
+    ])
+
+    // Create lookups
+    const classMap = new Map(classes.map(c => [c.id, c]))
+    const feeRecordsByStudentClass = new Map<string, typeof feeRecords>()
+    
+    feeRecords.forEach(fr => {
+      if (!fr.classId || !fr.studentId) return
+      const key = `${fr.studentId}-${fr.classId}`
+      if (!feeRecordsByStudentClass.has(key)) {
+        feeRecordsByStudentClass.set(key, [])
       }
+      feeRecordsByStudentClass.get(key)!.push(fr)
     })
 
-    // Group by class and calculate stats
-    const classMap = new Map<string, {
+    // Group by class
+    const classDataMap = new Map<string, {
       classId: string
       className: string
       subjectName?: string
@@ -804,36 +894,31 @@ export class FinancialReportsService {
     }>()
 
     enrollments.forEach(enrollment => {
-      const key = enrollment.classId
-      // Filter fee records by classId to only count fees for this specific class
-      const feeRecords = (enrollment.student.feeRecords || [])
-        .filter(fr => fr.classId === enrollment.classId)
+      const classId = enrollment.classId
+      const key = `${enrollment.studentId}-${classId}`
+      const feeRecordsForEnrollment = feeRecordsByStudentClass.get(key) || []
 
-      const paidAmount = feeRecords
+      const paidAmount = feeRecordsForEnrollment
         .filter(fr => fr.status === 'paid')
-        .reduce((sum, fr) => sum + this.resolveAmount({ _sum: { totalAmount: fr.totalAmount } }), 0)
+        .reduce((sum, fr) => sum + toNumber(fr.totalAmount), 0)
 
-      const pendingRecords = feeRecords.filter(fr => ['pending', 'processing'].includes(fr.status as string))
-      const overdueRecords = feeRecords.filter(fr => fr.status === 'overdue')
+      const hasPending = feeRecordsForEnrollment.some(fr => ['pending', 'processing'].includes(fr.status))
+      const hasOverdue = feeRecordsForEnrollment.some(fr => fr.status === 'overdue')
 
-      const hasPaid = paidAmount > 0
-      const hasPending = pendingRecords.length > 0
-      const hasOverdue = overdueRecords.length > 0
-
-      // Derive a single status per student per class to avoid double-counting
       const enrollmentStatus = hasOverdue
         ? 'overdue'
         : hasPending
         ? 'pending'
-        : hasPaid
+        : paidAmount > 0
         ? 'paid'
         : 'unrecorded'
 
-      if (!classMap.has(key)) {
-        classMap.set(key, {
-          classId: enrollment.classId,
-          className: enrollment.class.name,
-          subjectName: enrollment.class.subject?.name,
+      if (!classDataMap.has(classId)) {
+        const classInfo = classMap.get(classId)
+        classDataMap.set(classId, {
+          classId,
+          className: classInfo?.name || 'Lớp chưa xác định',
+          subjectName: classInfo?.subject?.name,
           totalStudents: 0,
           paidStudents: 0,
           unpaidStudents: 0,
@@ -844,9 +929,9 @@ export class FinancialReportsService {
         })
       }
 
-      const classData = classMap.get(key)!
+      const classData = classDataMap.get(classId)!
       classData.totalStudents += 1
-      
+
       if (enrollmentStatus === 'paid') {
         classData.paidStudents += 1
         classData.totalRevenueAmount += paidAmount
@@ -873,13 +958,11 @@ export class FinancialReportsService {
       }
     })
 
-    return Array.from(classMap.values())
+    return Array.from(classDataMap.values())
       .sort((a, b) => {
-        // Prioritize classes with unpaid students first
         if ((b.unpaidStudents > 0) !== (a.unpaidStudents > 0)) {
           return (b.unpaidStudents > 0 ? 1 : 0) - (a.unpaidStudents > 0 ? 1 : 0)
         }
-        // Within same unpaid status, sort by number of unpaid students (desc), then by revenue (desc)
         if (a.unpaidStudents !== b.unpaidStudents) {
           return b.unpaidStudents - a.unpaidStudents
         }

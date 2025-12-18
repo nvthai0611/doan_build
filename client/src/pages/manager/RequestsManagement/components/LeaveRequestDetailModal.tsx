@@ -137,18 +137,18 @@ const LeaveRequestDetailModal: React.FC<any> = ({
             <div className="flex items-center gap-4">
               <Avatar className="h-12 w-12">
                 <AvatarFallback>
-                  {(request.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+                  {(request?.teacherInfo?.fullName || 'U').split(' ').map((n: any) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{request.teacherInfo?.fullName || 'Unknown'}</h3>
-                <p className="text-sm text-muted-foreground">{request.teacherInfo?.email || 'No email'}</p>
+                <h3 className="text-lg font-semibold">{request?.teacherInfo?.fullName || 'Unknown'}</h3>
+                <p className="text-sm text-muted-foreground">{request?.teacherInfo?.email || 'No email'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
-                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors?.other}
               >
                 {requestTypeLabels[request?.type as keyof typeof requestTypeLabels] || request?.type}
               </Badge>
@@ -287,44 +287,47 @@ const LeaveRequestDetailModal: React.FC<any> = ({
                                   : 'bg-gray-100 text-gray-700'
                               }
                             >
-                              {hasReplacement
+                              {hasReplacement ||
+                              session?.substituteTeacherId
                                 ? 'Đã gán giáo viên thay thế'
                                 : 'Chưa gán giáo viên thay thế'}
                             </Badge>
-                            {request.status === 'pending' && setSessionReplacements && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setCurrentSession(session)
-                                    setSelectTeacherOpen(true)
-                                  }}
-                                >
-                                  Chọn giáo viên
-                                </Button>
-                                {hasReplacement && (
+                            {request.status === 'pending' &&
+                              setSessionReplacements && (
+                                <>
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="text-xs text-red-600"
+                                    variant="outline"
                                     onClick={() => {
-                                      const keyToClear = session.sessionId || session.id
-                                      if (!keyToClear) return
-                                      const next = { ...sessionReplacements }
-                                      delete next[keyToClear]
-                                      setSessionReplacements(next)
+                                      setCurrentSession(session);
+                                      setSelectTeacherOpen(true);
                                     }}
                                   >
-                                    Bỏ gán
+                                    Chọn giáo viên
                                   </Button>
-                                )}
-                              </>
-                            )}
+                                  {hasReplacement && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs text-red-600"
+                                      onClick={() => {
+                                        const keyToClear =
+                                          session.sessionId || session.id;
+                                        if (!keyToClear) return;
+                                        const next = { ...sessionReplacements };
+                                        delete next[keyToClear];
+                                        setSessionReplacements(next);
+                                      }}
+                                    >
+                                      Bỏ gán
+                                    </Button>
+                                  )}
+                                </>
+                              )}
                           </div>
                         </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </CardContent>

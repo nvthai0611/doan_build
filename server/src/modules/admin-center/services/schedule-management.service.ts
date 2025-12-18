@@ -15,8 +15,8 @@ import { EmailNotificationService } from '../../shared/services/email-notificati
 export class ScheduleManagementService {
   constructor(
     private prisma: PrismaService,
-    private emailNotificationService: EmailNotificationService
-  ) { }
+    private emailNotificationService: EmailNotificationService,
+  ) {}
 
   private mapSessionToClientShape(session: any) {
     return {
@@ -510,16 +510,18 @@ export class ScheduleManagementService {
     }
 
     // Chuẩn hóa sessionDate về UTC midnight để so sánh với enrolledAt
-    const sessionDateMidnight = new Date(Date.UTC(
-      session.sessionDate.getUTCFullYear(),
-      session.sessionDate.getUTCMonth(),
-      session.sessionDate.getUTCDate(),
-      23,
-      59,
-      59,
-      999,
-    ));
-    
+    const sessionDateMidnight = new Date(
+      Date.UTC(
+        session.sessionDate.getUTCFullYear(),
+        session.sessionDate.getUTCMonth(),
+        session.sessionDate.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+
     // Lấy tất cả học sinh đang học trong lớp và đã enroll trước hoặc vào ngày buổi học
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
@@ -561,24 +563,25 @@ export class ScheduleManagementService {
 
     // Lấy danh sách attendance đã có (nếu có)
     const attendancesMap = new Map();
-    const existingAttendances = await this.prisma.studentSessionAttendance.findMany({
-      where: {
-        sessionId: sessionId,
-      },
-      include: {
-        recordedByTeacher: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                id: true,
-                fullName: true,
+    const existingAttendances =
+      await this.prisma.studentSessionAttendance.findMany({
+        where: {
+          sessionId: sessionId,
+        },
+        include: {
+          recordedByTeacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
     // Tạo map để dễ lookup
     existingAttendances.forEach((attendance) => {
@@ -588,7 +591,7 @@ export class ScheduleManagementService {
     // Map tất cả học sinh, kể cả chưa điểm danh
     return enrollments.map((enrollment) => {
       const attendance = attendancesMap.get(enrollment.studentId);
-      
+
       if (attendance) {
         // Học sinh đã điểm danh
         return {
@@ -662,15 +665,17 @@ export class ScheduleManagementService {
     }
 
     // Chuẩn hóa sessionDate về UTC midnight để so sánh với enrolledAt
-    const sessionDateMidnight = new Date(Date.UTC(
-      session.sessionDate.getUTCFullYear(),
-      session.sessionDate.getUTCMonth(),
-      session.sessionDate.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
-    ));
+    const sessionDateMidnight = new Date(
+      Date.UTC(
+        session.sessionDate.getUTCFullYear(),
+        session.sessionDate.getUTCMonth(),
+        session.sessionDate.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
 
     // Kiểm tra học sinh có trong lớp không và đã enroll trước hoặc vào ngày buổi học
     const enrollment = await this.prisma.enrollment.findFirst({
@@ -685,13 +690,17 @@ export class ScheduleManagementService {
     });
 
     if (!enrollment) {
-      throw new NotFoundException('Học sinh không thuộc lớp này hoặc chưa enroll vào thời điểm buổi học');
+      throw new NotFoundException(
+        'Học sinh không thuộc lớp này hoặc chưa enroll vào thời điểm buổi học',
+      );
     }
 
     // Validate status
     const validStatuses = ['present', 'absent', 'excused'];
     if (!validStatuses.includes(status)) {
-      throw new BadRequestException(`Status không hợp lệ. Phải là một trong: ${validStatuses.join(', ')}`);
+      throw new BadRequestException(
+        `Status không hợp lệ. Phải là một trong: ${validStatuses.join(', ')}`,
+      );
     }
 
     // Upsert attendance (tạo mới hoặc cập nhật)
@@ -801,29 +810,35 @@ export class ScheduleManagementService {
     if (body.sessionDate) {
       if (typeof body.sessionDate === 'string') {
         const [year, month, day] = body.sessionDate.split('-').map(Number);
-        updateData.sessionDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        updateData.sessionDate = new Date(
+          Date.UTC(year, month - 1, day, 0, 0, 0, 0),
+        );
       } else if (body.sessionDate instanceof Date) {
         // Đảm bảo đưa về UTC midnight
-        updateData.sessionDate = new Date(Date.UTC(
-          body.sessionDate.getUTCFullYear(),
-          body.sessionDate.getUTCMonth(),
-          body.sessionDate.getUTCDate(),
-          0,
-          0,
-          0,
-          0,
-        ));
+        updateData.sessionDate = new Date(
+          Date.UTC(
+            body.sessionDate.getUTCFullYear(),
+            body.sessionDate.getUTCMonth(),
+            body.sessionDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       } else {
         const parsed = new Date(body.sessionDate);
-        updateData.sessionDate = new Date(Date.UTC(
-          parsed.getUTCFullYear(),
-          parsed.getUTCMonth(),
-          parsed.getUTCDate(),
-          0,
-          0,
-          0,
-          0,
-        ));
+        updateData.sessionDate = new Date(
+          Date.UTC(
+            parsed.getUTCFullYear(),
+            parsed.getUTCMonth(),
+            parsed.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       }
     }
 
@@ -847,14 +862,18 @@ export class ScheduleManagementService {
         if (oldSession.sessionDate instanceof Date) {
           return oldSession.sessionDate.toISOString().split('T')[0];
         }
-        return new Date(oldSession.sessionDate as any).toISOString().split('T')[0];
+        return new Date(oldSession.sessionDate as any)
+          .toISOString()
+          .split('T')[0];
       })();
 
       const finalStartTime = body.startTime || oldSession.startTime;
       const finalEndTime = body.endTime || oldSession.endTime;
 
       if (!finalStartTime || !finalEndTime) {
-        throw new BadRequestException('Thiếu giờ bắt đầu hoặc giờ kết thúc để kiểm tra trùng lịch.');
+        throw new BadRequestException(
+          'Thiếu giờ bắt đầu hoặc giờ kết thúc để kiểm tra trùng lịch.',
+        );
       }
 
       const conflictResult = await this.checkScheduleConflict(
@@ -883,14 +902,17 @@ export class ScheduleManagementService {
     // Kiểm tra thay đổi và gửi email
     try {
       // Format old date
-      const oldDate = oldSession.sessionDate ?
-        (oldSession.sessionDate instanceof Date ?
-          oldSession.sessionDate.toISOString().split('T')[0] :
-          new Date(oldSession.sessionDate).toISOString().split('T')[0]) : '';
+      const oldDate = oldSession.sessionDate
+        ? oldSession.sessionDate instanceof Date
+          ? oldSession.sessionDate.toISOString().split('T')[0]
+          : new Date(oldSession.sessionDate).toISOString().split('T')[0]
+        : '';
 
       // Format old time
-      const oldTime = oldSession.startTime && oldSession.endTime ?
-        `${oldSession.startTime} - ${oldSession.endTime}` : '';
+      const oldTime =
+        oldSession.startTime && oldSession.endTime
+          ? `${oldSession.startTime} - ${oldSession.endTime}`
+          : '';
 
       // Format new date
       let newDate = oldDate;
@@ -900,14 +922,17 @@ export class ScheduleManagementService {
         } else if (typeof updateData.sessionDate === 'string') {
           newDate = updateData.sessionDate.split('T')[0];
         } else {
-          newDate = new Date(updateData.sessionDate).toISOString().split('T')[0];
+          newDate = new Date(updateData.sessionDate)
+            .toISOString()
+            .split('T')[0];
         }
       }
 
       // Format new time
       let newTime = oldTime;
       if (updateData.startTime || updateData.endTime) {
-        const finalStartTime = updateData.startTime || oldSession.startTime || '';
+        const finalStartTime =
+          updateData.startTime || oldSession.startTime || '';
         const finalEndTime = updateData.endTime || oldSession.endTime || '';
         if (finalStartTime && finalEndTime) {
           newTime = `${finalStartTime} - ${finalEndTime}`;
@@ -923,13 +948,16 @@ export class ScheduleManagementService {
           oldTime,
           undefined,
           undefined,
-          body.cancellationReason || oldSession.cancellationReason || 'Không có lý do'
+          body.cancellationReason ||
+            oldSession.cancellationReason ||
+            'Không có lý do',
         );
       }
       // Kiểm tra nếu thay đổi thời gian hoặc ngày
       else if (
         (updateData.sessionDate && oldDate !== newDate) ||
-        (updateData.startTime && oldSession.startTime !== updateData.startTime) ||
+        (updateData.startTime &&
+          oldSession.startTime !== updateData.startTime) ||
         (updateData.endTime && oldSession.endTime !== updateData.endTime)
       ) {
         await this.emailNotificationService.sendSessionChangeEmail(
@@ -939,7 +967,7 @@ export class ScheduleManagementService {
           oldTime,
           newDate,
           newTime,
-          updateData.reason || ''
+          updateData.reason || '',
         );
       }
     } catch (emailError) {
@@ -967,7 +995,7 @@ export class ScheduleManagementService {
     // Lấy thông tin buổi học hiện tại để lấy roomId
     const currentSession = await this.prisma.classSession.findUnique({
       where: { id: sessionId },
-      select: { roomId: true, sessionDate: true },
+      select: { roomId: true, sessionDate: true, teacherId: true },
     });
 
     if (!currentSession) {
@@ -992,13 +1020,25 @@ export class ScheduleManagementService {
     const newStartMinutes = parseTimeToMinutes(startTime);
     const newEndMinutes = parseTimeToMinutes(endTime);
 
-    // Tìm các buổi học khác tại cùng phòng, cùng ngày
+    // Tìm các buổi học khác trong cùng ngày có xung đột về phòng HOẶC giáo viên
     const conflictingSessions = await this.prisma.classSession.findMany({
       where: {
         id: { not: sessionId }, // Loại trừ buổi học hiện tại
-        roomId: currentSession.roomId,
         sessionDate: targetDate,
-        status: { notIn: ['cancelled', 'end'] }, // Chỉ check các buổi chưa hủy/chưa kết thúc
+        status: { notIn: ['cancelled', 'end', 'day_off'] }, // Chỉ check các buổi chưa hủy/chưa kết thúc
+        class: {
+          status: { in: ['active'] },
+        },
+        OR: [
+          // Xung đột phòng học: cùng phòng, cùng ngày
+          {
+            roomId: currentSession.roomId,
+          },
+          // Xung đột giáo viên: cùng giáo viên, cùng ngày (kể cả khác lớp, khác phòng)
+          {
+            teacherId: currentSession.teacherId,
+          },
+        ],
       },
       select: {
         id: true,
@@ -1067,41 +1107,31 @@ export class ScheduleManagementService {
     let dateEnd: Date;
 
     if (startDate && endDate) {
-      // Parse date string - tạo date ở UTC để so sánh với @db.Date
-      // Format: "yyyy-MM-dd"
-      // @db.Date trong PostgreSQL chỉ lưu ngày, không có timezone
-      // Nên cần tạo date ở UTC midnight để tránh lệch ngày
       const [startYear, startMonth, startDay] = startDate
         .split('-')
         .map(Number);
       const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-
+      console.log(startYear, startMonth, startDay);
       // Tạo date ở UTC midnight
-      dateStart = new Date(
-        Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0),
-      );
-      dateEnd = new Date(
-        Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999),
-      );
+      dateStart = new Date(startDate);
+      dateEnd = new Date(endDate);
+      console.log(dateStart, dateEnd);
     } else {
       // Mặc định là hôm nay
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dateStart = today;
-      dateEnd = new Date(today);
-      dateEnd.setHours(23, 59, 59, 999);
+      dateStart = new Date(today.toISOString().split('T')[0]);
+      dateEnd = new Date(today.toISOString().split('T')[0]);
     }
 
     // Build where condition
     const where: any = {
       sessionDate: {
-        gte: dateStart,
-        lte: dateEnd,
+        in: [dateStart, dateEnd],
       },
       // Chỉ lấy buổi học có giáo viên
       teacherId: { not: null },
       class: {
-        status: { in: ['active', 'ready', 'suspended'] },
+        status: { in: ['active'] },
       },
     };
 
@@ -1110,7 +1140,7 @@ export class ScheduleManagementService {
       where.status = sessionStatus;
     } else {
       // Loại trừ các buổi đã kết thúc hoặc bị hủy
-      where.status = { notIn: ['end', 'cancelled'] };
+      where.status = { notIn: ['cancelled'] };
     }
 
     // Filter theo tên giáo viên nếu có search
@@ -1196,17 +1226,27 @@ export class ScheduleManagementService {
 
     // Đếm enrollment cho từng session dựa trên enrolledAt <= sessionDate
     const sessionEnrollmentCounts = await Promise.all(
-      sessions.map((session) =>
-        this.prisma.enrollment.count({
+      sessions.map(async (session) => {
+        // Chuẩn hóa sessionDate về UTC midnight để so sánh với enrolledAt
+        const sessionDateMidnight = new Date(
+          Date.UTC(
+            session.sessionDate.getUTCFullYear(),
+            session.sessionDate.getUTCMonth(),
+            session.sessionDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
+        return await this.prisma.enrollment.count({
           where: {
             classId: session.classId,
             status: { in: ['studying', 'not_been_updated'] },
-            enrolledAt: {
-              lte: session.sessionDate, // Chỉ đếm những người đã enroll trước hoặc vào ngày của buổi học
-            },
+            enrolledAt: { lte: sessionDateMidnight },
           },
-        }),
-      ),
+        });
+      }),
     );
 
     const result = sessions.map((session, index) => {
@@ -1262,8 +1302,8 @@ export class ScheduleManagementService {
   }
 
   /**
- * Cập nhật điểm danh của học sinh (cho phép sửa điểm danh quá khứ)
- */
+   * Cập nhật điểm danh của học sinh (cho phép sửa điểm danh quá khứ)
+   */
   async updateStudentAttendance(
     sessionId: string,
     studentId: string,
@@ -1299,7 +1339,9 @@ export class ScheduleManagementService {
     // Validate status
     const validStatuses = ['present', 'absent', 'excused'];
     if (!validStatuses.includes(data.status)) {
-      throw new BadRequestException(`Status không hợp lệ. Phải là một trong: ${validStatuses.join(', ')}`);
+      throw new BadRequestException(
+        `Status không hợp lệ. Phải là một trong: ${validStatuses.join(', ')}`,
+      );
     }
 
     // Xác định recordedBy: ưu tiên từ request, sau đó từ session, cuối cùng fallback

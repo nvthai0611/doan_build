@@ -135,6 +135,8 @@ export default function ScheduleTab({
     Number.parseInt(selectedMonth) 
   )
   
+  console.log(sessions);
+  
 
   /**
    * Tính toán số ngày trong tháng đang xem
@@ -402,6 +404,8 @@ export default function ScheduleTab({
                 <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-20 overflow-y-auto'}`}>
                   {(isExpanded ? daySessions : daySessions.slice(0, 1)).map((session) => {
                     const isDayOff = session.status === 'day_off';
+                    console.log(session);
+                    
                     const statusText = getSessionStatusText(session);
                     // isEnded: status = "end" hoặc text chứa "Đã kết thúc"
                     const isEnded = session.status === 'end' || statusText.includes('Đã kết thúc');
@@ -897,13 +901,11 @@ export default function ScheduleTab({
                 {selectedSession.attendanceWarnings.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-3 text-orange-600 flex items-center">
-                      <AlertTriangle className="w-4 h-4 mr-2" />
                       Cảnh báo điểm danh
                     </h4>
                     <div className="space-y-2">
                       {selectedSession.attendanceWarnings.map((warning, index) => (
                         <div key={index} className="flex items-start space-x-2 p-2 bg-orange-50 rounded-lg">
-                          <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
                           <span className="text-sm text-orange-700">{warning}</span>
                         </div>
                       ))}
@@ -1195,13 +1197,12 @@ export default function ScheduleTab({
                 {selectedSession.attendanceWarnings.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-3 text-orange-600 flex items-center">
-                      <AlertTriangle className="w-4 h-4 mr-2" />
                       Cảnh báo điểm danh
                     </h4>
                     <div className="space-y-2">
                       {selectedSession.attendanceWarnings.map((warning, index) => (
                         <div key={index} className="flex items-start space-x-2 p-2 bg-orange-50 rounded-lg">
-                          <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                          
                           <span className="text-sm text-orange-700">{warning}</span>
                         </div>
                       ))}

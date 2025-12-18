@@ -451,9 +451,6 @@ export const TransferStudentSheet = ({
           {classData && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-blue-900 dark:text-blue-100">Lớp hiện tại: {classData.name}</h3>
@@ -472,9 +469,8 @@ export const TransferStudentSheet = ({
           {/* Warning Alert for Active Class */}
           {classData?.status === ClassStatus.ACTIVE && (
             <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
               <AlertDescription className="text-sm text-red-800 dark:text-red-200">
-                <strong className="font-semibold">⚠️ Cảnh báo:</strong> Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>.
+                <strong className="font-semibold">Cảnh báo:</strong> Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>.
                 <br />
                 Nếu chuyển lớp, học sinh sẽ không thể quay lại lớp cũ. Vui lòng cân nhắc kỹ trước khi thực hiện.
               </AlertDescription>
@@ -483,7 +479,6 @@ export const TransferStudentSheet = ({
 
           {/* General Warning Alert */}
           <Alert className="bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:border-cyan-800">
-            <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm text-cyan-800 dark:text-cyan-200">
               Học sinh sẽ được chuyển từ lớp hiện tại sang lớp mới. Hành động này không thể hoàn tác.
             </AlertDescription>
@@ -540,9 +535,6 @@ export const TransferStudentSheet = ({
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                            <BookOpen className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                          </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-medium">{cls.name || '-'}</p>
@@ -637,9 +629,6 @@ export const TransferStudentSheet = ({
         <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <AlertTriangle className="h-5 w-5 text-blue-600" />
-              </div>
               <AlertDialogTitle className="text-lg font-semibold">
                 Kết quả chuyển lớp
               </AlertDialogTitle>
@@ -648,10 +637,10 @@ export const TransferStudentSheet = ({
               <AlertDialogDescription className="pt-2 space-y-4">
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <div className="px-3 py-1 rounded-full bg-green-50 text-green-700">
-                    ✅ Thành công: {transferResult.successCount}
+                    Thành công: {transferResult.successCount}
                   </div>
                   <div className="px-3 py-1 rounded-full bg-red-50 text-red-700">
-                    ❌ Thất bại: {transferResult.failedCount}
+                    Thất bại: {transferResult.failedCount}
                   </div>
                   <div className="px-3 py-1 rounded-full bg-gray-50 text-gray-700">
                     Tổng: {transferResult.totalCount}
@@ -669,8 +658,8 @@ export const TransferStudentSheet = ({
                           key={`${student.studentName}-${index}`}
                           className="p-3 flex items-center gap-3"
                         >
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-semibold">
-                            {index + 1}
+                          <div className="flex-shrink-0 w-6 h-6">
+                            <span className="text-sm font-medium">{index + 1}</span>
                           </div>
                           <div className="flex-1">
                             <div className="font-medium text-sm text-gray-900">
@@ -698,7 +687,7 @@ export const TransferStudentSheet = ({
                           className="p-3 space-y-2"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-semibold">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full">
                               {index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -736,13 +725,12 @@ export const TransferStudentSheet = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
               Xác nhận chuyển lớp từ lớp đang hoạt động
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3 pt-2">
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                 <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-                  ⚠️ Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>
+                  Lớp hiện tại đang ở trạng thái <strong>"Đang hoạt động"</strong>
                 </p>
               </div>
               <div className="space-y-2 text-sm">
@@ -772,7 +760,7 @@ export const TransferStudentSheet = ({
                 )}
                 
                 <p className="text-red-600 dark:text-red-400 font-medium mt-3">
-                  ⚠️ Lưu ý quan trọng: Nếu chuyển lớp, học sinh sẽ <strong>không thể quay lại lớp cũ</strong>.
+                  Lưu ý quan trọng: Nếu chuyển lớp, học sinh sẽ <strong>không thể quay lại lớp cũ</strong>.
                   Hành động này không thể hoàn tác.
                 </p>
               </div>

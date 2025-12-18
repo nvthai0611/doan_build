@@ -172,10 +172,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                 </div>
               </div>
               
-              {/* Arrow indicator */}
-              <div className="flex items-center justify-center my-4">
-                <ArrowRight className="w-6 h-6 text-muted-foreground" />
-              </div>
             </CardContent>
           </Card>
 
@@ -200,12 +196,12 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Giáo viên</label>
                   <p className="text-sm">{request.class?.teacher?.user?.fullName || 'Unknown'}</p>
                 </div>
-                {request.newRoom && (
+                {/* {request.newRoom && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Phòng học mới</label>
                     <p className="text-sm">{request.newRoom.name} (Sức chứa: {request.newRoom.capacity})</p>
                   </div>
-                )}
+                )} */}
               </div>
             </CardContent>
           </Card>

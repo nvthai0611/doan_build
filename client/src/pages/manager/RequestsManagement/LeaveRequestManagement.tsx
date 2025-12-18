@@ -67,14 +67,26 @@ export default function LeaveRequestManagement() {
     setItemsPerPage,
   } = usePagination();
 
-  // Lưu mapping sessionId -> replacementTeacherId cho request đang chọn
-  const [sessionReplacements, setSessionReplacements] = useState<Record<string, string>>({})
+  // Lưu mapping requestId -> { sessionId -> replacementTeacherId } cho từng request
+  const [sessionReplacementsByRequest, setSessionReplacementsByRequest] = useState<
+    Record<string, Record<string, string>>
+  >({})
 
   useEffect(() => {
     fetchRequests()
     // Get current user info
-    const user = Cookies.get('user')
-    setCurrentUser(user)
+    const userStr = Cookies.get('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setCurrentUser(user)
+      } catch (error) {
+        console.error('Error parsing user from cookie:', error)
+        setCurrentUser(null)
+      }
+    } else {
+      setCurrentUser(null)
+    }
   }, [currentPage, statusFilter])
 
   const fetchRequests = async () => {
@@ -109,15 +121,26 @@ export default function LeaveRequestManagement() {
   }
 
   const handleApprove = (id: string) => {
-    setSelectedRequest(requests.find(r => r.id === id) || null)
-    setSessionReplacements({})
+    // Nếu selectedRequest chưa được set hoặc khác với id đang duyệt, set lại
+    if (!selectedRequest || selectedRequest.id !== id) {
+      const request = requests.find((r) => r.id === id)
+      if (request) {
+        setSelectedRequest(request)
+      }
+      // Nếu không tìm thấy trong list, selectedRequest đã được set từ handleViewDetails khi mở modal
+    }
     setConfirmationAction('approve')
     setIsConfirmationModalOpen(true)
   }
 
   const handleReject = (id: string) => {
-    setSelectedRequest(requests.find(r => r.id === id) || null)
-    setSessionReplacements({})
+    // Nếu selectedRequest chưa được set hoặc khác với id đang từ chối, set lại
+    if (!selectedRequest || selectedRequest.id !== id) {
+      const request = requests.find((r) => r.id === id)
+      if (request) {
+        setSelectedRequest(request)
+      }
+    }
     setConfirmationAction('reject')
     setIsConfirmationModalOpen(true)
   }
@@ -129,6 +152,10 @@ export default function LeaveRequestManagement() {
     try {
       if (confirmationAction === 'approve') {
         let replacements: LeaveSessionReplacementPayload[] | undefined = undefined
+
+        // Lấy sessionReplacements của request này
+        const sessionReplacements =
+          sessionReplacementsByRequest[selectedRequest.id] || {}
 
         if (selectedRequest.affectedSessions && selectedRequest.affectedSessions.length > 0) {
           const mapped: LeaveSessionReplacementPayload[] = []
@@ -147,10 +174,15 @@ export default function LeaveRequestManagement() {
           }
         }
 
+        if (!currentUser?.id) {
+          toast.error('Không tìm thấy thông tin người duyệt')
+          return
+        }
+
         await requestsService.approveLeaveRequest(
           selectedRequest.id,
           'approve',
-          currentUser?.id || '',
+          currentUser.id,
           {
             replacements,
           },
@@ -166,11 +198,19 @@ export default function LeaveRequestManagement() {
       }
       
       await fetchRequests()
+      // Xóa sessionReplacements của request đã xử lý
+      if (selectedRequest?.id) {
+        setSessionReplacementsByRequest((prev) => {
+          const next = { ...prev }
+          delete next[selectedRequest.id]
+          return next
+        })
+      }
       setIsDetailModalOpen(false)
       setIsConfirmationModalOpen(false)
     } catch (error) {
       console.error(`Error ${confirmationAction}ing leave request:`, error)
-      toast.error(`Có lỗi xảy ra khi ${confirmationAction === 'approve' ? 'duyệt' : 'từ chối'} đơn`)
+      toast.error(`${(error as any).message || 'Có lỗi xảy ra khi duyệt đơn'}`)
     } finally {
       setIsProcessing(false)
     }
@@ -180,6 +220,13 @@ export default function LeaveRequestManagement() {
     try {
       const request = await requestsService.getLeaveRequestById(id)
       setSelectedRequest(request.data as any) //do not modify this line
+      // Khởi tạo sessionReplacements cho request này nếu chưa có
+      setSessionReplacementsByRequest((prev) => {
+        if (!prev[id]) {
+          return { ...prev, [id]: {} }
+        }
+        return prev
+      })
       setIsDetailModalOpen(true)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -411,12 +458,26 @@ export default function LeaveRequestManagement() {
       {/* Detail Modal */}
       <LeaveRequestDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          // Có thể giữ lại sessionReplacements khi đóng modal để user có thể mở lại
+        }}
         request={selectedRequest as any}
         onApprove={handleApprove}
         onReject={handleReject}
-        sessionReplacements={sessionReplacements}
-        setSessionReplacements={setSessionReplacements}
+        sessionReplacements={
+          selectedRequest?.id
+            ? sessionReplacementsByRequest[selectedRequest.id] || {}
+            : {}
+        }
+        setSessionReplacements={(value: Record<string, string>) => {
+          if (selectedRequest?.id) {
+            setSessionReplacementsByRequest((prev) => ({
+              ...prev,
+              [selectedRequest.id]: value,
+            }))
+          }
+        }}
       />
 
       {/* Confirmation Modal */}
@@ -430,6 +491,11 @@ export default function LeaveRequestManagement() {
             ? (() => {
                 const total =
                   selectedRequest?.affectedSessions?.length || 0
+                // Lấy sessionReplacements của request này
+                const sessionReplacements =
+                  selectedRequest?.id
+                    ? sessionReplacementsByRequest[selectedRequest.id] || {}
+                    : {}
                 // Số buổi KHÔNG có giáo viên thay thế tại thời điểm xác nhận
                 const withoutReplacement =
                   selectedRequest?.affectedSessions?.filter((s: any) => {

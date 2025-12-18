@@ -98,6 +98,7 @@ export class LeaveRequestsController {
         body.replacements,
       );
     } catch (error) {
+      console.log(error.message);
       throw new HttpException(
         error.message || 'Lỗi khi xử lý đơn xin nghỉ',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR
