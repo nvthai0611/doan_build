@@ -20,176 +20,186 @@ export class TeacherManagementService {
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
-    private emailNotificationService: EmailNotificationService
-  ) { }
+    private emailNotificationService: EmailNotificationService,
+  ) {}
 
   async createTeacher(createTeacherDto: CreateTeacherDto) {
     // Tăng timeout cho transaction vì có upload image và gửi email (30 giây)
-    return await this.prisma.$transaction(async (prisma) => {
-      // Check if email or username already exists
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: createTeacherDto.email },
-            { username: createTeacherDto.username },
-          ],
-        },
-      });
-
-      if (existingUser) {
-        throw new BadRequestException('Email hoặc username đã tồn tại');
-      }
-
-      // Check if phone already exists (if provided)
-      if (createTeacherDto.phone) {
-        const existingPhone = await prisma.user.findFirst({
-          where: { phone: createTeacherDto.phone },
-        });
-
-        if (existingPhone) {
-          throw new BadRequestException('Số điện thoại đã được sử dụng');
-        }
-      }
-
-
-      // Hash password
-      const passwordData = await Hash.generateRandomPassword();
-      const defaultPassword = passwordData.rawPassword; // Lưu password gốc để gửi email
-      const hashedPassword = passwordData.hashedPassword;
-
-      // Handle school creation/finding
-      let schoolId = null;
-      if (createTeacherDto.schoolName) {
-        // Tìm school đã tồn tại
-        let school = await prisma.school.findFirst({
+    return await this.prisma.$transaction(
+      async (prisma) => {
+        // Check if email or username already exists
+        const existingUser = await prisma.user.findFirst({
           where: {
-            name: createTeacherDto.schoolName,
-            address: createTeacherDto.schoolAddress || undefined,
+            OR: [
+              { email: createTeacherDto.email },
+              { username: createTeacherDto.username },
+            ],
           },
         });
 
-        // Nếu không tìm thấy, tạo school mới
-        if (!school) {
-          school = await prisma.school.create({
-            data: {
+        if (existingUser) {
+          throw new BadRequestException('Email hoặc username đã tồn tại');
+        }
+
+        // Check if phone already exists (if provided)
+        if (createTeacherDto.phone) {
+          const existingPhone = await prisma.user.findFirst({
+            where: { phone: createTeacherDto.phone },
+          });
+
+          if (existingPhone) {
+            throw new BadRequestException('Số điện thoại đã được sử dụng');
+          }
+        }
+
+        // Hash password
+        const passwordData = await Hash.generateRandomPassword();
+        const defaultPassword = passwordData.rawPassword; // Lưu password gốc để gửi email
+        const hashedPassword = passwordData.hashedPassword;
+
+        // Handle school creation/finding
+        let schoolId = null;
+        if (createTeacherDto.schoolName) {
+          // Tìm school đã tồn tại
+          let school = await prisma.school.findFirst({
+            where: {
               name: createTeacherDto.schoolName,
-              address: createTeacherDto.schoolAddress || null,
-              phone: null,
+              address: createTeacherDto.schoolAddress || undefined,
             },
           });
+
+          // Nếu không tìm thấy, tạo school mới
+          if (!school) {
+            school = await prisma.school.create({
+              data: {
+                name: createTeacherDto.schoolName,
+                address: createTeacherDto.schoolAddress || null,
+                phone: null,
+              },
+            });
+          }
+          schoolId = school.id;
         }
-        schoolId = school.id;
-      }
 
-      // Create user first
-      const user = await prisma.user.create({
-        data: {
-          email: createTeacherDto.email,
-          password: hashedPassword,
-          fullName: createTeacherDto.fullName,
-          username: createTeacherDto.username,
-          phone: createTeacherDto.phone,
-          role: createTeacherDto.role,
-          isActive: createTeacherDto.isActive ?? true,
-          gender: createTeacherDto.gender,
-          birthDate: createTeacherDto.birthDate
-            ? this.parseDateString(createTeacherDto.birthDate)
-            : null,
-        },
-      });
-
-      // Generate unique teacher code
-      let teacherCode: string;
-      let isUnique = false;
-      let attempts = 0;
-      const maxAttempts = 10;
-
-      while (!isUnique && attempts < maxAttempts) {
-        teacherCode = generateQNCode('teacher');
-        const existingTeacher = await prisma.teacher.findUnique({
-          where: { teacherCode },
+        // Create user first
+        const user = await prisma.user.create({
+          data: {
+            email: createTeacherDto.email,
+            password: hashedPassword,
+            fullName: createTeacherDto.fullName,
+            username: createTeacherDto.username,
+            phone: createTeacherDto.phone,
+            role: createTeacherDto.role,
+            isActive: createTeacherDto.isActive ?? true,
+            gender: createTeacherDto.gender,
+            birthDate: createTeacherDto.birthDate
+              ? this.parseDateString(createTeacherDto.birthDate)
+              : null,
+          },
         });
 
-        if (!existingTeacher) {
-          isUnique = true;
-        }
-        attempts++;
-      }
+        // Generate unique teacher code
+        let teacherCode: string;
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 10;
 
-      if (!isUnique) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Không thể tạo mã giáo viên duy nhất sau nhiều lần thử',
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      // Create teacher record
-      const teacher = await prisma.teacher.create({
-        data: {
-          userId: user.id,
-          schoolId: schoolId,
-          teacherCode: teacherCode,
-          subjects: createTeacherDto.subjects,
-        },
-        include: {
-          user: true,
-          school: true,
-        },
-      });
-
-      // Handle contract image upload if provided
-      if (createTeacherDto.contractImage) {
-        let uploadResult = null;
-        try {
-          // Upload image to Cloudinary (có thể mất thời gian)
-          uploadResult = await this.cloudinaryService.uploadImage(
-            createTeacherDto.contractImage,
-            'teachers',
-          );
-        } catch (uploadError) {
-          // Log lỗi upload nhưng không throw, sẽ lưu filename tạm
-          console.error('Error uploading contract image to Cloudinary:', uploadError);
-        }
-
-        // Tạo contractUpload record trong transaction
-        try {
-          await prisma.contractUpload.create({
-            data: {
-              teacherId: teacher.id,
-              contractType: 'teacher_contract',
-              uploadedImageUrl: uploadResult?.secure_url || createTeacherDto.contractImage.filename || 'temp-filename',
-              uploadedImageName: createTeacherDto.contractImage.originalname || 'contract-image',
-            },
+        while (!isUnique && attempts < maxAttempts) {
+          teacherCode = generateQNCode('teacher');
+          const existingTeacher = await prisma.teacher.findUnique({
+            where: { teacherCode },
           });
-        } catch (dbError) {
-          // Nếu transaction đã hết hạn, log lỗi nhưng không throw
-          // Vì teacher đã được tạo thành công
-          console.error('Error creating contractUpload record:', dbError);
+
+          if (!existingTeacher) {
+            isUnique = true;
+          }
+          attempts++;
         }
-      }
 
-      // Gửi email thông báo tài khoản cho giáo viên
-      try {
-        await this.emailNotificationService.sendTeacherAccountEmail(
-          teacher.id,
-          user.fullName,
-          user.username,
-          user.email,
-          defaultPassword,
-          teacherCode
-        );
-      } catch (emailError) {
-        // Không throw error, vì teacher đã được tạo thành công
-      }
+        if (!isUnique) {
+          throw new HttpException(
+            {
+              success: false,
+              message: 'Không thể tạo mã giáo viên duy nhất sau nhiều lần thử',
+            },
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
 
-      return this.formatTeacherResponse(teacher);
-    }, {
-      timeout: 30000, // 30 giây - đủ thời gian cho upload image và gửi email
-      maxWait: 10000, // 10 giây - thời gian tối đa chờ transaction bắt đầu
-    });
+        // Create teacher record
+        const teacher = await prisma.teacher.create({
+          data: {
+            userId: user.id,
+            schoolId: schoolId,
+            teacherCode: teacherCode,
+            subjects: createTeacherDto.subjects,
+          },
+          include: {
+            user: true,
+            school: true,
+          },
+        });
+
+        // Handle contract image upload if provided
+        if (createTeacherDto.contractImage) {
+          let uploadResult = null;
+          try {
+            // Upload image to Cloudinary (có thể mất thời gian)
+            uploadResult = await this.cloudinaryService.uploadImage(
+              createTeacherDto.contractImage,
+              'teachers',
+            );
+          } catch (uploadError) {
+            // Log lỗi upload nhưng không throw, sẽ lưu filename tạm
+            console.error(
+              'Error uploading contract image to Cloudinary:',
+              uploadError,
+            );
+          }
+
+          // Tạo contractUpload record trong transaction
+          try {
+            await prisma.contractUpload.create({
+              data: {
+                teacherId: teacher.id,
+                contractType: 'teacher_contract',
+                uploadedImageUrl:
+                  uploadResult?.secure_url ||
+                  createTeacherDto.contractImage.filename ||
+                  'temp-filename',
+                uploadedImageName:
+                  createTeacherDto.contractImage.originalname ||
+                  'contract-image',
+              },
+            });
+          } catch (dbError) {
+            // Nếu transaction đã hết hạn, log lỗi nhưng không throw
+            // Vì teacher đã được tạo thành công
+            console.error('Error creating contractUpload record:', dbError);
+          }
+        }
+
+        // Gửi email thông báo tài khoản cho giáo viên
+        try {
+          await this.emailNotificationService.sendTeacherAccountEmail(
+            teacher.id,
+            user.fullName,
+            user.username,
+            user.email,
+            defaultPassword,
+            teacherCode,
+          );
+        } catch (emailError) {
+          // Không throw error, vì teacher đã được tạo thành công
+        }
+
+        return this.formatTeacherResponse(teacher);
+      },
+      {
+        timeout: 30000, // 30 giây - đủ thời gian cho upload image và gửi email
+        maxWait: 10000, // 10 giây - thời gian tối đa chờ transaction bắt đầu
+      },
+    );
   }
 
   async findAllTeachers(queryDto: any) {
@@ -318,7 +328,6 @@ export class TeacherManagementService {
       take: limitNum,
     });
 
-
     return {
       data: teachers.map((teacher) => this.formatTeacherResponse(teacher)),
       meta: {
@@ -369,8 +378,12 @@ export class TeacherManagementService {
       throw new NotFoundException('Không tìm thấy giáo viên');
     }
 
-    // Check if email or username already exists (excluding current user)
-    if (updateTeacherDto.email || updateTeacherDto.username) {
+    // Kiểm tra nếu tồn tại email hoặc username khác
+    if (
+      updateTeacherDto.email ||
+      updateTeacherDto.username ||
+      updateTeacherDto.phone
+    ) {
       const existingUser = await this.prisma.user.findFirst({
         where: {
           AND: [
@@ -381,6 +394,7 @@ export class TeacherManagementService {
                 updateTeacherDto.username
                   ? { username: updateTeacherDto.username }
                   : {},
+                updateTeacherDto.phone ? { phone: updateTeacherDto.phone } : {},
               ].filter((condition) => Object.keys(condition).length > 0),
             },
           ],
@@ -388,7 +402,9 @@ export class TeacherManagementService {
       });
 
       if (existingUser) {
-        throw new BadRequestException('Email hoặc username đã tồn tại');
+        throw new BadRequestException(
+          'Email, username hoặc số điện thoại đã tồn tại',
+        );
       }
     }
 
@@ -523,11 +539,11 @@ export class TeacherManagementService {
               where:
                 year && month
                   ? {
-                    sessionDate: {
-                      gte: new Date(year, month - 1, 1),
-                      lt: new Date(year, month, 1),
-                    },
-                  }
+                      sessionDate: {
+                        gte: new Date(year, month - 1, 1),
+                        lt: new Date(year, month, 1),
+                      },
+                    }
                   : undefined,
               include: {
                 teacher: {
@@ -571,68 +587,70 @@ export class TeacherManagementService {
       throw new Error('Teacher not found');
     }
 
-    const dateFilter = year && month
-      ? {
-        sessionDate: {
-          gte: new Date(year, month - 1, 1),
-          lt: new Date(year, month, 1),
-        },
-      }
-      : undefined;
+    const dateFilter =
+      year && month
+        ? {
+            sessionDate: {
+              gte: new Date(year, month - 1, 1),
+              lt: new Date(year, month, 1),
+            },
+          }
+        : undefined;
 
     // Bước 1: Lấy tất cả TeacherClassTransfer liên quan đến giáo viên này
     // - Khi giáo viên bị thay thế (teacherId = id): Lấy transfers có substituteEndDate (dạy thay tạm thời)
     // - Khi giáo viên thay thế (replacementTeacherId = id): Lấy transfers có substituteEndDate
-    const [transfersAsOriginalTeacher, transfersAsReplacementTeacher] = await Promise.all([
-      // Giáo viên bị thay thế (người được thay thế)
-      this.prisma.teacherClassTransfer.findMany({
-        where: {
-          teacherId: id,
-          status: { in: ['approved'] },
-          substituteEndDate: { not: null }, // Chỉ lấy dạy thay tạm thời
-        },
-        include: {
-          replacementTeacher: {
-            include: {
-              user: {
-                select: {
-                  fullName: true,
+    const [transfersAsOriginalTeacher, transfersAsReplacementTeacher] =
+      await Promise.all([
+        // Giáo viên bị thay thế (người được thay thế)
+        this.prisma.teacherClassTransfer.findMany({
+          where: {
+            teacherId: id,
+            status: { in: ['approved'] },
+            substituteEndDate: { not: null }, // Chỉ lấy dạy thay tạm thời
+          },
+          include: {
+            replacementTeacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
                 },
               },
             },
-          },
-          fromClass: {
-            select: {
-              id: true,
-            },
-          },
-        },
-      }),
-      // Giáo viên thay thế (người dạy thay)
-      this.prisma.teacherClassTransfer.findMany({
-        where: {
-          replacementTeacherId: id,
-          status: { in: ['approved', 'completed'] },
-          substituteEndDate: { not: null }, // Chỉ lấy dạy thay tạm thời
-        },
-        include: {
-          teacher: {
-            include: {
-              user: {
-                select: {
-                  fullName: true,
-                },
+            fromClass: {
+              select: {
+                id: true,
               },
             },
           },
-          fromClass: {
-            select: {
-              id: true,
+        }),
+        // Giáo viên thay thế (người dạy thay)
+        this.prisma.teacherClassTransfer.findMany({
+          where: {
+            replacementTeacherId: id,
+            status: { in: ['approved', 'completed'] },
+            substituteEndDate: { not: null }, // Chỉ lấy dạy thay tạm thời
+          },
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
+            fromClass: {
+              select: {
+                id: true,
+              },
             },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     // Tạo map để lookup nhanh: classId -> transfer info
     // Map 1: Khi giáo viên này bị thay thế (teacherId = id)
@@ -654,8 +672,7 @@ export class TeacherManagementService {
           effectiveDate: new Date(transfer.effectiveDate),
           substituteEndDate: new Date(transfer.substituteEndDate),
           replacementTeacherName:
-            transfer.replacementTeacher?.user?.fullName ||
-            'Chưa xác định',
+            transfer.replacementTeacher?.user?.fullName || 'Chưa xác định',
         });
       }
     });
@@ -688,7 +705,7 @@ export class TeacherManagementService {
     // Có 2 nguồn:
     // 1. Sessions từ các lớp có trong TeacherClassTransfer (transfersAsReplacementTeacher)
     // 2. Sessions có substituteTeacherId trực tiếp trỏ đến giáo viên này
-    
+
     const classesToCheck = new Set<string>();
     transfersAsReplacementTeacher.forEach((transfer) => {
       if (transfer.fromClassId) {
@@ -779,7 +796,7 @@ export class TeacherManagementService {
       substituteEndDate: Date,
     ): boolean => {
       console.log(sessionDate, effectiveDate, substituteEndDate);
-      
+
       const sd = new Date(sessionDate);
       const ed = new Date(effectiveDate);
       const sed = new Date(substituteEndDate);
@@ -796,7 +813,7 @@ export class TeacherManagementService {
         const transferInfo = transfersAsOriginalMap.get(cls.id);
 
         // Kiểm tra xem session này có nằm trong khoảng thời gian dạy thay không
-        // Có 2 cách xác định: 
+        // Có 2 cách xác định:
         // 1. Qua TeacherClassTransfer (transferInfo)
         // 2. Qua substituteTeacherId trực tiếp trong session (giống getClassSessions)
         let isSubstitute = false;
@@ -884,8 +901,7 @@ export class TeacherManagementService {
             : null,
           students: session.attendances.map((attendance) => ({
             id: attendance.student.id,
-            name:
-              attendance.student.user.fullName || 'Chưa xác định',
+            name: attendance.student.user.fullName || 'Chưa xác định',
             avatar: undefined,
             status: this.mapAttendanceStatus(attendance.status),
           })),
@@ -901,7 +917,7 @@ export class TeacherManagementService {
     const substituteSessionsFormatted = substituteSessions
       .filter((session) => {
         const sessionDate = new Date(session.sessionDate);
-        
+
         // Kiểm tra qua TeacherClassTransfer
         const transferInfo = transfersAsReplacementMap.get(session.classId);
         const isSubstituteByTransfer =
@@ -924,14 +940,13 @@ export class TeacherManagementService {
       .map((session) => {
         const sessionDate = new Date(session.sessionDate);
         const transferInfo = transfersAsReplacementMap.get(session.classId);
-        
+
         // Xác định thông tin giáo viên
         let originalTeacherName =
           session.teacher?.user?.fullName ||
           session.class.teacher?.user?.fullName ||
           'Chưa xác định';
-        let substituteTeacherName =
-          teacher.user.fullName || 'Chưa xác định';
+        let substituteTeacherName = teacher.user.fullName || 'Chưa xác định';
         let substituteStartDate: Date | null = null;
         let substituteEndDate: Date | null = null;
 
@@ -997,8 +1012,7 @@ export class TeacherManagementService {
             : null,
           students: session.attendances.map((attendance) => ({
             id: attendance.student.id,
-            name:
-              attendance.student.user.fullName || 'Chưa xác định',
+            name: attendance.student.user.fullName || 'Chưa xác định',
             avatar: undefined,
             status: this.mapAttendanceStatus(attendance.status),
           })),
@@ -1055,7 +1069,9 @@ export class TeacherManagementService {
     return false;
   }
 
-  private mapAttendanceStatus(status: string): 'present' | 'absent' | 'excused' {
+  private mapAttendanceStatus(
+    status: string,
+  ): 'present' | 'absent' | 'excused' {
     switch (status) {
       case 'present':
         return 'present';
@@ -1083,15 +1099,15 @@ export class TeacherManagementService {
     ).length;
 
     if (absentStudents > 0) {
-      warnings.push(`*Có ${absentStudents} học viên vắng mặt*`);
+      warnings.push(`Có ${absentStudents} học viên vắng mặt`);
     }
 
     if (excusedStudents > 0) {
-      warnings.push(`*Có ${excusedStudents} học viên có phép*`);
+      warnings.push(`Có ${excusedStudents} học viên có phép`);
     }
 
     if (totalStudents === 0) {
-      warnings.push('*Chưa có học viên nào điểm danh buổi học này*');
+      warnings.push('Chưa có học viên nào điểm danh buổi học này');
     }
 
     return warnings;
@@ -1121,10 +1137,10 @@ export class TeacherManagementService {
       schoolAddress: teacher.school?.address,
       school: teacher.school
         ? {
-          id: teacher.school.id,
-          name: teacher.school.name,
-          address: teacher.school.address,
-        }
+            id: teacher.school.id,
+            name: teacher.school.name,
+            address: teacher.school.address,
+          }
         : null,
       contractUploads: teacher.contractUploads || [],
       subjects: teacher.subjects || [],
@@ -1338,7 +1354,6 @@ export class TeacherManagementService {
   }
 
   async getTeacherContracts(teacherId: string) {
-
     // Verify teacher exists
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
@@ -1359,7 +1374,9 @@ export class TeacherManagementService {
     });
 
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000,
+    );
 
     const contracts = contractUploads.map((u) => {
       let status = 'active';
@@ -1398,7 +1415,7 @@ export class TeacherManagementService {
     startDate?: string,
     expiryDate?: string,
     notes?: string,
-    teacherSalaryPercent?: number
+    teacherSalaryPercent?: number,
   ) {
     if (!file) {
       throw new BadRequestException('File là bắt buộc');
@@ -1434,7 +1451,7 @@ export class TeacherManagementService {
     try {
       uploadResult = await this.cloudinaryService.uploadDocument(
         file,
-        `contracts/teacher/${teacherId}`
+        `contracts/teacher/${teacherId}`,
       );
     } catch (err) {
       uploadResult = {
@@ -1446,7 +1463,9 @@ export class TeacherManagementService {
     // Calculate status based on expiry date
     const expiredAt = new Date(expiryDate);
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000,
+    );
 
     let status = 'active';
     if (expiredAt < now) {
@@ -1508,7 +1527,9 @@ export class TeacherManagementService {
       });
 
       if (!contract) {
-        throw new NotFoundException('Không tìm thấy hợp đồng hoặc hợp đồng không thuộc về giáo viên này');
+        throw new NotFoundException(
+          'Không tìm thấy hợp đồng hoặc hợp đồng không thuộc về giáo viên này',
+        );
       }
 
       // Delete the contract
@@ -1527,167 +1548,178 @@ export class TeacherManagementService {
     }
   }
 
-async getAllPayRolls(queryDto: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  month?: string;
-  year?: string;
-  teacherId?: string;
-  teacherName?: string;
-}) {
-  try {
-    const {
-      page = 1,
-      limit = 10,
-      status,
-      month,
-      year,
-      teacherId,
-      teacherName,
-    } = queryDto;
-    
-    const pageNum = parseInt(page.toString());
-    const limitNum = parseInt(limit.toString());
-    const skip = (pageNum - 1) * limitNum;
+  async getAllPayRolls(queryDto: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    month?: string;
+    year?: string;
+    teacherId?: string;
+    teacherName?: string;
+  }) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        status,
+        month,
+        year,
+        teacherId,
+        teacherName,
+      } = queryDto;
 
-    const where: any = {};
+      const pageNum = parseInt(page.toString());
+      const limitNum = parseInt(limit.toString());
+      const skip = (pageNum - 1) * limitNum;
 
-    // Filter theo status
-    if (status && status !== 'all') {
-      where.status = status;
-    }
+      const where: any = {};
 
-    // Filter theo teacherId
-    if (teacherId) {
-      where.teacherId = teacherId;
-    }
+      // Filter theo status
+      if (status && status !== 'all') {
+        where.status = status;
+      }
 
-    // Filter theo teacher name
-    if (teacherName) {
-      where.teacher = {
-        user: {
-          fullName: {
-            contains: teacherName,
-            mode: 'insensitive',
+      // Filter theo teacherId
+      if (teacherId) {
+        where.teacherId = teacherId;
+      }
+
+      // Filter theo teacher name
+      if (teacherName) {
+        where.teacher = {
+          user: {
+            fullName: {
+              contains: teacherName,
+              mode: 'insensitive',
+            },
           },
-        },
-      };
-    }
+        };
+      }
 
-    // Filter theo month (YYYY-MM)
-    if (month && month.match(/^\d{4}-\d{2}$/)) {
-      const [yearStr, monthNum] = month.split('-');
-      const startDate = new Date(parseInt(yearStr), parseInt(monthNum) - 1, 1);
-      const endDate = new Date(parseInt(yearStr), parseInt(monthNum), 0, 23, 59, 59, 999);
-      
-      where.periodStart = {
-        gte: startDate,
-      };
-      where.periodEnd = {
-        lte: endDate,
-      };
-    } 
-    // Filter theo year (YYYY)
-    else if (year && year.match(/^\d{4}$/)) {
-      const startDate = new Date(parseInt(year), 0, 1);
-      const endDate = new Date(parseInt(year) + 1, 0, 1);
-      
-      where.periodStart = {
-        gte: startDate,
-        lt: endDate,
-      };
-    }
+      // Filter theo month (YYYY-MM)
+      if (month && month.match(/^\d{4}-\d{2}$/)) {
+        const [yearStr, monthNum] = month.split('-');
+        const startDate = new Date(
+          parseInt(yearStr),
+          parseInt(monthNum) - 1,
+          1,
+        );
+        const endDate = new Date(
+          parseInt(yearStr),
+          parseInt(monthNum),
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
 
-    const [payrolls, total] = await Promise.all([
-      this.prisma.payroll.findMany({
-        where,
-        include: {
-          teacher: {
-            select: {
-              id: true,
-              teacherCode: true,
-              user: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
-                  phone: true,
+        where.periodStart = {
+          gte: startDate,
+        };
+        where.periodEnd = {
+          lte: endDate,
+        };
+      }
+      // Filter theo year (YYYY)
+      else if (year && year.match(/^\d{4}$/)) {
+        const startDate = new Date(parseInt(year), 0, 1);
+        const endDate = new Date(parseInt(year) + 1, 0, 1);
+
+        where.periodStart = {
+          gte: startDate,
+          lt: endDate,
+        };
+      }
+
+      const [payrolls, total] = await Promise.all([
+        this.prisma.payroll.findMany({
+          where,
+          include: {
+            teacher: {
+              select: {
+                id: true,
+                teacherCode: true,
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                  },
                 },
               },
             },
-          },
-          payrollPayment: {
-            select: {
-              id: true,
-              totalAmount: true,
-              paymentMethod: true,
-              paidAt: true,
-              notes: true,
+            payrollPayment: {
+              select: {
+                id: true,
+                totalAmount: true,
+                paymentMethod: true,
+                paidAt: true,
+                notes: true,
+              },
+            },
+            payoutDetails: {
+              select: {
+                id: true,
+                teacherPayout: true,
+                sessionId: true,
+              },
             },
           },
-          payoutDetails: {
-            select: {
-              id: true,
-              teacherPayout: true,
-              sessionId: true,
-            },
+          orderBy: [{ periodStart: 'desc' }, { id: 'desc' }],
+          skip,
+          take: limitNum,
+        }),
+        this.prisma.payroll.count({ where }),
+      ]);
+
+      const totalPages = Math.ceil(total / limitNum);
+
+      return {
+        data: payrolls.map((payroll) => ({
+          id: payroll.id.toString(),
+          periodStart: payroll.periodStart,
+          periodEnd: payroll.periodEnd,
+          totalAmount: payroll.totalAmount,
+          backPayAmount: payroll.backPayAmount,
+          bonuses: payroll.bonuses,
+          deductions: payroll.deductions,
+          teachingHours: payroll.teachingHours,
+          hourlyRate: payroll.hourlyRate,
+          status: payroll.status,
+          adminPublishedAt: payroll.adminPublishedAt,
+          teacherActionAt: payroll.teacherActionAt,
+          teacherRejectionReason: payroll.teacherRejectionReason,
+          teacher: {
+            id: payroll.teacher.id,
+            code: payroll.teacher.teacherCode,
+            name: payroll.teacher.user.fullName,
+            email: payroll.teacher.user.email,
+            phone: payroll.teacher.user.phone,
           },
+          payrollPayment: payroll.payrollPayment
+            ? {
+                id: payroll.payrollPayment.id.toString(),
+                totalAmount: payroll.payrollPayment.totalAmount,
+                paymentMethod: payroll.payrollPayment.paymentMethod,
+                paidAt: payroll.payrollPayment.paidAt,
+                notes: payroll.payrollPayment.notes,
+              }
+            : null,
+          sessionCount: payroll.payoutDetails.length,
+        })),
+        meta: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages,
         },
-        orderBy: [
-          { periodStart: 'desc' },
-          { id: 'desc' },
-        ],
-        skip,
-        take: limitNum,
-      }),
-      this.prisma.payroll.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(total / limitNum);
-
-    return {
-      data: payrolls.map((payroll) => ({
-        id: payroll.id.toString(),
-        periodStart: payroll.periodStart,
-        periodEnd: payroll.periodEnd,
-        totalAmount: payroll.totalAmount,
-        backPayAmount: payroll.backPayAmount,
-        bonuses: payroll.bonuses,
-        deductions: payroll.deductions,
-        teachingHours: payroll.teachingHours,
-        hourlyRate: payroll.hourlyRate,
-        status: payroll.status,
-        adminPublishedAt: payroll.adminPublishedAt,
-        teacherActionAt: payroll.teacherActionAt,
-        teacherRejectionReason: payroll.teacherRejectionReason,
-        teacher: {
-          id: payroll.teacher.id,
-          code: payroll.teacher.teacherCode,
-          name: payroll.teacher.user.fullName,
-          email: payroll.teacher.user.email,
-          phone: payroll.teacher.user.phone,
-        },
-        payrollPayment: payroll.payrollPayment ? {
-          id: payroll.payrollPayment.id.toString(),
-          totalAmount: payroll.payrollPayment.totalAmount,
-          paymentMethod: payroll.payrollPayment.paymentMethod,
-          paidAt: payroll.payrollPayment.paidAt,
-          notes: payroll.payrollPayment.notes,
-        } : null,
-        sessionCount: payroll.payoutDetails.length,
-      })),
-      meta: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages,
-      },
-      message: 'Lấy danh sách bảng lương thành công',
-    };
-  } catch (error) {
-    console.error('Error in getAllPayRolls:', error);
-    throw new Error('Không thể lấy danh sách bảng lương');
+        message: 'Lấy danh sách bảng lương thành công',
+      };
+    } catch (error) {
+      console.error('Error in getAllPayRolls:', error);
+      throw new Error('Không thể lấy danh sách bảng lương');
+    }
   }
-}
 }

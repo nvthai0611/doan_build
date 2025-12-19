@@ -124,9 +124,6 @@ export const EditScheduleSheet = ({
                     {classData && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                             <div className="flex items-start gap-3">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                    <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                </div>
                                 <div className="flex-1 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <h3 className="font-semibold text-blue-900 dark:text-blue-100">{classData.name}</h3>
@@ -136,7 +133,6 @@ export const EditScheduleSheet = ({
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                                            <Calendar className="h-4 w-4" />
                                             <span>{classData.subjectName} - {classData.gradeName || classData.grade?.name || 'Chưa xác định'}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
@@ -267,7 +263,7 @@ export const EditScheduleSheet = ({
                                 ))
                             ) : (
                                 <div className="text-center py-8 text-gray-500 text-sm border border-dashed rounded-lg">
-                                    Chưa có lịch học. Click "Chọn từ lịch" để thêm.
+                                    Chưa có lịch học. Click `Chọn từ lịch `để thêm.
                                 </div>
                             )}
                         </div>

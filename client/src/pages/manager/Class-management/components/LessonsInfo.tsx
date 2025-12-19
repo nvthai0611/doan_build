@@ -510,8 +510,30 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
     });
   };
 
+  // Xử lý khi thay đổi endTime - THÊM VALIDATION
+  const handleEndTimeChange = (newEndTime: string) => {
+    if (!editingSession) return;
+
+    // Validate: endTime phải lớn hơn startTime
+    if (newEndTime <= editingSession.startTime) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu');
+      return;
+    }
+
+    setEditingSession({
+      ...editingSession,
+      endTime: newEndTime,
+    });
+  };
+
   const handleSaveEdit = async (sessionId: string) => {
     if (!editingSession || !originalSession) return;
+
+    // THÊM VALIDATION TRƯỚC KHI SAVE
+    if (editingSession.endTime <= editingSession.startTime) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu');
+      return;
+    }
 
     try {
       setIsUpdating(true);
@@ -530,7 +552,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
         editingSession.endTime
       );
 
-      let finalData = {
+      const finalData = {
         startTime: editingSession.startTime,
         endTime: editingSession.endTime,
       };
@@ -585,6 +607,17 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
           
           // Điều chỉnh endTime để vừa khít với khoảng trống
           const adjustedEndTime = minutesToTime(earliestConflictStart);
+          
+          // VALIDATE: Kiểm tra adjustedEndTime vẫn phải lớn hơn startTime
+          if (adjustedEndTime <= editingSession.startTime) {
+            setConflictDialog({
+              open: true,
+              message: `Không thể cập nhật! Không có khoảng thời gian hợp lệ do xung đột lịch.\nGiờ kết thúc tối đa có thể là ${adjustedEndTime}, nhưng phải lớn hơn giờ bắt đầu ${editingSession.startTime}`
+            });
+            setIsUpdating(false);
+            return;
+          }
+          
           finalData.endTime = adjustedEndTime;
           
           // Hiển thị thông báo
@@ -675,7 +708,7 @@ export const LessonsInfo = ({ classId, classData }: LessonsInfoProps) => {
                   <Input
                     type="time"
                     value={editingSession?.endTime || ''}
-                    onChange={(e) => setEditingSession({ ...editingSession!, endTime: e.target.value })}
+                    onChange={(e) => handleEndTimeChange(e.target.value)}
                     className="text-sm h-8"
                   />
                 </div>
@@ -1405,7 +1438,7 @@ const AddLessonForm = ({
 
       return { hasExisting: true, overwrite: true };
     } catch (error) {
-      throw error;
+      return Promise.reject(error);
     }
   };
 

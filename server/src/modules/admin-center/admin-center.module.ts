@@ -77,22 +77,24 @@ import { ScholarshipManagementController } from './controllers/scholarship-manag
 import { ScholarshipManagementService } from './services/scholarship-management.service';
 import { ScheduleChangeAdminController } from './controllers/schedule-change.controller';
 import { ScheduleChangeAdminService } from './services/schedule-change.service';
+import { ScheduleConflictController } from './controllers/schedule-conflict.controller';
+import { ScheduleConflictService } from './services/schedule-conflict.service';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Enable cron jobs
     BullModule.registerQueue({
-      name: 'payroll-notification', // ✅ Register queue ở đây
+      name: 'payroll-notification', // Register queue ở đây
     }),
     BullModule.registerQueue({
-      name: 'payroll-recalculation', // ✅ Register queue ở đây
+      name: 'payroll-recalculation', // Register queue ở đây
     }),
     BullModule.registerQueue({
-      name: 'payroll-payment-notification', // ✅ Register queue ở đây
+      name: 'payroll-payment-notification', // Register queue ở đây
     }),
     RouterModule.register([
       {
-        path: "admin-center",
+        path: 'admin-center',
         module: AdminCenterModule,
       },
     ]),
@@ -131,6 +133,7 @@ import { ScheduleChangeAdminService } from './services/schedule-change.service';
     JobTriggerController,
     FinancialReportsController,
     ScholarshipManagementController,
+    ScheduleConflictController,
   ],
   providers: [
     PrismaService,
@@ -174,17 +177,15 @@ import { ScheduleChangeAdminService } from './services/schedule-change.service';
     EmailNotificationPayrollService,
     FinancialReportsService,
     ScholarshipManagementService,
+    ScheduleConflictService,
   ],
   exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
-
 })
 //check
 export class AdminCenterModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(MiddlewareCenterOwner)
-      .forRoutes(
-        { path: 'admin-center/*', method: RequestMethod.ALL }
-      );
+      .forRoutes({ path: 'admin-center/*', method: RequestMethod.ALL });
   }
 }

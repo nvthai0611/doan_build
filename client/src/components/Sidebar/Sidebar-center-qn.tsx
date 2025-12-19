@@ -95,6 +95,11 @@ const centerOwnerMenuItems: { topLevel: MenuItem[], sections: MenuSection[] } = 
       icon: Calendar,
       href: '/center-qn/schedule',
     },
+    {
+      title: 'Xung đột lịch học',
+      icon: AlertTriangle,
+      href: '/center-qn/schedule/conflicts',
+    },
 
   ],
   sections: [
