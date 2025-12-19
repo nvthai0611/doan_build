@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
 import { CreateSessionRequestDto } from '../dto/session-request/create-session-request.dto';
 import { SessionRequestResponseDto } from '../dto/session-request/session-request-response.dto';
@@ -10,6 +10,35 @@ export class SessionRequestService {
 
   async createSessionRequest(teacherId: string, dto: CreateSessionRequestDto): Promise<SessionRequestResponseDto> {
     try {
+      // Basic validation
+      const startMinutes = this.parseTimeToMinutes(dto.startTime);
+      const endMinutes = this.parseTimeToMinutes(dto.endTime);
+
+      if (isNaN(startMinutes) || isNaN(endMinutes)) {
+        throw new BadRequestException('Giờ bắt đầu/kết thúc không hợp lệ (HH:MM)');
+      }
+
+      if (endMinutes <= startMinutes) {
+        throw new BadRequestException('Giờ kết thúc phải sau giờ bắt đầu');
+      }
+
+      if (!['makeup_session', 'extra_session'].includes(dto.requestType)) {
+        throw new BadRequestException('Loại yêu cầu không hợp lệ');
+      }
+
+      const sessionDateObj = new Date(dto.sessionDate);
+      if (isNaN(sessionDateObj.getTime())) {
+        throw new BadRequestException('Ngày buổi học không hợp lệ');
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const sessionDateStart = new Date(sessionDateObj);
+      sessionDateStart.setHours(0, 0, 0, 0);
+      if (sessionDateStart < today) {
+        throw new BadRequestException('Ngày buổi học không được ở quá khứ');
+      }
+
       // Get teacher info to get userId
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: teacherId },
@@ -17,17 +46,38 @@ export class SessionRequestService {
       });
 
       if (!teacher) {
-        throw new Error('Không tìm thấy thông tin giáo viên');
+        throw new NotFoundException('Không tìm thấy thông tin giáo viên');
       }
 
       // Verify teacher assignment to the class
       const classInfo = await this.prisma.class.findFirst({
         where: { id: dto.classId, teacherId: teacherId },
-        select: { id: true, name: true, subject: { select: { name: true } } }
+        select: {
+          id: true,
+          name: true,
+          subject: { select: { name: true } },
+          actualEndDate: true,
+        }
       });
 
       if (!classInfo) {
-        throw new Error('Bạn không được phân công lớp này hoặc lớp không hoạt động');
+        throw new NotFoundException('Bạn không được phân công lớp này hoặc lớp không hoạt động');
+      }
+
+      if (classInfo.actualEndDate) {
+        const classEnd = new Date(classInfo.actualEndDate);
+        if (sessionDateObj > classEnd) {
+          throw new BadRequestException('Ngày buổi học vượt quá thời gian kết thúc lớp học');
+        }
+      }
+
+      if (dto.roomId) {
+        const room = await this.prisma.room.findUnique({
+          where: { id: dto.roomId },
+        });
+        if (!room) {
+          throw new BadRequestException('Phòng học không tồn tại');
+        }
       }
 
       // Validate time range conflict: room conflict (if roomId)
@@ -35,42 +85,60 @@ export class SessionRequestService {
         const conflictRoom = await this.prisma.classSession.findFirst({
           where: {
             roomId: dto.roomId,
-            sessionDate: new Date(dto.sessionDate),
+            sessionDate: sessionDateObj,
             startTime: { lte: dto.endTime },
             endTime: { gte: dto.startTime },
           }
         });
         if (conflictRoom) {
-          throw new Error('Phòng học đã được sử dụng trong khoảng thời gian này');
+          throw new BadRequestException('Phòng học đã được sử dụng trong khoảng thời gian này');
         }
       }
 
       // Validate teacher time conflict across classes
       const conflictTeacher = await this.prisma.classSession.findFirst({
         where: {
-          sessionDate: new Date(dto.sessionDate),
+          sessionDate: sessionDateObj,
           startTime: { lte: dto.endTime },
           endTime: { gte: dto.startTime },
           teacherId: teacherId
         }
       });
       if (conflictTeacher) {
-        throw new Error('Bạn đã có buổi dạy khác trùng khung giờ này');
+        throw new BadRequestException('Bạn đã có buổi dạy khác trùng khung giờ này');
       }
 
-      // Check for existing pending session request for the same time
+      // Check for existing session request (pending/approved) overlapping same time
       const existingRequest = await this.prisma.sessionRequest.findFirst({
         where: {
           teacherId: teacherId,
-          sessionDate: new Date(dto.sessionDate),
-          startTime: dto.startTime,
-          endTime: dto.endTime,
-          status: 'pending'
+          sessionDate: sessionDateObj,
+          status: { in: ['pending', 'approved'] },
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: dto.startTime } },
+                { endTime: { gt: dto.startTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: dto.endTime } },
+                { endTime: { gte: dto.endTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: dto.startTime } },
+                { endTime: { lte: dto.endTime } },
+              ],
+            },
+          ],
         }
       });
 
       if (existingRequest) {
-        throw new Error('Bạn đã có yêu cầu tạo buổi học tương tự đang chờ duyệt');
+        throw new BadRequestException('Bạn đã có yêu cầu đang chờ duyệt');
       }
 
       // Create session request
@@ -279,5 +347,11 @@ export class SessionRequestService {
         fullName: sessionRequest.approvedByUser.fullName
       } : undefined
     };
+  }
+
+  private parseTimeToMinutes(time: string): number {
+    const [h, m] = time.split(':').map((v) => parseInt(v, 10));
+    if (isNaN(h) || isNaN(m)) return NaN;
+    return h * 60 + m;
   }
 }

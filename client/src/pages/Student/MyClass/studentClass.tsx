@@ -7,21 +7,10 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  BookOpen, 
-  GraduationCap, 
-  MapPin, 
-  Users, 
-  Calendar, 
-  Clock, 
-  ArrowRight,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle2
-} from "lucide-react"
 import { studentEnrollmentService } from "../../../services/student/enrollment/enrollment.service"
 import Loading from "../../../components/Loading/LoadingPage"
 import { studentClassInformationService } from "../../../services/student/classInformation/classInformation.service"
+import { EnrollmentStatus, ENROLLMENT_STATUS_LABELS } from "../../../lib/constants"
 
 export default function StudentClassesPage() {
   const navigate = useNavigate()
@@ -43,132 +32,101 @@ export default function StudentClassesPage() {
   const enrollments: any[] = useMemo(() => Array.isArray(data) ? data : [], [data])
 
   const toVietnameseStatus = (status?: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'active':
-      case 'studying':
-        return 'Đang học'
-      case 'completed':
-        return 'Hoàn thành'
-      case 'dropped':
-        return 'Đã bỏ học'
-      case 'not_been_updated':
-        return 'Chưa cập nhật'
-      default:
-        return status || 'Không xác định'
+    if (!status) return 'Không xác định'
+    const normalizedStatus = status.toLowerCase()
+    // Sử dụng labels từ constants để đảm bảo nhất quán
+    const statusMap: Record<string, string> = {
+      'studying': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STUDYING],
+      'not_been_updated': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.NOT_BEEN_UPDATED],
+      'stopped': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.STOPPED],
+      'graduated': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.GRADUATED],
+      'withdrawn': ENROLLMENT_STATUS_LABELS[EnrollmentStatus.WITHDRAWN],
     }
+    return statusMap[normalizedStatus] || status || 'Không xác định'
   }
 
   const statusClasses = (status?: string) => {
     const s = (status || '').toLowerCase()
-    if (s === 'active' || s === 'studying') return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300 shadow-sm'
-    if (s === 'not_been_updated') return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-300 shadow-sm'
-    if (s === 'completed') return 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border border-blue-300 shadow-sm'
-    if (s === 'dropped') return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-300 shadow-sm'
-    return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300 shadow-sm'
-  }
-
-  const getStatusIcon = (status?: string) => {
-    const s = (status || '').toLowerCase()
-    if (s === 'active' || s === 'studying') return <CheckCircle2 className="w-3 h-3" />
-    if (s === 'not_been_updated') return <Clock className="w-3 h-3" />
-    if (s === 'completed') return <CheckCircle2 className="w-3 h-3" />
-    if (s === 'dropped') return <AlertCircle className="w-3 h-3" />
-    return <AlertCircle className="w-3 h-3" />
+    if (s === 'studying') return 'bg-green-100 text-green-800 border border-green-300'
+    if (s === 'not_been_updated') return 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+    if (s === 'graduated') return 'bg-blue-100 text-blue-800 border border-blue-300'
+    if (s === 'stopped') return 'bg-red-100 text-red-800 border border-red-300'
+    if (s === 'withdrawn') return 'bg-orange-100 text-orange-800 border border-orange-300'
+    return 'bg-gray-100 text-gray-800 border border-gray-300'
   }
 
   if (isLoading) return <Loading />
 
   if (isError) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-full">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
+      <div className="border border-red-200 bg-red-50 rounded p-3 text-sm text-red-700 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-red-800">Không thể tải danh sách lớp học</p>
-                <p className="text-xs text-red-600">Vui lòng thử lại sau</p>
+          <p className="font-medium">Không thể tải danh sách lớp học</p>
+          <p className="text-xs">Vui lòng thử lại sau.</p>
               </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-300 text-red-700 hover:bg-red-100">
-              <RefreshCw className="w-4 h-4 mr-2" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          className="border-red-300 text-red-700 hover:bg-red-100"
+        >
               Thử lại
             </Button>
           </div>
-        </CardContent>
-      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <CardTitle className="text-xl font-bold flex items-center gap-2 text-blue-800">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <GraduationCap className="w-5 h-5 text-blue-600" />
-            </div>
-            Môn học đã ghi danh
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Môn học đã ghi danh</h1>
+        <div className="mt-3">
           {subjectsQuery.isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              Đang tải...
-            </div>
+            <div className="text-sm text-gray-500">Đang tải...</div>
           ) : subjectsQuery.isError ? (
-            <div className="flex items-center gap-2 text-sm text-red-600">
-              <AlertCircle className="w-4 h-4" />
-              Không thể tải danh sách môn học
-            </div>
+            <div className="text-sm text-red-600">Không thể tải danh sách môn học</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {(Array.isArray(subjectsQuery.data) ? subjectsQuery.data : []).map((s: any) => (
-                <Badge key={s.id} variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200 px-3 py-1">
-                  <BookOpen className="w-3 h-3 mr-1" />
+                <span
+                  key={s.id}
+                  className="inline-flex items-center rounded border px-3 py-1 text-xs text-gray-800 bg-gray-50"
+                >
                   {s.name}
-                </Badge>
+                </span>
               ))}
               {(!subjectsQuery.data || (subjectsQuery.data as any[]).length === 0) && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <BookOpen className="w-4 h-4" />
-                  Chưa có môn học nào
-                </div>
+                <div className="text-sm text-gray-500">Chưa có môn học nào</div>
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
-          <CardTitle className="text-2xl font-bold flex items-center gap-2 text-green-800">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
+        </div>
             </div>
+
+      <Card className="border rounded">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900">
             Lớp học của tôi
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           {enrollments.length === 0 ? (
             <div className="text-center py-12">
-              <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-gray-400" />
-              </div>
               <p className="text-lg font-medium text-gray-600">Bạn chưa ghi danh lớp học nào</p>
               <p className="text-sm text-gray-500 mt-1">Hãy liên hệ với giáo viên để được ghi danh</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {enrollments.map((en) => (
-                <div key={en.id} className="border rounded-xl p-5 bg-white hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500" role="button">
+                <div
+                  key={en.id}
+                  className="border rounded p-4 bg-white hover:bg-gray-50 transition-colors"
+                  role="button"
+                >
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="min-w-0 flex-1">
                       <button
-                        className="text-lg font-semibold text-left text-gray-800 hover:text-blue-600 transition-colors truncate block w-full"
+                        className="text-base font-semibold text-left text-gray-800 hover:text-blue-600 truncate block w-full"
                         onClick={() => navigate(`/student/my-classes/${en.class?.id || en.classId}`)}
                         title={en.class?.name}
                       >
@@ -177,27 +135,20 @@ export default function StudentClassesPage() {
                       <div className="mt-2 space-y-2">
                         {en.class?.subject?.name && (
                           <div className="flex items-center gap-2">
-                            <div className="p-1 bg-purple-100 rounded">
-                              <BookOpen className="w-3 h-3 text-purple-600" />
-                            </div>
-                            <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
+                            <span className="text-xs text-gray-600">
                               {en.class?.subject?.name}
-                            </Badge>
+                            </span>
                           </div>
                         )}
                         {en.class?.room?.name && (
                           <div className="flex items-center gap-2">
-                            <div className="p-1 bg-orange-100 rounded">
-                              <MapPin className="w-3 h-3 text-orange-600" />
-                            </div>
                             <span className="text-sm text-gray-600">Phòng: {en.class?.room?.name}</span>
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="shrink-0">
-                      <Badge className={`${statusClasses(en.status)} flex items-center gap-1`}>
-                        {getStatusIcon(en.status)}
+                      <Badge className={`${statusClasses(en.status)} flex items-center gap-1 text-xs`}>
                         {toVietnameseStatus(en.status)}
                       </Badge>
                     </div>
@@ -208,9 +159,8 @@ export default function StudentClassesPage() {
                       size="sm" 
                       variant="outline" 
                       onClick={() => navigate(`/student/my-classes/${en.class?.id || en.classId}`)}
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 transition-all"
+                      className="border-gray-300 text-gray-800 hover:bg-gray-100"
                     >
-                      <ArrowRight className="w-4 h-4 mr-1" />
                       Xem chi tiết
                     </Button>
                   </div>

@@ -139,11 +139,13 @@ let ParentManagementController = class ParentManagementController {
             meta: {}
         };
     }
-    async getAllParents(page, limit, search, isActive) {
+    async getAllParents(page, limit, search, isActive, hasStudents, hasEnrollments) {
         const pageNumber = page ? Number(page) : 1;
         const limitNumber = limit ? Number(limit) : 10;
         const isActiveBoolean = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-        const result = await this.parentManagementService.getAllParents(search, undefined, isActiveBoolean !== undefined ? (isActiveBoolean ? 'active' : 'inactive') : undefined, pageNumber, limitNumber);
+        const hasStudentsBoolean = hasStudents === 'true' ? true : hasStudents === 'false' ? false : undefined;
+        const hasEnrollmentsBoolean = hasEnrollments === 'true' ? true : hasEnrollments === 'false' ? false : undefined;
+        const result = await this.parentManagementService.getAllParents(search, undefined, isActiveBoolean !== undefined ? (isActiveBoolean ? 'active' : 'inactive') : undefined, pageNumber, limitNumber, hasStudentsBoolean, hasEnrollmentsBoolean);
         return {
             statusCode: common_1.HttpStatus.OK,
             message: result.message,
@@ -185,7 +187,7 @@ let ParentManagementController = class ParentManagementController {
         return await this.parentManagementService.getPaymentDetails(paymentId, parentId);
     }
     async createBillForParent(parentId, body) {
-        const { feeRecordIds, expirationDate, notes, reference, method, payNow } = body || {};
+        const { feeRecordIds, expirationDate, notes, reference, method, payNow, cashGiven } = body || {};
         if (!feeRecordIds || !Array.isArray(feeRecordIds) || feeRecordIds.length === 0) {
             throw new common_1.HttpException('feeRecordIds là bắt buộc và phải là mảng có ít nhất 1 phần tử', common_1.HttpStatus.BAD_REQUEST);
         }
@@ -195,7 +197,8 @@ let ParentManagementController = class ParentManagementController {
                 notes,
                 reference,
                 method,
-                payNow
+                payNow,
+                cashGiven
             });
             return {
                 statusCode: common_1.HttpStatus.CREATED,
@@ -382,13 +385,17 @@ __decorate([
     (0, swagger_1.ApiQuery)({ name: 'search', required: false, type: String, description: 'Tìm kiếm theo tên, email, phone' }),
     (0, swagger_1.ApiQuery)({ name: 'isActive', required: false, type: Boolean, description: 'Lọc theo trạng thái' }),
     (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Lấy danh sách thành công' }),
+    (0, swagger_1.ApiQuery)({ name: 'hasStudents', required: false, type: Boolean, description: 'Lọc theo việc đã có học sinh hay chưa' }),
+    (0, swagger_1.ApiQuery)({ name: 'hasEnrollments', required: false, type: Boolean, description: 'Lọc theo việc học sinh đã đăng ký khóa học hay chưa' }),
     openapi.ApiResponse({ status: 200 }),
     __param(0, (0, common_1.Query)('page')),
     __param(1, (0, common_1.Query)('limit')),
     __param(2, (0, common_1.Query)('search')),
     __param(3, (0, common_1.Query)('isActive')),
+    __param(4, (0, common_1.Query)('hasStudents')),
+    __param(5, (0, common_1.Query)('hasEnrollments')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String, String]),
+    __metadata("design:paramtypes", [Number, Number, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentManagementController.prototype, "getAllParents", null);
 __decorate([

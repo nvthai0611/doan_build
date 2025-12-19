@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Eye, CheckCircle, XCircle, Clock, Filter, MoreHorizontal, User, Calendar, FileText } from 'lucide-react'
-import { requestsService, LeaveRequest } from '../../../services/manager/requests.service'
+import { requestsService, LeaveRequest, LeaveSessionReplacementPayload } from '../../../services/manager/requests.service'
 import LeaveRequestDetailModal from './components/LeaveRequestDetailModal'
 import ConfirmationModal from './components/ConfirmationModal'
 import { usePagination } from '../../../hooks/usePagination'
@@ -67,11 +67,26 @@ export default function LeaveRequestManagement() {
     setItemsPerPage,
   } = usePagination();
 
+  // Lưu mapping requestId -> { sessionId -> replacementTeacherId } cho từng request
+  const [sessionReplacementsByRequest, setSessionReplacementsByRequest] = useState<
+    Record<string, Record<string, string>>
+  >({})
+
   useEffect(() => {
     fetchRequests()
     // Get current user info
-    const user = Cookies.get('user')
-    setCurrentUser(user)
+    const userStr = Cookies.get('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setCurrentUser(user)
+      } catch (error) {
+        console.error('Error parsing user from cookie:', error)
+        setCurrentUser(null)
+      }
+    } else {
+      setCurrentUser(null)
+    }
   }, [currentPage, statusFilter])
 
   const fetchRequests = async () => {
@@ -106,13 +121,26 @@ export default function LeaveRequestManagement() {
   }
 
   const handleApprove = (id: string) => {
-    setSelectedRequest(requests.find(r => r.id === id) || null)
+    // Nếu selectedRequest chưa được set hoặc khác với id đang duyệt, set lại
+    if (!selectedRequest || selectedRequest.id !== id) {
+      const request = requests.find((r) => r.id === id)
+      if (request) {
+        setSelectedRequest(request)
+      }
+      // Nếu không tìm thấy trong list, selectedRequest đã được set từ handleViewDetails khi mở modal
+    }
     setConfirmationAction('approve')
     setIsConfirmationModalOpen(true)
   }
 
   const handleReject = (id: string) => {
-    setSelectedRequest(requests.find(r => r.id === id) || null)
+    // Nếu selectedRequest chưa được set hoặc khác với id đang từ chối, set lại
+    if (!selectedRequest || selectedRequest.id !== id) {
+      const request = requests.find((r) => r.id === id)
+      if (request) {
+        setSelectedRequest(request)
+      }
+    }
     setConfirmationAction('reject')
     setIsConfirmationModalOpen(true)
   }
@@ -123,19 +151,66 @@ export default function LeaveRequestManagement() {
     setIsProcessing(true)
     try {
       if (confirmationAction === 'approve') {
-        await requestsService.approveLeaveRequest(selectedRequest.id, 'approve', currentUser?.id || '')
+        let replacements: LeaveSessionReplacementPayload[] | undefined = undefined
+
+        // Lấy sessionReplacements của request này
+        const sessionReplacements =
+          sessionReplacementsByRequest[selectedRequest.id] || {}
+
+        if (selectedRequest.affectedSessions && selectedRequest.affectedSessions.length > 0) {
+          const mapped: LeaveSessionReplacementPayload[] = []
+          selectedRequest.affectedSessions.forEach((s: any) => {
+            const key = s.sessionId || s.id
+            const teacherId = sessionReplacements[key]
+            if (key && teacherId) {
+              mapped.push({
+                sessionId: key,
+                replacementTeacherId: teacherId,
+              })
+            }
+          })
+          if (mapped.length > 0) {
+            replacements = mapped
+          }
+        }
+
+        if (!currentUser?.id) {
+          toast.error('Không tìm thấy thông tin người duyệt')
+          return
+        }
+
+        await requestsService.approveLeaveRequest(
+          selectedRequest.id,
+          'approve',
+          currentUser.id,
+          {
+            replacements,
+          },
+        )
         toast.success('Đã duyệt đơn xin nghỉ phép')
       } else if (confirmationAction === 'reject') {
-        await requestsService.approveLeaveRequest(selectedRequest.id, 'reject', currentUser?.id || '')
+        await requestsService.approveLeaveRequest(
+          selectedRequest.id,
+          'reject',
+          currentUser?.id || '',
+        )
         toast.success('Đã từ chối đơn xin nghỉ phép')
       }
       
       await fetchRequests()
+      // Xóa sessionReplacements của request đã xử lý
+      if (selectedRequest?.id) {
+        setSessionReplacementsByRequest((prev) => {
+          const next = { ...prev }
+          delete next[selectedRequest.id]
+          return next
+        })
+      }
       setIsDetailModalOpen(false)
       setIsConfirmationModalOpen(false)
     } catch (error) {
       console.error(`Error ${confirmationAction}ing leave request:`, error)
-      toast.error(`Có lỗi xảy ra khi ${confirmationAction === 'approve' ? 'duyệt' : 'từ chối'} đơn`)
+      toast.error(`${(error as any).message || 'Có lỗi xảy ra khi duyệt đơn'}`)
     } finally {
       setIsProcessing(false)
     }
@@ -144,7 +219,14 @@ export default function LeaveRequestManagement() {
   const handleViewDetails = async (id: string) => {
     try {
       const request = await requestsService.getLeaveRequestById(id)
-      setSelectedRequest(request.data as any)
+      setSelectedRequest(request.data as any) //do not modify this line
+      // Khởi tạo sessionReplacements cho request này nếu chưa có
+      setSessionReplacementsByRequest((prev) => {
+        if (!prev[id]) {
+          return { ...prev, [id]: {} }
+        }
+        return prev
+      })
       setIsDetailModalOpen(true)
     } catch (error) {
       console.error('Error fetching request details:', error)
@@ -238,7 +320,7 @@ export default function LeaveRequestManagement() {
     },
     {
       key: 'affectedSessions',
-      header: 'Sessions bị ảnh hưởng',
+      header: 'Buổi học bị ảnh hưởng',
       render: (item: LeaveRequest) => (
         <div className="text-center">
           <span className="text-sm font-medium">
@@ -255,7 +337,7 @@ export default function LeaveRequestManagement() {
           variant="secondary"
           className={statusColors[item.status] || statusColors.pending}
         >
-          {getStatusIcon(item.status)}
+          {/* {getStatusIcon(item.status)} */}
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
@@ -276,11 +358,11 @@ export default function LeaveRequestManagement() {
         <div>
           <div className="flex items-center gap-2">
             <div
-              className="flex items-center gap-2 cursor-pointer bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+              className="flex items-center gap-2 cursor-pointer bg-transparent px-2 py-1 rounded-md hover:bg-gray-100"
               title="Xem chi tiết"
               onClick={() => handleViewDetails(item.id)}
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 text-blue-500" />
             </div>
             <div
               title="Duyệt"
@@ -292,11 +374,11 @@ export default function LeaveRequestManagement() {
               }}
               className={`flex items-center px-2 py-1 rounded-md ${
                 item.status !== 'pending'
-                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                  : 'text-white bg-green-500 cursor-pointer hover:bg-green-600'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                  : 'bg-transparent cursor-pointer hover:bg-gray-100'
               }`}
             >
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-green-500' : 'text-gray-500'}`} />
             </div>
             <div
               title="Từ chối"
@@ -308,11 +390,11 @@ export default function LeaveRequestManagement() {
               }}
               className={`flex items-center px-2 py-1 rounded-md ${
                 item.status !== 'pending'
-                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-gray-500'
-                  : 'text-white bg-red-500 cursor-pointer hover:bg-red-600'
+                  ? 'disabled:opacity-50 disabled:cursor-not-allowed bg-transparent'
+                  : 'bg-transparent cursor-pointer hover:bg-gray-100'
               }`}
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle className={`h-4 w-4 ${item.status === 'pending' ? 'text-red-500' : 'text-gray-500'}`} />
             </div>
           </div>
         </div>
@@ -326,21 +408,13 @@ export default function LeaveRequestManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Quản lý đơn xin nghỉ phép</h1>
-          <p className="text-muted-foreground">
-            Duyệt và quản lý các đơn xin nghỉ phép của giáo viên
-          </p>
+          
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Bộ lọc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <div className="">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Trạng thái:</label>
@@ -357,8 +431,8 @@ export default function LeaveRequestManagement() {
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Data Table */}
       <Card>
@@ -384,10 +458,26 @@ export default function LeaveRequestManagement() {
       {/* Detail Modal */}
       <LeaveRequestDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          // Có thể giữ lại sessionReplacements khi đóng modal để user có thể mở lại
+        }}
         request={selectedRequest as any}
         onApprove={handleApprove}
         onReject={handleReject}
+        sessionReplacements={
+          selectedRequest?.id
+            ? sessionReplacementsByRequest[selectedRequest.id] || {}
+            : {}
+        }
+        setSessionReplacements={(value: Record<string, string>) => {
+          if (selectedRequest?.id) {
+            setSessionReplacementsByRequest((prev) => ({
+              ...prev,
+              [selectedRequest.id]: value,
+            }))
+          }
+        }}
       />
 
       {/* Confirmation Modal */}
@@ -397,8 +487,27 @@ export default function LeaveRequestManagement() {
         onConfirm={handleConfirmAction}
         title={confirmationAction === 'approve' ? 'Xác nhận duyệt đơn' : 'Xác nhận từ chối đơn'}
         message={
-          confirmationAction === 'approve' 
-            ? 'Bạn có chắc chắn muốn duyệt đơn xin nghỉ phép này không?' 
+          confirmationAction === 'approve'
+            ? (() => {
+                const total =
+                  selectedRequest?.affectedSessions?.length || 0
+                // Lấy sessionReplacements của request này
+                const sessionReplacements =
+                  selectedRequest?.id
+                    ? sessionReplacementsByRequest[selectedRequest.id] || {}
+                    : {}
+                // Số buổi KHÔNG có giáo viên thay thế tại thời điểm xác nhận
+                const withoutReplacement =
+                  selectedRequest?.affectedSessions?.filter((s: any) => {
+                    const key = s.sessionId || s.id
+                    return !sessionReplacements[key]
+                  }).length ?? 0
+
+                return (
+                  `Khi duyệt, các buổi học không có giáo viên thay thế (${withoutReplacement}/${total} buổi) sẽ bị hủy.\n` +
+              'Các buổi đã gán giáo viên thay thế sẽ vẫn diễn ra với giáo viên được phân công.'
+                )
+              })()
             : 'Bạn có chắc chắn muốn từ chối đơn xin nghỉ phép này không?'
         }
         confirmText={confirmationAction === 'approve' ? 'Duyệt đơn' : 'Từ chối đơn'}

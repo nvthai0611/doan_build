@@ -161,20 +161,6 @@ export class ClassManagementService {
       const skip = (page - 1) * limit;
       const take = limit;
 
-      // Determine current academic year
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1; // 1-12
-
-      // Academic year logic:
-      // - If current month is 9-12: current academic year is currentYear-currentYear+1
-      // - If current month is 1-8: current academic year is currentYear-1-currentYear
-      let currentAcademicYear: string;
-      if (currentMonth >= 9) {
-        currentAcademicYear = `${currentYear}-${currentYear + 1}`;
-      } else {
-        currentAcademicYear = `${currentYear - 1}-${currentYear}`;
-      }
-
       const where: any = {
         status: { not: 'deleted' }, // Exclude deleted classes
       };
@@ -393,7 +379,7 @@ export class ClassManagementService {
           enrollments: {
             where: {
               status: {
-                not: 'withdrawn', // Loại bỏ enrollments đã chuyển lớp
+                notIn: ['withdrawn', 'stopped'], // Loại bỏ enrollments đã chuyển lớp
               },
             },
             select: {
@@ -809,8 +795,19 @@ export class ClassManagementService {
                     select: {
                       id: true,
                       fullName: true,
+                      avatar: true,
                       email: true,
-                      phone: true,
+                    },
+                  },
+                  parent: {
+                    select: {
+                      user: {
+                        select: {
+                          id: true,
+                          fullName: true,
+                          phone: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -939,7 +936,7 @@ export class ClassManagementService {
         });
 
         if (!room) {
-          throw new HttpException(
+          throw new HttpException(  
             {
               success: false,
               message: 'Phòng học không tồn tại',
@@ -1705,6 +1702,8 @@ export class ClassManagementService {
 
             let message = `Đã chuyển trạng thái lớp sang "${statusLabel}". Vui lòng cập nhật ngày bắt đầu và lịch học tuần để tạo buổi học.`;
 
+            void this.notifyStatusChange(id, existingClass.status, status);
+
             return {
               success: true,
               message,
@@ -1729,6 +1728,8 @@ export class ClassManagementService {
             }[status] || status;
 
           let message = `Đã chuyển trạng thái lớp sang "${statusLabel}" nhưng có lỗi khi tạo lịch học tự động`;
+
+          void this.notifyStatusChange(id, existingClass.status, status);
 
           return {
             success: true,
@@ -1916,7 +1917,7 @@ export class ClassManagementService {
       const warnings = [];
       const activeEnrollments = classInfo._count.enrollments;
       if (activeEnrollments < 5) {
-        warnings.push(`⚠️ Lớp học chỉ có ${activeEnrollments} học sinh`);
+        warnings.push(`Lớp học chỉ có ${activeEnrollments} học sinh`);
       }
       if (warnings.length > 0) {
         console.log('Warnings:', warnings);
@@ -2075,7 +2076,7 @@ export class ClassManagementService {
             roomId: classInfo.roomId,
             teacherId: classInfo.teacherId,
             status: sessionStatus,
-            notes: `Buổi ${displayIndex++} - ${classInfo.name}`,
+            notes: `Buổi ${displayIndex++}`,
             createdAt: new Date(),
           });
         }
@@ -2317,7 +2318,6 @@ export class ClassManagementService {
         status,
         startDate,
         endDate,
-        academicYear,
         sortBy = 'sessionDate',
         sortOrder = 'desc',
       } = query;
@@ -2330,10 +2330,6 @@ export class ClassManagementService {
         classId: classId,
       };
 
-      // Add academicYear filter - chỉ lấy sessions có cùng academicYear với lớp
-      if (academicYear) {
-        where.academicYear = academicYear;
-      }
 
       // Add search filter
       if (search) {
@@ -2414,34 +2410,75 @@ export class ClassManagementService {
                 name: true,
               },
             },
-            _count: {
-              select: {
-                attendances: true,
-              },
-            },
+           
           },
         }),
         this.prisma.classSession.count({ where }),
       ]);
 
+
       // Đếm enrollment cho từng session dựa trên enrolledAt <= sessionDate
       const sessionStudentCounts = await Promise.all(
-        sessions.map((session) =>
-          this.prisma.enrollment.count({
+        sessions.map(async (session) => {
+        // Chuẩn hóa sessionDate về UTC midnight để so sánh với enrolledAt
+        const sessionDateMidnight = new Date(
+          Date.UTC(
+            session.sessionDate.getUTCFullYear(),
+            session.sessionDate.getUTCMonth(),
+            session.sessionDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
+        return await this.prisma.enrollment.count({
+          where: {
+            classId: session.classId,
+            status: { in: ['studying', 'not_been_updated'] },
+            enrolledAt: { lte: sessionDateMidnight },
+          },
+        });
+      }),
+    );
+
+    
+      // Đếm số lần điểm danh hợp lệ (chỉ tính học sinh vẫn đang theo học tại ngày buổi học)
+      const sessionAttendanceCounts = await Promise.all(
+        sessions.map(async (session) => {
+          const sessionDateMidnight = new Date(
+            Date.UTC(
+              session.sessionDate.getUTCFullYear(),
+              session.sessionDate.getUTCMonth(),
+              session.sessionDate.getUTCDate(),
+              23,
+              59,
+              59,
+              999,
+            ),
+          );
+
+          return await this.prisma.studentSessionAttendance.count({
             where: {
-              classId: classId,
-              status: { notIn: ['stopped', 'withdrawn'] },
-              enrolledAt: {
-                lte: session.sessionDate, // Chỉ đếm những người đã enroll trước hoặc vào ngày của buổi học
+              sessionId: session.id,
+              student: {
+                enrollments: {
+                  some: {
+                    classId: session.classId,
+                    status: { in: ['studying', 'not_been_updated'] },
+                    enrolledAt: { lte: sessionDateMidnight },
+                  },
+                },
               },
             },
-          }),
-        ),
+          });
+        }),
       );
 
       // Transform data to match frontend expectations
       const transformedSessions = sessions.map((session, index) => {
         const studentCount = sessionStudentCounts[index] || 0;
+        const attendanceCount = sessionAttendanceCounts[index] || 0;
 
         // Xác định giáo viên: nếu có giáo viên thay thế và ngày thay thế còn hiệu lực thì dùng giáo viên thay thế
         const isSubstitute =
@@ -2477,10 +2514,9 @@ export class ClassManagementService {
           isSubstitute: isSubstitute,
           totalStudents: session.class.maxStudents || 0,
           studentCount: studentCount,
-          attendanceCount: session._count.attendances || 0,
-          absentCount: 0, // Will be calculated based on attendance
-          notAttendedCount: studentCount - (session._count.attendances || 0),
-          rating: 0, // Default rating since not available in schema
+          cancellationReason: session.cancellationReason,
+          attendanceCount: attendanceCount,
+          notAttendedCount: Math.max(studentCount - attendanceCount, 0),
           roomName: session.room?.name || null,
         };
       });
@@ -2509,7 +2545,7 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa nhiều buổi học
+  // Xóa mềm nhiều buổi học (set status = cancelled)
   async deleteSessions(classId: string, sessionIds: string[]) {
     try {
       // Validate input
@@ -2594,11 +2630,16 @@ export class ClassManagementService {
         );
       }
 
-      // Delete sessions
-      const deletedResult = await this.prisma.classSession.deleteMany({
+      //
+      // Soft delete: set status = cancelled
+      const deletedResult = await this.prisma.classSession.updateMany({
         where: {
           id: { in: sessionIds },
           classId: classId,
+        },
+        data: {
+          status: 'cancelled',
+          cancellationReason: null,
         },
       });
 
@@ -2626,9 +2667,91 @@ export class ClassManagementService {
     }
   }
 
-  // Xóa lớp học (soft delete bằng cách đổi status)
+  // Khôi phục các buổi học đã xóa mềm
+  async restoreSessions(classId: string, sessionIds: string[]) {
+    try {
+      if (
+        !sessionIds ||
+        !Array.isArray(sessionIds) ||
+        sessionIds.length === 0
+      ) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Vui lòng chọn ít nhất 1 buổi học để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const classData = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { id: true, name: true },
+      });
+
+      if (!classData) {
+        throw new HttpException(
+          { success: false, message: 'Không tìm thấy lớp học' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const sessions = await this.prisma.classSession.findMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        select: { id: true },
+      });
+
+      if (sessions.length === 0) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Không có buổi học nào ở trạng thái đã xóa để khôi phục',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const restored = await this.prisma.classSession.updateMany({
+        where: {
+          id: { in: sessionIds },
+          classId,
+          status: 'cancelled',
+        },
+        data: {
+          status: 'has_not_happened',
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          restoredCount: restored.count,
+          requestedCount: sessionIds.length,
+          classId,
+          className: classData.name,
+        },
+        message: `Đã khôi phục ${restored.count} buổi học`,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Có lỗi xảy ra khi khôi phục buổi học',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+ 
   async updateClassSchedules(id: string, body: any) {
     try {
+      
       // Validate UUID
       if (!this.isValidUUID(id)) {
         throw new HttpException(
@@ -2732,6 +2855,7 @@ export class ClassManagementService {
 
           if (room) {
             updateData.roomId = firstSchedule.roomId;
+            updateData.maxStudents = room.capacity;
           } else {
             // Nếu roomId không hợp lệ, log warning nhưng vẫn tiếp tục
             console.warn(
@@ -4424,21 +4548,16 @@ export class ClassManagementService {
       
 
       // 4. Doanh thu từ học phí đã thanh toán (chỉ tính cho lớp này)
-      const revenue = await this.prisma.payment.aggregate({
+      const revenue = await this.prisma.feeRecord.findMany({
         where: {
-          status: 'completed',
-          feeRecordPayments: {
-            some: {
-              feeRecord: {
-                classId: classId, // Chỉ tính fee records của lớp này
-              },
-            },
-          },
+          classId: classId,
+          status: 'paid',
         },
-        _sum: {
-          amount: true,
+        select: {
+          totalAmount: true,
         },
       });
+      const totalRevenue = revenue.reduce((sum, r) => sum + Number(r.totalAmount), 0);
 
       // 5. Thống kê điểm danh
       const attendanceStats =
@@ -4544,7 +4663,7 @@ export class ClassManagementService {
           teachers: teachersCount,
           students: studentsCount,
           lessons: completedSessions,
-          revenue: revenue._sum.amount || 0,
+          revenue: totalRevenue || 0,
           rating: Number(rating.toFixed(1)),
           reviews: reviewsCount,
           recentReviews: feedbacks.map((f) => ({

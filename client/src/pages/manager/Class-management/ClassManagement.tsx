@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/clientAxios';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox';    
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -867,7 +867,10 @@ export const ClassManagement = () => {
                         {tabs.map((tab) => (
                             <button
                                 key={tab.key}
-                                onClick={() => setSelectedStatus(tab.key)}
+                                onClick={() => {
+                                    setSelectedStatus(tab.key);
+                                    pagination.setCurrentPage(1); // Reset về trang 1 khi đổi tab
+                                }}
                                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                                     selectedStatus === tab.key
                                         ? "border-blue-600 text-blue-600"

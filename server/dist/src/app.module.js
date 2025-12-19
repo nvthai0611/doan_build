@@ -32,6 +32,7 @@ const schedule_1 = require("@nestjs/schedule");
 const api_key_middleware_1 = require("./common/middleware/api-key.middleware");
 const payment_module_1 = require("./modules/payment/payment.module");
 const cron_module_1 = require("./modules/cronjob/cron.module");
+const adminit_module_1 = require("./modules/adminit/adminit.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(api_key_middleware_1.ApiKeyMiddleware).forRoutes('*');
@@ -56,17 +57,16 @@ exports.AppModule = AppModule = __decorate([
                     port: parseInt(process.env.REDIS_PORT) || 6379,
                     password: process.env.REDIS_PASSWORD || undefined,
                     db: parseInt(process.env.REDIS_DB) || 0,
-                    connectTimeout: 60000,
-                    commandTimeout: 5000,
-                    retryStrategy: (times) => {
-                        const delay = Math.min(times * 50, 2000);
-                        return delay;
-                    },
-                    maxRetriesPerRequest: 3,
+                    connectTimeout: 10000,
+                    commandTimeout: 30000,
+                    enableReadyCheck: false,
+                    maxRetriesPerRequest: null,
                 },
                 settings: {
-                    stalledInterval: 30000,
-                    maxStalledCount: 1,
+                    stalledInterval: 10000,
+                    maxStalledCount: 3,
+                    lockDuration: 30000,
+                    lockRenewTime: 10000,
                 },
             }),
             auth_module_1.AuthModule,
@@ -83,10 +83,15 @@ exports.AppModule = AppModule = __decorate([
             cloudinary_module_1.CloudinaryModule,
             shared_module_1.SharedModule,
             payment_module_1.PaymentModule,
-            cron_module_1.TasksModule
+            cron_module_1.TasksModule,
+            adminit_module_1.AdminitModule
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService, auth_service_1.AuthService, prisma_service_1.PrismaService],
+        providers: [
+            app_service_1.AppService,
+            auth_service_1.AuthService,
+            prisma_service_1.PrismaService,
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

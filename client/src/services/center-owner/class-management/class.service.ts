@@ -123,7 +123,7 @@ export const classService = {
     } catch (error) {
       const anyErr: any = error as any;
       const message =
-        anyErr?.response?.message || anyErr?.message || 'Lỗi không xác định';
+        anyErr?.response?.message || anyErr?.message || 'Không thể tạo buổi học';
       const status = anyErr?.response?.status ?? 0;
       throw { status, message };
     }
@@ -142,6 +142,15 @@ export const classService = {
     const response = await apiClient.delete(`${BASE_URL}/${classId}/sessions`, {
       sessionIds,
     });
+    return response;
+  },
+
+  // Restore multiple soft-deleted sessions
+  restoreSessions: async (classId: string, sessionIds: string[]) => {
+    const response = await apiClient.patch(
+      `${BASE_URL}/${classId}/sessions/restore`,
+      { sessionIds },
+    );
     return response;
   },
 

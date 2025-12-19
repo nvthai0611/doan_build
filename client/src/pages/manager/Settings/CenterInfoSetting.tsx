@@ -575,24 +575,10 @@ export function CenterInfoSetting() {
     <div className="bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-col gap-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/manager">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Thông tin trung tâm</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <ShieldCheck className="h-4 w-4" />
-                <span>Thông tin hiển thị công khai và nội bộ</span>
-              </div>
+              
               <h1 className="mt-2 text-3xl font-semibold text-foreground">
                 Quản lý thông tin trung tâm
               </h1>
@@ -636,13 +622,6 @@ export function CenterInfoSetting() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Thông tin trung tâm
-              </CardTitle>
-              {/* <CardDescription>
-                Những thông tin cốt lõi hiển thị công khai.
-              </CardDescription> */}
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
@@ -651,7 +630,6 @@ export function CenterInfoSetting() {
                     Tên trung tâm <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
                     <Input
                       id="center-name"
                       placeholder="Ví dụ: SEP Learning Center"
@@ -671,9 +649,8 @@ export function CenterInfoSetting() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="center-slogan">Slogan (không bắt buộc)</Label>
+                  <Label htmlFor="center-slogan">Slogan</Label>
                   <div className="flex items-center gap-2">
-                    <Quote className="h-4 w-4 text-muted-foreground" />
                     <Input
                       id="center-slogan"
                       placeholder="Lan tỏa tri thức - Khai mở tương lai"
@@ -823,12 +800,8 @@ export function CenterInfoSetting() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-primary" />
                 Thông tin liên hệ
               </CardTitle>
-              <CardDescription>
-                Các kênh liên hệ chính với trung tâm.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 min-w-0">
               <div className="grid gap-4 md:grid-cols-3">
@@ -884,7 +857,7 @@ export function CenterInfoSetting() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contact-website">Website (nếu có)</Label>
+                  <Label htmlFor="contact-website">Website</Label>
                   <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     <Input
@@ -909,7 +882,7 @@ export function CenterInfoSetting() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="contact-facebook">Facebook (nếu có)</Label>
+                  <Label htmlFor="contact-facebook">Facebook</Label>
                   <div className="flex items-center gap-2">
                     <Facebook className="h-4 w-4 text-muted-foreground" />
                     <Input
@@ -932,7 +905,7 @@ export function CenterInfoSetting() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contact-youtube">YouTube (nếu có)</Label>
+                  <Label htmlFor="contact-youtube">YouTube</Label>
                   <div className="flex items-center gap-2">
                     <Youtube className="h-4 w-4 text-muted-foreground" />
                     <Input
@@ -955,7 +928,7 @@ export function CenterInfoSetting() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contact-tiktok">TikTok (nếu có)</Label>
+                  <Label htmlFor="contact-tiktok">TikTok</Label>
                   <div className="flex items-center gap-2">
                     <Music className="h-4 w-4 text-muted-foreground" />
                     <Input
@@ -1095,10 +1068,8 @@ export function CenterInfoSetting() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
                 Địa chỉ
               </CardTitle>
-              <CardDescription>Thông tin định vị trung tâm.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">

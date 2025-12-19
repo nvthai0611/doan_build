@@ -32,14 +32,15 @@ export class PayRollTeacherService {
       }
 
       const [year, monthNum] = monthString.split('-')
-      const startDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
-      const endDate = new Date(parseInt(year), parseInt(monthNum), 1)
+      const startDate = new Date(Date.UTC(parseInt(year), parseInt(monthNum) - 1))
+      const endDate = new Date(Date.UTC(parseInt(year), parseInt(monthNum), 0))
 
       return { startDate, endDate }
     }
 
     const { startDate, endDate } = getMonthRange(month)
-
+    
+    
     // Build where clause cho Payroll
     const payrollWhere: any = {
       periodStart: {
@@ -462,7 +463,7 @@ export class PayRollTeacherService {
       await Promise.all(jobs);
 
       this.logger.log(
-        `✅ Đã queue ${payrollsToNotify.length}/${payrolls.length} thông báo payroll`,
+        ` Đã queue ${payrollsToNotify.length}/${payrolls.length} thông báo payroll`,
       );
 
       return {
@@ -481,9 +482,9 @@ export class PayRollTeacherService {
         })),
       };
     } catch (error: any) {
-      this.logger.error('❌ Lỗi khi gửi thông báo payroll:', error);
+      this.logger.error(' Lỗi khi gửi thông báo payroll:', error);
 
-      // ✅ Cập nhật status execution thành failed
+      //  Cập nhật status execution thành failed
       if (executionId) {
         const durationMs = Date.now() - startTime;
         await this.prisma.cronJobExecution.update({
@@ -676,11 +677,11 @@ export class PayRollTeacherService {
     await this.recalculationQueue.addBulk(jobs);
 
     this.logger.log(`Đã đẩy ${jobs.length} job tính lại lương vào hàng đợi.`);
-
+    
     // 4. Trả về kết quả
     return {
       success: true,
-      message: `Đã tiếp nhận yêu cầu tính lại cho ${jobs.length} bảng lương. Hệ thống đang xử lý ngầm.`,
+      message: `Đã tiếp nhận yêu cầu tính lại cho ${jobs.length} bảng lương. Hệ thống đang xử lý, có thể mất vài giây.`,
       totalRequested: payrollIds.length,
       totalQueued: jobs.length,
       ignoredIds: payrollIds.length - jobs.length // Số lượng bị bỏ qua do sai trạng thái

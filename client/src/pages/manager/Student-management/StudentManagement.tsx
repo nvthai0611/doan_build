@@ -134,7 +134,7 @@ export default function StudentManagement() {
     refetchOnWindowFocus: false,
     retry: 1,
   })
-
+  const subjects = Array.isArray(subjectData) ? subjectData : (subjectData?.data || [])
   const { data: statusData, isLoading: isLoadingStatus, isError: isErrorStatus } = useQuery({
     queryKey: ["status"],
     queryFn: fetchDataStatus,
@@ -681,7 +681,7 @@ export default function StudentManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Tất cả khóa học">Tất cả khóa học</SelectItem>
-                {subjectData?.map((subject: any) => (
+                {subjects?.map((subject: any) => (
                   <SelectItem key={subject?.id} value={subject?.id}>
                     {subject?.name}
                   </SelectItem>
@@ -789,7 +789,8 @@ export default function StudentManagement() {
                     : "border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
-                {tab.label} <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{getTabCount(tab.key)}</span>
+                {tab.label} 
+                {/* <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{getTabCount(tab.key)}</span> */}
               </button>
             ))}
           </div>

@@ -547,7 +547,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               disabled={updateEnrollmentMutation.isPending}
             />
             <span className="text-sm">
-              {isGraduated ? 'Đã tốt nghiệp' : 'Chưa tốt nghiệp'}
+              {isGraduated ? 'Đã học xong' : 'Chưa học xong'}
             </span>
           </div>
         );
@@ -637,7 +637,6 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
         {/* Contract Statistics Alert */}
         {studentsWithoutContract > 0 && (
           <Alert className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
-            <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             <AlertTitle className="text-orange-900 dark:text-orange-100">
               Cảnh báo: Có học sinh chưa có bản cam kết
             </AlertTitle>
@@ -664,7 +663,6 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
                     htmlFor="show-no-contract-only"
                     className="text-sm font-medium cursor-pointer flex items-center gap-2"
                   >
-                    <FileText className="h-4 w-4" />
                     Chỉ hiển thị chưa có cam kết
                   </label>
                 </div>
@@ -850,7 +848,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               Bạn có chắc chắn muốn ngưng học cho học sinh{' '}
               <strong>{selectedEnrollment?.student?.user?.fullName}</strong> không?
               <br />
-              Học sinh sẽ chuyển sang trạng thái "Ngưng học" và không thể tiếp tục học trong lớp này.
+              Học sinh sẽ chuyển sang trạng thái `Ngưng học` và không thể tiếp tục học trong lớp này.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -889,7 +887,7 @@ export const StudentsInfo = ({ classId, classData }: StudentsInfoProps) => {
               Bạn có chắc chắn muốn cho học sinh{' '}
               <strong>{selectedEnrollment?.student?.user?.fullName}</strong> quay trở lại học không?
               <br />
-              Học sinh sẽ chuyển từ trạng thái "Ngưng học" sang "Đang học" và có thể tiếp tục học trong lớp này.
+              Học sinh sẽ chuyển từ trạng thái `Ngưng học` sang `Đang học` và có thể tiếp tục học trong lớp này.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

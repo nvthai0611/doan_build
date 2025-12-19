@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../db/prisma.service';
-import { CreateScheduleChangeDto } from '../dto/schedule-change/create-schedule-change.dto';
+import {
+  CreateScheduleChangeDto,
+  ScheduleChangeType,
+} from '../dto/schedule-change/create-schedule-change.dto';
 import { ScheduleChangeResponseDto } from '../dto/schedule-change/schedule-change-response.dto';
 import { ScheduleChangeFiltersDto } from '../dto/schedule-change/schedule-change-filters.dto';
 
@@ -13,13 +16,30 @@ export class ScheduleChangeService {
     createDto: CreateScheduleChangeDto,
     teacherId: string,
   ): Promise<ScheduleChangeResponseDto> {
+    if (createDto.changeType !== ScheduleChangeType.RESCHEDULE) {
+      throw new BadRequestException('Hiện chỉ hỗ trợ yêu cầu dời lịch');
+    }
+
+    if (createDto.newStartTime >= createDto.newEndTime) {
+      throw new BadRequestException('Giờ kết thúc phải sau giờ bắt đầu');
+    }
+
     // Validate class exists and teacher has access
     const classData = await this.prisma.class.findFirst({
       where: {
-        id: createDto.classId.toString(),
+        id: createDto.classId,
         teacherId: teacherId,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        subject: {
+          select: {
+            name: true,
+          },
+        },
+        actualEndDate: true,
         teacher: {
           include: {
             user: {
@@ -41,8 +61,8 @@ export class ScheduleChangeService {
     // Validate session exists
     const session = await this.prisma.classSession.findFirst({
       where: {
-        id: createDto.sessionId.toString(),
-        classId: createDto.classId.toString(),
+        id: createDto.sessionId,
+        classId: createDto.classId,
       },
     });
 
@@ -50,13 +70,32 @@ export class ScheduleChangeService {
       throw new NotFoundException('Buổi học không tồn tại');
     }
 
+    if (classData.actualEndDate) {
+      const classEnd = new Date(classData.actualEndDate);
+      const requestedDate = new Date(createDto.newDate);
+      if (requestedDate > classEnd) {
+        throw new BadRequestException('Ngày dời lịch vượt quá thời gian kết thúc lớp học');
+      }
+    }
+
+    const originalDateStr = session.sessionDate.toISOString().slice(0, 10);
+    const isSameSchedule =
+      createDto.newDate === originalDateStr &&
+      createDto.newStartTime === session.startTime &&
+      createDto.newEndTime === session.endTime &&
+      (!createDto.newRoomId || createDto.newRoomId === session.roomId);
+
+    if (isSameSchedule) {
+      throw new BadRequestException('Lịch mới phải khác lịch hiện tại');
+    }
+
     // Check for conflicts if rescheduling
-    if (createDto.changeType === 'reschedule' && createDto.newDate && createDto.newStartTime) {
+    if (createDto.changeType === ScheduleChangeType.RESCHEDULE && createDto.newDate && createDto.newStartTime) {
       const conflictCheck = await this.checkScheduleConflict(
         createDto.newDate,
         createDto.newStartTime,
         createDto.newEndTime || session.endTime,
-        createDto.newRoomId?.toString(),
+        createDto.newRoomId || session.roomId || undefined,
         teacherId,
       );
 
@@ -68,12 +107,12 @@ export class ScheduleChangeService {
     // Create schedule change request
     const scheduleChange = await this.prisma.scheduleChange.create({
       data: {
-        classId: createDto.classId.toString(),
+        classId: createDto.classId,
         originalDate: session.sessionDate,
-        originalTime: session.startTime,
-        newDate: createDto.newDate ? new Date(createDto.newDate) : session.sessionDate,
-        newTime: createDto.newStartTime || session.startTime,
-        newRoomId: createDto.newRoomId?.toString(),
+        originalTime: `${session.startTime}-${session.endTime}`,
+        newDate: new Date(createDto.newDate),
+        newTime: `${createDto.newStartTime}-${createDto.newEndTime}`,
+        newRoomId: createDto.newRoomId || session.roomId || null,
         reason: createDto.reason,
         status: 'pending',
         requestedBy: teacherId,
@@ -84,6 +123,9 @@ export class ScheduleChangeService {
             id: true,
             name: true,
             description: true,
+            subject: {
+              select: { name: true },
+            },
           },
         },
         newRoom: {
@@ -96,7 +138,7 @@ export class ScheduleChangeService {
       },
     });
 
-    return this.mapToResponseDto(scheduleChange, classData.teacher);
+    return this.mapToResponseDto(scheduleChange, classData.teacher, session);
   }
 
   // Get my schedule change requests
@@ -104,7 +146,7 @@ export class ScheduleChangeService {
     teacherId: string,
     filters: ScheduleChangeFiltersDto,
   ): Promise<{ data: ScheduleChangeResponseDto[]; meta: any }> {
-    const { page = 1, limit = 10, status, changeType, classId } = filters;
+    const { page = 1, limit = 10, status, classId } = filters;
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -133,6 +175,9 @@ export class ScheduleChangeService {
               id: true,
               name: true,
               description: true,
+              subject: {
+                select: { name: true },
+              },
             },
           },
           newRoom: {
@@ -190,6 +235,9 @@ export class ScheduleChangeService {
             id: true,
             name: true,
             description: true,
+            subject: {
+              select: { name: true },
+            },
           },
         },
         newRoom: {
@@ -331,46 +379,58 @@ export class ScheduleChangeService {
   }
 
   // Helper: Map database result to response DTO
-  private mapToResponseDto(scheduleChange: any, teacher: any): ScheduleChangeResponseDto {
+  private mapToResponseDto(scheduleChange: any, teacher: any, session?: any): ScheduleChangeResponseDto {
+    const [originalStartTime, originalEndTime] = (scheduleChange.originalTime || '').split('-');
+    const [newStartTime, newEndTime] = (scheduleChange.newTime || '').split('-');
+
     return {
-      id: parseInt(scheduleChange.id),
-      classId: parseInt(scheduleChange.classId),
+      id: scheduleChange.id,
+      classId: scheduleChange.classId,
       class: {
-        id: parseInt(scheduleChange.class.id),
+        id: scheduleChange.class.id,
         name: scheduleChange.class.name,
         description: scheduleChange.class.description,
+        subject: scheduleChange.class.subject,
       },
-      sessionId: 0, // Not available in current schema
+      sessionId: session?.id,
       session: {
-        id: 0,
+        id: session?.id || scheduleChange.sessionId,
         sessionDate: scheduleChange.originalDate,
-        startTime: scheduleChange.originalTime,
-        endTime: scheduleChange.newTime,
+        startTime: originalStartTime || scheduleChange.originalTime,
+        endTime: originalEndTime || newEndTime || scheduleChange.newTime,
       },
-      changeType: 'reschedule', // Default based on schema
+      changeType: ScheduleChangeType.RESCHEDULE,
+      originalDate: scheduleChange.originalDate,
+      originalTime: scheduleChange.originalTime,
       newDate: scheduleChange.newDate,
-      newStartTime: scheduleChange.newTime,
-      newEndTime: scheduleChange.newTime,
-      newRoomId: scheduleChange.newRoomId ? parseInt(scheduleChange.newRoomId) : undefined,
-      newRoom: scheduleChange.newRoom ? {
-        id: parseInt(scheduleChange.newRoom.id),
-        name: scheduleChange.newRoom.name,
-        capacity: scheduleChange.newRoom.capacity,
-      } : undefined,
+      newTime: scheduleChange.newTime,
+      newStartTime: newStartTime || scheduleChange.newTime,
+      newEndTime: newEndTime || newStartTime || scheduleChange.newTime,
+      newRoomId: scheduleChange.newRoomId || undefined,
+      newRoom: scheduleChange.newRoom
+        ? {
+            id: scheduleChange.newRoom.id,
+            name: scheduleChange.newRoom.name,
+            capacity: scheduleChange.newRoom.capacity,
+          }
+        : undefined,
       reason: scheduleChange.reason,
       notes: undefined,
       status: scheduleChange.status,
-      teacherId: parseInt(teacher.id),
-      teacher: {
-        id: parseInt(teacher.id),
-        userId: teacher.userId,
-        user: teacher.user,
-      },
-      createdBy: parseInt(teacher.id),
+      teacherId: teacher?.id || scheduleChange.requestedBy,
+      teacher: teacher
+        ? {
+            id: teacher.id,
+            userId: teacher.userId,
+            user: teacher.user,
+          }
+        : undefined,
+      requestedBy: scheduleChange.requestedBy,
+      requestedAt: scheduleChange.requestedAt,
       approvedBy: undefined,
       approvedAt: scheduleChange.processedAt,
       createdAt: scheduleChange.requestedAt,
-      updatedAt: scheduleChange.requestedAt,
+      updatedAt: scheduleChange.processedAt || scheduleChange.requestedAt,
     };
   }
 }

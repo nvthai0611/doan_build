@@ -23,6 +23,11 @@ export class AcademicTrackingService {
       JOIN student_assessment_grades sag ON sag.assessment_id = a.id AND sag.student_id = $1::uuid
       JOIN enrollments e ON e.class_id = c.id AND e.student_id = sag.student_id
       WHERE ($2::uuid IS NULL OR a.class_id = $2::uuid)
+        -- Chỉ lấy các lớp mà học sinh thực sự đã/đang học:
+        -- - enrollment.status: đang học, đã tốt nghiệp, đã dừng giữa chừng
+        -- - class.status: lớp đang hoạt động hoặc đã hoàn thành
+        AND e.status IN ('studying', 'graduated', 'stopped')
+        AND c.status IN ('active', 'completed')
         AND ($3::text IS NULL OR a.type = $3::text)
         AND ($4::date IS NULL OR a.date >= $4::date)
         AND ($5::date IS NULL OR a.date <= $5::date)
@@ -114,44 +119,43 @@ export class AcademicTrackingService {
    * Lấy thống kê tổng quan về điểm số của học sinh
    */
   async getOverview(studentId: string) {
-    const stats = await this.prisma.$queryRawUnsafe<any[]>(
-      `
-      SELECT 
-        COUNT(DISTINCT c.academic_year) as total_academic_years,
-        COUNT(DISTINCT e.semester) as total_semesters,
-        COUNT(DISTINCT c.subject_id) as total_subjects,
-        COUNT(DISTINCT a.id) as total_assessments,
-        AVG(sag.score::numeric) as average_score,
-        MIN(sag.score::numeric) as min_score,
-        MAX(sag.score::numeric) as max_score,
-        COUNT(CASE WHEN sag.score::numeric >= 5 THEN 1 END) as passed_assessments,
-        COUNT(CASE WHEN sag.score::numeric < 5 THEN 1 END) as failed_assessments
-      FROM student_assessment_grades sag
-      JOIN assessments a ON a.id = sag.assessment_id
-      JOIN classes c ON c.id = a.class_id
-      JOIN enrollments e ON e.class_id = c.id AND e.student_id = sag.student_id
-      WHERE sag.student_id = $1::uuid AND sag.score IS NOT NULL
-      `,
-      studentId || null,
-    );
+    // Tái sử dụng logic của getTranscript để tính GPA theo trung bình các môn
+    const transcript = await this.getTranscript(studentId, {} as any);
+    const entries = transcript.entries || [];
 
-    const result = stats[0] || {};
-    const totalAssessments = Number(result.total_assessments) || 0;
-    const passedAssessments = Number(result.passed_assessments) || 0;
-    const failedAssessments = Number(result.failed_assessments) || 0;
-    
+    let sumAvg = 0;
+    let countSubjects = 0;
+    const academicYears = new Set<string>();
+    const semesters = new Set<string>();
+
+    for (const entry of entries as any[]) {
+      if (entry.academicYear) academicYears.add(entry.academicYear);
+      if (entry.term) semesters.add(entry.term);
+      const subjects = entry.subjects || [];
+      for (const subj of subjects) {
+        if (typeof subj.average === 'number') {
+          sumAvg += subj.average;
+          countSubjects += 1;
+        }
+      }
+    }
+
+    const cumulativeGpa = countSubjects
+      ? Number((sumAvg / countSubjects).toFixed(2))
+      : 0;
+
     return {
-      totalAcademicYears: Number(result.total_academic_years) || 0,
-      totalSemesters: Number(result.total_semesters) || 0,
-      totalSubjects: Number(result.total_subjects) || 0,
-      totalAssessments,
-      averageScore: result.average_score ? Number(Number(result.average_score).toFixed(2)) : 0,
-      minScore: result.min_score ? Number(result.min_score) : 0,
-      maxScore: result.max_score ? Number(result.max_score) : 0,
-      passedAssessments,
-      failedAssessments,
-      passRate: totalAssessments > 0 ? Number(((passedAssessments / totalAssessments) * 100).toFixed(1)) : 0,
-      cumulativeGpa: result.average_score ? Number(Number(result.average_score).toFixed(2)) : 0,
+      totalAcademicYears: academicYears.size,
+      totalSemesters: semesters.size,
+      totalSubjects: countSubjects,
+      totalAssessments: 0,
+      averageScore: cumulativeGpa,
+      minScore: 0,
+      maxScore: 0,
+      passedAssessments: 0,
+      failedAssessments: 0,
+      passRate: 0,
+      cumulativeGpa,
     };
   }
 }

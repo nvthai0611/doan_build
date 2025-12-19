@@ -139,7 +139,6 @@ export default function LeaveRequestDetailModal({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/20">
-              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
@@ -271,7 +270,6 @@ export default function LeaveRequestDetailModal({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg dark:bg-green-900/20">
-              <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold">
@@ -293,7 +291,6 @@ export default function LeaveRequestDetailModal({
               variant="secondary"
               className={statusColors[data.status as keyof typeof statusColors] || statusColors.pending}
             >
-              <StatusIcon className="h-3 w-3 mr-1" />
               {statusLabels[data.status as keyof typeof statusLabels] || data.status}
             </Badge>
           </div>
@@ -306,7 +303,6 @@ export default function LeaveRequestDetailModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Lớp học</p>
                   <p className="text-sm text-muted-foreground">{data.class.name}</p>
@@ -314,7 +310,6 @@ export default function LeaveRequestDetailModal({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Ngày học</p>
                   <p className="text-sm text-muted-foreground">{formatDate(data.sessionDate)}</p>
@@ -323,14 +318,12 @@ export default function LeaveRequestDetailModal({
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Thời gian</p>
                   <p className="text-sm text-muted-foreground">{data.startTime} - {data.endTime}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Ngày tạo</p>
                   <p className="text-sm text-muted-foreground">{formatDate(data.createdAt)}</p>
@@ -386,15 +379,14 @@ export default function LeaveRequestDetailModal({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-100 rounded-lg dark:bg-indigo-900/20">
-              <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-semibold">
                 Chi tiết đơn dời lịch
                   </DialogTitle>
-                  <p className="text-sm text-muted-foreground">
+                  {/* <p className="text-sm text-muted-foreground">
                 ID: {data.id}
-                  </p>
+                  </p> */}
                 </div>
               </div>
           <div className="flex items-center gap-2">
@@ -421,7 +413,6 @@ export default function LeaveRequestDetailModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Lớp học</p>
                   <p className="text-sm text-muted-foreground">{data.class.name}</p>
@@ -429,7 +420,6 @@ export default function LeaveRequestDetailModal({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Ngày cũ</p>
                   <p className="text-sm text-muted-foreground">{formatDate(data.originalDate)}</p>
@@ -438,14 +428,12 @@ export default function LeaveRequestDetailModal({
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Ngày mới</p>
                   <p className="text-sm text-muted-foreground">{formatDate(data.newDate)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Thời gian</p>
                   <p className="text-sm text-muted-foreground">{data.originalTime} → {data.newTime}</p>
@@ -492,19 +480,18 @@ export default function LeaveRequestDetailModal({
               {/* Status and Type */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <StatusIcon className="h-5 w-5" />
                   <Badge
                     variant="secondary"
-                    className={statusColors[leaveRequest.status as keyof typeof statusColors]}
+                    className={statusColors[leaveRequest?.status as keyof typeof statusColors]}
                   >
-                    {statusLabels[leaveRequest.status as keyof typeof statusLabels]}
+                    {statusLabels[leaveRequest?.status as keyof typeof statusLabels]}
                   </Badge>
                 </div>
                 <Badge
                   variant="secondary"
-                  className={requestTypeColors[leaveRequest.requestType as keyof typeof requestTypeColors]}
+                  className={requestTypeColors[leaveRequest?.requestType as keyof typeof requestTypeColors]}
                 >
-                  {requestTypeLabels[leaveRequest.requestType as keyof typeof requestTypeLabels]}
+                  {requestTypeLabels[leaveRequest?.requestType as keyof typeof requestTypeLabels]}
                 </Badge>
               </div>
 
@@ -516,7 +503,6 @@ export default function LeaveRequestDetailModal({
                    {/* Request Details */}
                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                       <FileText className="h-5 w-5" />
                        Thông tin đơn
                      </h3>
                      <div className="space-y-4">
@@ -525,28 +511,27 @@ export default function LeaveRequestDetailModal({
                            Lý do nghỉ
                          </label>
                          <p className="text-sm bg-background rounded-md p-3 border">
-                           {leaveRequest.reason}
+                           {leaveRequest?.reason}
                          </p>
                        </div>
-                       {leaveRequest.notes && (
+                       {leaveRequest?.notes && (
                          <div className="space-y-2">
                            <label className="text-sm font-medium text-muted-foreground">
                              Ghi chú thêm
                            </label>
                            <p className="text-sm bg-background rounded-md p-3 border">
-                             {leaveRequest.notes}
+                             {leaveRequest?.notes}
                            </p>
                          </div>
                        )}
-                       {leaveRequest.imageUrl && (
+                       {leaveRequest?.imageUrl && (
                          <div className="space-y-2">
                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                             <ImageIcon className="h-4 w-4" />
                              Hình ảnh đính kèm
                            </label>
                            <div className="bg-background rounded-md p-3 border">
                              <img
-                               src={leaveRequest.imageUrl}
+                               src={leaveRequest?.imageUrl}
                                alt="Hình ảnh đính kèm"
                                className="w-full h-auto max-h-[250px] rounded-md object-contain"
                                onError={(e) => {
@@ -565,21 +550,19 @@ export default function LeaveRequestDetailModal({
                    </div>
 
                   {/* Affected Sessions */}
-                  {leaveRequest.affectedSessions && leaveRequest.affectedSessions.length > 0 && (
+                  {leaveRequest?.affectedSessions && leaveRequest?.affectedSessions.length > 0 && (
                     <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                       <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <BookOpen className="h-5 w-5" />
-                        Buổi học bị ảnh hưởng ({leaveRequest.affectedSessions.length})
+                        Buổi học bị ảnh hưởng ({leaveRequest?.affectedSessions.length})
                       </h3>
                       <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                        {leaveRequest.affectedSessions.map((session, index) => (
+                        {leaveRequest?.affectedSessions.map((session, index) => (
                           <div
                             key={index}
                             className="bg-background rounded-md p-3 border flex items-center justify-between hover:bg-muted/50 transition-colors"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <div className="p-2 bg-primary/10 rounded-md flex-shrink-0">
-                                <BookOpen className="h-4 w-4 text-primary" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="font-medium text-sm truncate">
@@ -615,23 +598,22 @@ export default function LeaveRequestDetailModal({
                    {/* Date Information */}
                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                       <Calendar className="h-5 w-5" />
                        Thời gian nghỉ
                      </h3>
                      <div className="space-y-3">
                        <div className="flex items-center justify-between text-sm">
                          <span className="text-muted-foreground">Ngày bắt đầu:</span>
-                         <span className="font-medium">{formatDate(leaveRequest.startDate)}</span>
+                         <span className="font-medium">{formatDate(leaveRequest?.startDate || '')}</span>
                        </div>
                        <div className="flex items-center justify-between text-sm">
                          <span className="text-muted-foreground">Ngày kết thúc:</span>
-                         <span className="font-medium">{formatDate(leaveRequest.endDate)}</span>
+                         <span className="font-medium">{formatDate(leaveRequest?.endDate || '')}</span>
                        </div>
                        <Separator />
                        <div className="flex items-center justify-between text-sm">
                          <span className="text-muted-foreground">Số ngày nghỉ:</span>
                          <span className="font-medium">
-                           {Math.ceil((new Date(leaveRequest.endDate).getTime() - new Date(leaveRequest.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày
+                           {Math.ceil((new Date(leaveRequest?.endDate || '').getTime() - new Date(leaveRequest?.startDate || '').getTime()) / (1000 * 60 * 60 * 24)) + 1} ngày
                          </span>
                        </div>
                      </div>
@@ -640,26 +622,25 @@ export default function LeaveRequestDetailModal({
                    {/* Request Info */}
                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                       <Clock className="h-5 w-5" />
                        Thông tin đơn
                      </h3>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Ngày tạo:</span>
-                        <span className="font-medium">{formatDate(leaveRequest.createdAt)}</span>
+                        <span className="font-medium">{formatDate(leaveRequest?.createdAt || '')}</span>
                       </div>
                        <div className="flex items-center justify-between text-sm">
                          <span className="text-muted-foreground">Cập nhật cuối:</span>
-                         <span className="font-medium">{formatDate(leaveRequest.createdAt)}</span>
+                         <span className="font-medium">{formatDate(leaveRequest?.createdAt || '')}</span>
                        </div>
                       <Separator />
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Trạng thái:</span>
                         <Badge
                           variant="secondary"
-                          className={statusColors[leaveRequest.status as keyof typeof statusColors]}
+                          className={statusColors[leaveRequest?.status as keyof typeof statusColors]}
                         >
-                          {statusLabels[leaveRequest.status as keyof typeof statusLabels]}
+                          {statusLabels[leaveRequest?.status as keyof typeof statusLabels]}
                         </Badge>
                       </div>
                     </div>
@@ -668,22 +649,21 @@ export default function LeaveRequestDetailModal({
                   {/* Teacher Info */}
                   <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                     <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <User className="h-5 w-5" />
                       Thông tin giáo viên
                     </h3>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={leaveRequest.teacherId} />
+                        <AvatarImage src={leaveRequest?.teacherId || ''} />
                         <AvatarFallback>
-                          {leaveRequest.teacherId.charAt(0) || 'T'}
+                          {leaveRequest?.teacherId?.charAt(0) || 'T'}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium text-sm">
-                          {leaveRequest.createdByUser?.fullName || 'Giáo viên'}
+                          {leaveRequest?.createdByUser?.fullName || 'Giáo viên'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {leaveRequest.createdByUser?.email || 'email@example.com'}
+                          {leaveRequest?.createdByUser?.email || 'email@example.com'}
                         </p>
                       </div>
                     </div>
@@ -698,7 +678,7 @@ export default function LeaveRequestDetailModal({
            <div className="px-6 py-4 border-t bg-muted/20">
              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                <div className="text-sm text-muted-foreground">
-                 Đơn được tạo lúc {formatDate(leaveRequest.createdAt)}
+                 Đơn được tạo lúc {formatDate(leaveRequest?.createdAt || '')}
                </div>
                <div className="flex items-center gap-2">
                  <Button variant="outline" onClick={onClose}>

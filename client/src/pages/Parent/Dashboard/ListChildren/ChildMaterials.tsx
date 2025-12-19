@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Download, Calendar, User, FileType, BookOpen, BarChart3, FileDown } from "lucide-react"
 import Loading from "../../../../components/Loading/LoadingPage"
 import { parentMaterialsService } from "../../../../services/parent/materials/materials.service"
 import type { ParentMaterial } from "../../../../services/parent/materials/materials.types"
@@ -64,12 +63,9 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
 
   if (!childId) {
     return (
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-            </div>
+      <Card className="border">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
             Tài liệu học tập của con
           </CardTitle>
         </CardHeader>
@@ -79,17 +75,16 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
 
   if (isError) {
     return (
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-            </div>
+      <Card className="border">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">
             Tài liệu học tập của con
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="text-sm text-red-600">Lỗi tải dữ liệu: {(error as any)?.message || 'Không xác định'}</div>
+          <div className="text-sm text-red-600">
+            Lỗi tải dữ liệu: {(error as any)?.message || "Không xác định"}
+          </div>
         </CardContent>
       </Card>
     )
@@ -127,17 +122,14 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
   }
 
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+    <Card className="border">
+      <CardHeader>
         <div className="space-y-3">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-            </div>
+          <CardTitle className="text-base font-semibold">
             Tài liệu học tập của con
           </CardTitle>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Lọc theo lớp:</span>
+            <span className="text-sm text-gray-600">Lọc theo lớp:</span>
             <select
               className="border rounded-md px-3 py-1 text-sm bg-white"
               value={selectedClassId || (enrolledClasses[0]?.id || "")}
@@ -161,87 +153,74 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
             {items.length > 0 ? (
               <div className="space-y-4">
                 {(data as any)?.stats && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border">
+                  <div className="grid grid-cols-2 gap-4 p-4 border rounded bg-gray-50 text-sm text-gray-800">
                     <div className="text-center">
-                      <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <BarChart3 className="w-6 h-6 text-blue-600" />
+                      <div className="text-base font-semibold">
+                        {(data as any).stats.totalSize
+                          ? formatSize((data as any).stats.totalSize)
+                          : "0"}
                       </div>
-                      <div className="text-xl font-bold text-blue-600">{(data as any).stats.totalSize ? formatSize((data as any).stats.totalSize) : '0'}</div>
-                      <div className="text-sm text-gray-600">Tổng dung lượng</div>
+                      <div>Tổng dung lượng</div>
                     </div>
                     <div className="text-center">
-                      <div className="p-2 bg-purple-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                        <FileDown className="w-6 h-6 text-purple-600" />
+                      <div className="text-base font-semibold">
+                        {(data as any).stats.recentUploads || 0}
                       </div>
-                      <div className="text-xl font-bold text-purple-600">{(data as any).stats.recentUploads || 0}</div>
-                      <div className="text-sm text-gray-600">Tài liệu mới</div>
+                      <div>Tài liệu mới</div>
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={(item as any).id} className="border rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white border-l-4 border-l-purple-500">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="p-1 bg-purple-100 rounded">
-                              <FileType className="w-4 h-4 text-purple-600" />
-                            </div>
-                            <h3 className="font-semibold text-lg text-gray-800">{(item as any).title}</h3>
+                    <div
+                      key={(item as any).id}
+                      className="border rounded p-4 bg-white"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900">
+                              {(item as any).title}
+                            </h3>
                             {(item as any).category && (
-                              <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border border-purple-200">
+                              <Badge variant="outline" className="text-xs">
                                 {getCategoryDisplayName((item as any).category)}
                               </Badge>
                             )}
                           </div>
 
                           {(item as any).description && (
-                            <p className="text-sm text-gray-600 mb-3">{(item as any).description}</p>
+                            <p className="text-sm text-gray-700">
+                              {(item as any).description}
+                            </p>
                           )}
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-blue-100 rounded">
-                                <FileText className="w-3 h-3 text-blue-600" />
-                              </div>
-                              <span>{(item as any).fileName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-green-100 rounded">
-                                <Download className="w-3 h-3 text-green-600" />
-                              </div>
-                              <span>{formatSize((item as any).fileSize)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="p-1 bg-orange-100 rounded">
-                                <Calendar className="w-3 h-3 text-orange-600" />
-                              </div>
-                              <span>{new Date((item as any).uploadedAt).toLocaleDateString('vi-VN')}</span>
-                            </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+                            <span>{(item as any).fileName}</span>
+                            <span>{formatSize((item as any).fileSize)}</span>
+                            <span>
+                              {new Date(
+                                (item as any).uploadedAt
+                              ).toLocaleDateString("vi-VN")}
+                            </span>
                           </div>
 
                           {(item as any).teacherName && (
-                            <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-                              <div className="p-1 bg-cyan-100 rounded">
-                                <User className="w-3 h-3 text-cyan-600" />
-                              </div>
-                              <span>Giáo viên: {(item as any).teacherName}</span>
-                            </div>
+                            <p className="text-sm text-gray-600">
+                              Giáo viên: {(item as any).teacherName}
+                            </p>
                           )}
                         </div>
 
-                        <div className="ml-4">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleDownload(item)} 
-                            disabled={!(item as any).fileUrl}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
-                          >
-                            <Download className="w-4 h-4" />
-                            Tải xuống
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownload(item)}
+                          disabled={!(item as any).fileUrl}
+                        >
+                          Tải xuống
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -249,11 +228,12 @@ export function ChildMaterials({ childId, classId }: ChildMaterialsProps) {
               </div>
             ) : (
               <div className="text-center py-12">
-                <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-lg font-medium text-gray-600">Chưa có tài liệu nào</p>
-                <p className="text-sm text-gray-500 mt-1">Chưa có tài liệu được tải lên cho lớp học của con</p>
+                <p className="text-lg font-medium text-gray-600">
+                  Chưa có tài liệu nào
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Chưa có tài liệu được tải lên cho lớp học của con
+                </p>
               </div>
             )}
           </div>

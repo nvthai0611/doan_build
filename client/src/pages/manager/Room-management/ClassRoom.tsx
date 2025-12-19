@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useRooms, Room } from "../../../hooks/use-rooms"
 import { RoomDialog } from "./components/RoomDialog"
 import { RoomsList } from "./components/RoomsList"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ClassroomsPage() {
   const { rooms, addRoom, updateRoom, deleteRoom, isSubmitting, isLoading } = useRooms()
@@ -14,6 +15,16 @@ export default function ClassroomsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingData, setEditingData] = useState<Partial<Room> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { toast } = useToast()
+  const [lockedIds, setLockedIds] = useState<string[]>([])
+
+  // Lock delete for rooms that are in use
+  useEffect(() => {
+    const ids = (Array.isArray(rooms) ? rooms : [])
+      .filter((r: any) => r?.isInUse)
+      .map((r) => r.id)
+    setLockedIds(ids)
+  }, [rooms])
 
   const handleAddClick = () => {
     setEditingId(null)
@@ -41,7 +52,9 @@ export default function ClassroomsPage() {
       }
       setDialogOpen(false)
     } catch (error) {
-      console.error("Error submitting room:", error)
+      const raw = (error as any)?.response?.data?.message
+      const message = Array.isArray(raw) ? raw[0] : raw || (error as any)?.message || "Lỗi khi lưu phòng học"
+      toast({ title: message, variant: "destructive" })
     }
   }
 
@@ -50,6 +63,11 @@ export default function ClassroomsPage() {
       setDeletingId(id)
       try {
         await deleteRoom(id)
+        toast({ title: "Đã xóa phòng học", variant: "default" })
+      } catch (error) {
+        const raw = (error as any)?.response?.data?.message
+        const message = Array.isArray(raw) ? raw[0] : raw || (error as any)?.message || "Lỗi khi xóa phòng học"
+        toast({ title: message, variant: "destructive" })
       } finally {
         setDeletingId(null)
       }
@@ -119,7 +137,7 @@ export default function ClassroomsPage() {
             </CardContent>
           </Card>
         ) : (
-          <RoomsList rooms={roomsArray} onEdit={handleEditClick} onDelete={handleDelete} isDeleting={deletingId} />
+          <RoomsList rooms={roomsArray} onEdit={handleEditClick} onDelete={handleDelete} isDeleting={deletingId} lockedIds={lockedIds} />
         )}
       </div>
 

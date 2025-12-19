@@ -7,6 +7,7 @@ export const getDaysInMonth = (year: number, month: number): number => {
 }
 
 export const getFirstDayOfMonth = (year: number, month: number): number => {
+  // lấy ra thứ của ngày đầu tiên trong tháng
   return new Date(year, month, 1).getDay()
 }
 

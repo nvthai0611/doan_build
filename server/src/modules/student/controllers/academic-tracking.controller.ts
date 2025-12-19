@@ -9,24 +9,31 @@ export class GradesController {
   constructor(private readonly academicTrackingService: AcademicTrackingService) {}
   /**
    * GET /student/grades/classes
-   * Danh sách lớp mà học sinh đang/đã học
+   * Danh sách lớp mà học sinh đã/đang học (không giới hạn status lớp)
    */
   @Get('classes')
   async getClasses(@Req() req: any) {
     const studentId = req.user?.studentId;
     const rows = await this.academicTrackingService["prisma"].$queryRawUnsafe<any[]>(
       `
-      SELECT DISTINCT c.id as class_id, c.name as class_name, c.academic_year, s.name as subject_name
+      SELECT DISTINCT c.id as class_id, c.name as class_name, c.academic_year, s.name as subject_name, e.status as enrollment_status
       FROM enrollments e
       JOIN classes c ON c.id = e.class_id
       JOIN subjects s ON s.id = c.subject_id
       WHERE e.student_id = $1::uuid
-      AND c.status = 'active'
+        AND e.status IN ('studying', 'graduated', 'stopped')
+        AND c.status IN ('active', 'completed')
       ORDER BY c.name ASC
       `,
       studentId || null,
     );
-    const classes = rows.map(r => ({ id: r.class_id, name: r.class_name, academicYear: r.academic_year, subjectName: r.subject_name }));
+    const classes = rows.map(r => ({
+      id: r.class_id,
+      name: r.class_name,
+      academicYear: r.academic_year,
+      subjectName: r.subject_name,
+      enrollmentStatus: r.enrollment_status,
+    }));
     return { data: classes, message: 'Lấy danh sách lớp thành công' };
   }
 

@@ -9,6 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../../db/prisma.service';
 
 interface PaymentSuccessData {
   orderCode: string;
@@ -28,6 +30,11 @@ interface PaymentSuccessData {
 export class PaymentGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
+
   @WebSocketServer()
   server: Server;
 
@@ -35,9 +42,31 @@ export class PaymentGateway
   
   // Map lưu connection: orderCode -> Set<socketId>
   private orderSubscriptions: Map<string, Set<string>> = new Map();
+  // Map lưu userId của mỗi socket
+  private userSockets: Map<string, string> = new Map();
+  async handleConnection(client: Socket) {
+    try {
+      // 1. Lấy token từ handshake auth
+      const token = client.handshake.auth?.token;
+      
+      if (!token) {
+        this.logger.warn(`Client ${client.id} connected without token`);
+        client.disconnect();
+        return;
+      }
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+      // 2. Verify JWT token
+      const payload = await this.jwtService.verifyAsync(token);
+      const userId = payload.id;
+
+      // 3. Lưu userId vào map
+      this.userSockets.set(client.id, userId);
+      
+      this.logger.log(`Client ${client.id} connected as user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Authentication failed for client ${client.id}:`, error.message);
+      client.disconnect();
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -50,37 +79,59 @@ export class PaymentGateway
         this.orderSubscriptions.delete(orderCode);
       }
     });
+
+    // Cleanup
+    this.userSockets.delete(client.id);
   }
 
   /**
    * Client subscribe để lắng nghe payment status theo orderCode
    */
   @SubscribeMessage('subscribe_payment')
-  handleSubscribePayment(
+  async handleSubscribePayment(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { orderCode: string },
   ) {
     const { orderCode } = payload;
 
-    if (!orderCode) {
-      return { success: false, message: 'Missing orderCode' };
+    // 1. Lấy userId từ socket
+    const userId = this.userSockets.get(client.id);
+    if (!userId) {
+      return { success: false, message: 'Unauthorized' };
     }
 
-    if (!this.orderSubscriptions.has(orderCode)) {
-      this.orderSubscriptions.set(orderCode, new Set());
+    try {
+      // 2. Kiểm tra payment có thuộc về user này không
+      const payment = await this.prisma.payment.findUnique({
+        where: { transactionCode: orderCode }, // orderCode chính là transactionCode
+        select: { parentId: true },
+      });
+
+      if (!payment) {
+        return { success: false, message: 'Payment not found' };
+      }
+
+      // 3. Verify ownership
+      if (payment.parentId !== userId) {
+        this.logger.warn(
+          `User ${userId} tried to subscribe to payment ${orderCode} owned by ${payment.parentId}`,
+        );
+        return { success: false, message: 'Forbidden: Not your payment' };
+      }
+
+      // 4. Cho phép subscribe
+      if (!this.orderSubscriptions.has(orderCode)) {
+        this.orderSubscriptions.set(orderCode, new Set());
+      }
+      this.orderSubscriptions.get(orderCode).add(client.id);
+
+      this.logger.log(`User ${userId} subscribed to payment ${orderCode}`);
+      return { success: true, message: `Subscribed to payment ${orderCode}` };
+      
+    } catch (error) {
+      this.logger.error(`Error in handleSubscribePayment: ${error.message}`);
+      return { success: false, message: 'Internal server error' };
     }
-
-    this.orderSubscriptions.get(orderCode).add(client.id);
-
-    this.logger.log(
-      `Client ${client.id} subscribed to payment ${orderCode}`,
-    );
-
-    return { 
-      success: true, 
-      message: `Subscribed to payment ${orderCode}`,
-      orderCode 
-    };
   }
 
   /**

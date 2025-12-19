@@ -131,6 +131,8 @@ export function WeeklyView({
                         <span style={{ fontSize: '10px' }}>(Đã kết thúc)</span>
                       ) : session.status === 'cancelled' ? (
                         <span style={{ fontSize: '10px' }}>(Đã hủy)</span>
+                      ) : session.status === 'happening' ? (
+                        <span style={{ fontSize: '10px' }}>(Đang diễn ra)</span>
                       ) : (
                         <div style={{ fontSize: '10px' }}>(Chưa diễn ra)</div>
                       )}

@@ -7,15 +7,17 @@ import { Edit, Trash2, MapPin, Phone, Users, GraduationCap } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { School } from "../../../../hooks/use-schools"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SchoolsListProps {
   schools: School[]
   onEdit: (school: School) => void
   onDelete: (id: string) => void
   isDeleting: string | null
+  lockedIds?: string[]
 }
 
-export function SchoolsList({ schools, onEdit, onDelete, isDeleting }: SchoolsListProps) {
+export function SchoolsList({ schools, onEdit, onDelete, isDeleting, lockedIds }: SchoolsListProps) {
   if (schools.length === 0) {
     return (
       <Card>
@@ -82,16 +84,41 @@ export function SchoolsList({ schools, onEdit, onDelete, isDeleting }: SchoolsLi
                 <Edit className="w-4 h-4 mr-1" />
                 Sửa
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="flex-1"
-                onClick={() => onDelete(school.id)}
-                disabled={isDeleting === school.id}
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                {isDeleting === school.id ? "Đang xóa..." : "Xóa"}
-              </Button>
+              {(() => {
+                const inUse = (school as any)?.studentCount > 0 || (school as any)?.teacherCount > 0
+                const locked = lockedIds?.includes(school.id)
+                const disabled = inUse || locked || isDeleting === school.id
+
+                const buttonClass = `${disabled ? "w-full opacity-60 cursor-not-allowed" : "flex-1"}`
+                
+                const deleteBtn = (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className={buttonClass}
+                    onClick={() => !disabled && onDelete(school.id)}
+                    disabled={disabled}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {isDeleting === school.id ? "Đang xóa..." : "Xóa"}
+                  </Button>
+                )
+
+                if (!inUse && !locked) return deleteBtn
+
+                return (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex-1">{deleteBtn}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Không thể xóa trường học đang có học sinh hoặc giáo viên
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              })()}
             </div>
           </CardContent>
         </Card>

@@ -10,7 +10,6 @@ import { LeaveRequestsController } from './controllers/leave-requests.controller
 import { SessionRequestsController } from './controllers/session-requests.controller';
 import { ScheduleManagementController } from './controllers/schedule-management.controller';
 import { TeacherManagementController } from './controllers/teacher-management.controller';
-import { UsersController } from './controllers/user-management.controller';
 import { ApprovalManagementService } from './services/approval-management.service';
 import { ClassManagementService } from './services/class-management.service';
 import { EnrollmentManagementService } from './services/enrollment-management.service';
@@ -19,7 +18,6 @@ import { LeaveRequestsService } from './services/leave-requests.service';
 import { SessionRequestsService } from './services/session-requests.service';
 import { ScheduleManagementService } from './services/schedule-management.service';
 import { TeacherManagementService } from './services/teacher-management.service';
-import { UsersService } from './services/user-management.service';
 import { PrismaService } from 'src/db/prisma.service';
 import { RouterModule } from '@nestjs/core';
 import { StudentManagementController } from './controllers/student-management.controller';
@@ -71,28 +69,32 @@ import { TriggerManagementService } from './services/trigger-management.service'
 import { FeeReminderService } from '../cronjob/service/send-email-bill.service';
 import { EmailServiceNotificationBill } from '../shared/services/email-notification-bill.service';
 import { BullModule } from '@nestjs/bull';
-import { AuditLogController } from './controllers/audit-log.controller';
-import { AuditLogService } from './services/audit-log.service';
 import { ChangeStatusSessionService } from '../cronjob/service/change-status-session.service';
 import { EmailNotificationPayrollService } from '../shared/services/email-notification-payroll.service';
 import { FinancialReportsController } from './controllers/financial-reports.controller';
 import { FinancialReportsService } from './services/financial-reports.service';
+import { ScholarshipManagementController } from './controllers/scholarship-management.controller';
+import { ScholarshipManagementService } from './services/scholarship-management.service';
+import { ScheduleChangeAdminController } from './controllers/schedule-change.controller';
+import { ScheduleChangeAdminService } from './services/schedule-change.service';
+import { ScheduleConflictController } from './controllers/schedule-conflict.controller';
+import { ScheduleConflictService } from './services/schedule-conflict.service';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Enable cron jobs
     BullModule.registerQueue({
-      name: 'payroll-notification', // ✅ Register queue ở đây
+      name: 'payroll-notification', // Register queue ở đây
     }),
     BullModule.registerQueue({
-      name: 'payroll-recalculation', // ✅ Register queue ở đây
+      name: 'payroll-recalculation', // Register queue ở đây
     }),
     BullModule.registerQueue({
-      name: 'payroll-payment-notification', // ✅ Register queue ở đây
+      name: 'payroll-payment-notification', // Register queue ở đây
     }),
     RouterModule.register([
       {
-        path: "admin-center",
+        path: 'admin-center',
         module: AdminCenterModule,
       },
     ]),
@@ -109,8 +111,8 @@ import { FinancialReportsService } from './services/financial-reports.service';
     LeaveRequestsController,
     SessionRequestsController,
     ScheduleManagementController,
+    ScheduleChangeAdminController,
     TeacherManagementController,
-    UsersController,
     StudentManagementController,
     IncidentHandleController,
     ParentManagementController,
@@ -129,8 +131,9 @@ import { FinancialReportsService } from './services/financial-reports.service';
     CenterInfoController,
     SchoolManagementController,
     JobTriggerController,
-    AuditLogController,
     FinancialReportsController,
+    ScholarshipManagementController,
+    ScheduleConflictController,
   ],
   providers: [
     PrismaService,
@@ -141,8 +144,8 @@ import { FinancialReportsService } from './services/financial-reports.service';
     LeaveRequestsService,
     SessionRequestsService,
     ScheduleManagementService,
+    ScheduleChangeAdminService,
     TeacherManagementService,
-    UsersService,
     StudentManagementService,
     IncidentHandleService,
     ParentManagementService,
@@ -170,21 +173,19 @@ import { FinancialReportsService } from './services/financial-reports.service';
     TriggerManagementService,
     FeeReminderService,
     EmailServiceNotificationBill,
-    AuditLogService,
     ChangeStatusSessionService,
     EmailNotificationPayrollService,
     FinancialReportsService,
+    ScholarshipManagementService,
+    ScheduleConflictService,
   ],
-  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService, AuditLogService], // Export để dùng ở module khác
-
+  exports: [AlertService, HolidaysSettingService, TeacherFeedbackService], // Export để dùng ở module khác
 })
 //check
 export class AdminCenterModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(MiddlewareCenterOwner)
-      .forRoutes(
-        { path: 'admin-center/*', method: RequestMethod.ALL }
-      );
+      .forRoutes({ path: 'admin-center/*', method: RequestMethod.ALL });
   }
 }

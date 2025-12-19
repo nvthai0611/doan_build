@@ -217,9 +217,9 @@ export default function StudentLeaveRequestList() {
         <div className="flex items-center justify-center gap-2">
           <Button title="Xem chi tiết" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDetails(item)}>
             <Eye className="h-4 w-4" />
-          </Button>
-          {item.status === 'pending' && (
-            <>
+            </Button>
+            {item.status === 'pending' && (
+              <>
               <Button title="Chỉnh sửa" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEdit(item)}>
                 <Edit className="h-4 w-4" />
               </Button>
@@ -227,12 +227,12 @@ export default function StudentLeaveRequestList() {
                 title="Hủy đơn"
                 variant="ghost"
                 className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                onClick={() => handleCancel(item)}
-              >
+                  onClick={() => handleCancel(item)}
+                >
                 <XCircle className="h-4 w-4" />
               </Button>
-            </>
-          )}
+              </>
+            )}
         </div>
       ),
     },

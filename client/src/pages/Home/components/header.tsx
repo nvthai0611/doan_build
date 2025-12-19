@@ -94,13 +94,26 @@ export const Header = ({ centerInfo }: HeaderProps) => {
             >
               Blog
             </a>
-            <a
-              href="#contribute"
-              className="block text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
-            >
-              Đóng Góp
-            </a>
-          
+            
+            <div className="pt-2 space-y-2">
+              {user ? (
+                <Button variant="outline" asChild className="w-full">
+                  <Link to="/parent">Bảng Điều Khiển</Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link to="/auth/login?portal=family">Đăng Nhập</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white border-0"
+                  >
+                    <Link to="/auth/register/family">Đăng Ký</Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

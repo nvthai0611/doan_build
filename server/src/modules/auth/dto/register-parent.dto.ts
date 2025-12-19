@@ -32,6 +32,7 @@ export class ChildDto {
   @ApiProperty({ description: 'Họ và tên con', example: 'Nguyễn Văn B' })
   @IsString()
   @IsNotEmpty({ message: 'Họ và tên con không được để trống' })
+  @MinLength(5, { message: 'Họ và tên con phải có ít nhất 5 ký tự' })
   fullName: string;
 
   @ApiProperty({ description: 'Ngày sinh con', example: '2015-01-01' })
@@ -85,6 +86,7 @@ export class RegisterParentDto {
   @IsString({ message: 'Họ và tên phải là chuỗi' })
   @IsNotEmpty({ message: 'Họ và tên không được để trống' })
   @MinLength(5, { message: 'Họ và tên phải có ít nhất 5 ký tự' })
+  @MaxLength(50, { message: 'Họ và tên không được quá 50 ký tự' })
   @Matches(/^[\p{L}\s]+$/u, {
     message: 'Họ và tên không được chứa ký tự đặc biệt',
   })

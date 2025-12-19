@@ -85,6 +85,7 @@ export function PaymentSelectionPage() {
 
   const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ['feeRecords', 'pending'],
+
     queryFn: async () => {
       return await financialParentService.getAllFeeRecordsOfParent('pending')
     },
@@ -164,53 +165,12 @@ export function PaymentSelectionPage() {
         onSuccess: async (data) => {
           console.log(data);
           
-          // ✅ Thanh toán thành công
-           toast.success('Thanh toán thành công! 🎉', {
+           toast.success('Thanh toán thành công!', {
             description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
             duration: 2000,
           })
 
           handleCloseModal()
-
-          // ⏳ Đợi backend cập nhật (quan trọng!)
-          // await new Promise(resolve => setTimeout(resolve, 1500))
-
-          // // 🔄 Force refetch thay vì chỉ invalidate
-          // await Promise.all([
-          //   queryClient.refetchQueries({ 
-          //     queryKey: ['feeRecords'],
-          //     type: 'active'
-          //   }),
-          //   queryClient.refetchQueries({ 
-          //     queryKey: ['payment-history'],
-          //     type: 'active'
-          //   })
-          // ])
-
-          // // 📊 Lấy data mới từ cache SAU KHI refetch xong
-          // const freshList = queryClient.getQueryData<any[]>(['feeRecords', 'pending']) || []
-
-          // console.log('📋 Fresh data after refetch:', freshList) // Debug log
-
-          // const remainingIds = new Set(
-          //   freshList
-          //     .filter((fr: any) => {
-          //       const total = fr.totalAmount ?? (Number(fr.amount) - Number(fr.discount))
-          //       const remaining = total - Number(fr.paidAmount)
-          //       return remaining > 0
-          //     })
-          //     .map((fr: any) => fr.id)
-          // )
-
-          // // Chỉ bỏ chọn những hóa đơn đã trả xong
-          // setSelectedFees((prev) => prev.filter((id) => remainingIds.has(id)))
-
-            // Dismiss toast cũ
-  // ⏳ Đợi 2 giây để user đọc thông báo
-  // await new Promise(resolve => setTimeout(resolve, 2000))
-
-  // // 🔄 Reload trang
-  // window.location.reload()
         },
         
         onFailure: (data) => {
@@ -260,39 +220,7 @@ export function PaymentSelectionPage() {
     }
   }
 
-  // const handleSelectPayment = async () => {
-  //   try {
-  //     if (selectedFees.length === 0) {
-  //       toast.error("Vui lòng chọn ít nhất một hóa đơn để thanh toán")
-  //       return
-  //     }
-  //     setLoading(true)
-  //     // 1. Tạo payment
-  //     const paymentRes: any = await financialParentService.createPaymentForFeeRecords(selectedFees)
-  //     if (!paymentRes?.data?.id) {
-  //       toast.error(paymentRes?.message || "Không thể tạo hóa đơn")
-  //       setLoading(false)
-  //       return
-  //     }
-  //     setCurrentPayment(paymentRes.data)
-
-  //     // 2. Tạo QR code cho payment vừa tạo
-  //     const qrRes: any = await financialParentService.createQrCodeForPayment(paymentRes.data.id)
-  //     if (!qrRes?.data?.qrCodeUrl) {
-  //       toast.error(qrRes?.message || "Không thể tạo mã QR")
-  //       setLoading(false)
-  //       return
-  //     }
-  //     setPaymentData(qrRes.data)
-  //     setShowQrModal(true)
-  //     toast.success("Mã QR thanh toán đã được tạo thành công")
-  //   } catch (error) {
-  //     console.error("Error creating payment/QR code:", error)
-  //     toast.error("Có lỗi xảy ra khi tạo hóa đơn hoặc mã QR")
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+  
 
   const handleCopyContent = async () => {
     if (paymentData?.content) {
@@ -351,24 +279,13 @@ const handleCloseModal = () => {
   queryClient.invalidateQueries({ queryKey: ['payment-history'] }) // Nên thêm cả history
 }
 
-  if (isLoading || isLoadingChildren || isError || isErrorChildren) {
+  if (isLoading || isLoadingChildren) {
     return <Loading />
   }
 
-  // if (isError  || isErrorChildren) {
-  //   return (
-  //     <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
-  //       <Card className="max-w-md">
-  //         <CardContent className="pt-6">
-  //           <p className="text-center text-destructive">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.</p>
-  //         </CardContent>
-  //       </Card>
-  //     </div>
-  //   )
-  // }
-
   const feeRecords = (isError) ? [] : (response as any[] || [])
   const childrenList = (isErrorChildren) ? [] : (children as any[])
+
 
   const transformedFeeRecords = feeRecords?.map((fee) => {
     const calculatedTotal = fee.totalAmount ?? (Number(fee.amount) - Number(fee.discount))
@@ -416,7 +333,8 @@ const handleCloseModal = () => {
   // const totalAmount = selectedRecords.reduce((sum, fee) => 
   //   sum + (fee.remainingAmount > 0 ? fee.remainingAmount : 0), 0
   // )
-  return (
+  
+  return (  
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}

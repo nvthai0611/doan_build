@@ -19,7 +19,7 @@ const student_management_controller_1 = require("./controllers/student-managemen
 const student_leave_request_controller_1 = require("./controllers/student-leave-request.controller");
 const child_classes_controller_1 = require("./controllers/child-classes.controller");
 const class_join_controller_1 = require("./controllers/class-join.controller");
-const academic_tracking_service_1 = require("./services/academic-tracking.service");
+const child_progress_service_1 = require("./services/child-progress.service");
 const class_information_service_1 = require("./services/class-information.service");
 const communication_service_1 = require("./services/communication.service");
 const financial_service_1 = require("./services/financial.service");
@@ -35,6 +35,7 @@ const parent_overview_service_1 = require("./services/parent-overview.service");
 const commitments_controller_1 = require("./controllers/commitments.controller");
 const commitments_service_1 = require("./services/commitments.service");
 const admin_center_module_1 = require("../admin-center/admin-center.module");
+const child_progress_controller_1 = require("./controllers/child-progress.controller");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 let ParentModule = class ParentModule {
     configure(consumer) {
@@ -68,10 +69,11 @@ exports.ParentModule = ParentModule = __decorate([
             child_teacher_feedback_controller_1.ChildTeacherFeedbackController,
             parent_overview_controller_1.ParentOverviewController,
             commitments_controller_1.CommitmentsController,
+            child_progress_controller_1.ChildProgressController,
         ],
         providers: [
             prisma_service_1.PrismaService,
-            academic_tracking_service_1.AcademicTrackingService,
+            child_progress_service_1.AcademicTrackingService,
             class_information_service_1.ClassInformationService,
             communication_service_1.CommunicationService,
             financial_service_1.FinancialService,

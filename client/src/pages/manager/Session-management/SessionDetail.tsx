@@ -45,27 +45,19 @@ export default function SessionDetail() {
     refetchOnWindowFocus: false
   });
 
+  console.log("chạy");
+  
   const { data: attendanceResponse, isLoading: attendanceLoading } = useQuery({
     queryKey: ['sessionAttendance', sessionId],
     queryFn: () => centerOwnerScheduleService.getSessionAttendance(sessionId),
     enabled: !!sessionId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    staleTime: 0,
+    refetchOnWindowFocus: true
   });
 
   const sessionData = sessionDetailResponse as any;
   const attendanceData = attendanceResponse as any;
-
-  // Log để kiểm tra dữ liệu
-  console.log('=== SESSION DETAIL DATA ===');
-  console.log('sessionData:', sessionData);
-  console.log('sessionData.teacher:', sessionData?.teacher);
-  console.log('sessionData.substituteTeacher:', sessionData?.substituteTeacher);
-  console.log('sessionData.isSubstitute:', sessionData?.isSubstitute);
-  console.log('sessionData.substituteStartDate:', sessionData?.substituteStartDate);
-  console.log('sessionData.substituteEndDate:', sessionData?.substituteEndDate);
-  console.log('sessionData.substituteTeacherId:', sessionData?.substituteTeacherId);
-  console.log('==========================');
+  
 
   // Map attendance data to students (CHỈ CÓ 3 TRẠNG THÁI: present, absent, excused)
   const students = attendanceData?.map((attendance: any) => ({
@@ -73,7 +65,7 @@ export default function SessionDetail() {
     name: attendance.student?.user?.fullName || attendance.studentName || 'N/A',
     email: attendance.student?.user?.email || '',
     avatar: attendance.student?.user?.avatar || null,
-    status: attendance.status || 'absent', // Mặc định là vắng mặt nếu chưa có dữ liệu
+    status: attendance.status || 'null', // Mặc định là vắng mặt nếu chưa có dữ liệu
     attendanceTime: attendance.checkInTime 
       ? `${format(new Date(attendance.checkInTime), 'HH:mm')} → ${attendance.checkOutTime ? format(new Date(attendance.checkOutTime), 'HH:mm') : '—'}` 
       : '—',
@@ -110,7 +102,7 @@ export default function SessionDetail() {
 
   const tabs = [
     { key: 'general', label: 'Thông tin chung' },
-    { key: 'teacher', label: 'Giáo viên' },
+    // { key: 'teacher', label: 'Giáo viên' },
     { key: 'students', label: 'Học viên' },
   ];
 

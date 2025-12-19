@@ -19,21 +19,13 @@ import {
   BookOpen,
   User,
   ChevronRight,
-  Search,
-  Filter,
-  Star,
-  Award,
-  Newspaper,
-  Phone,
-  Mail,
-  MapPin,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Header } from "./components/header"
 import { Footer } from "./components/footer"
 import { HeroBanner } from "./components/hero-banner"
-import { BlogSection } from "./components/blog-section"
+// import { BlogSection } from "./components/blog-section"
 // import { ContributeSection } from "./components/contribute-section"
 import "./styles/landing-page.css"
 
@@ -77,13 +69,13 @@ const news = [
   { id: 6, title: "Những sai lầm phổ biến khi học Hóa học", category: "Hóa học", date: "2024-01-10", icon: "⚗️" },
 ]
 
-// Legacy showcases data (nếu cần giữ lại section này)
-const legacyShowcases = [
-  { id: 1, title: "Học sinh đạt điểm 10 Toán THPT QG 2023", category: "Thành tích", icon: "🏆" },
-  { id: 2, title: "Lớp học Tiếng Anh đạt IELTS 8.0+", category: "Thành tích", icon: "🎯" },
-  { id: 3, title: "Dự án khoa học của học sinh được công nhận", category: "Dự án", icon: "🔬" },
-  { id: 4, title: "Học sinh giỏi Quốc gia từ trung tâm", category: "Vinh danh", icon: "⭐" },
-]
+// // Legacy showcases data (nếu cần giữ lại section này)
+// const legacyShowcases = [
+//   { id: 1, title: "Học sinh đạt điểm 10 Toán THPT QG 2023", category: "Thành tích", icon: "🏆" },
+//   { id: 2, title: "Lớp học Tiếng Anh đạt IELTS 8.0+", category: "Thành tích", icon: "🎯" },
+//   { id: 3, title: "Dự án khoa học của học sinh được công nhận", category: "Dự án", icon: "🔬" },
+//   { id: 4, title: "Học sinh giỏi Quốc gia từ trung tâm", category: "Vinh danh", icon: "⭐" },
+// ]
 
 export const LandingPage = () => {
   const navigate = useNavigate()
@@ -200,7 +192,6 @@ export const LandingPage = () => {
           {/* Section Header */}
           <div className="text-center mb-12">
             <div className="section-badge">
-              <BookOpen className="w-4 h-4 gradient-text" />
               <span className="text-sm font-medium gradient-text">
                 Danh Sách Lớp Học
               </span>
@@ -218,12 +209,11 @@ export const LandingPage = () => {
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input
                   placeholder="Tìm kiếm lớp học..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-2 border-border input-focus"
+                  className="border-2 border-border input-focus"
                 />
               </div>
 
@@ -295,7 +285,6 @@ export const LandingPage = () => {
                   }}
                   className="border-2 filter-btn-hover"
                 >
-                  <Filter className="w-4 h-4 mr-2" />
                   Xóa bộ lọc
                 </Button>
               )}
@@ -312,7 +301,6 @@ export const LandingPage = () => {
           {/* No Results */}
           {!isLoadingClasses && filteredClasses.length === 0 && (
             <div className="text-center py-20">
-              <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-foreground mb-2">
                 Không tìm thấy lớp học
               </h3>
@@ -367,7 +355,6 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <div className="section-badge">
-              <Star className="w-4 h-4 gradient-text" />
               <span className="text-sm font-medium gradient-text">
                 Học Sinh Tiêu Biểu
               </span>
@@ -391,7 +378,6 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="section-header">
             <div className="section-badge">
-              <Users className="w-4 h-4 gradient-text" />
               <span className="text-sm font-medium gradient-text">
                 Đội Ngũ Giáo Viên
               </span>
@@ -484,7 +470,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="section-header">
             <div className="section-badge">
@@ -517,7 +503,7 @@ export const LandingPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft">
         <div className="max-w-7xl mx-auto">
@@ -553,13 +539,13 @@ export const LandingPage = () => {
       </section> */}
 
       {/* Blog Section */}
-      <BlogSection />
+      {/* <BlogSection /> */}
 
       {/* Contribute Section */}
       {/* <ContributeSection /> */}
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8 gradient-bg-soft-dark">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 text-white">
             Sẵn sàng bắt đầu hành trình học tập?
@@ -574,7 +560,7 @@ export const LandingPage = () => {
             </Link>
           </Button>
         </div>
-      </section>
+      </section> */}
 
       {/* Footer */}
       <Footer centerInfo={centerInfo} />
@@ -624,7 +610,7 @@ const ClassCard = ({
           {/* Subject & Grade */}
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-blue-500" />
+              <BookOpen className="w-4 h-4 text-gray-600" />
               <span>{classItem.subject?.name || "Chưa có môn"}</span>
             </div>
             {classItem.grade && (
@@ -639,7 +625,7 @@ const ClassCard = ({
 
           {/* Teacher */}
           <div className="flex items-center gap-2 text-sm">
-            <User className="w-4 h-4 text-blue-500" />
+            <User className="w-4 h-4 text-gray-600" />
             {classItem.teacher ? (
               <span className="truncate">{classItem.teacher.fullName}</span>
             ) : (
@@ -649,7 +635,7 @@ const ClassCard = ({
 
           {/* Students */}
           <div className="flex items-center gap-2 text-sm">
-            <Users className="w-4 h-4 text-blue-500" />
+            <Users className="w-4 h-4 text-gray-600" />
             <span>
               {classItem.currentStudents}/{classItem.maxStudents || "∞"} học sinh
             </span>
@@ -670,7 +656,7 @@ const ClassCard = ({
 
           {/* Schedule */}
           <div className="flex items-start gap-2 text-sm">
-            <Clock className="w-4 h-4 text-blue-500 mt-0.5" />
+            <Clock className="w-4 h-4 text-gray-600 mt-0.5" />
             {schedules.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {schedules.map((s, idx) => (
@@ -690,7 +676,7 @@ const ClassCard = ({
           {/* Expected Start Date */}
           {classItem.expectedStartDate && (
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-blue-500" />
+              <Calendar className="w-4 h-4 text-gray-600" />
               <span>Dự kiến bắt đầu: {new Date(classItem.expectedStartDate).toLocaleDateString("vi-VN")}</span>
             </div>
           )}
@@ -699,7 +685,6 @@ const ClassCard = ({
         {/* Action Button */}
         <Button onClick={handleJoinClick} disabled={isFull} className="w-full mt-4 btn-gradient">
           {isFull ? "Đã đầy" : "Đăng ký học"}
-          {!isFull && <ChevronRight className="ml-2 w-4 h-4" />}
         </Button>
       </CardContent>
     </Card>
@@ -764,7 +749,6 @@ const StudentShowcaseSection = ({ data, isLoading }: { data: Showcase[]; isLoadi
             </Button>
           ))}
         </div>
-        <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-foreground mb-2">
           Chưa có học sinh tiêu biểu
         </h3>
@@ -805,7 +789,7 @@ const StudentShowcaseSection = ({ data, isLoading }: { data: Showcase[]; isLoadi
               <h3 className="font-semibold text-base mb-1 line-clamp-1">{item.title}</h3>
               <div className="text-xs text-muted-foreground mb-3">Thành tích: {item.achievement}</div>
               {item.description && expandedId === item.id && (
-                <div className="text-sm text-muted-foreground mb-3">"{item.description}"</div>
+                <div className="text-sm text-muted-foreground mb-3">{item.description}</div>
               )}
               {item.description && (
                 <Button

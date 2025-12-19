@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,7 @@ import {
   BookOpen,
   Users
 } from 'lucide-react'
+import { SelectSubstituteTeacherSheet } from './SelectSubstituteTeacherSheet'
 
 interface LeaveRequest {
   id: string
@@ -55,11 +56,7 @@ interface LeaveRequest {
 }
 
 interface LeaveRequestDetailModalProps {
-  isOpen: boolean
-  onClose: () => void
-  request: LeaveRequest | null
-  onApprove?: (id: string) => void
-  onReject?: (id: string) => void
+  [key: string]: any
 }
 
 const requestTypeLabels = {
@@ -90,14 +87,19 @@ const statusLabels = {
   cancelled: 'Đã hủy',
 }
 
-const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
+const LeaveRequestDetailModal: React.FC<any> = ({
   isOpen,
   onClose,
   request,
   onApprove,
-  onReject
+  onReject,
+  sessionReplacements = {},
+  setSessionReplacements,
 }) => {
   if (!request) return null
+
+  const [selectTeacherOpen, setSelectTeacherOpen] = useState(false)
+  const [currentSession, setCurrentSession] = useState<any | null>(null)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN')
@@ -125,7 +127,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
             Chi tiết đơn xin nghỉ phép
           </DialogTitle>
         </DialogHeader>
@@ -136,18 +137,18 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <div className="flex items-center gap-4">
               <Avatar className="h-12 w-12">
                 <AvatarFallback>
-                  {(request.teacherInfo?.fullName || 'U').split(' ').map(n => n[0]).join('')}
+                  {(request?.teacherInfo?.fullName || 'U').split(' ').map((n: any) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{request.teacherInfo?.fullName || 'Unknown'}</h3>
-                <p className="text-sm text-muted-foreground">{request.teacherInfo?.email || 'No email'}</p>
+                <h3 className="text-lg font-semibold">{request?.teacherInfo?.fullName || 'Unknown'}</h3>
+                <p className="text-sm text-muted-foreground">{request?.teacherInfo?.email || 'No email'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
-                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors.other}
+                className={requestTypeColors[request?.type as keyof typeof requestTypeColors] || requestTypeColors?.other}
               >
                 {requestTypeLabels[request?.type as keyof typeof requestTypeLabels] || request?.type}
               </Badge>
@@ -155,7 +156,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                 variant="secondary"
                 className={statusColors[request?.status as keyof typeof statusColors] || statusColors.pending}
               >
-                {getStatusIcon(request.status)}
+                {/* {getStatusIcon(request.status)} */}
                 {statusLabels[request?.status as keyof typeof statusLabels] || request?.status}
               </Badge>
             </div>
@@ -168,7 +169,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
                   Thông tin nghỉ phép
                 </CardTitle>
               </CardHeader>
@@ -193,7 +193,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
                   Thông tin xử lý
                 </CardTitle>
               </CardHeader>
@@ -222,7 +221,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
                 Lý do nghỉ phép
               </CardTitle>
             </CardHeader>
@@ -242,36 +240,105 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  Sessions bị ảnh hưởng ({request?.affectedSessions.length})
+                  Buổi học bị ảnh hưởng ({request?.affectedSessions.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <p className="text-xs text-orange-600 mb-3">
+                  Khi duyệt đơn, các buổi KHÔNG có giáo viên thay thế sẽ bị hủy. Bạn có thể gán giáo viên dạy thay cho từng buổi cần giữ lịch.
+                </p>
                 <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                  {request?.affectedSessions.map((session) => (
-                    <div key={session?.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div>
-                        <p className="font-medium">{session?.class}</p>
-                        <p className="text-sm text-muted-foreground">{session?.subject}</p>
-                        <p className="font-medium">{session?.session?.sessionDate}</p>
+                  {request?.affectedSessions.map((session: any) => {
+                    const key = session.sessionId || session.id
+                    const hasReplacement = !!sessionReplacements[key]
+                    return (
+                      <div
+                        key={session?.id}
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg gap-3"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {session?.class?.name || session?.class || '-'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {session?.subject?.name || session?.subject || ''}
+                          </p>
+                          <p className="font-medium">
+                            {session?.session?.sessionDate
+                              ? formatDate(session.session.sessionDate)
+                              : formatDate(session?.sessionDate)}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="text-right">
+                            <p className="text-sm">
+                              {formatDate(session?.sessionDate)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {session?.startTime} - {session?.endTime}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={hasReplacement ? 'default' : 'outline'}
+                              className={
+                                hasReplacement
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }
+                            >
+                              {hasReplacement ||
+                              session?.substituteTeacherId
+                                ? 'Đã gán giáo viên thay thế'
+                                : 'Chưa gán giáo viên thay thế'}
+                            </Badge>
+                            {request.status === 'pending' &&
+                              setSessionReplacements && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setCurrentSession(session);
+                                      setSelectTeacherOpen(true);
+                                    }}
+                                  >
+                                    Chọn giáo viên
+                                  </Button>
+                                  {hasReplacement && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs text-red-600"
+                                      onClick={() => {
+                                        const keyToClear =
+                                          session.sessionId || session.id;
+                                        if (!keyToClear) return;
+                                        const next = { ...sessionReplacements };
+                                        delete next[keyToClear];
+                                        setSessionReplacements(next);
+                                      }}
+                                    >
+                                      Bỏ gán
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm">{formatDate(session?.sessionDate)}</p>
-                        <p className="text-sm text-muted-foreground">{session?.startTime} - {session?.endTime}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Image Attachment */}
+          {/* Image Attachment
           {request.imageUrl && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
                   Tài liệu đính kèm
                 </CardTitle>
               </CardHeader>
@@ -283,7 +350,7 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                 />
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* Actions */}
           {request.status === 'pending' && (onApprove || onReject) && (
@@ -297,7 +364,6 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                   onClick={() => onReject(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <XCircle className="w-4 h-4" />
                   Từ chối
                 </Button>
               )}
@@ -306,13 +372,36 @@ const LeaveRequestDetailModal: React.FC<LeaveRequestDetailModalProps> = ({
                   onClick={() => onApprove(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" />
                   Duyệt đơn
                 </Button>
               )}
             </div>
           )}
         </div>
+
+        {/* Sheet chọn giáo viên thay thế cho từng buổi */}
+        {currentSession && setSessionReplacements && (
+          <SelectSubstituteTeacherSheet
+            open={selectTeacherOpen}
+            onOpenChange={(open: boolean) => {
+              setSelectTeacherOpen(open)
+              if (!open) {
+                setCurrentSession(null)
+              }
+            }}
+            className={currentSession?.class?.name || currentSession?.class}
+            subjectName={currentSession?.subject?.name || currentSession?.subject}
+            excludeTeacherId={request.teacherId}
+            onSubmit={(teacherId: string) => {
+              const key = currentSession.sessionId || currentSession.id
+              if (!key) return
+              setSessionReplacements({
+                ...sessionReplacements,
+                [key]: teacherId,
+              })
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -193,8 +193,6 @@ export const SelectStudentSheet = ({
         studentIds: selected,
         overrideCapacity: overrideCapacity // Pass flag to allow exceeding capacity when user confirmed
       });
-      console.log(response);
-
       // Parse response
       const result = response?.data || response;
       const successCount = result?.success?.length || 0;
@@ -213,7 +211,7 @@ export const SelectStudentSheet = ({
 
       // Show appropriate toast
       if (failedCount === 0) {
-        toast.success(`✅ Đã thêm ${successCount} học viên thành công!`);
+        toast.success(`Đã thêm ${successCount} học viên thành công!`);
       } else if (successCount > 0) {
         // Hiển thị dialog với danh sách học sinh bị lỗi
         setErrorDetails({

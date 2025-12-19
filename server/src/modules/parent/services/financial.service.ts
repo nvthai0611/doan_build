@@ -8,7 +8,6 @@ export class FinancialService {
 
     async getAllFeeRecordsForParent (parentId: string, status: string){
         try {
-           
             if(!checkId(parentId)){
                 throw new HttpException({
                     message: 'ID phụ huynh không hợp lệ',
@@ -25,17 +24,43 @@ export class FinancialService {
             HttpStatus.NOT_FOUND)
             }
             const studentIds = getStudents.map(student => student.id);
+
+            let attendanceWhereClause: any = {
+                status: {
+                    not: 'excused'
+                },
+                session: {
+                    status: 'end'
+                }
+            };
+
+            if (status === 'pending') {
+                const now = new Date();
+                const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+                attendanceWhereClause.session = {
+                    ...attendanceWhereClause.session,
+                    sessionDate: {
+                        gte: lastMonthStart,
+                        lte: lastMonthEnd
+                    }
+                };
+            }
+
             const feeRecords = await this.prisma.feeRecord.findMany({
                 where: {
                     studentId: { in: studentIds },
-                     status: status ? status : undefined 
+                    status: status === 'pending' 
+                ? { in: ['pending', 'overdue'] } 
+                : (status ? status : undefined)
                     },
                     include:{
                         class: {
                             include:{
                                 sessions: {
                                     where: {
-                                        status:'completed'
+                                        status:'end'
                                     }
                                 }
                             }
@@ -50,14 +75,7 @@ export class FinancialService {
                                     }
                                 },
                                 attendances: {
-                                    where: {
-                                        status: {
-                                            not: 'excused'
-                                        },
-                                        session: {
-                                            status: 'completed'
-                                        }
-                                    },
+                                    where: attendanceWhereClause,
                                     include: {
                                         session: true
                                     }

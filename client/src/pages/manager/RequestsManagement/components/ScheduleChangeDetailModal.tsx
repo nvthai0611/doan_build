@@ -112,7 +112,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
             Chi tiết yêu cầu đổi lịch
           </DialogTitle>
         </DialogHeader>
@@ -136,7 +135,7 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                 variant="secondary"
                 className={statusColors[request.status] || statusColors.pending}
               >
-                {getStatusIcon(request.status)}
+                {/* {getStatusIcon(request.status)} */}
                 {statusLabels[request.status] || request.status}
               </Badge>
             </div>
@@ -148,7 +147,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
                 Thông tin đổi lịch
               </CardTitle>
             </CardHeader>
@@ -174,10 +172,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                 </div>
               </div>
               
-              {/* Arrow indicator */}
-              <div className="flex items-center justify-center my-4">
-                <ArrowRight className="w-6 h-6 text-muted-foreground" />
-              </div>
             </CardContent>
           </Card>
 
@@ -185,7 +179,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
                 Thông tin lớp học
               </CardTitle>
             </CardHeader>
@@ -203,12 +196,12 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Giáo viên</label>
                   <p className="text-sm">{request.class?.teacher?.user?.fullName || 'Unknown'}</p>
                 </div>
-                {request.newRoom && (
+                {/* {request.newRoom && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Phòng học mới</label>
                     <p className="text-sm">{request.newRoom.name} (Sức chứa: {request.newRoom.capacity})</p>
                   </div>
-                )}
+                )} */}
               </div>
             </CardContent>
           </Card>
@@ -217,7 +210,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
                 Lý do đổi lịch
               </CardTitle>
             </CardHeader>
@@ -230,7 +222,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
                 Thông tin xử lý
               </CardTitle>
             </CardHeader>
@@ -260,7 +251,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   onClick={() => onReject(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <XCircle className="w-4 h-4" />
                   Từ chối
                 </Button>
               )}
@@ -269,7 +259,6 @@ const ScheduleChangeDetailModal: React.FC<ScheduleChangeDetailModalProps> = ({
                   onClick={() => onApprove(request.id)}
                   className="flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" />
                   Duyệt yêu cầu
                 </Button>
               )}

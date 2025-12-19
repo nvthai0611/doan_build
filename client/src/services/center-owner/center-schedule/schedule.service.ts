@@ -183,6 +183,7 @@ export const centerOwnerScheduleService = {
     const response = await ApiService.get<Attendance[]>(
       `/admin-center/schedule-management/sessions/${sessionId}/attendance`,
     );
+
     return response.data as any;
   },
 
@@ -401,7 +402,6 @@ export const centerOwnerScheduleService = {
     startDate?: string;
     endDate?: string;
     search?: string;
-    attendanceStatus?: 'all' | 'on_time' | 'late' | 'absent' | 'not_marked';
     page?: number;
     limit?: number;
     classId?: string;
@@ -413,6 +413,14 @@ export const centerOwnerScheduleService = {
       page: number;
       limit: number;
       totalPages: number;
+      statusCounts?: {
+        all: number;
+        has_not_happened: number;
+        happening: number;
+        end: number;
+        day_off: number;
+        cancelled: number;
+      };
     };
   }> => {
     const response = await ApiService.get(
@@ -423,36 +431,36 @@ export const centerOwnerScheduleService = {
   },
 
   /**
- * Cập nhật điểm danh của học sinh
- */
-updateStudentAttendance: async (
-  sessionId: string,
-  studentId: string,
-  status: string,
-  note?: string,
-): Promise<any> => {
-  const response = await ApiService.patch(
-    `/admin-center/schedule-management/sessions/${sessionId}/attendance/${studentId}`,
-    { status, note },
-  );
-  return response.data;
-},
+   * Cập nhật điểm danh của học sinh
+   */
+  updateStudentAttendance: async (
+    sessionId: string,
+    studentId: string,
+    status: string,
+    note?: string,
+  ): Promise<any> => {
+    const response = await ApiService.patch(
+      `/admin-center/schedule-management/sessions/${sessionId}/attendance/${studentId}`,
+      { status, note },
+    );
+    return response.data;
+  },
 
-/**
- * Cập nhật điểm danh hàng loạt
- */
-updateBulkAttendanceManagement: async (
-  sessionId: string,
-  attendances: Array<{
-    studentId: string;
-    status: string;
-    note?: string;
-  }>,
-): Promise<any[]> => {
-  const response = await ApiService.put(
-    `/admin-center/schedule-management/sessions/${sessionId}/attendance/bulk`,
-    { attendances },
-  );
-  return response.data;
-},
+  /**
+   * Cập nhật điểm danh hàng loạt
+   */
+  updateBulkAttendanceManagement: async (
+    sessionId: string,
+    attendances: Array<{
+      studentId: string;
+      status: string | null;
+      note?: string;
+    }>,
+  ): Promise<any[]> => {
+    const response = await ApiService.put(
+      `/admin-center/schedule-management/sessions/${sessionId}/attendance/bulk`,
+      { attendances },
+    );
+    return response.data;
+  },
 };
