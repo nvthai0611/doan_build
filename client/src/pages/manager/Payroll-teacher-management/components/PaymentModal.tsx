@@ -18,7 +18,7 @@ interface PaymentModalProps {
 export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps) => {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  
+
   const [paymentMethod, setPaymentMethod] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
 
@@ -91,7 +91,7 @@ export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps)
               <span className="font-medium text-slate-700">Giáo viên:</span>
               <span className="text-slate-900">{payroll.teacher?.user?.fullName || '-'}</span>
             </div>
-            
+
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-slate-600" />
               <span className="font-medium text-slate-700">Kỳ lương:</span>
@@ -153,12 +153,12 @@ export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps)
                 <SelectValue placeholder="Chọn phương thức thanh toán" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bank_transfer">
+                {/* <SelectItem value="bank_transfer">
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
                     Chuyển khoản ngân hàng
                   </div>
-                </SelectItem>
+                </SelectItem> */}
                 <SelectItem value="cash">
                   <div className="flex items-center gap-2">
                     <Banknote className="w-4 h-4" />
@@ -186,8 +186,8 @@ export const PaymentModal = ({ open, onOpenChange, payroll }: PaymentModalProps)
           <Button variant="outline" onClick={handleClose} disabled={createPaymentMutation.isPending}>
             Hủy
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={createPaymentMutation.isPending || !paymentMethod}
             className="bg-green-600 hover:bg-green-700"
           >

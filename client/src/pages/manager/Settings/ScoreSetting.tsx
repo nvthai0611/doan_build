@@ -313,9 +313,6 @@ export function ScoreSetting() {
           <h1 className="text-3xl font-bold text-black mb-2">
             Cài đặt bài kiểm tra
           </h1>
-          <p className="text-gray-600 text-lg">
-            Quản lý các bài kiểm tra và điểm số
-          </p>
         </div>
 
         {/* Search, Filter and Add Section */}

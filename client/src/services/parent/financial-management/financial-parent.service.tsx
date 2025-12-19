@@ -1,14 +1,18 @@
 import { apiClient } from "../../../utils/clientAxios"
 
-const getAllFeeRecordsOfParent = async (status: string) => {
+const getAllFeeRecordsOfParent = async (status: string):Promise<any[]> => {
     try {
         const query = new URLSearchParams()
         if(status){
             query.append('status', status)
         }
         const response = await apiClient.get(`/parent/financial/fee-records?${query.toString()}`)
-        return response.data;
+        return response.data as any[];
     } catch (error) {
+        if (error?.response?.status === 404) {
+            console.log('No fee records found:', error.response?.data?.message);
+            return []; // Trả về mảng rỗng
+        }
         console.error('Error fetching fee records:', error);
         throw error;
     }

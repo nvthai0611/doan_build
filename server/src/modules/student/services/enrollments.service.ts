@@ -9,8 +9,18 @@ export class EnrollmentsService {
     const enrollments = await this.prisma.enrollment.findMany({
       where: { 
         studentId,
+        // Hiển thị các lớp:
+        // - Đang học (studying)
+        // - Đã tốt nghiệp / hoàn thành (graduated)
+        // - Đã dừng giữa chừng (stopped)
+        status: {
+          in: ['studying', 'graduated', 'stopped'],
+        },
         class: {
-          status: 'active' // Chỉ lấy lớp có trạng thái active
+          // Chỉ các lớp đang hoặc đã hoàn thành
+          status: {
+            in: ['active', 'completed'],
+          },
         }
       },
       orderBy: { enrolledAt: 'desc' },

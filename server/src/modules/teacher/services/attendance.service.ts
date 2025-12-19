@@ -33,6 +33,16 @@ export class AttendanceService {
         );
       }
 
+      const sessionUTC = new Date(Date.UTC(
+      session.sessionDate.getUTCFullYear(),
+      session.sessionDate.getUTCMonth(),
+      session.sessionDate.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ));
+
       // Lấy danh sách học sinh đã enrolled trước hoặc cùng ngày với buổi học
       const result = await this.prisma.classSession.findUnique({
         where: { id: sessionId },
@@ -43,7 +53,7 @@ export class AttendanceService {
                 where: {
                   status: 'studying',
                   enrolledAt: {
-                    lte: session.sessionDate,
+                    lte: sessionUTC,
                   },
                 },
                 include: {
@@ -155,9 +165,13 @@ export class AttendanceService {
       const getListExcused = this.prisma.leaveRequestAffectedSession.findMany({
         where:{
           sessionId: sessionId,
-          leaveRequest: {
-            status: 'pending',
+          leaveRequest:{
+            status: {notIn: ['cancelled', 'rejected'] 
+            },
+            studentId: {not: null},
+            teacherId: null,
           },
+          
         },
         include:{
           leaveRequest: {
@@ -211,6 +225,9 @@ export class AttendanceService {
       );
     }
 
+
+
+    //Comment 
     if (!records || records.length === 0) {
       throw new HttpException(
         'Danh sách bản ghi điểm danh không được để trống',

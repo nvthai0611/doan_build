@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { useStudentDetail, useToggleStudentStatus, useUpdateStudentStatus } from "../../hooks/useStudents"
 
@@ -23,6 +23,8 @@ import Loading from "../../../../../components/Loading/LoadingPage"
 export function StudentDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab') || 'info'
   const [accountStatus, setAccountStatus] = useState(true)
 
   // Use custom hooks
@@ -119,7 +121,7 @@ export function StudentDetailPage() {
         </div>
 
         {/* Tabs Navigation */}
-        <Tabs defaultValue="info" className="w-full">
+        <Tabs defaultValue={tabFromUrl} className="w-full">
           <TabsList className="mb-6 bg-transparent border-b border-border rounded-none h-auto p-0 w-full justify-start">
             <TabsTrigger
               value="info"

@@ -18,10 +18,14 @@ export default function SessionDetailModal({ session, isOpen, onClose }: Session
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "scheduled":
-        return <Badge className="bg-blue-100 text-blue-800">Đã lên lịch</Badge>
-      case "completed":
-        return <Badge className="bg-green-100 text-green-800">Đã hoàn thành</Badge>
+      case "has_not_happened":
+        return <Badge className="bg-blue-100 text-blue-800">Chưa diễn ra</Badge>
+      case "happening":
+        return <Badge className="bg-green-100 text-green-800">Đang diễn ra</Badge>
+      case "end":
+        return <Badge className="bg-red-100 text-red-800">Đã kết thúc</Badge>
+      case "day_off":
+        return <Badge className="bg-gray-100 text-gray-800">Nghỉ</Badge>
       case "cancelled":
         return <Badge className="bg-red-100 text-red-800">Đã hủy</Badge>
       default:

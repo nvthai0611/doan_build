@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Search, X, ChevronUp, ChevronDown } from "lu
 
 export interface Column<T> {
   key: string
-  header: string
+  header: string | (() => React.ReactNode)
   width?: string
   align?: "left" | "center" | "right"
   render?: (item: T, index: number) => React.ReactNode
@@ -57,6 +57,7 @@ export interface DataTableProps<T> {
   onSelectionChange?: (selectedItems: string[]) => void
   getItemId?: (item: T) => string
   allData?: T[] // Toàn bộ data sau khi filter (để select all qua các trang)
+  getRowClassName?: (item: T, index: number) => string
 }
 
 export function DataTable<T>({
@@ -81,6 +82,7 @@ export function DataTable<T>({
   onSelectionChange,
   getItemId,
   allData,
+  getRowClassName,
 }: DataTableProps<T>) {
   // State cho search filters
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>({})
@@ -252,6 +254,7 @@ export function DataTable<T>({
           ${hoverable ? "hover:bg-gray-50" : ""}
           ${striped && index % 2 === 1 ? "bg-gray-50" : ""}
           ${onRowClick ? "cursor-pointer" : ""}
+          ${getRowClassName ? getRowClassName(item, index) : ""}
         `}
         onClick={() => onRowClick?.(item, index)}
       >
@@ -368,7 +371,7 @@ export function DataTable<T>({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
@@ -449,7 +452,7 @@ export function DataTable<T>({
                 >
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between">
-                      <span>{column.header}</span>
+                      <span>{typeof column.header === 'function' ? column.header() : column.header}</span>
                       {renderSortButton(column)}
                     </div>
                     {renderSearchInput(column)}

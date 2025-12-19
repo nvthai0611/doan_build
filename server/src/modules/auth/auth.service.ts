@@ -7,6 +7,9 @@ import { RegisterParentDto } from './dto/register-parent.dto';
 import { AlertService } from '../admin-center/services/alert.service';
 import { generateQNCode } from 'src/utils/function.util';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import * as crypto from 'crypto';
+import emailUtil from 'src/utils/email.util';
+import { passwordResetEmailTemplate } from '../shared/template-email/password-reset-template';
 
 @Injectable()
 export class AuthService {
@@ -126,6 +129,24 @@ export class AuthService {
    * Đăng ký tài khoản phụ huynh
    */
   async registerParent(registerDto: RegisterParentDto) {
+    // Defensive check để tránh lỗi runtime khi payload không hợp lệ
+    if (!registerDto || !Array.isArray(registerDto.children)) {
+      throw new BadRequestException('Dữ liệu không hợp lệ: thiếu danh sách con');
+    }
+
+    // Kiểm tra nhanh từng con trước khi vào transaction để tránh lỗi null/undefined
+    for (const child of registerDto.children) {
+      if (!child) {
+        throw new BadRequestException('Dữ liệu con không hợp lệ');
+      }
+      if (!child.fullName || !child.dateOfBirth || !child.gender) {
+        throw new BadRequestException('Vui lòng nhập đầy đủ họ tên, ngày sinh và giới tính cho con');
+      }
+      if (!child.schoolName || !child.schoolName.trim()) {
+        throw new BadRequestException(`Thiếu thông tin trường học cho con ${child.fullName || ''}`);
+      }
+    }
+
     // Tìm role parent và student role TRƯỚC transaction (không thay đổi)
     const parentRole = await this.prisma.role.findUnique({
       where: { name: 'parent' },
@@ -436,7 +457,7 @@ export class AuthService {
     // Trả về CẢ 2 tokens mới
     return {
       accessToken: newAccessToken,
-      refreshToken: newRefreshToken, // ✅ QUAN TRỌNG!
+      refreshToken: newRefreshToken, //Quan trọng!
       user: {
         id: user.id,
         email: user.email,
@@ -630,5 +651,142 @@ export class AuthService {
     });
 
     return { success: true, message: 'Hủy session thành công' };
+  }
+
+  /**
+   * Gửi email reset password
+   */
+  async forgotPassword(email: string) {
+    // Tìm user theo email hoặc username
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { username: email }
+        ]
+      }
+    });
+
+    // Không báo lỗi nếu không tìm thấy (security best practice - tránh email enumeration attack)
+    if (!user) {
+      // Trả về success để tránh email enumeration attack
+      return {
+        success: true,
+        message: 'Nếu email tồn tại, chúng tôi đã gửi link đặt lại mật khẩu đến email của bạn.'
+      };
+    }
+
+    if (!user.isActive) {
+      throw new BadRequestException('Tài khoản đã bị vô hiệu hóa');
+    }
+
+    // Kiểm tra user có email không
+    if (!user.email) {
+      throw new BadRequestException('Tài khoản không có email. Vui lòng liên hệ quản trị viên.');
+    }
+
+    // Tạo reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
+
+    // Invalidate các token cũ của user này
+    await this.prisma.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        used: false,
+      },
+      data: {
+        used: true,
+      },
+    });
+
+    // Lưu token mới vào database
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        token: resetToken,
+        expiresAt: expiresAt,
+        used: false,
+      },
+    });
+
+    // Tạo reset link
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/auth/reset-password?token=${resetToken}`;
+
+    // Gửi email
+    try {
+      await emailUtil(
+        user.email,
+        '🔐 Đặt lại mật khẩu - QNEdu',
+        passwordResetEmailTemplate(user.fullName || user.username, resetLink, 15)
+      );
+    } catch (error) {
+      console.error('Error sending reset password email:', error);
+      throw new BadRequestException('Không thể gửi email. Vui lòng thử lại sau.');
+    }
+
+    return {
+      success: true,
+      message: 'Nếu email tồn tại, chúng tôi đã gửi link đặt lại mật khẩu đến email của bạn.'
+    };
+  }
+
+  /**
+   * Reset password với token
+   */
+  async resetPassword(token: string, newPassword: string) {
+    // Tìm token hợp lệ
+    const resetToken = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        token: token,
+        used: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!resetToken) {
+      throw new BadRequestException('Token không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu lại.');
+    }
+
+    // Kiểm tra user có active không
+    if (!resetToken.user.isActive) {
+      throw new BadRequestException('Tài khoản đã bị vô hiệu hóa');
+    }
+
+    // Hash password mới
+    const hashedPassword = await Hash.hash(newPassword);
+
+    // Update password và đánh dấu token đã sử dụng
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { password: hashedPassword },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { used: true },
+      }),
+    ]);
+
+    // Invalidate tất cả sessions của user (bảo mật - buộc user phải đăng nhập lại)
+    await this.prisma.userSession.updateMany({
+      where: {
+        userId: resetToken.userId,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.',
+    };
   }
 }

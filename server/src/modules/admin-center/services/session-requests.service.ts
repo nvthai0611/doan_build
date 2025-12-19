@@ -9,15 +9,14 @@ export class SessionRequestsService {
     const {
       teacherId,
       classId,
-      status = 'all',
+      status,
       requestType,
       search = '',
       fromDate,
       toDate,
       page = 1,
       limit = 10
-    } = params;
-    
+    } = params.params;
     // Convert string to number for pagination
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
@@ -325,8 +324,84 @@ export class SessionRequestsService {
         }
       });
 
-      // If approved, create the class session
+      // If approved, create the class session (with conflict checks)
       if (action === 'approve') {
+        const sessionDate = existingRequest.sessionDate;
+        const startTime = existingRequest.startTime;
+        const endTime = existingRequest.endTime;
+
+        // 1. Check room conflict (nếu có roomId)
+        if (existingRequest.roomId) {
+          const roomConflict = await tx.classSession.findFirst({
+            where: {
+              roomId: existingRequest.roomId,
+              sessionDate,
+              status: { notIn: ['cancelled', 'end'] },
+              OR: [
+                {
+                  AND: [
+                    { startTime: { lte: startTime } },
+                    { endTime: { gt: startTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { lt: endTime } },
+                    { endTime: { gte: endTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { gte: startTime } },
+                    { endTime: { lte: endTime } },
+                  ],
+                },
+              ],
+            },
+          });
+
+          if (roomConflict) {
+            throw new BadRequestException(
+              'Phòng học đã được sử dụng trong khoảng thời gian này',
+            );
+          }
+        }
+
+        // 2. Check teacher conflict
+        const teacherConflict = await tx.classSession.findFirst({
+          where: {
+            teacherId: existingRequest.teacherId,
+            sessionDate,
+            status: { notIn: ['cancelled', 'end'] },
+            OR: [
+              {
+                AND: [
+                  { startTime: { lte: startTime } },
+                  { endTime: { gt: startTime } },
+                ],
+              },
+              {
+                AND: [
+                  { startTime: { lt: endTime } },
+                  { endTime: { gte: endTime } },
+                ],
+              },
+              {
+                AND: [
+                  { startTime: { gte: startTime } },
+                  { endTime: { lte: endTime } },
+                ],
+              },
+            ],
+          },
+        });
+
+        if (teacherConflict) {
+          throw new BadRequestException(
+            'Giáo viên đã có buổi dạy khác trùng khung giờ này',
+          );
+        }
+
         await tx.classSession.create({
           data: {
             classId: existingRequest.classId,

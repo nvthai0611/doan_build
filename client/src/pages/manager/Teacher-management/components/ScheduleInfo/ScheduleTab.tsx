@@ -18,6 +18,7 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
+  UserCheck,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -49,58 +50,6 @@ import {
 } from "./utils"
 import { useTeachingSessions } from "./hooks"
 import { formatDateString } from "@/utils/format"
-
-/**
- * ===== GIẢI THÍCH CÁCH COMPONENT HOẠT ĐỘNG =====
- * 
- * 1. DATA FLOW (Luồng dữ liệu):
- *    - useTeachingSessions hook gọi API centerOwnerTeacherService.getTeacherSchedule(teacherId, year, month)
- *    - API trả về danh sách sessions (buổi dạy) của giáo viên trong tháng
- *    - Mỗi session có: id, date, title, time, subject, class, room, teacher, students[], attendanceWarnings[]
- *    - Data được lưu vào state sessions: TeachingSession[]
- * 
- * 2. RENDER LOGIC (Logic hiển thị):
- *    Component có 4 chế độ xem (ViewType):
- *    
- *    a) MONTH VIEW (Xem theo tháng):
- *       - Tạo lịch dạng lưới 7 cột (7 ngày trong tuần) x số hàng (số tuần trong tháng)
- *       - Tính số ngày trong tháng: getDaysInMonth(year, month) -> ví dụ: 30 ngày
- *       - Tính ngày đầu tiên rơi vào thứ mấy: getFirstDayOfMonth(year, month) -> ví dụ: thứ 3 (số 2)
- *       - Tạo emptyDays[] để fill các ô trống ở đầu (từ Chủ Nhật đến ngày đầu tiên)
- *       - Mỗi ngày hiển thị sessions của ngày đó: getSessionsForDay(sessions, day, year, month)
- *       - Sessions được filter: session.date.getDate() === day && session.date.getMonth() === month
- *    
- *    b) WEEK VIEW (Xem theo tuần):
- *       - Tạo lưới 8 cột (1 cột giờ + 7 cột cho 7 ngày) x 24 hàng (24 giờ trong ngày)
- *       - Tạo weekDates[]: mảng 7 ngày trong tuần dựa trên currentWeekDate
- *       - startOfWeek = currentWeekDate - currentWeekDate.getDay() (lấy Chủ Nhật đầu tuần)
- *       - Với mỗi ô (hour, day), filter sessions: getSessionsForTimeSlot(sessions, day, hour)
- *       - Filter dựa vào: session.date === day && session.time.startsWith(hour)
- *    
- *    c) DAY VIEW (Xem theo ngày):
- *       - Chưa implement, hiện placeholder
- *    
- *    d) LIST VIEW (Xem danh sách):
- *       - Hiển thị tất cả sessions trong tháng dạng list
- *       - Không có filter theo ngày, chỉ hiển thị thông tin tóm tắt
- * 
- * 3. CALCULATION (Tính toán):
- *    - Tháng trong JavaScript: 0-11 (0 = January, 11 = December)
- *    - selectedMonth từ UI: "1"-"12" (string)
- *    - Khi tính toán: month - 1 (ví dụ: tháng 9 UI -> month 8 trong JS)
- *    - firstDay: 0 = Chủ Nhật, 1 = Thứ 2, ..., 6 = Thứ 7
- *    - Ví dụ: Tháng 9/2025 bắt đầu từ thứ 2 (firstDay = 1)
- *      -> Cần 1 ô trống (Chủ Nhật) trước ngày 1
- * 
- * 4. NAVIGATION (Điều hướng):
- *    - Prev/Next buttons: Chuyển tháng/tuần/ngày dựa theo viewType
- *    - "Hôm nay" button: Về tháng/tuần/ngày hiện tại
- *    - Khi chuyển tháng: cập nhật selectedMonth, selectedYear
- *    - Khi chuyển tuần: cập nhật currentWeekDate, sau đó cập nhật selectedMonth, selectedYear
- */
-
-
-
 
 /**
  * Component ScheduleTab - Hiển thị lịch dạy của giáo viên
@@ -185,23 +134,21 @@ export default function ScheduleTab({
     Number.parseInt(selectedYear), 
     Number.parseInt(selectedMonth) 
   )
+  
+  console.log(sessions);
+  
 
   /**
    * Tính toán số ngày trong tháng đang xem
-   * 
    * Ví dụ: Tháng 9/2025 có 30 ngày -> daysInMonth = 30
-   * 
    * Note: Phải -1 vì JavaScript month bắt đầu từ 0
    */
   const daysInMonth = getDaysInMonth(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
   
   /**
    * Tính toán ngày đầu tiên của tháng rơi vào thứ mấy
-   * 
    * Returns: 0-6 (0 = Chủ Nhật, 1 = Thứ 2, ..., 6 = Thứ 7)
-   * 
    * Ví dụ: 1/9/2025 rơi vào Thứ 2 -> firstDay = 1
-   * 
    * Dùng để tính số ô trống cần thêm ở đầu lịch
    */
   const firstDay = getFirstDayOfMonth(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1)
@@ -215,20 +162,16 @@ export default function ScheduleTab({
   
   /**
    * Tạo mảng các ô trống ở đầu calendar
-   * 
    * Ví dụ: Nếu ngày 1 rơi vào Thứ 2 (firstDay = 1)
    * -> Cần 1 ô trống (Chủ Nhật) -> emptyDays = [0]
-   * 
    * Dùng để align ngày 1 đúng vị trí thứ trong tuần
    */
   const emptyDays = Array.from({ length: firstDay }, (_, i) => i)
 
   /**
    * Xử lý khi user click vào một session
-   * 
    * @param {TeachingSession} session - Session được click
    * @returns void
-   * 
    * Action: Lưu session vào state và mở dialog để hiển thị chi tiết
    */
   const handleSessionClick = (session: TeachingSession) => {
@@ -237,7 +180,6 @@ export default function ScheduleTab({
   }
   /**
    * Tạo key duy nhất cho một ngày để dùng trong expandedDates
-   * 
    * @param {number} day - Ngày trong tháng (1-31)
    * @param {number} year - Năm
    * @param {number} month - Tháng (0-11, JavaScript month)
@@ -252,10 +194,8 @@ export default function ScheduleTab({
 
   /**
    * Toggle expand/collapse cho một ngày cụ thể
-   * 
    * @param {string} dateKey - Date key dạng "YYYY-MM-DD"
    * @returns void
-   * 
    * Action: Thêm/xóa dateKey vào expandedDates Set
    */
   const toggleDateExpand = (dateKey: string) => {
@@ -272,14 +212,8 @@ export default function ScheduleTab({
 
   /**
    * Lấy icon tương ứng với trạng thái điểm danh của học viên
-   * 
-   * @param {string} status - Trạng thái: "present" | "absent" | "late"
+   * @param {string} status - Trạng thái: "present" | "absent" | "excused"
    * @returns {JSX.Element|null} Icon component hoặc null
-   * 
-   * Mapping:
-   * - "present" -> CheckCircle màu xanh
-   * - "absent" -> XCircle màu đỏ
-   * - "late" -> Clock màu vàng
    */
   const getStudentStatusIcon = (status: string) => {
     switch (status) {
@@ -287,8 +221,8 @@ export default function ScheduleTab({
         return <CheckCircle className="w-4 h-4 text-green-500" />
       case "absent":
         return <XCircle className="w-4 h-4 text-red-500" />
-      case "late":
-        return <Clock className="w-4 h-4 text-yellow-500" />
+      case "excused":
+        return <UserCheck className="w-4 h-4 text-blue-500" />
       default:
         return null
     }
@@ -296,17 +230,8 @@ export default function ScheduleTab({
 
   /**
    * Xử lý navigation (Prev/Next buttons)
-   * 
    * @param {("prev" | "next")} direction - Hướng di chuyển
    * @returns void
-   * 
-   * Logic:
-   * - Month view: Chuyển sang tháng trước/sau (navigateMonth)
-   * - Week view: Lùi/tiến 7 ngày từ currentWeekDate
-   *   + Cập nhật currentWeekDate
-   *   + Cập nhật selectedMonth, selectedYear theo tuần mới
-   * - Day view: Chuyển sang ngày trước/sau (navigateDay)
-   * - List view: Giống month view
    */
   const handleNavigation = (direction: "prev" | "next") => {
     switch (viewType) {
@@ -324,9 +249,6 @@ export default function ScheduleTab({
         setCurrentWeekDate(newWeekDate)
         setSelectedMonth((newWeekDate.getMonth() + 1).toString())
         setSelectedYear(newWeekDate.getFullYear().toString())
-        break
-      case "day":
-        navigateDay(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
         break
       case "list":
         navigateMonth(direction, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear)
@@ -368,14 +290,6 @@ export default function ScheduleTab({
           weekDates.push(date)
         }
         return formatWeekRange(weekDates)
-      case "day":
-        const currentDate = new Date(Number.parseInt(selectedYear), Number.parseInt(selectedMonth) - 1, 1);
-        return currentDate.toLocaleDateString("vi-VN", { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })
       case "list":
         return `${MONTH_NAMES[Number.parseInt(selectedMonth) - 1]}, ${selectedYear}`
       default:
@@ -400,8 +314,8 @@ export default function ScheduleTab({
         return renderMonthView()
       case "week":
         return renderWeekView()
-      case "day":
-        return renderDayView()
+      // case "day":
+      //   return renderDayView()
       case "list":
         return renderListView()
       default:
@@ -411,18 +325,14 @@ export default function ScheduleTab({
 
   /**
    * Render Month View - Hiển thị lịch dạng tháng (calendar grid)
-   * 
-   * @returns {JSX.Element} Calendar grid với các sessions
-   * 
+   * @returns {JSX.Element} Calendar grid với các sessions   * 
    * Cấu trúc:
    * - Grid 7 cột (7 ngày trong tuần: CN, T2, T3, T4, T5, T6, T7)
    * - Row 1: Header với tên các ngày trong tuần (DAY_NAMES)
    * - Row 2+: Các ngày trong tháng
-   * 
    * Logic render:
    * 1. Render emptyDays[] - Các ô trống ở đầu (align ngày 1 đúng thứ)
    *    Ví dụ: Nếu ngày 1 là Thứ 3, cần 2 ô trống (CN, T2)
-   * 
    * 2. Render days[] - Các ngày trong tháng (1, 2, 3, ..., 30)
    *    Với mỗi ngày:
    *    - Lấy daySessions = getSessionsForDay(sessions, day, year, month)
@@ -433,7 +343,6 @@ export default function ScheduleTab({
    *    - Nếu có > 3 sessions, hiển thị "+X buổi khác"
    *    - Mỗi session hiển thị: title, time, subject (với màu tương ứng)
    *    - Click vào session -> handleSessionClick() -> Mở dialog chi tiết
-   * 
    * 3. Alerts:
    *    - Nếu session có hasAlert = true, hiển thị icon AlertTriangle
    *    - Nếu ngày có > 1 session, hiển thị badge với số lượng
@@ -489,18 +398,14 @@ export default function ScheduleTab({
                       {day}
                     </span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    {hasMultipleSessions && (
-                      <Badge variant="secondary" className="text-xs px-1 py-0">
-                        {daySessions.length}
-                      </Badge>
-                    )}
-                  </div>
+              
                 </div>
 
                 <div className={`space-y-1 ${isExpanded ? 'max-h-none' : 'max-h-20 overflow-y-auto'}`}>
                   {(isExpanded ? daySessions : daySessions.slice(0, 1)).map((session) => {
                     const isDayOff = session.status === 'day_off';
+                    console.log(session);
+                    
                     const statusText = getSessionStatusText(session);
                     // isEnded: status = "end" hoặc text chứa "Đã kết thúc"
                     const isEnded = session.status === 'end' || statusText.includes('Đã kết thúc');
@@ -563,39 +468,7 @@ export default function ScheduleTab({
     </Card>
   )
 
-  /**
-   * Render Week View - Hiển thị lịch dạng tuần (time grid)
-   * Cấu trúc:
-   * - Grid 8 cột x 24 hàng
-   *   + Cột 1: Giờ (0 giờ, 1 giờ, ..., 23 giờ)
-   *   + Cột 2-8: 7 ngày trong tuần (CN, T2, T3, T4, T5, T6, T7)
-   *   + 24 hàng: 24 giờ trong ngày (0-23)
-   * 
-   * Logic calculation:
-   * 1. Tạo weekDates[]:
-   *    - startOfWeek = currentWeekDate - currentWeekDate.getDay()
-   *      + getDay() trả về: 0 (CN), 1 (T2), ..., 6 (T7)
-   *      + Ví dụ: Nếu currentWeekDate = 9/9/2025 (Thứ 3), getDay() = 2
-   *      + startOfWeek = 9/9 - 2 = 7/9/2025 (Chủ Nhật)
-   *    - Tạo mảng 7 ngày: [7/9, 8/9, 9/9, 10/9, 11/9, 12/9, 13/9]
-   * 
-   * 2. Filter sessions:
-   *    - weekSessions = getSessionsForWeek(sessions, weekDates)
-   *      + Filter các sessions có date nằm trong weekDates[]
-   * 
-   * 3. Render grid:
-   *    - Với mỗi ô (hour, day):
-   *      + hourSessions = getSessionsForTimeSlot(weekSessions, day, hour)
-   *      + Filter các sessions có:
-   *        * session.date === day
-   *        * session.time bắt đầu với hour (ví dụ: "08:00-10:00" -> hour = 8)
-   *      + Hiển thị sessions trong ô (absolute position để overlap nếu có nhiều sessions)
-   *      + Click vào session -> handleSessionClick() -> Mở dialog chi tiết
-   * 
-   * 4. Style:
-   *    - Mỗi session có màu tương ứng với subject (getSubjectColor)
-   *    - Sessions được position absolute với top offset để tránh overlap
-   */
+  
   const renderWeekView = () => {
     // Tạo tuần dựa trên currentWeekDate
     const startOfWeek = new Date(currentWeekDate)
@@ -696,35 +569,15 @@ export default function ScheduleTab({
       </div>
     )
   }
-
-  /**
-   * Render Day View - Hiển thị lịch dạng ngày (chưa implement)
-   * TODO: Implement day view
-   * - Hiển thị chi tiết các sessions trong 1 ngày cụ thể
-   * - Có thể hiển thị dạng timeline với giờ cụ thể
-   * - Cho phép xem chi tiết từng session
-   */
-  const renderDayView = () => (
-    <Card>
-      <CardContent>
-        <div className="text-center py-8">
-          <p className="text-gray-500 dark:text-gray-400">Mai rồi tao làm</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-
   /**
    * Render List View - Hiển thị danh sách các sessions
    * Cấu trúc:
    * - Header: Tiêu đề với tháng/năm + button "Thêm buổi dạy"
    * - Body: Danh sách các sessions (không filter theo ngày)
-   * 
    * Logic render:
    * 1. Nếu sessions.length === 0:
    *    - Hiển thị empty state với icon CalendarDays
    *    - Message: "Không có buổi dạy nào trong tháng này"
-   * 
    * 2. Nếu có sessions:
    *    - Render mỗi session dạng card ngang với thông tin:
    *      + Ngày: session.date.toLocaleDateString("vi-VN")
@@ -735,7 +588,6 @@ export default function ScheduleTab({
    *      + Status: Badge với trạng thái (completed/cancelled/scheduled)
    *      + Alert: Icon AlertTriangle nếu hasAlert = true
    *    - Click vào session -> handleSessionClick() -> Mở dialog chi tiết
-   * 
    * 3. Style:
    *    - Hover: shadow-md để highlight
    *    - Cursor pointer để indicate clickable
@@ -747,10 +599,10 @@ export default function ScheduleTab({
           <CardTitle className="text-lg">
             Danh sách buổi dạy - {MONTH_NAMES[Number.parseInt(selectedMonth) - 1]} {selectedYear}
           </CardTitle>
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Plus className="w-4 h-4 mr-2" />
             Thêm buổi dạy
-          </Button>
+          </Button> */}
         </div>
       </CardHeader>
       <CardContent>
@@ -828,12 +680,10 @@ export default function ScheduleTab({
   /**
    * ===== ERROR STATE =====
    * Khi có lỗi fetch data từ API (error !== null)
-   * 
    * Fallback behavior:
    * - Hiển thị notification màu orange với message lỗi
    * - Vẫn hiển thị calendar UI (với data mock nếu có)
-   * - User vẫn có thể interact với calendar bình thường
-   * 
+   * - User vẫn có thể interact với calendar bình thường    
    * Note: useTeachingSessions hook tự động fallback về mock data khi có lỗi
    */
   if (error) {
@@ -864,7 +714,7 @@ export default function ScheduleTab({
                 <SelectContent>
                   <SelectItem value="month">Tháng</SelectItem>
                   <SelectItem value="week">Tuần</SelectItem>
-                  <SelectItem value="day">Ngày</SelectItem>
+                  {/* <SelectItem value="day">Ngày</SelectItem> */}
                   <SelectItem value="list">Danh sách</SelectItem>
                 </SelectContent>
               </Select>
@@ -1051,13 +901,11 @@ export default function ScheduleTab({
                 {selectedSession.attendanceWarnings.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-3 text-orange-600 flex items-center">
-                      <AlertTriangle className="w-4 h-4 mr-2" />
                       Cảnh báo điểm danh
                     </h4>
                     <div className="space-y-2">
                       {selectedSession.attendanceWarnings.map((warning, index) => (
                         <div key={index} className="flex items-start space-x-2 p-2 bg-orange-50 rounded-lg">
-                          <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
                           <span className="text-sm text-orange-700">{warning}</span>
                         </div>
                       ))}
@@ -1349,13 +1197,12 @@ export default function ScheduleTab({
                 {selectedSession.attendanceWarnings.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-3 text-orange-600 flex items-center">
-                      <AlertTriangle className="w-4 h-4 mr-2" />
                       Cảnh báo điểm danh
                     </h4>
                     <div className="space-y-2">
                       {selectedSession.attendanceWarnings.map((warning, index) => (
                         <div key={index} className="flex items-start space-x-2 p-2 bg-orange-50 rounded-lg">
-                          <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                          
                           <span className="text-sm text-orange-700">{warning}</span>
                         </div>
                       ))}

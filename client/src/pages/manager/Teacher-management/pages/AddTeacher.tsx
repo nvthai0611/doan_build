@@ -346,15 +346,10 @@ export default function AddEmployee() {
       toast.success("Thêm giáo viên thành công!")
       navigate("/center-qn/teachers")
     } catch (error: any) {
-      // Ensure error message is always a string
       let errorMessage = "Có lỗi xảy ra khi thêm giáo viên"
-      
       try {
-        // Handle validation errors from backend
         if (error.response?.data) {
           const errorData = error.response.data
-          
-          // Check if message is an array (backend format: message: [{ field: "error" }])
           if (Array.isArray(errorData.message)) {
             const messages = errorData.message
               .map((item: any) => {
@@ -375,7 +370,6 @@ export default function AddEmployee() {
               .join('; ')
             errorMessage = messages || errorMessage
           }
-          // Check if it's a validation error with multiple fields (errors object)
           else if (errorData.errors && typeof errorData.errors === 'object') {
             const errorMessages = Object.entries(errorData.errors)
               .map(([field, messages]: [string, any]) => {
@@ -388,17 +382,14 @@ export default function AddEmployee() {
               .join('; ')
             errorMessage = errorMessages || errorMessage
           } 
-          // Handle string message
           else if (errorData.message) {
             errorMessage = typeof errorData.message === 'string' 
               ? errorData.message 
               : String(errorData.message)
           } 
-          // Handle string errorData
           else if (typeof errorData === 'string') {
             errorMessage = errorData
           } 
-          // Fallback: convert object to string
           else {
             errorMessage = JSON.stringify(errorData)
           }
@@ -408,7 +399,6 @@ export default function AddEmployee() {
             : String(error.message)
         }
       } catch (parseError) {
-        // Fallback to default message if parsing fails
         console.error('Error parsing error response:', parseError)
       }
       
@@ -575,7 +565,7 @@ export default function AddEmployee() {
 
                 {/* Login Account Section */}
                 <div className="space-y-4">
-                  <h3 className="text-md font-medium text-foreground">Tài khoản đăng nhập</h3>
+                  <h3 className="text-md font-medium text-foreground font-semibold">Tài khoản đăng nhập</h3>
 
                   {/* Username */}
                   <div className="space-y-2">
@@ -589,16 +579,13 @@ export default function AddEmployee() {
                         required
                         className={errors.username ? "border-red-500" : ""}
                       />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                        @qn.edu.vn
-                      </span>
                     </div>
                     <ErrorMessage field="username" />
                   </div>
 
                   {/* Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email xác thực tài khoản <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="email">Email<span className="text-red-500">*</span></Label>
                     <Input
                       id="email"
                       type="email"
@@ -613,7 +600,7 @@ export default function AddEmployee() {
 
                   {/* Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Số điện thoại xác thực tài khoản <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="phone">Số điện thoại<span className="text-red-500">*</span></Label>
                     <Input
                       id="phone"
                       value={formData.phone}
@@ -762,34 +749,6 @@ export default function AddEmployee() {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Ghi chú</h2>
-                <div className="border rounded-lg overflow-hidden">
-                  <ReactQuill
-                    value={formData.notes}
-                    onChange={(value) => handleInputChange("notes", value)}
-                    placeholder="Nhập ghi chú về nhân viên..."
-                    style={{ height: '200px' }}
-                    modules={{
-                      toolbar: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                        [{ 'indent': '-1' }, { 'indent': '+1' }],
-                        [{ 'align': [] }],
-                        ['link', 'image'],
-                        ['clean']
-                      ],
-                    }}
-                    formats={[
-                      'header', 'bold', 'italic', 'underline', 'strike',
-                      'list', 'bullet', 'indent', 'align', 'link', 'image'
-                    ]}
-                    theme="snow"
-                  />
-                </div>
-              </div>
             </div>
           </form>
         </CardContent>

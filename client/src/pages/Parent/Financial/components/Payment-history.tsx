@@ -80,27 +80,26 @@ export function PaymentHistory() {
   // Debounce filter với delay 500ms
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!searchMonth && !searchYear) {
+      if (!searchMonth) {
         setFilteredHistory(history as PaymentHistoryItem[])
         return
       }
 
+      const [year, month] = searchMonth.split('-').map(Number) // "2025-12" → [2025, 12]
+
       const filtered = (history as PaymentHistoryItem[]).filter((item) => {
         const d = item.date ? new Date(item.date) : new Date()
-        const month = d.getMonth() + 1
-        const year = d.getFullYear()
+        const itemMonth = d.getMonth() + 1
+        const itemYear = d.getFullYear()
 
-        const matchMonth = searchMonth ? month === Number(searchMonth) : true
-        const matchYear = searchYear ? year === Number(searchYear) : true
-
-        return matchMonth && matchYear
+        return itemMonth === month && itemYear === year
       })
 
       setFilteredHistory(filtered)
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [searchMonth, searchYear, history])
+  }, [searchMonth, history])
 
   const grouped = groupPaymentsBySchoolYear(filteredHistory)
 
@@ -145,33 +144,39 @@ export function PaymentHistory() {
               <span>Tìm kiếm theo tháng, năm</span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="search-month" className="text-xs">Tháng</Label>
-                <Input
-                  id="search-month"
-                  type="number"
-                  min="1"
-                  max="12"
-                  placeholder="Nhập tháng (1-12)"
-                  value={searchMonth}
-                  onChange={(e) => setSearchMonth(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="search-year" className="text-xs">Năm</Label>
-                <Input
-                  id="search-year"
-                  type="number"
-                  min="2000"
-                  max="2100"
-                  placeholder="Nhập năm"
-                  value={searchYear}
-                  onChange={(e) => setSearchYear(e.target.value)}
-                  className="h-9"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="search-month" className="text-xs mb-1 block">Tháng/Năm</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                  <Input
+                    id="search-month"
+                    type="month"
+                    value={searchMonth}
+                    onChange={(e) => {
+                      const value = e.target.value // format: "2025-12"
+                      setSearchMonth(value)
+                      if (value) {
+                        const [year, month] = value.split('-')
+                        setSearchYear(year)
+                      } else {
+                        setSearchYear('')
+                      }
+                    }}
+                    className="pl-10 pr-10 h-9"
+                    max={new Date().toISOString().slice(0, 7)}
+                  />
+                  {searchMonth && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearFilter}
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-end">
@@ -179,7 +184,7 @@ export function PaymentHistory() {
                   variant="outline"
                   size="sm"
                   onClick={handleClearFilter}
-                  disabled={!searchMonth && !searchYear}
+                  disabled={!searchMonth}
                   className="h-9 w-full"
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -189,11 +194,12 @@ export function PaymentHistory() {
             </div>
 
             {/* Hiển thị kết quả tìm kiếm */}
-            {(searchMonth || searchYear) && (
+            {searchMonth && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Tìm thấy <strong>{filteredHistory.length}</strong> giao dịch</span>
-                {searchMonth && <Badge variant="secondary">Tháng {searchMonth}</Badge>}
-                {searchYear && <Badge variant="secondary">Năm {searchYear}</Badge>}
+                <Badge variant="secondary">
+                  Tháng {searchMonth.split('-')[1]}/{searchMonth.split('-')[0]}
+                </Badge>
               </div>
             )}
           </div>

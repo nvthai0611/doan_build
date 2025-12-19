@@ -129,7 +129,7 @@ export class ScheduleManagementController {
 async updateStudentAttendance(
   @Param('id') sessionId: string,
   @Param('studentId') studentId: string,
-  @Body() body: { status: string; note?: string },
+  @Body() body: { status: string; note?: string; recordedBy?: string },
 ) {
   const data = await this.scheduleService.updateStudentAttendance(
     sessionId,

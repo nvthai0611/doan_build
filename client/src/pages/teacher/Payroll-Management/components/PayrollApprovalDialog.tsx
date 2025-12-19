@@ -33,13 +33,12 @@ const PayrollApprovalDialog: React.FC<any> = ({
 
   const hasAdjustments = Number(payroll.bonuses) > 0 || Number(payroll.deductions) > 0
   const hasBackPay = Number(payroll.backPayAmount || 0) > 0
-
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl overflow-auto max-h-[95vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <CheckCircle className="w-6 h-6 text-green-600" />
             Xác nhận duyệt bảng lương
           </DialogTitle>
           <DialogDescription>
@@ -102,7 +101,7 @@ const PayrollApprovalDialog: React.FC<any> = ({
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-600">Lương từ buổi học</span>
               <span className="font-semibold text-gray-900">
-                {summary?.totalPayout ? Number(summary.totalPayout).toLocaleString('vi-VN') : '0'} đ
+                {(payroll?.totalAmount - (Number(payroll.bonuses) - Number(payroll.deductions)) - (Number(payroll.backPayAmount) || 0)).toLocaleString('vi-VN')} đ
               </span>
             </div>
 

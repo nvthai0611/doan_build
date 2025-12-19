@@ -1,7 +1,9 @@
-import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject, IsDateString, ValidateIf } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsObject, IsDateString, ValidateIf, MaxLength, MinLength } from 'class-validator';
 
 export class CreateClassDto {
   @IsString()
+  @MinLength(2, { message: 'Tên lớp phải có ít nhất 2 ký tự' })
+  @MaxLength(257, { message: 'Tên lớp không được vượt quá 257 ký tự' })
   name: string;
 
   @IsOptional()

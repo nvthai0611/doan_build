@@ -180,19 +180,15 @@ export function LeaveRequestForm() {
       <div className="bg-gradient-to-br from-primary/5 via-background to-primary/10 min-h-screen px-4 py-6">
         <div className="max-w-7xl mx-auto ">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">
+            {/* <h1 className="text-3xl font-bold text-foreground">
               Đơn xin nghỉ của giáo viên
-            </h1>
-            <p className="text-muted-foreground text-base mt-2">
-              Vui lòng điền thông tin xin nghỉ và kiểm tra các buổi học bị ảnh
-              hưởng.
-            </p>
+            </h1> */}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 ">
             {/* Form Section - 1/2 width */}
             <div>
-              <Card className="shadow-xl border rounded-2xl">
+              <Card className="shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-primary to-primary/90 text-primary-foreground pb-8 rounded-t-2xl">
                   <CardTitle className="text-2xl font-bold">
                     Thông tin đơn xin nghỉ
@@ -394,7 +390,7 @@ export function LeaveRequestForm() {
                   <CardDescription className="text-secondary-foreground/80 text-sm">
                     {affectedSessions.length > 0
                       ? `${affectedSessions.length} buổi học trong khoảng thời gian nghỉ`
-                      : 'Chọn ngày nghỉ để xem các buổi học bị ảnh hưởng'}
+                      : ''}
                   </CardDescription>
                 </CardHeader>
 

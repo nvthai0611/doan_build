@@ -139,6 +139,11 @@ export class LeaveRequestsService {
       throw new BadRequestException('Ngày kết thúc phải sau ngày bắt đầu');
     }
 
+    if(startDate < new Date()) {
+      throw new BadRequestException('Ngày nghỉ không được ở quá khứ');
+    }
+
+
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         teacherId: leaveRequestData.teacherId,
@@ -268,16 +273,27 @@ export class LeaveRequestsService {
     };
   }
 
-  async approveLeaveRequest(leaveRequestId: string, action: 'approve' | 'reject', approverId: string, notes?: string) {
+  async approveLeaveRequest(
+    leaveRequestId: string,
+    action: 'approve' | 'reject',
+    approverId: string,
+    notes?: string,
+    replacements?: { sessionId: string; replacementTeacherId?: string }[],
+  ) {
+    // Validate approverId
+    if (!approverId || approverId.trim() === '') {
+      throw new BadRequestException('Thiếu thông tin người duyệt');
+    }
+
     const existingRequest = await this.prisma.leaveRequest.findUnique({
       where: { id: leaveRequestId },
       include: {
         affectedSessions: {
           include: {
-            session: true
-          }
-        }
-      }
+            session: true,
+          },
+        },
+      },
     });
 
     if (!existingRequest) {
@@ -286,6 +302,31 @@ export class LeaveRequestsService {
 
     if (existingRequest.status !== 'pending') {
       throw new BadRequestException('Đơn này đã được xử lý');
+    }
+
+    // Map thông tin buổi học để dùng khi validate
+    const sessionInfoMap = new Map<
+      string,
+      { date: Date; startTime: string; endTime: string }
+    >();
+    existingRequest.affectedSessions.forEach((as) => {
+      if (as.sessionId && as.session) {
+        sessionInfoMap.set(as.sessionId, {
+          date: as.session.sessionDate,
+          startTime: as.session.startTime,
+          endTime: as.session.endTime,
+        });
+      }
+    });
+
+    // Map lựa chọn giáo viên thay thế theo sessionId
+    const replacementsMap = new Map<string, string>();
+    if (Array.isArray(replacements)) {
+      for (const item of replacements) {
+        if (item?.sessionId && item.replacementTeacherId) {
+          replacementsMap.set(item.sessionId, item.replacementTeacherId);
+        }
+      }
     }
 
     // Use transaction to ensure data consistency
@@ -297,7 +338,7 @@ export class LeaveRequestsService {
           status: action === 'approve' ? 'approved' : 'rejected',
           approvedBy: approverId,
           approvedAt: new Date(),
-          notes: notes || existingRequest.notes
+          notes: notes || existingRequest.notes,
         },
         include: {
           teacher: {
@@ -305,38 +346,184 @@ export class LeaveRequestsService {
               user: {
                 select: {
                   fullName: true,
-                  email: true
-                }
-              }
-            }
+                  email: true,
+                },
+              },
+            },
           },
           approvedByUser: {
             select: {
               fullName: true,
-              email: true
-            }
-          }
-        }
+              email: true,
+            },
+          },
+        },
       });
 
-      // If approved, cancel all affected sessions
+      // Nếu approve: hủy các buổi không có GV thay thế, gán substitute cho các buổi có replacementTeacherId
       if (action === 'approve' && existingRequest.affectedSessions.length > 0) {
-        const sessionIds = existingRequest.affectedSessions.map(affected => affected.sessionId);
-        
-        await tx.classSession.updateMany({
-          where: {
-            id: { in: sessionIds }
-          },
-          data: {
-            status: 'cancelled'
+        const allSessionIds = existingRequest.affectedSessions.map(
+          (affected) => affected.sessionId,
+        );
+
+        const sessionsWithReplacement = new Set<string>();
+        for (const sid of replacementsMap.keys()) {
+          sessionsWithReplacement.add(sid);
+        }
+
+        const sessionsWithReplacementArray = Array.from(sessionsWithReplacement);
+
+        // 1. Hủy buổi KHÔNG có giáo viên thay thế
+        const sessionsToCancel = allSessionIds.filter(
+          (sid) => sid && !sessionsWithReplacementArray.includes(sid),
+        );
+
+        if (sessionsToCancel.length > 0) {
+          await tx.classSession.updateMany({
+            where: {
+              id: { in: sessionsToCancel },
+            },
+            data: {
+              status: 'day_off',
+            },
+          });
+        }
+
+        // 2. Gán giáo viên dạy thay cho từng buổi có replacementTeacherId
+        for (const [sessionId, replacementTeacherId] of replacementsMap) {
+          if (!sessionId || !replacementTeacherId) continue;
+
+          // Đảm bảo giáo viên tồn tại
+          const teacher = await tx.teacher.findUnique({
+            where: { id: replacementTeacherId },
+          });
+
+          if (!teacher) {
+            throw new BadRequestException(
+              `Giáo viên thay thế không tồn tại (sessionId: ${sessionId})`,
+            );
           }
+
+          const sessionInfo = sessionInfoMap.get(sessionId);
+
+          // Nếu thiếu thông tin buổi học thì bỏ qua validate thời gian
+          if (sessionInfo) {
+            const { date, startTime, endTime } = sessionInfo;
+
+            // Kiểm tra xung đột lịch cho giáo viên thay thế
+            // Check cả buổi học mà giáo viên này dạy chính (teacherId) và dạy thay (substituteTeacherId)
+            const conflict = await tx.classSession.findFirst({
+              where: {
+                sessionDate: date,
+                id: {
+                  not: sessionId,
+                },
+                status: { notIn: ['cancelled', 'end', 'day_off'] },
+                OR: [
+                  {
+                    // Buổi học mà giáo viên này dạy chính VÀ overlap thời gian
+                    AND: [
+                      { teacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    // Buổi học mà giáo viên này dạy thay VÀ overlap thời gian
+                    AND: [
+                      { substituteTeacherId: replacementTeacherId },
+                      {
+                        OR: [
+                          {
+                            AND: [
+                              { startTime: { lte: startTime } },
+                              { endTime: { gt: startTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { lt: endTime } },
+                              { endTime: { gte: endTime } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { startTime: { gte: startTime } },
+                              { endTime: { lte: endTime } },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+
+            if (conflict) {
+              const classInfo = await tx.class.findUnique({
+                where: { id: conflict.classId },
+                include: {
+                  subject: true,
+                },
+              });
+              throw new BadRequestException(
+                `Giáo viên thay thế đang có lịch dạy trùng thời gian với buổi học được gán: ${classInfo?.name} ${classInfo?.subject?.name} ${conflict.sessionDate.toLocaleDateString()} ${conflict.startTime} - ${conflict.endTime}`,
+              );
+            }
+          }
+
+          await tx.classSession.update({
+            where: { id: sessionId },
+            data: {
+              substituteTeacherId: replacementTeacherId,
+              substituteEndDate: sessionInfo?.date ?? undefined,
+              status: 'has_not_happened',
+            },
+          });
+        }
+
+        //3. Cập nhật lại các lịch mà giáo viên nghỉ được chỉ định dạy thay thế giáo viên khác trước đó thành nghỉ
+        const leaveRequestObj = await tx.leaveRequest.findUnique({
+          where: { id: leaveRequestId },
         });
+        const classSessionReplacement = await tx.classSession.findMany({
+          where: {
+            substituteTeacherId: leaveRequestObj?.teacherId,
+          },
+        });
+        for (const session of classSessionReplacement) {
+          await tx.classSession.update({
+            where: { id: session.id },
+            data: { status: 'day_off' },
+          });
+        }
       }
 
       return updatedRequest;
     });
 
-    return {    
+    return {
       data: {
         id: result.id,
         type: result.requestType,
@@ -346,11 +533,16 @@ export class LeaveRequestsService {
         status: result.status,
         submittedDate: result.createdAt.toISOString().split('T')[0],
         approvedBy: result.approvedByUser?.fullName || null,
-        approvedDate: result.approvedAt ? result.approvedAt.toISOString().split('T')[0] : null,
+        approvedDate: result.approvedAt
+          ? result.approvedAt.toISOString().split('T')[0]
+          : null,
         notes: result.notes,
-        teacherId: result.teacherId
+        teacherId: result.teacherId,
       },
-      message: action === 'approve' ? 'Duyệt đơn xin nghỉ thành công' : 'Từ chối đơn xin nghỉ thành công'
+      message:
+        action === 'approve'
+          ? 'Duyệt đơn xin nghỉ thành công. Các buổi không có giáo viên thay thế sẽ được hủy, các buổi có giáo viên thay thế sẽ giữ lịch với giáo viên dạy thay.'
+          : 'Từ chối đơn xin nghỉ thành công',
     };
   }
 
@@ -437,13 +629,15 @@ export class LeaveRequestsService {
         teacherId: leaveRequest.teacherId,
         createdAt: leaveRequest.createdAt,
         teacherInfo: leaveRequest.teacher?.user,
-        affectedSessions: leaveRequest.affectedSessions?.map(session => ({
+        affectedSessions: leaveRequest.affectedSessions?.map((session) => ({
           id: session.id,
+          sessionId: session.sessionId,
+          substituteTeacherId: session.session.substituteTeacherId,
           sessionDate: session.session.sessionDate,
           startTime: session.session.startTime,
           endTime: session.session.endTime,
           class: session.session.class.name,
-          subject: session.session.class.subject.name
+          subject: session.session.class.subject.name,
         }))
       },
       message: 'Lấy chi tiết đơn xin nghỉ thành công'

@@ -115,13 +115,14 @@ export default function PayrollDetail() {
         return <Badge className="bg-gray-200 text-gray-700">Đã hủy</Badge>
       case "rejected_by_teacher":
         return (
-          <Badge 
-            className="bg-red-100 text-red-800 cursor-pointer hover:bg-red-200 transition-colors"
+          <Button
+            variant="outline" 
+            className="bg-red-100 text-red-800 border-red-300 hover:bg-red-200"
             onClick={() => setShowRejectionModal(true)}
           >
             <XCircle className="w-3 h-3 mr-1" />
             Từ chối - Xem lý do
-          </Badge>
+          </Button>
         )
       default:
         return <Badge variant="outline">{status || "-"}</Badge>
@@ -290,14 +291,8 @@ export default function PayrollDetail() {
       render: (row) => sessionStatusBadge(row.status)
     },
     {
-      key: "studentCount",
-      header: "Số học sinh",
-      render: (row) => `${row.studentCount} HS`
-    },
-    {
       key: "totalRevenue",
       header: "Doanh thu",
-      sortable: true,
       render: (row) => `${fmt(row.totalRevenue)} đ`
     },
     {

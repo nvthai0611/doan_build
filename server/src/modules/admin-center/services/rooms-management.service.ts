@@ -16,6 +16,9 @@ export class RoomsManagementService {
         orderBy: {
           createdAt: 'desc',
         },
+        include: {
+          _count: { select: { classes: true, sessions: true } },
+        },
       });
 
       return rooms.map((room) => ({
@@ -25,6 +28,7 @@ export class RoomsManagementService {
         equipment: room.equipment ? (room.equipment as string[]) : null,
         isActive: room.isActive,
         createdAt: room.createdAt,
+        isInUse: (room as any)._count?.classes > 0 || (room as any)._count?.sessions > 0,
       }));
     } catch (error) {
       throw new HttpException(

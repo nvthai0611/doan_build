@@ -105,9 +105,9 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       if (onSuccess) onSuccess()
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          'Có lỗi xảy ra khi tạo tài khoản học viên'
+      const errorMessage = error?.response?.data?.message ||
+        error?.message ||
+        'Có lỗi xảy ra khi tạo tài khoản học viên'
       toast.error(errorMessage)
     }
   })
@@ -130,13 +130,13 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     setParentSearchLoading(true)
     try {
       const response = await centerOwnerStudentService.findParentByEmail(email)
-      
+
       // Backend returns { data: {...}, message: '...' }
-      const parentData = response.data || response
-      
+      const parentData = response || response?.data
+
       setParentInfo(parentData)
       setParentSearched(true)
-      
+
       if (parentData && parentData.id) {
         // Update parentId in formData
         setFormData(prev => ({ ...prev, parentId: parentData.id }))
@@ -147,7 +147,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
       }
     } catch (error: any) {
       console.error("Error searching parent:", error) // Debug log
-      toast.error("Có lỗi khi tìm kiếm phụ huynh")
+      toast.error(error?.message)
       setParentInfo(null)
       setFormData(prev => ({ ...prev, parentId: undefined }))
       setParentSearched(true)
@@ -162,6 +162,12 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
     if (!formData.fullName.trim()) {
       errors.fullName = "Họ tên là bắt buộc"
+    }else if (formData.fullName.length < 2) {
+        errors.fullName = "Họ và tên phải có ít nhất 2 ký tự"
+    } else if (formData.fullName.length > 30) {
+        errors.fullName = "Họ và tên không được vượt quá 30 ký tự"
+    }else if( !/^[a-zA-ZÀ-ỹ\s]+$/.test(formData.fullName)) {
+        errors.fullName = "Họ và tên chỉ được chứa chữ cái và khoảng trắng"
     }
 
     if (!parentInfo?.id) {
@@ -174,20 +180,43 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
 
     if (!formData.birthDate) {
       errors.birthDate = "Vui lòng chọn ngày sinh"
-    }
+    }else {
+        const birthDate = new Date(formData.birthDate)
+        const today = new Date()
+
+        // Check if future
+        if (birthDate > today) {
+          errors.birthDate = "Ngày sinh không được ở tương lai"
+        } else {
+          // Check age >= 10
+          let age = today.getFullYear() - birthDate.getFullYear()
+          const m = today.getMonth() - birthDate.getMonth()
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--
+          }
+
+          if (age < 12) {
+            errors.birthDate = "Học sinh phải từ 12 tuổi trở lên"
+          }
+        }
+      }
 
     if (!formData.schoolId) {
       errors.schoolId = "Vui lòng chọn trường học"
     }
 
+    if(!formData.parentEmail.trim()) {
+      errors.parentEmail = "Vui lòng nhập email phụ huynh"
+    }
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
-  
+
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin")
       return
@@ -206,28 +235,28 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
     // Generate username: parentUsername_childIndex
     const childIndex = (parentInfo.students?.length || 0) + 1
     const generatedUsername = `${parentInfo.user.username}_${childIndex}`
-    
+
     // Store generated username for success message
     setLastGeneratedUsername(generatedUsername)
 
     // Prepare FormData for file upload
     const formDataToSend = new FormData()
-    
+
     // Add all fields
     formDataToSend.append('fullName', formData.fullName)
     formDataToSend.append('username', generatedUsername) // Auto-generated username
     formDataToSend.append('password', '123456') // Default password
     formDataToSend.append('schoolId', formData.schoolId)
-    
+
     if (formData.gender) formDataToSend.append('gender', formData.gender)
     if (formData.birthDate) formDataToSend.append('birthDate', formData.birthDate)
     if (parentInfo?.id) formDataToSend.append('parentId', parentInfo.id)
-    
+
     // Add subjectIds as JSON array
     if (formData.subjectIds.length > 0) {
       formDataToSend.append('subjectIds', JSON.stringify(formData.subjectIds))
     }
-    
+
     // Add application file if exists
     if (formData.applicationFile) {
       formDataToSend.append('applicationFile', formData.applicationFile)
@@ -255,7 +284,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
   // Handle input change
   const handleInputChange = (field: keyof CreateStudentFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    
+
     // Clear error when user starts typing
     if (formErrors[field]) {
       setFormErrors(prev => {
@@ -275,14 +304,14 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
         toast.error("Kích thước file không được vượt quá 5MB")
         return
       }
-      
+
       // Validate file type (PDF, JPG, PNG)
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
       if (!allowedTypes.includes(file.type)) {
         toast.error("Chỉ chấp nhận file PDF, JPG hoặc PNG")
         return
       }
-      
+
       setFormData(prev => ({ ...prev, applicationFile: file }))
       toast.success("Đã chọn file: " + file.name)
     }
@@ -337,7 +366,7 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
               <User className="w-4 h-4" />
               Thông tin cá nhân
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">
@@ -461,6 +490,9 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
               <p className="text-xs text-gray-500">
                 Nhập email phụ huynh để tự động liên kết (nếu có trong hệ thống)
               </p>
+              {formErrors.parentEmail && (
+                  <p className="text-sm text-red-500">{formErrors.parentEmail}</p>
+                )}
             </div>
 
             {/* Parent Search Result */}
@@ -625,8 +657,8 @@ export function CreateStudentModal({ isOpen, onClose, onSuccess }: CreateStudent
             <Button type="button" variant="outline" onClick={onClose}>
               Hủy
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createStudentMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >

@@ -5,7 +5,7 @@ import hash from 'src/utils/hasing.util';
 import { checkId } from 'src/utils/validate.util';
 import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import emailUtil from 'src/utils/email.util';
-import { generateDroppedStudentEmailTemplate } from 'src/modules/shared/template-email/template-notification';
+import { generateDroppedStudentEmailTemplate, generateRecalculationEmailTemplate } from 'src/modules/shared/template-email/template-notification';
 
 interface CreateStudentDto {
   fullName: string;
@@ -92,7 +92,14 @@ export class StudentManagementService {
           user: student.parent.user
         }
         : null,
-      school: student.school
+      school: student.school,
+      scholarship: student.scholarship
+        ? {
+            id: student.scholarship.id,
+            name: student.scholarship.name,
+            percent: Number(student.scholarship.percent),
+          }
+        : null,
     };
   }
 
@@ -353,6 +360,7 @@ export class StudentManagementService {
     accountStatus?: string,
     customerConnection?: string,
     course?: string,
+    scholarshipStatus?: string,
     page: number = 1,
     limit: number = 10
   ): Promise<StudentResponse> {
@@ -452,6 +460,15 @@ export class StudentManagementService {
             : null;
       }
 
+      // Handle scholarship status filter
+      if (scholarshipStatus && scholarshipStatus.trim() && scholarshipStatus !== 'all') {
+        if (scholarshipStatus === 'has') {
+          where.scholarshipId = { not: null };
+        } else if (scholarshipStatus === 'none') {
+          where.scholarshipId = null;
+        }
+      }
+
       // Handle search filter
       if (search?.trim()) {
         const searchTerm = search.trim();
@@ -508,6 +525,14 @@ export class StudentManagementService {
             user: { select: STUDENT_USER_SELECT },
             parent: { include: PARENT_INCLUDE },
             school: { select: SCHOOL_SELECT },
+            scholarship: {
+              select: {
+                id: true,
+                name: true,
+                percent: true,
+                isActive: true,
+              },
+            },
             enrollments: {
               include: {
                 class: {
@@ -1199,7 +1224,7 @@ export class StudentManagementService {
   }
   }
 
-async createBillingForAttendanceFee(
+  async createBillingForAttendanceFee(
     studentId: string,
     classIds: string[],
     paymentDetails?: {
@@ -1438,4 +1463,253 @@ async createBillingForAttendanceFee(
     }
   }
 
+  async reCreateBillingForStudent(studentId: string, feeRecordIds: string[]): Promise<any> {
+  if (!checkId(studentId)) {
+    throw new HttpException('Invalid student ID', HttpStatus.BAD_REQUEST);
+  }
+
+  if (!feeRecordIds || feeRecordIds.length === 0) {
+    throw new HttpException('Cần chọn ít nhất một hóa đơn để tính toán lại', HttpStatus.BAD_REQUEST);
+  }
+
+  try {
+    
+    // 1. Lấy thông tin các FeeRecord cũ để xác định classIds và period
+    const existingFeeRecords = await this.prisma.feeRecord.findMany({
+      where: {
+        id: { in: feeRecordIds },
+        studentId
+      },
+      include: {
+        class: { select: { id: true, name: true } },
+        feeRecordPayments: {
+          include: {
+            payment: true
+          }
+        }
+      }
+    });
+
+    if (existingFeeRecords.length === 0) {
+      throw new HttpException('Không tìm thấy hóa đơn nào', HttpStatus.NOT_FOUND);
+    }
+
+    // 2. Kiểm tra trạng thái - chỉ cho phép tính lại các hóa đơn chưa thanh toán hoặc đang pending
+    const paidRecords = existingFeeRecords.filter(record => record.status === 'paid');
+    if (paidRecords.length > 0) {
+      throw new HttpException(
+        `Không thể tính toán lại hóa đơn đã thanh toán. Vui lòng không chọn hóa đơn đã thanh toán .`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // 3. Lấy thông tin student
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: { select: { fullName: true, email: true } },
+        parent: { include: { user: { select: { id: true, fullName: true, email: true } } } },
+        scholarship: { select: { percent: true } }
+      }
+    });
+
+    if (!student) {
+      throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+    }
+
+    // 4. Trích xuất classIds từ các FeeRecord cũ
+    const classIds = existingFeeRecords.map(record => record.class.id);
+
+    // 5. Tính toán lại dựa trên điểm danh thực tế
+    const recalculatedData = await this.getStudentAttendanceForFeeCalculation(studentId, classIds);
+      const now = new Date();
+      const deadlinePublish = new Date(now.getFullYear(), now.getMonth(), 2, 23, 0, 0);
+
+    // 6. Transaction: Xóa FeeRecord cũ và tạo mới
+    const transactionResult = await this.prisma.$transaction(async (prisma) => {
+      
+      // 6.1. Xóa các FeeRecord cũ
+      await prisma.feeRecord.deleteMany({
+        where: {
+          id: { in: feeRecordIds }
+        }
+      });
+
+      // 6.2. Tạo FeeRecord mới dựa trên dữ liệu tính toán lại
+      const newFeeRecords = [];
+      const dueDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 7));
+
+      for (const classAttendance of recalculatedData.classAttendances) {
+        if (classAttendance.finalAmount > 0) {
+          const classInfo = await prisma.class.findUnique({
+            where: { id: classAttendance.classId },
+            select: { feeStructure: true }
+          });
+
+          if (!classInfo?.feeStructure) {
+            throw new HttpException(
+              `Không tìm thấy cấu trúc phí cho lớp ${classAttendance.className}`,
+              HttpStatus.BAD_REQUEST
+            );
+          }
+
+          const newFeeRecord = await prisma.feeRecord.create({
+            data: {
+              studentId,
+              feeStructureId: classInfo.feeStructure.id,
+              classId: classAttendance.classId,
+              amount: classAttendance.totalFeeBeforeDiscount,
+              totalAmount: classAttendance.finalAmount,
+              scholarship: classAttendance.scholarshipPercent,
+              dueDate,
+              status: now <= dueDate ? 'pending' : 'overdue',
+              notes: `[TÍNH LẠI] Phí học ${recalculatedData.periodDisplay} - ${classAttendance.className}\n` +
+                `Số buổi: ${classAttendance.attendedSessions}/${classAttendance.totalSessions}\n` +
+                `Học bổng: ${classAttendance.scholarshipPercent}%\n` +
+                `Tính lại vào: ${now.toLocaleString('vi-VN')}`
+            }
+          });
+          newFeeRecords.push(newFeeRecord);
+        }
+      }
+
+      // 6.3. So sánh số tiền cũ vs mới
+      const oldTotalAmount = existingFeeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
+      const newTotalAmount = newFeeRecords.reduce((sum, record) => sum + Number(record.totalAmount), 0);
+      const difference = newTotalAmount - oldTotalAmount;
+      return {
+        cancelledRecords: existingFeeRecords.map(record => ({
+          id: record.id,
+          classId: record.classId,
+          className: record.class.name,
+          oldAmount: Number(record.totalAmount),
+          status: now <= deadlinePublish ? 'calculated' : 'pending'
+        })),
+        newFeeRecords: newFeeRecords.map(record => ({
+          id: record.id,
+          classId: record.classId,
+          className: recalculatedData.classAttendances.find(ca => ca.classId === record.classId)?.className,
+          newAmount: Number(record.totalAmount),
+          status: record.status,
+          dueDate: record.dueDate
+        })),
+        comparison: {
+          oldTotalAmount,
+          newTotalAmount,
+          difference,
+          differenceNote: difference > 0 
+            ? `Tăng ${Math.abs(difference).toLocaleString('vi-VN')} VND` 
+            : difference < 0 
+            ? `Giảm ${Math.abs(difference).toLocaleString('vi-VN')} VND` 
+            : 'Không thay đổi'
+        },
+        recalculatedAt: now,
+        attendanceDetails: recalculatedData
+      };
+    });
+
+    // 7. Gửi email thông báo cho phụ huynh (nếu có)
+    if(now >= new Date(Date.UTC(now.getFullYear(), now.getMonth(), 3))) {
+      try {
+      if (student.parent?.user?.email) {
+        const emailContent = generateRecalculationEmailTemplate({
+          studentName: student.user.fullName,
+          parentName: student.parent.user.fullName,
+          period: recalculatedData.periodDisplay,
+          comparison: transactionResult.comparison,
+          newFeeRecords: transactionResult.newFeeRecords,
+          recalculatedAt: transactionResult.recalculatedAt
+        });
+
+        await emailUtil(
+          student.parent.user.email,
+          `[Thông báo] Hóa đơn học phí đã được tính toán lại - ${student.user.fullName}`,
+          emailContent
+        );
+      }
+    } catch (mailError) {
+      console.error('Lỗi gửi mail thông báo (không ảnh hưởng transaction):', mailError);
+    }
+    }
+
+    return {
+      data: transactionResult,
+      message: 'Tính toán lại hóa đơn thành công'
+    };
+
+  } catch (error) {
+    if (error instanceof HttpException) throw error;
+    console.error('Error recreating billing for student:', error);
+    throw new HttpException(
+      'Lỗi khi tính toán lại hóa đơn học phí',
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
+
+async changeStatusFeeRecords(feeRecordIds: string[], newStatus: string, studentId: string){
+  if(!feeRecordIds || feeRecordIds.length === 0) {
+    throw new HttpException('Cần chọn ít nhất một hóa đơn', HttpStatus.BAD_REQUEST);
+  }
+
+  // Validate newStatus hợp lệ
+  const validStatuses = ['pending', 'calculated', 'processing', 'partially_paid', 'paid', 'overdue', 'cancelled'];
+  if(!validStatuses.includes(newStatus)){
+    throw new HttpException(`Trạng thái không hợp lệ. Cho phép: ${validStatuses.join(', ')}`, HttpStatus.BAD_REQUEST);
+  }
+
+  try {
+    const checkExistingStudent = await this.prisma.student.findUnique({
+      where: { id: studentId }
+    })
+    if(!checkExistingStudent){
+      throw new HttpException('Học viên không tồn tại', HttpStatus.NOT_FOUND);
+    }
+
+    // Lấy thông tin các hóa đơn được chọn
+    const existingFeeRecords = await this.prisma.feeRecord.findMany({
+      where: {
+        id: { in: feeRecordIds },
+        studentId
+      }
+    })
+
+    if(existingFeeRecords.length !== feeRecordIds.length) {
+      throw new HttpException('Một số hóa đơn không tồn tại hoặc không thuộc về học viên này', HttpStatus.BAD_REQUEST);
+    }
+
+    // KIỂM TRA: Không cho phép thay đổi status của hóa đơn đã thanh toán (paid)
+    const paidRecords = existingFeeRecords.filter(record => record.status === 'paid');
+    if(paidRecords.length > 0) {
+      throw new HttpException(
+        `Không thể thay đổi trạng thái của ${paidRecords.length} hóa đơn đã thanh toán. Vui lòng bỏ chọn các hóa đơn đã thanh toán.`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const changeStatus = await this.prisma.feeRecord.updateMany({
+      where:{
+        id: { in: feeRecordIds },
+        studentId
+      },
+      data:{
+        status: newStatus,
+      }
+    })
+
+    
+    return {
+      data: {
+        updatedCount: changeStatus.count,
+        newStatus
+      },
+      message: `Đã cập nhật trạng thái của ${changeStatus.count} hóa đơn"`
+    }
+  } catch (error) {
+    console.error('Error in changeStatusFeeRecords:', error);
+    if(error instanceof HttpException) throw error;
+    throw new HttpException('Lỗi khi cập nhật trạng thái hóa đơn', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+}
 }

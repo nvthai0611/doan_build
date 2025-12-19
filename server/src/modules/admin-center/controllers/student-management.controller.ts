@@ -31,6 +31,7 @@ export class StudentManagementController {
              query.accountStatus,
              query.customerConnection,
              query.course,
+             query.scholarshipStatus,
              parseInt(query.page),
              parseInt(query.limit)
         );
@@ -529,73 +530,171 @@ export class StudentManagementController {
     studentId, 
     body.classIds
   );
-}
-@Post(':studentId/create-billing')
-async createBillingForAttendanceFee(
-  @Param('studentId') studentId: string,
-  @Body() createBillingDto: {
-    classIds: string[];
-    paymentDetails?: {
-      payNow: boolean;
-      paymentMethod?: 'cash' | 'bank_transfer';
-      amount?: number;
-      notes?: string;
-    };
-  }
-) {
-  try {
-    // Validate required fields
-    if (!studentId) {
-      throw new HttpException('Thiếu ID học sinh', HttpStatus.BAD_REQUEST);
     }
 
-    if (!createBillingDto.classIds || !Array.isArray(createBillingDto.classIds) || createBillingDto.classIds.length === 0) {
-      throw new HttpException('Cần chọn ít nhất một lớp học', HttpStatus.BAD_REQUEST);
+    @Post(':studentId/create-billing')
+    async createBillingForAttendanceFee(
+    @Param('studentId') studentId: string,
+    @Body() createBillingDto: {
+        classIds: string[];
+        paymentDetails?: {
+        payNow: boolean;
+        paymentMethod?: 'cash' | 'bank_transfer';
+        amount?: number;
+        notes?: string;
+        };
+    }
+    ) {
+    try {
+        // Validate required fields
+        if (!studentId) {
+        throw new HttpException('Thiếu ID học sinh', HttpStatus.BAD_REQUEST);
+        }
+
+        if (!createBillingDto.classIds || !Array.isArray(createBillingDto.classIds) || createBillingDto.classIds.length === 0) {
+        throw new HttpException('Cần chọn ít nhất một lớp học', HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate payment details if provided
+        if (createBillingDto.paymentDetails?.payNow) {
+        if (!createBillingDto.paymentDetails.paymentMethod) {
+            throw new HttpException('Thiếu phương thức thanh toán', HttpStatus.BAD_REQUEST);
+        }
+
+        if (createBillingDto.paymentDetails.amount !== undefined && createBillingDto.paymentDetails.amount <= 0) {
+            throw new HttpException('Số tiền thanh toán phải lớn hơn 0', HttpStatus.BAD_REQUEST);
+        }
+        }
+
+        // Validate classIds format
+        const invalidClassIds = createBillingDto.classIds.filter(id => !id || typeof id !== 'string');
+        if (invalidClassIds.length > 0) {
+        throw new HttpException('Tất cả ID lớp học phải là chuỗi hợp lệ', HttpStatus.BAD_REQUEST);
+        }
+
+        return await this.studentManagementService.createBillingForAttendanceFee(
+        studentId,
+        createBillingDto.classIds,
+        createBillingDto.paymentDetails
+        );
+    } catch (error) {
+        if (error instanceof HttpException) {
+        throw error;
+        }
+        
+        console.error('Lỗi khi tạo hóa đơn phí học:', error);
+        
+        // Handle specific error types
+        if (error.message.includes('không tồn tại')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        
+        if (error.message.includes('không đủ') || error.message.includes('bằng 0')) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        
+        throw new HttpException(
+        error.message || 'Lỗi server khi tạo hóa đơn phí học',
+        HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
     }
 
-    // Validate payment details if provided
-    if (createBillingDto.paymentDetails?.payNow) {
-      if (!createBillingDto.paymentDetails.paymentMethod) {
-        throw new HttpException('Thiếu phương thức thanh toán', HttpStatus.BAD_REQUEST);
-      }
-
-      if (createBillingDto.paymentDetails.amount !== undefined && createBillingDto.paymentDetails.amount <= 0) {
-        throw new HttpException('Số tiền thanh toán phải lớn hơn 0', HttpStatus.BAD_REQUEST);
-      }
+    @ApiOperation({ summary: 'Tính toán lại hóa đơn học phí cho học sinh' })
+    @Post(':studentId/recreate-billing')
+    async reCreateBillingForStudent(
+    @Param('studentId') studentId: string,
+    @Body() reCreateBillingDto: {
+        feeRecordIds: string[];
+    }
+    ) {
+    try {
+    // 1. Validate studentId
+    if (!studentId || !studentId.trim()) {
+      throw new HttpException(
+        'Thiếu ID học sinh',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
-    // Validate classIds format
-    const invalidClassIds = createBillingDto.classIds.filter(id => !id || typeof id !== 'string');
-    if (invalidClassIds.length > 0) {
-      throw new HttpException('Tất cả ID lớp học phải là chuỗi hợp lệ', HttpStatus.BAD_REQUEST);
+    // 2. Validate feeRecordIds
+    if (!reCreateBillingDto.feeRecordIds || !Array.isArray(reCreateBillingDto.feeRecordIds)) {
+      throw new HttpException(
+        'feeRecordIds phải là một mảng',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
-    return await this.studentManagementService.createBillingForAttendanceFee(
-      studentId,
-      createBillingDto.classIds,
-      createBillingDto.paymentDetails
+    if (reCreateBillingDto.feeRecordIds.length === 0) {
+      throw new HttpException(
+        'Cần chọn ít nhất một hóa đơn để tính toán lại',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // 3. Validate format của từng feeRecordId
+    const invalidFeeRecordIds = reCreateBillingDto.feeRecordIds.filter(
+      id => !id || typeof id !== 'string' || !id.trim()
     );
+    
+    if (invalidFeeRecordIds.length > 0) {
+      throw new HttpException(
+        'Tất cả ID hóa đơn phải là chuỗi hợp lệ',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // 4. Remove duplicates
+    const uniqueFeeRecordIds = [...new Set(reCreateBillingDto.feeRecordIds)];
+
+    // 5. Call service
+    return await this.studentManagementService.reCreateBillingForStudent(
+      studentId,
+      uniqueFeeRecordIds
+    );
+
   } catch (error) {
     if (error instanceof HttpException) {
       throw error;
     }
-    
-    console.error('Lỗi khi tạo hóa đơn phí học:', error);
-    
-    // Handle specific error types
+
+    console.error('Lỗi khi tính toán lại hóa đơn học phí:', error);
+
+    // Handle specific error messages
     if (error.message.includes('không tồn tại')) {
       throw new HttpException(error.message, HttpStatus.NOT_FOUND);
     }
-    
-    if (error.message.includes('không đủ') || error.message.includes('bằng 0')) {
+
+    if (error.message.includes('không tìm thấy')) {
+      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+    }
+
+    if (error.message.includes('đã thanh toán')) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
-    
+
+    if (error.message.includes('không thể')) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+
     throw new HttpException(
-      error.message || 'Lỗi server khi tạo hóa đơn phí học',
+      error.message || 'Lỗi server khi tính toán lại hóa đơn học phí',
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
 }
-
+  @ApiOperation({ summary: 'Thay đổi trạng thái của các hóa đơn học phí' })
+  @Put(':studentId/fee-records/status')
+  async changeStatusFeeRecord( @Param('studentId') studentId,@Body() body:{feeRecordIds: string[], status: string}){
+    try {
+        const result = await this.studentManagementService.changeStatusFeeRecords(
+            body.feeRecordIds,
+            body.status,
+            studentId,
+        );
+        return result;
+    } catch (error) {
+        
+    }
+  }
 }

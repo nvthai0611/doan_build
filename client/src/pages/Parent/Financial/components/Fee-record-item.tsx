@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Scroll } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface FeeRecord {
@@ -56,6 +56,12 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
         return status
     }
   }
+
+  if(!fee){
+    return <div>
+      <p>Không có dữ liệu học phí</p>
+    </div>
+  }
   
   return (
     <Card className={`transition-all ${isSelected ? "ring-2 ring-primary" : ""}`}>
@@ -79,11 +85,11 @@ export function FeeRecordItem({ fee, isSelected, isExpanded, onSelect, onExpand 
             <div className="bg-muted/50 rounded-lg p-3 mb-3">
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg">📚</span>
+                  <span className="text-lg"><Scroll /></span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground text-sm">{fee.courseName}</p>
-                  <p className="text-xs text-muted-foreground">{fee.attendanceCount || 0} buổi đã học</p>
+                  {/* <p className="text-xs text-muted-foreground">{fee.attendanceCount || 0} buổi đã học</p> */}
                   <p className="text-xs text-muted-foreground">{fee.feeStructureAmount}/ 1 buổi</p>
                 </div>
               </div>

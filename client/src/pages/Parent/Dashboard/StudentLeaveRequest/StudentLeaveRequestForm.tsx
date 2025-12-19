@@ -101,8 +101,8 @@ export function StudentLeaveRequestForm() {
       if (!selectedChild) {
         setAvailableClasses([]);
         setSelectedClass('');
-        return;
-      }
+      return;
+    }
       try {
         const classes = await parentStudentLeaveRequestService.getChildClasses(selectedChild);
         const normalized = Array.isArray(classes)
@@ -279,10 +279,10 @@ export function StudentLeaveRequestForm() {
                   </div>
 
                   {/* Class Selection */}
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     <Label htmlFor="classId" className="text-base font-semibold">
                       Chọn lớp <span className="text-destructive">*</span>
-                    </Label>
+                      </Label>
                     <Select 
                       value={selectedClass} 
                       onValueChange={setSelectedClass}
@@ -302,7 +302,7 @@ export function StudentLeaveRequestForm() {
                     {selectedChild && Array.isArray(availableClasses) && availableClasses.length === 0 && (
                       <p className="text-xs text-muted-foreground mt-1">Không tìm thấy lớp nào cho học sinh này.</p>
                     )}
-                  </div>
+                      </div>
 
                   {/* Session Selection (multi) */}
                   <div className="space-y-2">
@@ -492,7 +492,7 @@ export function StudentLeaveRequestForm() {
         </div>
       </DialogContent>
     </Dialog>
-  </div>
+    </div>
   );
 }
 

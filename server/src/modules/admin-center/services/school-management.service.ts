@@ -5,7 +5,7 @@ import { UpdateSchoolDto } from '../dto/school/update-school.dto';
 
 @Injectable()
 export class SchoolManagementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Lấy danh sách tất cả trường học

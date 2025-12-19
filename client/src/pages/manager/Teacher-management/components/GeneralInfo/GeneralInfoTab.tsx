@@ -346,7 +346,7 @@ export default function GeneralInfoTab({
     // Validate form
     if (!validateAccountForm()) {
       toast({
-        title: "Lỗi",
+        title: "không thể lưu",
         description: "Vui lòng kiểm tra lại thông tin đã nhập",
         variant: "destructive",
       })
@@ -406,11 +406,11 @@ export default function GeneralInfoTab({
         errorMessage = String(error.message)
       }
       
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "Không thể lưu",
+      //   description: errorMessage,
+      //   variant: "destructive",
+      // })
     } finally {
       setIsAccountLoading(false)
     }
@@ -430,7 +430,7 @@ export default function GeneralInfoTab({
     // Validate form
     if (!validateForm()) {
       toast({
-        title: "Lỗi",
+        title: "không thể lưu",
         description: "Vui lòng kiểm tra lại thông tin đã nhập",
         variant: "destructive",
       })
@@ -445,6 +445,8 @@ export default function GeneralInfoTab({
       editData.phone !== teacher.phone ||
       editData.username !== teacher.username ||
       editData.notes !== (teacher.notes || '') ||
+      editData.schoolName !== (teacher.schoolName || teacher.school?.name || '') ||
+      editData.schoolAddress !== (teacher.schoolAddress || teacher.school?.address || '') ||
       contractImageFile !== null ||
       subjectsChanged
 
@@ -564,11 +566,11 @@ export default function GeneralInfoTab({
         errorMessage = String(error.message)
       }
       
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "Không thể lưu",
+      //   description: errorMessage,
+      //   variant: "destructive",
+      // })
     } finally {
       setIsLoading(false)
     }
@@ -674,11 +676,11 @@ export default function GeneralInfoTab({
               <p className="text-blue-600 font-medium mt-1">{teacher.username}</p>
             </div>
             <div>
-              <Label className="text-xs text-gray-500">Số điện thoại xác thực</Label>
+              <Label className="text-xs text-gray-500">Số điện thoại</Label>
               <p className="text-blue-600 font-medium mt-1">{teacher.phone || 'Chưa cập nhật'}</p>
             </div>
             <div>
-              <Label className="text-xs text-gray-500">Email xác thực</Label>
+              <Label className="text-xs text-gray-500">Email</Label>
               <p className="text-blue-600 font-medium mt-1">{teacher.email}</p>
             </div>
           </CardContent>
@@ -884,44 +886,6 @@ export default function GeneralInfoTab({
                   </div>
                 )}
               </div>
-
-              {/* Ghi chú - full width */}
-              <div className="md:col-span-2">
-                <Label className="text-sm text-gray-600">Ghi chú</Label>
-                {isEditing ? (
-                  <div className="border rounded-lg overflow-hidden mt-1">
-                    <ReactQuill
-                      value={editData.notes || ''}
-                      onChange={(value) => handleInputChange('notes', value)}
-                      placeholder="Nhập ghi chú về giáo viên..."
-                      style={{ height: '200px' }}
-                      modules={{
-                        toolbar: [
-                          [{ 'header': [1, 2, 3, false] }],
-                          ['bold', 'italic', 'underline', 'strike'],
-                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                          [{ 'indent': '-1' }, { 'indent': '+1' }],
-                          [{ 'align': [] }],
-                          ['link', 'image'],
-                          ['clean']
-                        ],
-                      }}
-                      formats={[
-                        'header', 'bold', 'italic', 'underline', 'strike',
-                        'list', 'bullet', 'indent', 'align', 'link', 'image'
-                      ]}
-                      theme="snow"
-                    />
-                  </div>
-                ) : (
-                  <div 
-                    className="text-base mt-1 text-gray-600 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ 
-                      __html: teacher.notes || 'Không có ghi chú' 
-                    }}
-                  />
-                )}
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -1013,7 +977,6 @@ export default function GeneralInfoTab({
                  className={`${accountErrors.username ? 'border-red-500' : ''}`}
                  placeholder="Nhập tên đăng nhập"
                />
-               <span className="text-gray-400 text-sm">@centerup</span>
              </div>
              {accountErrors.username && (
                <p className="text-sm text-red-500 mt-1">{accountErrors.username}</p>

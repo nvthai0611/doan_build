@@ -317,6 +317,53 @@ async createBillingForAttendanceFee(
   }
 }
 
+async reCreateBillingForStudent(
+  studentId: string,
+  feeRecordIds: string[]
+): Promise<any> {
+  try {
+    // Validate input
+    if (!studentId || !feeRecordIds || feeRecordIds.length === 0) {
+      throw new Error('Thiếu thông tin studentId hoặc feeRecordIds');
+    }
+
+    const response = await apiClient.post(
+      `/admin-center/student-management/${studentId}/recreate-billing`,
+      { feeRecordIds }
+    );
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error recreating billing for student:', error);
+    
+    // Enhanced error handling
+    const errorMessage = error.response?.data?.message || error.message;
+    
+    if (error.response?.status === 400) {
+      if (errorMessage.includes('đã thanh toán')) {
+        throw new Error('Không thể tính toán lại hóa đơn đã thanh toán. Vui lòng hoàn tiền trước.');
+      }
+      throw new Error(errorMessage || 'Dữ liệu không hợp lệ');
+    }
+    
+    if (error.response?.status === 404) {
+      throw new Error('Không tìm thấy học sinh hoặc hóa đơn');
+    }
+    
+    if (error.response?.status === 500) {
+      throw new Error('Lỗi server. Vui lòng thử lại sau.');
+    }
+    
+    throw new Error(errorMessage || 'Có lỗi xảy ra khi tính toán lại hóa đơn');
+  }
+}
+
+async changeStatusFeeRecords(feeRecordIds: string[], status: string, studentId: string): Promise<any> {
+  const response = await ApiService.put(`/admin-center/student-management/${studentId}/fee-records/status`, { feeRecordIds, status });
+  
+  return response as any;
+}
+
   
 }
 

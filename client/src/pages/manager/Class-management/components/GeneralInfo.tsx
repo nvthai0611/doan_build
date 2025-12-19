@@ -83,25 +83,14 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const { toast } = useToast();
-  
 
-  
-  // Fetch subjects, rooms, and grades
+
+
+  // Fetch subjects và grades
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
       const response = await apiClient.get('/subjects');
-      return response;
-    },
-    enabled: !!classData.id,
-    staleTime: 3000,
-    refetchOnWindowFocus: true
-  });
-
-  const { data: roomsData } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: async () => {
-      const response = await apiClient.get('/rooms');
       return response;
     },
     enabled: !!classData.id,
@@ -145,7 +134,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     staleTime: 30000,
     refetchOnWindowFocus: true
   });
-  
+
   // Update pending requests count
   useEffect(() => {
     if (requestsData) {
@@ -167,31 +156,29 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
 
   const subjects = (subjectsData as any)?.data || [];
-  const rooms = (roomsData as any)?.data || [];
   const grades = (gradesData as any)?.data || [];
   const sessions = (sessionsData as any)?.data || [];
   const hasSessions = sessions.length > 0;
-  
+
   // Logic kiểm tra có thể edit hay không dựa trên status
   const hasActualDates = Boolean(classData.actualStartDate || classData.actualEndDate);
-  
+
   // - DRAFT, READY: Có thể edit tất cả
   // - ACTIVE: Không thể edit (trừ khi có quyền đặc biệt)
   // - COMPLETED, CANCELLED: Không thể edit
   // - SUSPENDED: Có thể edit một số thông tin
-  const canEditGeneralInfo = classData.status === ClassStatus.DRAFT || 
-                            classData.status === ClassStatus.READY ||
-                            classData.status === ClassStatus.SUSPENDED ||
-                            classData.status === ClassStatus.COMPLETED; 
-                            
-  
+  const canEditGeneralInfo = classData.status === ClassStatus.DRAFT ||
+    classData.status === ClassStatus.READY ||
+    classData.status === ClassStatus.SUSPENDED ||
+    classData.status === ClassStatus.COMPLETED;
+
+
   const canEditActualDates = canEditGeneralInfo && hasActualDates && !hasSessions;
   const canEditExpectedDates = canEditGeneralInfo;
   // Sync editData when classData changes
   useEffect(() => {
     setEditData({
       name: classData.name || '',
-      roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
       subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -202,10 +189,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       academicYear: classData.academicYear || '',
     });
   }, [classData]);
-  
+
   const [editData, setEditData] = useState({
     name: classData.name || '',
-    roomId: classData.roomId || classData.room?.id || '',
     gradeId: classData.gradeId || '',
     subjectId: classData.subjectId || classData.subject?.id || '',
     expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -220,7 +206,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     setIsEditing(true);
     setErrors({}); // Clear errors when starting to edit
   };
-  
+
 
   // Validation functions
   const validateRequired = (value: string): boolean => {
@@ -271,10 +257,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     }
 
     // Kiểm tra xem có thay đổi gì không
-    const hasChanges = 
+    const hasChanges =
       editData.name.trim() !== classData.name ||
       editData.description !== (classData.description || '') ||
-      editData.roomId !== (classData.roomId || '') ||
       editData.gradeId !== (classData.gradeId || '') ||
       editData.subjectId !== (classData.subjectId || classData.subject?.id || '') ||
       editData.status !== classData.status ||
@@ -298,8 +283,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       const updateData = {
         name: editData.name.trim(),
         description: editData.description,
-        // Xử lý roomId: chỉ gửi nếu có giá trị hợp lệ, không gửi nếu rỗng hoặc 'none'
-        ...(editData.roomId && editData.roomId !== 'none' && editData.roomId !== '' ? { roomId: editData.roomId } : {}),
         // Xử lý gradeId: chỉ gửi nếu có giá trị hợp lệ
         ...(editData.gradeId && editData.gradeId !== 'none' ? { gradeId: editData.gradeId } : {}),
         // Xử lý subjectId: chỉ gửi nếu có giá trị hợp lệ
@@ -307,8 +290,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         status: editData.status,
         academicYear: editData.academicYear,
         // Gửi expectedStartDate nếu được phép edit
-        ...(canEditExpectedDates && editData.expectedStartDate ? { 
-          expectedStartDate: convertDateToISO(editData.expectedStartDate) 
+        ...(canEditExpectedDates && editData.expectedStartDate ? {
+          expectedStartDate: convertDateToISO(editData.expectedStartDate)
         } : {}),
         // Gửi actualDates nếu được phép edit
         ...(canEditActualDates ? {
@@ -319,20 +302,21 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
 
       console.log('Sending update data:', updateData);
       await classService.updateClass(classData.id, updateData);
-      
+
       toast({
         title: "Thành công",
         description: "Cập nhật thông tin lớp học thành công",
       });
-      
+
       setIsEditing(false);
       // Refresh class data - có thể emit event hoặc callback để parent component refetch
       window.location.reload(); // Temporary solution
     } catch (error: any) {
       // Hiển thị chi tiết lỗi validation từ backend
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.message || 
-                          "Có lỗi xảy ra khi cập nhật lớp học";
+      const errorMessage = error.response?.data?.message ||
+        error.response?.message ||
+        error.message ||
+        "Có lỗi xảy ra khi cập nhật lớp học";
       toast({
         title: "Lỗi",
         description: Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage,
@@ -343,11 +327,76 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     }
   };
 
+  // Chuẩn hóa chuỗi (lowercase + bỏ dấu) để so khớp linh hoạt
+  const normalizeText = (text?: string) =>
+    (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  // Tự động suy ra khối/môn từ tên lớp (khi đang chỉnh sửa và được phép chỉnh)
+  const autoSelectFromName = (name: string) => {
+    const canAutoSelect =
+      isEditing &&
+      (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY);
+    if (!canAutoSelect) return {};
+
+    const lowerName = normalizeText(name);
+    const nextUpdate: Record<string, string> = {};
+
+    // Match grade: theo tên hoặc level số (ví dụ: "lớp 6", "khối 6", "6A2", "9a2")
+    if (grades && grades.length > 0) {
+      const matchedGrade = grades.find((g: any) => {
+        const gradeName = normalizeText(g.name);
+        const level = g.level?.toString() || '';
+        if (!level) return false;
+
+        // Các pattern phổ biến
+        const patterns = [
+          `lop ${level}`,
+          `lớp ${level}`,
+          `khoi ${level}`,
+          `khối ${level}`,
+          `k${level}`,
+        ];
+
+        // Cho phép theo format 9a, 9a2, 9b1 ...
+        const levelRegex = new RegExp(`\\b${level}[a-z0-9]*\\b`);
+
+        return (
+          (gradeName && gradeName.length > 0 && lowerName.includes(gradeName)) ||
+          patterns.some((p) => lowerName.includes(p)) ||
+          levelRegex.test(lowerName)
+        );
+      });
+      if (matchedGrade) {
+        nextUpdate.gradeId = matchedGrade.id;
+      }
+    }
+
+    // Match subject: theo tên môn
+    if (subjects && subjects.length > 0) {
+      const matchedSubject = subjects.find((s: any) => {
+        const subjectName = normalizeText(s.name);
+        return subjectName && lowerName.includes(subjectName);
+      });
+      if (matchedSubject) {
+        nextUpdate.subjectId = matchedSubject.id;
+      }
+    }
+
+    return nextUpdate;
+  };
+
   const handleInputChange = (field: string, value: any) => {
-    setEditData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setEditData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'name') {
+        const auto = autoSelectFromName(value);
+        return { ...next, ...auto };
+      }
+      return next;
+    });
 
     // Clear error khi user nhập
     if (errors[field]) {
@@ -358,10 +407,29 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
     }
   };
 
+  // Khi đã tải danh sách khối/môn và đang chỉnh sửa, tự chọn nếu tên lớp khớp
+  useEffect(() => {
+    const canAutoSelect =
+      isEditing &&
+      (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY);
+    if (!canAutoSelect || !editData.name) return;
+
+    const auto = autoSelectFromName(editData.name);
+    if (!auto.gradeId && !auto.subjectId) return;
+
+    setEditData(prev => {
+      const next = { ...prev, ...auto };
+      // Tránh setState không cần thiết
+      if (next.gradeId === prev.gradeId && next.subjectId === prev.subjectId) {
+        return prev;
+      }
+      return next;
+    });
+  }, [editData.name, grades, subjects, isEditing, classData.status]);
+
   const handleCancel = () => {
     setEditData({
       name: classData.name || '',
-      roomId: classData.roomId || classData.room?.id || '',
       gradeId: classData.gradeId || '',
       subjectId: classData.subjectId || classData.subject?.id || '',
       expectedStartDate: formatDateForInput(classData.expectedStartDate),
@@ -395,12 +463,12 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       };
 
       await classService.updateClassSchedule(classData.id, scheduleData);
-      
+
       toast({
         title: "Thành công",
         description: "Cập nhật lịch học thành công",
       });
-      
+
       setIsScheduleModalOpen(false);
       // Refresh class data
       window.location.reload(); // Temporary solution
@@ -490,12 +558,12 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
       setIsAssignTeacherLoading(true);
       try {
         await classService.removeTeacher(classData.id, classData.teacherId);
-        
+
         toast({
           title: "Thành công",
           description: "Đã gỡ giáo viên khỏi lớp học",
         });
-        
+
         // Refresh class data
         window.location.reload(); // Temporary solution
       } catch (error: any) {
@@ -525,16 +593,15 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
               Chi tiết lớp học
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm">
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsShareModalOpen(true)}
                 className="relative"
               >
@@ -550,11 +617,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   <Button variant="ghost" size="sm" onClick={handleCancel}>
                     <Undo className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleSave}
-                    disabled={isLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED }
+                    disabled={isLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED}
                   >
                     {isLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -564,9 +631,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   </Button>
                 </div>
               ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleEdit}
                   // disabled={!canEditGeneralInfo}
                   title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
@@ -601,7 +668,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Khối lớp <span className="text-red-500">*</span>
                 </label>
-                {isEditing && classData.status === ClassStatus.DRAFT ? (
+                {isEditing && (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY) ? (
                   <Select
                     value={editData.gradeId}
                     onValueChange={(value) => handleInputChange('gradeId', value)}
@@ -625,37 +692,15 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 )}
                 <ErrorMessage field="gradeId" />
               </div>
-            
+
 
               <div>
                 <label className="text-sm font-medium text-gray-500">
-                  Chọn phòng học
+                  Phòng học
                 </label>
-                {isEditing ? (
-                  <Select
-                  disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED}
-                    value={editData.roomId}
-                    onValueChange={(value) => handleInputChange('roomId', value)}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Chọn phòng học" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Chọn phòng học</SelectItem>
-                      {rooms &&
-                        rooms.length > 0 &&
-                        rooms.map((room: any) => (
-                          <SelectItem disabled={classData.status === ClassStatus.ACTIVE || classData.status === ClassStatus.COMPLETED} key={room.id} value={room.id}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-base mt-1">
-                    {classData.roomName || classData.room?.name || 'Chưa phân công'}
-                  </p>
-                )}
+                <p className="text-base mt-1 text-gray-700">
+                  {classData.roomName || classData.room?.name || 'Chưa phân công'}
+                </p>
               </div>
 
               {/* Lịch học hàng tuần */}
@@ -663,10 +708,10 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-500">
                     Lịch học hàng tuần
-                    
+
                   </label>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => setIsScheduleModalOpen(true)}
                     // disabled={isScheduleLoading || !canEditGeneralInfo}
@@ -703,7 +748,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                 <label className="text-sm font-medium text-gray-500">
                   Môn học <span className="text-red-500">*</span>
                 </label>
-                {isEditing && classData.status === ClassStatus.DRAFT ? (
+                {isEditing && (classData.status === ClassStatus.DRAFT || classData.status === ClassStatus.READY) ? (
                   <Select
                     value={editData.subjectId}
                     onValueChange={(value) => handleInputChange('subjectId', value)}
@@ -772,11 +817,11 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     </div>
                   );
                 }
-                
+
                 // Hiển thị actualStartDate cho các lớp ACTIVE, SUSPENDED, COMPLETED
-                if (classData.status === ClassStatus.ACTIVE || 
-                    classData.status === ClassStatus.SUSPENDED || 
-                    classData.status === ClassStatus.COMPLETED) {
+                if (classData.status === ClassStatus.ACTIVE ||
+                  classData.status === ClassStatus.SUSPENDED ||
+                  classData.status === ClassStatus.COMPLETED) {
                   return (
                     <div>
                       <label className="text-sm font-medium text-gray-500">
@@ -801,7 +846,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     </div>
                   );
                 }
-                
+
                 // Hiển thị cho các status khác (CANCELLED)
                 return (
                   <div>
@@ -819,7 +864,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   </div>
                 );
               })()}
-           
+
 
               {/* Ngày kết thúc - hiển thị dựa trên status */}
               {classData.actualEndDate && (
@@ -875,10 +920,10 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     />
                   </div>
                 ) : (
-                  <div 
+                  <div
                     className="text-base mt-1 text-gray-500 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ 
-                      __html: classData.description || 'Chưa có mô tả' 
+                    dangerouslySetInnerHTML={{
+                      __html: classData.description || 'Chưa có mô tả'
                     }}
                   />
                 )}
@@ -893,24 +938,22 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
               Giáo viên phụ trách
             </CardTitle>
             <div className="flex items-center gap-2">
               {classData.teacher ? (
                 <>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setIsTransferTeacherSheetOpen(true)}
                     disabled={isAssignTeacherLoading || classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED}
                     title={classData.status === ClassStatus.CANCELLED || classData.status === ClassStatus.COMPLETED ? 'Không thể chuyển giáo viên cho lớp đã hủy hoặc hoàn thành' : 'Chuyển giáo viên'}
                   >
-                    <Users className="h-4 w-4" />
                     Chuyển giáo viên
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={handleRemoveTeacher}
                     disabled={isAssignTeacherLoading || !canEditGeneralInfo || classData.status === ClassStatus.COMPLETED}
@@ -919,20 +962,19 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                     {isAssignTeacherLoading ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <X className="h-4 w-4" />
+                      <></>
                     )}
                     Gỡ giáo viên
                   </Button>
                 </>
               ) : (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setIsAssignTeacherModalOpen(true)}
                   disabled={isAssignTeacherLoading || !canEditGeneralInfo}
                   title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                 >
-                  <UserPlus className="h-4 w-4" />
                   Gán giáo viên
                 </Button>
               )}
@@ -942,7 +984,7 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardContent>
           {classData.teacher ? (
             <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-              <Avatar 
+              <Avatar
                 className="h-16 w-16 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                 onClick={() => {
                   if (classData.teacher?.teacherId) {
@@ -950,9 +992,9 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   }
                 }}
               >
-                <AvatarImage 
-                  src={classData.teacher?.avatar} 
-                  alt={classData.teacher.name} 
+                <AvatarImage
+                  src={classData.teacher?.avatar}
+                  alt={classData.teacher.name}
                 />
                 <AvatarFallback>
                   {classData.teacher.fullName?.charAt(0) || 'GV'}
@@ -985,9 +1027,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Chưa có giáo viên phụ trách</p>
-              <p className="text-sm">Nhấn "Gán giáo viên" để chọn giáo viên cho lớp học này</p>
+              <p className="text-sm">Nhấn `Gán giáo viên` để chọn giáo viên cho lớp học này</p>
             </div>
           )}
         </CardContent>
@@ -1022,8 +1063,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         onSubmit={handleScheduleUpdate}
         isLoading={isScheduleLoading}
         expectedStartDate={
-          isEditing && editData.expectedStartDate 
-            ? editData.expectedStartDate 
+          isEditing && editData.expectedStartDate
+            ? editData.expectedStartDate
             : classData?.expectedStartDate
         }
       />

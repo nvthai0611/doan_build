@@ -175,10 +175,10 @@ export default function StudentLeaveRequestList() {
           );
         }
         return (
-          <div className="text-sm">
-            <div>{formatDate(item.startDate)}</div>
-            <div className="text-muted-foreground">→ {formatDate(item.endDate)}</div>
-          </div>
+        <div className="text-sm">
+          <div>{formatDate(item.startDate)}</div>
+          <div className="text-muted-foreground">→ {formatDate(item.endDate)}</div>
+        </div>
         );
       },
     },
@@ -216,17 +216,17 @@ export default function StudentLeaveRequestList() {
         <div className="flex items-center justify-center gap-2">
           <Button title="Xem chi tiết" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewDetails(item)}>
             <Eye className="h-4 w-4" />
-          </Button>
-          {item.status === 'pending' && (
-            <>
+            </Button>
+            {item.status === 'pending' && (
+              <>
               <Button title="Duyệt đơn" variant="ghost" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleApprove(item)}>
                 <CheckCircle className="h-4 w-4" />
               </Button>
               <Button title="Từ chối" variant="ghost" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => handleReject(item)}>
                 <XCircle className="h-4 w-4" />
               </Button>
-            </>
-          )}
+              </>
+            )}
         </div>
       ),
     },

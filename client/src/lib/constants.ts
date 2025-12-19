@@ -193,7 +193,7 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   [SessionStatus.END]: 'Đã kết thúc',
   [SessionStatus.HAS_NOT_HAPPENED]: 'Chưa diễn ra',
   [SessionStatus.DAY_OFF]: 'Nghỉ',
-  [SessionStatus.CANCELLED]: 'Đã hủy',
+  [SessionStatus.CANCELLED]: 'Đã xóa',
 };
 
 export const SESSION_STATUS_COLORS: Record<SessionStatus, string> = {

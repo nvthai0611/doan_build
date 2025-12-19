@@ -26,7 +26,7 @@ export class EmailNotificationProcessor {
   async handleSendStudentAbsenceEmail(job: Job<StudentAbsenceEmailData>) {
     const startTime = Date.now();
     console.log(
-      `📧 [Job ${job.id}] Bắt đầu xử lý email thông báo vắng mặt\n` +
+      `[Job ${job.id}] Bắt đầu xử lý email thông báo vắng mặt\n` +
       `   - Học sinh: ${job.data.studentName}\n` +
       `   - Lớp: ${job.data.className}\n` +
       `   - Email: ${job.data.to}`
@@ -63,14 +63,14 @@ export class EmailNotificationProcessor {
       );
 
       // Subject cho email
-      const emailSubject = `⚠️ Thông báo vắng học - ${studentName} - ${className}`;
+      const emailSubject = `Thông báo vắng học - ${studentName} - ${className}`;
 
       // Gửi email
       await emailUtil(to, emailSubject, emailHtml);
       
       const duration = Date.now() - startTime;
       console.log(
-        `✅ [Job ${job.id}] Email đã gửi thành công trong ${duration}ms\n` +
+        `[Job ${job.id}] Email đã gửi thành công trong ${duration}ms\n` +
         `   - Học sinh: ${studentName}\n` +
         `   - Email phụ huynh: ${to}\n` +
         `   - SessionId: ${sessionId}\n` +
@@ -88,7 +88,7 @@ export class EmailNotificationProcessor {
     } catch (error: any) {
       const duration = Date.now() - startTime;
       console.error(
-        `❌ [Job ${job.id}] Lỗi sau ${duration}ms\n` +
+        `[Job ${job.id}] Lỗi sau ${duration}ms\n` +
         `   - Học sinh: ${studentName}\n` +
         `   - Email: ${to}\n` +
         `   - Lỗi: ${error.message}\n` +
@@ -112,7 +112,7 @@ export class EmailNotificationProcessor {
     const { emails } = job.data;
     
     console.log(
-      `📧 [Batch Job ${job.id}] Bắt đầu gửi ${emails.length} email thông báo vắng mặt`
+      `[Batch Job ${job.id}] Bắt đầu gửi ${emails.length} email thông báo vắng mặt`
     );
 
     const results = {
@@ -134,7 +134,7 @@ export class EmailNotificationProcessor {
           emailData.note
         );
 
-        const emailSubject = `⚠️ Thông báo vắng học - ${emailData.studentName} - ${emailData.className}`;
+        const emailSubject = `Thông báo vắng học - ${emailData.studentName} - ${emailData.className}`;
 
         await emailUtil(emailData.to, emailSubject, emailHtml);
 
@@ -144,7 +144,7 @@ export class EmailNotificationProcessor {
           email: emailData.to,
         });
 
-        console.log(`✅ Đã gửi email cho ${emailData.studentName}`);
+        console.log(`Đã gửi email cho ${emailData.studentName}`);
       } catch (error: any) {
         results.failed.push({
           studentId: emailData.studentId,
@@ -153,7 +153,7 @@ export class EmailNotificationProcessor {
           error: error.message,
         });
 
-        console.error(`❌ Lỗi khi gửi email cho ${emailData.studentName}: ${error.message}`);
+        console.error(`Lỗi khi gửi email cho ${emailData.studentName}: ${error.message}`);
       }
 
       // Delay nhỏ giữa các email để tránh spam
@@ -162,7 +162,7 @@ export class EmailNotificationProcessor {
 
     const duration = Date.now() - startTime;
     console.log(
-      `📊 [Batch Job ${job.id}] Hoàn thành trong ${duration}ms\n` +
+      `[Batch Job ${job.id}] Hoàn thành trong ${duration}ms\n` +
       `   - Thành công: ${results.success.length}/${results.total}\n` +
       `   - Thất bại: ${results.failed.length}/${results.total}`
     );

@@ -51,95 +51,141 @@ interface PayrollDetailResponse {
 export class PayrollService {
   constructor(private prisma: PrismaService) {}
 
-  async getTeacherPayroll(
-    params: GetTeacherPayrollParams,
-  ): Promise<PayrollResponse> {
-    try {
-      const { teacherId, month, status, page = 1, limit = 10 } = params;
+async getTeacherPayroll(
+  params: GetTeacherPayrollParams,
+): Promise<PayrollResponse> {
+  try {
+    const { teacherId, month, status, page = 1, limit = 10 } = params;
+    
+    const where: any = {
+      teacherId,
+      status: { not: 'pending' },
+    };
 
-      const where: any = {
-        teacherId,
-        status: { not: 'pending' },
+    if (status && status !== 'all') {  
+      where.status = status;
+    }
+    
+
+    // ✅ Nếu có month → lấy 1 bảng lương của tháng đó
+    if (month && month.match(/^\d{4}-\d{2}$/)) {
+      const [year, monthNum] = month.split('-');
+      const startDate = new Date(Date.UTC(parseInt(year), parseInt(monthNum) - 1, 1, 0, 0, 0, 0));
+      const endDate = new Date(Date.UTC(parseInt(year), parseInt(monthNum), 0, 23, 59, 59, 999));
+
+      where.adminPublishedAt = {
+        gte: startDate,
+        lte: endDate,
       };
 
-      if (month && month.match(/^\d{4}-\d{2}$/)) {
-        const [year, monthNum] = month.split('-');
-        const startDate = new Date(`${year}-${monthNum}-01`);
-        const endDate = new Date(
-          startDate.getFullYear(),
-          startDate.getMonth() + 1,
-          0,
-        );
-
-        where.periodStart = {
-          gte: startDate,
-          lte: endDate,
-        };
-      }
-
-      if (status && status !== 'all') {
-        where.status = status;
-      }
-
-      const skip = (page - 1) * limit;
-      const take = limit;
-
-      const [payrolls, totalItems] = await Promise.all([
-        this.prisma.payroll.findMany({
-          where,
-          include: {
-            payoutDetails: {
-              include: {
-                session: {
-                  include: {
-                    class: {
-                      select: {
-                        id: true,
-                        name: true,
-                        classCode: true,
-                      },
+      const payroll = await this.prisma.payroll.findFirst({
+        where,
+        include: {
+          payoutDetails: {
+            include: {
+              session: {
+                include: {
+                  class: {
+                    select: {
+                      id: true,
+                      name: true,
+                      classCode: true,
                     },
                   },
                 },
               },
             },
-            teacher: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
+          },
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ adminPublishedAt: 'desc' }, { id: 'desc' }],
+      });
+
+      return {
+        data: payroll ? [payroll] : [],
+        pagination: {
+          currentPage: 1,
+          totalPages: payroll ? 1 : 0,
+          totalItems: payroll ? 1 : 0,
+          itemsPerPage: 1,
+        },
+        message: 'Lấy bảng lương thành công',
+      };
+    }
+
+    // ✅ Không có month → lấy danh sách tất cả bảng lương (có phân trang)
+    const skip = (page - 1) * limit;
+    const take = limit;
+        
+    const [payrolls, totalItems] = await this.prisma.$transaction([
+      this.prisma.payroll.findMany({
+        where,
+        include: {
+          payoutDetails: {
+            include: {
+              session: {
+                include: {
+                  class: {
+                    select: {
+                      id: true,
+                      name: true,
+                      classCode: true,
+                    },
                   },
                 },
               },
             },
           },
-          orderBy: [{ periodEnd: 'desc' }, { id: 'desc' }],
-          skip,
-          take,
-        }),
-        this.prisma.payroll.count({ where }),
-      ]);
-
-      const totalPages = Math.ceil(totalItems / limit);
-
-      return {
-        data: payrolls,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems,
-          itemsPerPage: limit,
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
         },
-        message: 'Lấy danh sách lương thành công',
-      };
-    } catch (error) {
-      console.error('Error getting teacher payroll:', error);
-      throw error;
+        orderBy: [{ adminPublishedAt: 'desc' }, { id: 'desc' }],
+        skip,
+        take,
+      }),
+      this.prisma.payroll.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+    if(payrolls.length ===0){
+      throw new HttpException('Không có dữ liệu bảng lương', 404);
     }
+    return {
+      data: payrolls,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        itemsPerPage: limit,
+      },
+      message: 'Lấy danh sách lương thành công',
+    };
+  } catch (error) {
+    console.error('Error getting teacher payroll:', error);
+    throw error;
   }
+}
 
   async getPayrollDetail(
     params: GetPayrollDetailParams,
@@ -150,8 +196,8 @@ export class PayrollService {
         classId,
         startDate,
         endDate,
-        page = 1,
-        limit = 10,
+        page,
+        limit,
       } = params;
 
       // ✅ Lấy thông tin payroll cơ bản

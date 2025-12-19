@@ -1,4 +1,17 @@
-import { IsEmail, IsString, IsOptional, IsArray, IsDateString, IsEnum, IsBoolean, IsUUID, IsNotEmpty, MinLength, MaxLength, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsOptional,
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsBoolean,
+  IsUUID,
+  IsNotEmpty,
+  MinLength,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 import { Gender } from 'src/common/constants';
 
 export class CreateTeacherDto {
@@ -11,13 +24,25 @@ export class CreateTeacherDto {
 
   @IsString({ message: 'Họ và tên phải là chuỗi' })
   @IsNotEmpty({ message: 'Họ và tên không được để trống' })
-  @MinLength(5, { message: 'Họ và tên phải có ít nhất 5 ký tự' })
+  @MinLength(5, {
+    message: 'Họ và tên phải có ít nhất 5 ký tự tối đa 50 ký tự',
+  })
+  @MaxLength(50, {
+    message: 'Họ và tên phải có ít nhất 5 ký tự tối đa 50 ký tự',
+  })
+  @Matches(/^[a-zA-ZÀ-ỹ\s]+$/, {
+    message: 'Họ và tên chỉ được chứa chữ cái và khoảng trắng',
+  })
   fullName: string;
 
   @IsString({ message: 'Tên đăng nhập phải là chuỗi' })
   @IsNotEmpty({ message: 'Tên đăng nhập không được để trống' })
-  @MinLength(3, { message: 'Tên đăng nhập phải có ít nhất 3 ký tự' })
-  @MaxLength(20, { message: 'Tên đăng nhập không được quá 20 ký tự' })
+  @MinLength(3, {
+    message: 'Tên đăng nhập phải có ít nhất 3 ký tự , tối đa 20 ký tự',
+  })
+  @MaxLength(20, {
+    message: 'Tên đăng nhập phải có ít nhất 3 ký tự , tối đa 20 ký tự',
+  })
   @Matches(/^[a-zA-Z0-9_]+$/, {
     message: 'Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới',
   })
@@ -25,8 +50,8 @@ export class CreateTeacherDto {
 
   @IsOptional()
   @IsString({ message: 'Số điện thoại phải là chuỗi' })
-  @Matches(/^[0-9]{10,11}$/, {
-    message: 'Số điện thoại phải có 10-11 chữ số và chỉ chứa số',
+  @Matches(/^0[0-9]{9,10}$/, {
+    message: 'Số điện thoại phải bắt đầu bằng số 0 và có 10-11 chữ số',
   })
   phone?: string;
 

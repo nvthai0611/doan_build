@@ -13,12 +13,10 @@ import { Gender } from 'src/common/constants';
 
 const USER_ROLE_VALUES = [
   'admin',
-  'manager',
   'center_owner',
   'teacher',
   'parent',
   'student',
-  'staff',
 ] as const;
 
 export type UserRoleType = (typeof USER_ROLE_VALUES)[number];

@@ -12,7 +12,7 @@ import {
   HttpStatus,
   HttpException,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -25,17 +25,21 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('Admin Center - Teacher Management')
 @Controller('/teachers')
 export class TeacherManagementController {
-  constructor(private readonly teacherManagementService: TeacherManagementService) { }
+  constructor(
+    private readonly teacherManagementService: TeacherManagementService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('contractImage'))
-  create(@Body() createTeacherDto: CreateTeacherDto, @UploadedFile() file?: any) {
+  create(
+    @Body() createTeacherDto: CreateTeacherDto,
+    @UploadedFile() file?: any,
+  ) {
     // Thêm file vào DTO
     if (file) {
       createTeacherDto.contractImage = file;
     }
-
 
     return this.teacherManagementService.createTeacher(createTeacherDto);
   }
@@ -43,6 +47,28 @@ export class TeacherManagementController {
   @Get()
   findAll(@Query() queryDto: any) {
     return this.teacherManagementService.findAllTeachers(queryDto);
+  }
+
+  @Get('payrolls')
+  @HttpCode(HttpStatus.OK)
+  getAllPayrolls(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('teacherName') teacherName?: string,
+  ) {
+    return this.teacherManagementService.getAllPayRolls({
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      status,
+      month,
+      year,
+      teacherId,
+      teacherName,
+    });
   }
 
   @Get(':id')
@@ -55,7 +81,7 @@ export class TeacherManagementController {
   update(
     @Param('id') id: string,
     @Body() updateTeacherDto: UpdateTeacherDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
     if (file) {
       updateTeacherDto.contractImage = file;
@@ -78,12 +104,16 @@ export class TeacherManagementController {
   getSchedule(
     @Param('id') id: string,
     @Query('year') year?: string,
-    @Query('month') month?: string
+    @Query('month') month?: string,
   ) {
     const yearNum = year ? parseInt(year) : undefined;
     const monthNum = month ? parseInt(month) : undefined;
 
-    return this.teacherManagementService.getTeacherSchedule(id, yearNum, monthNum);
+    return this.teacherManagementService.getTeacherSchedule(
+      id,
+      yearNum,
+      monthNum,
+    );
   }
 
   @Post('bulk-import-validate')
@@ -95,7 +125,7 @@ export class TeacherManagementController {
   @Post('bulk-import')
   @HttpCode(HttpStatus.OK)
   bulkImport(@Body() body: { teachers: any[] }) {
-    console.log("Creating teachers:", body.teachers.length);
+    console.log('Creating teachers:', body.teachers.length);
 
     return this.teacherManagementService.bulkImportTeachers(body.teachers);
   }
@@ -116,12 +146,15 @@ export class TeacherManagementController {
     @Body('startDate') startDate: string,
     @Body('expiryDate') expiryDate: string,
     @Body('teacherSalaryPercent') teacherSalaryPercent: string,
-    @Body('notes') notes?: string
+    @Body('notes') notes?: string,
   ) {
     // Validate teacherSalaryPercent
     const salaryPercent = parseFloat(teacherSalaryPercent);
     if (isNaN(salaryPercent) || salaryPercent < 0 || salaryPercent > 100) {
-      throw new HttpException('teacherSalaryPercent must be between 0 and 100', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'teacherSalaryPercent must be between 0 and 100',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     return this.teacherManagementService.uploadContractForTeacher(
@@ -131,7 +164,7 @@ export class TeacherManagementController {
       startDate,
       expiryDate,
       notes,
-      salaryPercent
+      salaryPercent,
     );
   }
 
@@ -139,8 +172,11 @@ export class TeacherManagementController {
   @HttpCode(HttpStatus.OK)
   deleteTeacherContract(
     @Param('id') teacherId: string,
-    @Param('contractId') contractId: string
+    @Param('contractId') contractId: string,
   ) {
-    return this.teacherManagementService.deleteTeacherContract(teacherId, contractId);
+    return this.teacherManagementService.deleteTeacherContract(
+      teacherId,
+      contractId,
+    );
   }
 }

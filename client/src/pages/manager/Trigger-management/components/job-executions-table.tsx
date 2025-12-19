@@ -33,6 +33,16 @@ interface JobExecutionsTableProps {
   loading?: boolean // NEW: to show table loading
   formatDate: (date: string | Date) => string
 }
+const jobTypeLabels: Record<string, string> = {
+  "bill_generation": "Tạo hóa đơn",
+  "bill_publishing": "Công bố hóa đơn",
+  "change-status-session": "Thay đổi trạng thái buổi học",
+  "daily_teacher_payout": "Chi trả giáo viên hàng ngày",
+  "fee_reminder_due": "Nhắc nhở học phí đến hạn",
+  "fee_reminder_early": "Nhắc nhở học phí sớm",
+  "payroll_notification": "Thông báo bảng lương",
+  "teacher_payroll_generation": "Tạo bảng lương giáo viên"
+}
 
 export function JobExecutionsTable({
   jobs,
@@ -47,7 +57,6 @@ export function JobExecutionsTable({
   formatDate 
 }: JobExecutionsTableProps) {
   const statuses = ["all", "running", "completed", "failed"]
-  console.log("job", jobTypes);
   
   // Quick date filter handler
   const handleQuickDateFilter = (preset: string) => {
@@ -73,6 +82,7 @@ export function JobExecutionsTable({
       dateRange: { startDate, endDate: now },
     })
   }
+  
 
   // Helper functions
   const getStatusIcon = (status: string) => {
@@ -102,14 +112,14 @@ export function JobExecutionsTable({
   }
 
   const formatJobType = (jobType: string) => {
-    return jobType.replace(/_/g, " ").charAt(0).toUpperCase() + jobType.slice(1).replace(/_/g, " ")
-  }
+  return jobTypeLabels[jobType] || jobType.replace(/_/g, " ").charAt(0).toUpperCase() + jobType.slice(1).replace(/_/g, " ")
+}
 
   // Define columns for DataTable
   const columns: Column<any>[] = [
     {
       key: "status",
-      header: "Status",
+      header: "Trạng thái",
       width: "80px",
       align: "center",
       render: (job) => getStatusIcon(job.status),
@@ -118,7 +128,7 @@ export function JobExecutionsTable({
     },
     {
       key: "jobType",
-      header: "Job Type",
+      header: "Loại công việc",
       render: (job) => <span className="font-medium text-sm">{formatJobType(job.jobType)}</span>,
       sortKey: "jobType",
       searchPlaceholder: "Search job type...",
@@ -131,16 +141,15 @@ export function JobExecutionsTable({
     },
     {
       key: "durationMs",
-      header: "Duration",
+      header: "Thời lượng",
       render: (job) => <span className="text-sm">{formatDuration(job.durationMs)}</span>,
       sortKey: "durationMs",
     },
     {
       key: "items",
-      header: "Items",
-      align: "right",
+      header: "Thành công",
       render: (job) => (
-        <div className="flex justify-end gap-2">
+        <div className="flex  gap-2">
           <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs">
             {job.successCount || 0} ✓
           </Badge>
@@ -154,7 +163,7 @@ export function JobExecutionsTable({
     },
     {
       key: "action",
-      header: "Action",
+      header: "Hành động",
       width: "100px",
       align: "right",
       render: (job) => (
@@ -167,7 +176,7 @@ export function JobExecutionsTable({
           }}
           className="text-primary hover:bg-primary/10 h-7 px-2"
         >
-          View
+          Xem chi tiết
         </Button>
       ),
     },
@@ -216,7 +225,7 @@ export function JobExecutionsTable({
                   {jobTypes.map((type) => (
                     <SelectItem key={type} value={type}>
                       {/* {formatJobType(type)} */}
-                      {type.label}
+                      {formatJobType(type)}
                     </SelectItem>
                   ))}
                 </SelectContent>
