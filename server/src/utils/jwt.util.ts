@@ -19,7 +19,7 @@ export default class JWT {
       },
       process.env.JWT_SECRET as string,
       {
-        expiresIn: process.env.JWT_ACCESS_EXPIRE || '1h',
+        expiresIn: (process.env.JWT_ACCESS_EXPIRE || '1h') as any,
       }
     );
   }
@@ -36,7 +36,7 @@ export default class JWT {
       type: 'refresh',
     };
     return jwt.sign(payload, process.env.JWT_SECRET as string, {
-      expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d',
+      expiresIn: (process.env.JWT_REFRESH_EXPIRE || '7d') as any,
     });
   }
 
