@@ -165,6 +165,13 @@ export class AttendanceService {
       const getListExcused = this.prisma.leaveRequestAffectedSession.findMany({
         where:{
           sessionId: sessionId,
+          leaveRequest:{
+            status: {notIn: ['cancelled', 'rejected'] 
+            },
+            studentId: {not: null},
+            teacherId: null,
+          },
+          
         },
         include:{
           leaveRequest: {

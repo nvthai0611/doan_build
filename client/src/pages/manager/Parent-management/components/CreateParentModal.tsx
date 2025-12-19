@@ -119,6 +119,8 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
       newErrors.fullName = "Họ và tên phải có ít nhất 5 ký tự"
     } else if (sanitizedFullName.length > 50) {
       newErrors.fullName = "Họ và tên không được vượt quá 50 ký tự"
+    }else if(!/^[a-zA-ZÀ-ỹ\s]+$/.test(sanitizedFullName)){
+      newErrors.fullName = "Họ và tên chỉ được chứa chữ cái và khoảng trắng"
     }
 
     // Phone validation
@@ -150,6 +152,8 @@ export function CreateParentModal({ isOpen, onClose, onSuccess }: CreateParentMo
         newErrors[`students.${index}.fullName`] = "Họ và tên phải có ít nhất 2 ký tự"
       } else if (sanitizedName.length > 30) {
         newErrors[`students.${index}.fullName`] = "Họ và tên không được vượt quá 30 ký tự"
+      }else if(!/^[a-zA-ZÀ-ỹ\s]+$/.test(sanitizedName)){
+        newErrors[`students.${index}.fullName`] = "Họ và tên chỉ được chứa chữ cái và khoảng trắng"
       }
 
       // Validate gender (required)

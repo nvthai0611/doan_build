@@ -41,7 +41,7 @@ export const PaymentProcessing: React.FC = () => {
         qrInfo.orderCode,
         {
           onSuccess: async (data: any) => {
-            toast.success('Thanh toán thành công! 🎉', {
+            toast.success('Thanh toán thành công!', {
               description: `Đã thanh toán ${data.amount?.toLocaleString('vi-VN')} đ`,
               duration: 2000,
             })
