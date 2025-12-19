@@ -27,12 +27,13 @@ interface TeacherInSession {
     fullName: string;
     avatar: string | null;
     email: string;
+    phone: string | null;
     teacherCode: string;
   };
   role: string;
   session: {
     id: string;
-    sessionNumber: string;
+    notes: string;
     status: string;
     sessionDate: string;
     startTime: string;
@@ -69,21 +70,17 @@ export default function TodaySessionsPage() {
 });
   const [search, setSearch] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [sessionTab, setSessionTab] = useState<SessionStatusFilter>('all');
   const [selectedSessionStatus, setSelectedSessionStatus] = useState<SessionStatusFilter>('all');
 
-  // Debounce search term để giảm số lần gọi API
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(search.trim());
-      // Reset về trang 1 khi search thay đổi
       if (search.trim() !== debouncedSearchTerm) {
-        setPage(1);
+        pagination.setCurrentPage(1);
       }
     }, 500); // Delay 500ms
 
@@ -97,8 +94,8 @@ export default function TodaySessionsPage() {
       dateRange,
       debouncedSearchTerm,
       sessionTab,
-      page,
-      limit,
+      pagination.currentPage,
+      pagination.itemsPerPage,
       selectedClassId,
       selectedSessionStatus,
     ],
@@ -107,8 +104,8 @@ export default function TodaySessionsPage() {
         startDate: format(dateRange.start, 'yyyy-MM-dd'),
         endDate: format(dateRange.end, 'yyyy-MM-dd'),
         search: debouncedSearchTerm || undefined,
-        page,
-        limit,
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
         classId: selectedClassId && selectedClassId !== 'all' ? selectedClassId : undefined,
         sessionStatus:
           selectedSessionStatus !== 'all'
@@ -120,24 +117,23 @@ export default function TodaySessionsPage() {
     staleTime: 0,
   });
 
-
-
-  // Query để lấy tất cả data (không filter) để tính count cho tabs
-  const { data: allData } = useQuery({
-    queryKey: ['teachers-in-sessions-today-all', dateRange, debouncedSearchTerm],
-    queryFn: () =>
-      centerOwnerScheduleService.getTeachersInSessionsToday({
-        startDate: format(dateRange.start, 'yyyy-MM-dd'),
-        endDate: format(dateRange.end, 'yyyy-MM-dd'),
-        search: debouncedSearchTerm || undefined,
-        page: 1,
-        limit: 100,
-      }),
-    staleTime: 0,
-  });
-
-  const totalPages = (allData as any)?.meta.totalPages || 1;
-  const totalCount = (allData as any)?.meta.total || 0;
+  // Cập nhật totalItems từ API response
+  useEffect(() => {
+    if (data?.meta?.total !== undefined) {
+      pagination.setTotalItems(data.meta.total);
+    }
+  }, [data?.meta?.total, pagination]);
+  
+  const totalPages = data?.meta?.totalPages || 1;
+  const totalCount = data?.meta?.total || 0;
+  const statusCounts = data?.meta?.statusCounts || {
+    all: 0,
+    has_not_happened: 0,
+    happening: 0,
+    end: 0,
+    day_off: 0,
+    cancelled: 0,
+  };
   
   // Query để lấy danh sách lớp học cho filter
   const { data: classesData } = useQuery({
@@ -149,14 +145,6 @@ export default function TodaySessionsPage() {
 
   const classes = (classesData as any)?.data || [];
 
-  const getSessionStatusCount = (status: SessionStatusFilter) => {
-    if (!allData?.data) return 0;
-    if (status === 'all') {
-      return allData.meta?.total || 0;
-    }
-    return allData.data.filter((item: TeacherInSession) => item.session.status === status).length;
-  };
-
   interface Tab {
     key: SessionStatusFilter;
     label: string;
@@ -164,12 +152,12 @@ export default function TodaySessionsPage() {
   }
 
   const tabs: Tab[] = [
-    { key: 'all', label: 'Tất cả', count: getSessionStatusCount('all') },
-    { key: 'has_not_happened', label: 'Chưa diễn ra', count: getSessionStatusCount('has_not_happened') },
-    { key: 'happening', label: 'Đang diễn ra', count: getSessionStatusCount('happening') },
-    { key: 'end', label: 'Đã kết thúc', count: getSessionStatusCount('end') },
-    { key: 'day_off', label: 'Nghỉ', count: getSessionStatusCount('day_off') },
-    { key: 'cancelled', label: 'Đã hủy', count: getSessionStatusCount('cancelled') },
+    { key: 'all', label: 'Tất cả', count: statusCounts.all },
+    { key: 'has_not_happened', label: 'Chưa diễn ra', count: statusCounts.has_not_happened },
+    { key: 'happening', label: 'Đang diễn ra', count: statusCounts.happening },
+    { key: 'end', label: 'Đã kết thúc', count: statusCounts.end },
+    { key: 'day_off', label: 'Nghỉ', count: statusCounts.day_off },
+    { key: 'cancelled', label: 'Đã hủy', count: statusCounts.cancelled },
   ];
 
   const getSessionStatusBadge = (status: string) => {
@@ -267,9 +255,9 @@ export default function TodaySessionsPage() {
               >
                 {item.teacher.fullName}
               </button>
+              <p>Sđt: {item.teacher?.phone}</p>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <CodeDisplay code={item.teacher.teacherCode} hiddenLength={4} />
-                
                 <Button
                   variant="ghost"
                   size="sm"
@@ -279,7 +267,6 @@ export default function TodaySessionsPage() {
                     copyTeacherCode(item.teacher.teacherCode);
                   }}
                 >
-                  <Copy className="h-3 w-3" />
                 </Button>
               </div>
             </div>
@@ -305,7 +292,7 @@ export default function TodaySessionsPage() {
                 onClick={(event) => goToSessionDetail(event, item.session.id)}
                 className="font-medium text-blue-600 hover:underline text-left"
               >
-                {item.session.sessionNumber ? `Buổi ${item.session.sessionNumber}` : 'Xem chi tiết'}
+                {item.session.notes}
               </button>
               <Badge variant={sessionStatus.variant} className={sessionStatus.className}>
                 {sessionStatus.label}
@@ -445,7 +432,7 @@ export default function TodaySessionsPage() {
                   className="w-full"
                   onClick={() => {
                     setDatePickerOpen(false);
-                    setPage(1);
+                    pagination.setCurrentPage(1);
                   }}
                 >
                   OK
@@ -546,7 +533,7 @@ export default function TodaySessionsPage() {
                 key={tab.key}
                 onClick={() => {
                   setSessionTab(tab.key);
-                  setPage(1);
+                  pagination.setCurrentPage(1);
                 }}
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                   sessionTab === tab.key

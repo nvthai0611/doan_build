@@ -1,13 +1,12 @@
 import DefaultLayout from "../layouts/DefaultLayout/DefaultLayout";
 import { Route } from "react-router-dom";
 import AuthMiddleware from "../middlewares/AuthMiddleware";
-import { CenterOwnerDashboard } from "../pages/manager/CenterDashboard";
 import { CenterOwnerHomePage } from "../pages/manager/CenterOwnerHomePage";
-import TeacherProfilePage from "../pages/teacher/Teacher-profile";
 import StudentsManagement from "../pages/manager/Student-management/StudentManagement";
 import TeacherManageClass from "../pages/teacher/Teacher-manage-class/Teacher-manage-class";
 import CenterSchedulePage from "../pages/manager/Center-schedule/CenterSchedulePage";
 import TodaySessionsPage from "../pages/manager/Center-schedule/TodaySessionsPage";
+import { RoomConflictsPage } from "../pages/manager/ScheduleConflict";
 import ScoreInputPage from "../pages/teacher/PointManagement/ScoreInput";
 import ViewStudentPage from "../pages/teacher/PointManagement/ScoreView";
 import TeacherQnmsManagement from "../pages/manager/Teacher-management/TeacherManagement";
@@ -110,6 +109,7 @@ export const privateRoutes = (
         <Route path="teachers/:id" element={<TeacherQnmsInfo />} />
         <Route path="lich-day-hom-nay" element={<TodaySessionsPage />} />
         <Route path="schedule" element={<CenterSchedulePage />} />
+        <Route path="schedule/conflicts" element={<RoomConflictsPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="permission-test" element={<PermissionTestPage />} />
         <Route path="incidents" element={<IncidentHandlePage />} />

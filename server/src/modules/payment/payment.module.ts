@@ -3,6 +3,7 @@ import { SepayController } from './controller/sepay.controller';
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 
 // Services
 import { SepayService } from './service/sepay.service';
@@ -26,6 +27,14 @@ import { PaymentGateway } from './gateway/payment.gateway';
         },
       }),
       inject: [ConfigService],
+    }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+        signOptions: { expiresIn: '7d' },
+      }),
     }),
   ],
   controllers: [

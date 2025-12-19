@@ -593,7 +593,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
               Chi tiết lớp học
             </CardTitle>
             <div className="flex items-center gap-2">
@@ -976,7 +975,6 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
                   disabled={isAssignTeacherLoading || !canEditGeneralInfo}
                   title={!canEditGeneralInfo ? `Không thể chỉnh sửa khi lớp có trạng thái ${CLASS_STATUS_LABELS[classData.status as ClassStatus]}` : ""}
                 >
-                  <UserPlus className="h-4 w-4" />
                   Gán giáo viên
                 </Button>
               )}
@@ -1029,9 +1027,8 @@ export const GeneralInfo = ({ classData }: GeneralInfoProps) => {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">Chưa có giáo viên phụ trách</p>
-              <p className="text-sm">Nhấn "Gán giáo viên" để chọn giáo viên cho lớp học này</p>
+              <p className="text-sm">Nhấn `Gán giáo viên` để chọn giáo viên cho lớp học này</p>
             </div>
           )}
         </CardContent>

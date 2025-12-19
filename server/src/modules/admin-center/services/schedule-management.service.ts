@@ -1089,7 +1089,6 @@ export class ScheduleManagementService {
       startDate,
       endDate,
       search,
-      attendanceStatus,
       page = 1,
       limit = 10,
       classId,
@@ -1114,7 +1113,9 @@ export class ScheduleManagementService {
 
       // Chuẩn hóa về UTC date: start = 00:00 UTC, end = ngày tiếp theo 00:00 UTC
       dateStart = new Date(Date.UTC(startYear, startMonth - 1, startDay));
-      const endInclusive = new Date(Date.UTC(endYear, endMonth - 1, endDay + 1));
+      const endInclusive = new Date(
+        Date.UTC(endYear, endMonth - 1, endDay + 1),
+      );
       dateEnd = endInclusive;
     } else {
       // Mặc định là hôm nay (bao trọn ngày hiện tại)
@@ -1137,14 +1138,14 @@ export class ScheduleManagementService {
       teacherId: { not: null },
       class: {
         status: { in: ['active'] },
-      },  
+      },
     };
 
     // Filter theo sessionStatus nếu có, nếu không thì loại trừ 'end' và 'cancelled'
     if (sessionStatus) {
       where.status = sessionStatus;
     } else {
-      // Loại trừ các buổi đã kết thúc hoặc bị hủy
+      // Loại trừ các buổi đã bị hủy
       where.status = { notIn: ['cancelled'] };
     }
 
@@ -1165,6 +1166,31 @@ export class ScheduleManagementService {
     // Lấy tổng số trước
     const total = await this.prisma.classSession.count({ where });
 
+    // Lấy count cho từng status (không filter theo sessionStatus)
+    const baseWhere = { ...where };
+    delete baseWhere.status; // Xóa filter status để đếm all
+
+    const statusCounts = await Promise.all([
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: { notIn: ['cancelled'] } },
+      }), // all
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: 'has_not_happened' },
+      }),
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: 'happening' },
+      }),
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: 'end' },
+      }),
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: 'day_off' },
+      }),
+      this.prisma.classSession.count({
+        where: { ...baseWhere, status: 'cancelled' },
+      }),
+    ]);
+
     // Lấy danh sách sessions với pagination
     const skip = (pageNum - 1) * limitNum;
     const sessions = await this.prisma.classSession.findMany({
@@ -1181,6 +1207,7 @@ export class ScheduleManagementService {
                 fullName: true,
                 avatar: true,
                 email: true,
+                phone: true,
               },
             },
           },
@@ -1192,6 +1219,8 @@ export class ScheduleManagementService {
                 id: true,
                 fullName: true,
                 avatar: true,
+                phone: true,
+                email: true,
               },
             },
           },
@@ -1275,11 +1304,12 @@ export class ScheduleManagementService {
           avatar: teacher?.user?.avatar || null,
           teacherCode: teacher?.teacherCode || '',
           email: (teacher?.user as any)?.email || '',
+          phone: (teacher?.user as any)?.phone || '',
         },
         role: role,
         session: {
           id: session.id,
-          sessionNumber: session.notes?.match(/Buổi (\d+)/)?.[1] || '',
+          notes: session.notes,
           status: session.status,
           sessionDate: session.sessionDate.toISOString().split('T')[0],
           startTime: session.startTime,
@@ -1298,10 +1328,18 @@ export class ScheduleManagementService {
     return {
       data: result,
       meta: {
-        total: result.length,
+        total: total,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(result.length / limitNum),
+        totalPages: Math.ceil(total / limitNum),
+        statusCounts: {
+          all: statusCounts[0],
+          has_not_happened: statusCounts[1],
+          happening: statusCounts[2],
+          end: statusCounts[3],
+          day_off: statusCounts[4],
+          cancelled: statusCounts[5],
+        },
       },
     };
   }

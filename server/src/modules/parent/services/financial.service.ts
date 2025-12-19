@@ -6,112 +6,112 @@ import { checkId } from 'src/utils/validate.util';
 export class FinancialService {
     constructor(private readonly prisma: PrismaService){}
 
-async getAllFeeRecordsForParent (parentId: string, status: string){
-    try {
-        if(!checkId(parentId)){
-            throw new HttpException({
-                message: 'ID phụ huynh không hợp lệ',
-            }, 
-        HttpStatus.BAD_REQUEST)
-        }
-        const getStudents = await this.prisma.student.findMany({
-            where: {parentId: parentId},
-        })
-        if(getStudents.length === 0){
-            throw new HttpException({
-                message: 'Không tìm thấy học sinh nào cho phụ huynh này',
-            },
-        HttpStatus.NOT_FOUND)
-        }
-        const studentIds = getStudents.map(student => student.id);
-
-        let attendanceWhereClause: any = {
-            status: {
-                not: 'excused'
-            },
-            session: {
-                status: 'end'
+    async getAllFeeRecordsForParent (parentId: string, status: string){
+        try {
+            if(!checkId(parentId)){
+                throw new HttpException({
+                    message: 'ID phụ huynh không hợp lệ',
+                }, 
+            HttpStatus.BAD_REQUEST)
             }
-        };
+            const getStudents = await this.prisma.student.findMany({
+                where: {parentId: parentId},
+            })
+            if(getStudents.length === 0){
+                throw new HttpException({
+                    message: 'Không tìm thấy học sinh nào cho phụ huynh này',
+                },
+            HttpStatus.NOT_FOUND)
+            }
+            const studentIds = getStudents.map(student => student.id);
 
-        if (status === 'pending') {
-            const now = new Date();
-            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-
-            attendanceWhereClause.session = {
-                ...attendanceWhereClause.session,
-                sessionDate: {
-                    gte: lastMonthStart,
-                    lte: lastMonthEnd
+            let attendanceWhereClause: any = {
+                status: {
+                    not: 'excused'
+                },
+                session: {
+                    status: 'end'
                 }
             };
-        }
 
-        const feeRecords = await this.prisma.feeRecord.findMany({
-            where: {
-                studentId: { in: studentIds },
-                 status: status === 'pending' 
-            ? { in: ['pending', 'overdue'] } 
-            : (status ? status : undefined)
-                },
-                include:{
-                    class: {
-                        include:{
-                            sessions: {
-                                where: {
-                                    status:'end'
+            if (status === 'pending') {
+                const now = new Date();
+                const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+                attendanceWhereClause.session = {
+                    ...attendanceWhereClause.session,
+                    sessionDate: {
+                        gte: lastMonthStart,
+                        lte: lastMonthEnd
+                    }
+                };
+            }
+
+            const feeRecords = await this.prisma.feeRecord.findMany({
+                where: {
+                    studentId: { in: studentIds },
+                    status: status === 'pending' 
+                ? { in: ['pending', 'overdue'] } 
+                : (status ? status : undefined)
+                    },
+                    include:{
+                        class: {
+                            include:{
+                                sessions: {
+                                    where: {
+                                        status:'end'
+                                    }
                                 }
                             }
-                        }
-                    },
-                    feeStructure: true,
-                    student:{
-                        include:{
-                            school: true,
-                            user:{
-                                select:{
-                                    fullName: true,
-                                }
-                            },
-                            attendances: {
-                                where: attendanceWhereClause,
-                                include: {
-                                    session: true
+                        },
+                        feeStructure: true,
+                        student:{
+                            include:{
+                                school: true,
+                                user:{
+                                    select:{
+                                        fullName: true,
+                                    }
+                                },
+                                attendances: {
+                                    where: attendanceWhereClause,
+                                    include: {
+                                        session: true
+                                    }
                                 }
                             }
                         }
                     }
-                }
-        })
+            })
 
-        if(feeRecords.length === 0){
-            throw new HttpException({
-                message: 'Không tìm thấy hồ sơ phí nào cho phụ huynh này',
-            },
-        HttpStatus.NOT_FOUND)
-        }
-
-        // Thêm thông tin số buổi học đã tham gia cho mỗi fee record
-        const feeRecordsWithAttendanceCount = feeRecords.map(record => ({
-            ...record,
-            student: {
-                ...record.student,
-                attendedSessionsCount: record.student.attendances.length
+            if(feeRecords.length === 0){
+                throw new HttpException({
+                    message: 'Không tìm thấy hồ sơ phí nào cho phụ huynh này',
+                },
+            HttpStatus.NOT_FOUND)
             }
-        }));
 
-        return feeRecordsWithAttendanceCount;
-    } catch (error) {
-        if(error instanceof HttpException){
-            throw error;
+            // Thêm thông tin số buổi học đã tham gia cho mỗi fee record
+            const feeRecordsWithAttendanceCount = feeRecords.map(record => ({
+                ...record,
+                student: {
+                    ...record.student,
+                    attendedSessionsCount: record.student.attendances.length
+                }
+            }));
+
+            return feeRecordsWithAttendanceCount;
+        } catch (error) {
+            if(error instanceof HttpException){
+                throw error;
+            }
+            throw new HttpException({
+                message: 'Lỗi khi lấy danh sách nộp học phí',
+                error: error.message,
+            }, HttpStatus.INTERNAL_SERVER_ERROR)
         }
-        throw new HttpException({
-            message: 'Lỗi khi lấy danh sách nộp học phí',
-            error: error.message,
-        }, HttpStatus.INTERNAL_SERVER_ERROR)
     }
-}
 
     async getPaymentForParentByStatus(parentId: string, status: string) {
         try {
