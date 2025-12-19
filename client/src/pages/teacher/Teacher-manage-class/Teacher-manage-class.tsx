@@ -511,7 +511,7 @@ export default function ClassManagement() {
           data={classesToRender}
           columns={columns}
           loading={isLoading && classesToRender.length === 0}
-          error={isError ? 'Không thể tải dữ liệu lớp học' : null}
+          // error={isError ? 'Không có lớp học nào' : null}
           emptyMessage="Không có lớp học nào"
           rowKey="id"
           hoverable={true}

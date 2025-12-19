@@ -330,24 +330,34 @@ const saveMutation = useMutation({
 
     const currentDateOnly = new Date(currentDate.toDateString());
     const sessionDateOnly = new Date(sessionDate.toDateString());
-
+    
+    // Disable if session is in the future
     if (sessionDateOnly > currentDateOnly) {
       return true;
     }
 
+    // Disable if session is in the past
     if (sessionDateOnly < currentDateOnly) {
       return true;
     }
 
+    // If session is today, check the time
     if (sessionDateOnly.getTime() === currentDateOnly.getTime()) {
-      const sessionHour = sessionDate.getHours();
-      const sessionMinute = sessionDate.getMinutes();
+      const startTime = studentListData?.startTime; // e.g., "18:00"
+      
+      if (!startTime) {
+        return false; // Allow if no start time specified
+      }
+
+      // Parse startTime "HH:MM"
+      const [sessionHour, sessionMinute] = startTime.split(':').map(Number);
       const currentHour = currentDate.getHours();
       const currentMinute = currentDate.getMinutes();
 
       const sessionTimeInMinutes = sessionHour * 60 + sessionMinute;
       const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
+      // Disable if current time is before session start time
       if (currentTimeInMinutes < sessionTimeInMinutes) {
         return true;
       }
