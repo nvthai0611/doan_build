@@ -38,6 +38,7 @@ function getTransporter(): nodemailer.Transporter {
     tls: {
       rejectUnauthorized: false,
     },
+    family: 4,
     connectionTimeout: 30000, // 30 giây - tăng cho production
     greetingTimeout: 10000,   // 10 giây - tăng cho production
     socketTimeout: 30000,      // 30 giây - tăng cho production
