@@ -7,6 +7,7 @@ import { ValidationError } from 'class-validator';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { verifyEmailConnection } from './utils/email.util';
+import * as net from 'net'; // <--- 1. IMPORT THƯ VIỆN NET
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -41,7 +42,7 @@ async function bootstrap() {
 
   //CORS + cookie
   const isProduction = process.env.NODE_ENV === 'production';
-  
+   
   const allowedOrigins = isProduction
     ? [
         'https://thayquang.site',
@@ -54,18 +55,14 @@ async function bootstrap() {
         'http://127.0.0.1:5173',
         process.env.FRONTEND_URL,
       ].filter(Boolean);
-  
+   
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      
-      // Check if origin is in allowed list
       const isAllowed = allowedOrigins.some(allowed => {
         if (!allowed) return false;
         return allowed === origin;
       });
-      
       if (isAllowed) {
         callback(null, true);
       } else {
@@ -78,7 +75,7 @@ async function bootstrap() {
   });
   app.use(cookieParser());
 
-  //Swagger config (gắn theo version)
+  //Swagger config
   const config = new DocumentBuilder()
     .setTitle('API COMMON')
     .setDescription('The API description')
@@ -95,17 +92,43 @@ async function bootstrap() {
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-
-  // Swagger nằm trong cùng prefix với API
-  //http://localhost:9999/api/v1/docs
   SwaggerModule.setup(`${API_PREFIX}/docs`, app, documentFactory);
 
-  // Verify SMTP connection khi khởi động (không block, chạy async)
-  // Chỉ verify nếu có cấu hình SMTP
+  // --- 2. ĐOẠN CODE TEST MẠNG (THAY THẾ SHELL) ---
+  // Đoạn này sẽ chạy song song khi server khởi động
+  const testHost = process.env.SMTP_HOST || 'smtp.gmail.com'; 
+  const testPort = Number(process.env.SMTP_PORT) || 587;
+
+  console.log(`[NETWORK TEST] 📡 Đang thử kết nối đến: ${testHost}:${testPort} ...`);
+
+  const socket = new net.Socket();
+  socket.setTimeout(5000); // Timeout sau 5 giây nếu không kết nối được
+
+  socket.on('connect', () => {
+    console.log(`[NETWORK TEST] ✅ KẾT NỐI THÀNH CÔNG đến ${testHost}:${testPort}`);
+    console.log(`[NETWORK TEST] => Mạng OK. Nếu vẫn lỗi Email thì do Sai Mật Khẩu/User.`);
+    socket.destroy();
+  });
+
+  socket.on('timeout', () => {
+    console.log(`[NETWORK TEST] ❌ TIMEOUT - Render KHÔNG THỂ kết nối đến ${testHost}:${testPort}`);
+    console.log(`[NETWORK TEST] => Vấn đề do Render chặn mạng hoặc Server Mail chặn IP này.`);
+    socket.destroy();
+  });
+
+  socket.on('error', (err) => {
+    console.log(`[NETWORK TEST] ❌ LỖI KẾT NỐI: ${err.message}`);
+    socket.destroy();
+  });
+
+  // Bắt đầu kết nối
+  socket.connect(testPort, testHost);
+  // ------------------------------------------------
+
+  // Verify SMTP connection (Của bạn)
   if (process.env.SMTP_USERNAME && process.env.SMTP_PASSWORD) {
-    verifyEmailConnection().catch(() => {
-      // Ignore errors, app vẫn chạy bình thường
-      // Email sẽ fail khi gửi nếu connection không hợp lệ
+    verifyEmailConnection().catch((err) => {
+       console.warn('[Email Warning] Verify failed (check logs above for Network Test)');
     });
   }
 
