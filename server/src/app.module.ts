@@ -50,6 +50,9 @@ import { AdminitModule } from './modules/adminit/adminit.module';
         port: parseInt(process.env.REDIS_PORT) || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
         db: parseInt(process.env.REDIS_DB) || 0,
+        tls: {
+        servername: process.env.REDIS_HOST,
+        },
         connectTimeout: 10000,   // 10 giây timeout cho connection
         commandTimeout: 30000,   // 30 giây timeout cho mỗi command (tăng lên để tránh timeout)
         enableReadyCheck: false, // Tắt ready check để tránh timeout
