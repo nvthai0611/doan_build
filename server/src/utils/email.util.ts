@@ -11,11 +11,11 @@ function getTransporter(): nodemailer.Transporter {
     return transporter;
   }
 
-  const SMTP_HOST = process.env.SMTP_HOST;
-  const SMTP_PORT = process.env.SMTP_PORT;
-  const SMTP_SECURE = process.env.SMTP_SECURE;
-  const SMTP_USERNAME = process.env.SMTP_USERNAME;
-  const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
+  const SMTP_HOST = process.env.SMTP_HOST?.trim();
+  const SMTP_PORT = process.env.SMTP_PORT?.trim();
+  const SMTP_SECURE = process.env.SMTP_SECURE?.trim();
+  const SMTP_USERNAME = process.env.SMTP_USERNAME?.trim();
+  const SMTP_PASSWORD = process.env.SMTP_PASSWORD?.trim();
 
   if (!SMTP_HOST || !SMTP_PORT) {
     throw new Error('Thiếu cấu hình SMTP_HOST hoặc SMTP_PORT. Vui lòng kiểm tra environment variables.');
