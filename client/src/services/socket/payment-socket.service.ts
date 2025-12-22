@@ -37,7 +37,7 @@ class PaymentSocketService {
    */
   connect() {
     if (this.socket?.connected) return;
-    const token = localStorage.getItem('token');
+    const token = Cookies.get('accessToken') || localStorage.getItem('accessToken');
     
     if (!token) {
       console.error('⚠️ No authentication token found');
