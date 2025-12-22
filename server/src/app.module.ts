@@ -96,7 +96,9 @@ import { AdminitModule } from './modules/adminit/adminit.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // thích cấu hình như nào thì cấu hình
-    consumer.apply(ApiKeyMiddleware).forRoutes('*');
+    consumer.apply(ApiKeyMiddleware).exclude(
+      { path: 'payment/sepay/webhook', method: RequestMethod.POST },
+    ).forRoutes('*');
     consumer.apply(AuthMiddleware).forRoutes(
       {
         path: 'auth/profile',
