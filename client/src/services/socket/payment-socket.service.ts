@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 import { io, Socket } from 'socket.io-client';
 
 interface PaymentSuccessData {
