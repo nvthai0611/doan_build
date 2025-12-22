@@ -57,7 +57,7 @@ export class PaymentGateway
 
       // 2. Verify JWT token
       const payload = await this.jwtService.verifyAsync(token);
-      const userId = payload.id;
+      const userId = payload.userId;
 
       // 3. Lưu userId vào map
       this.userSockets.set(client.id, userId);
